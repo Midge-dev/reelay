@@ -64,6 +64,11 @@ class _AppNavigationDrawerState extends State<AppNavigationDrawer> {
   late final _homeLongPress = DpadLongPressDetector(
     onLongPress: () => _homeItemFocusNode.requestFocus(),
     keys: {LogicalKeyboardKey.arrowLeft},
+    // A held left should also jump home, but a quick left is normal
+    // directional focus movement (handled by Flutter's own default arrow-key
+    // traversal) — consuming the KeyDown here would swallow every left
+    // press app-wide, not just the long-press case. See DpadLongPressDetector.
+    consumeKeyDown: false,
   );
 
   @override

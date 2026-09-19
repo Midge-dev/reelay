@@ -1,3 +1,4 @@
+import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 
 import '../../data/plex/plex_image_url.dart';
@@ -99,8 +100,21 @@ class _WatchlistPosterState extends State<WatchlistPoster> {
     WidgetsBinding.instance.addPostFrameCallback((_) => _focusNode.requestFocus());
   }
 
+  // _longPress only detects the hold; nothing else translates a plain
+  // short select press into a click (see FocusableSurface._handleKeyEvent
+  // for the same pattern) — without this, select/enter did nothing at all.
   KeyEventResult _handleKeyEvent(FocusNode node, KeyEvent event) {
-    return _longPress.handle(event);
+    if (!DpadLongPressDetector.selectKeys.contains(event.logicalKey)) return KeyEventResult.ignored;
+    if (event is KeyDownEvent) {
+      _longPress.handle(event);
+      return KeyEventResult.handled;
+    }
+    if (event is KeyUpEvent) {
+      final swallowedByLongPress = _longPress.handle(event) == KeyEventResult.handled;
+      if (!swallowedByLongPress) widget.onClick();
+      return KeyEventResult.handled;
+    }
+    return KeyEventResult.ignored;
   }
 
   @override
@@ -226,8 +240,21 @@ class _ContinueWatchingPosterState extends State<ContinueWatchingPoster> {
     WidgetsBinding.instance.addPostFrameCallback((_) => _focusNode.requestFocus());
   }
 
+  // _longPress only detects the hold; nothing else translates a plain
+  // short select press into a click (see FocusableSurface._handleKeyEvent
+  // for the same pattern) — without this, select/enter did nothing at all.
   KeyEventResult _handleKeyEvent(FocusNode node, KeyEvent event) {
-    return _longPress.handle(event);
+    if (!DpadLongPressDetector.selectKeys.contains(event.logicalKey)) return KeyEventResult.ignored;
+    if (event is KeyDownEvent) {
+      _longPress.handle(event);
+      return KeyEventResult.handled;
+    }
+    if (event is KeyUpEvent) {
+      final swallowedByLongPress = _longPress.handle(event) == KeyEventResult.handled;
+      if (!swallowedByLongPress) widget.onResume();
+      return KeyEventResult.handled;
+    }
+    return KeyEventResult.ignored;
   }
 
   @override
