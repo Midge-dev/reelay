@@ -70,13 +70,13 @@ class _AppRootState extends ConsumerState<AppRoot> {
 
     final elapsed = DateTime.now().millisecondsSinceEpoch - _splashStartMs;
     final remaining = _splashMinHoldMs - elapsed;
-    if (remaining <= 0) {
-      setState(() => _showSplash = false);
-    } else {
-      Future.delayed(Duration(milliseconds: remaining), () {
-        if (mounted) setState(() => _showSplash = false);
-      });
-    }
+    // Always defer, even when remaining <= 0 — this runs inside
+    // ListenableBuilder's builder callback (i.e. during AppRoot's own
+    // build), and calling setState synchronously there throws
+    // "setState() or markNeedsBuild() called during build".
+    Future.delayed(remaining > 0 ? Duration(milliseconds: remaining) : Duration.zero, () {
+      if (mounted) setState(() => _showSplash = false);
+    });
   }
 
   @override

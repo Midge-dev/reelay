@@ -5,7 +5,10 @@ plugins {
 }
 
 android {
-    namespace = "com.reelay.tv.dev"
+    // Matches the actual Kotlin source package (android/app/src/main/kotlin/com/reelay/reelay/)
+    // — deliberately distinct from applicationId below, which is what needs to
+    // change at cutover, not this.
+    namespace = "com.reelay.reelay"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
 
