@@ -99,19 +99,11 @@ class _FocusableSurfaceState extends State<FocusableSurface> {
 
   KeyEventResult _handleKeyEvent(FocusNode node, KeyEvent event) {
     if (!DpadLongPressDetector.selectKeys.contains(event.logicalKey)) return KeyEventResult.ignored;
-
-    if (event is KeyDownEvent) {
-      _setPressed(true);
-      _longPress?.handle(event);
-      return KeyEventResult.handled;
-    }
-    if (event is KeyUpEvent) {
-      _setPressed(false);
-      final swallowedByLongPress = _longPress?.handle(event) == KeyEventResult.handled;
-      if (!swallowedByLongPress && widget.enabled) widget.onClick();
-      return KeyEventResult.handled;
-    }
-    return KeyEventResult.ignored;
+    if (event is KeyDownEvent) _setPressed(true);
+    if (event is KeyUpEvent) _setPressed(false);
+    return handleDpadSelect(event, longPress: _longPress, onClick: () {
+      if (widget.enabled) widget.onClick();
+    });
   }
 
   @override

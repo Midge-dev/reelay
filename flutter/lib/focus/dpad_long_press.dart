@@ -79,3 +79,30 @@ class DpadLongPressDetector {
 
   void dispose() => _timer?.cancel();
 }
+
+/// The shared short-press/long-press split for a select/enter/gameButtonA
+/// key: on KeyDown, hand it to [longPress] (so a hold is still tracked) and
+/// swallow it, since nothing else should treat a bare select KeyDown as
+/// anything on its own; on KeyUp, invoke [onClick] unless the hold already
+/// fired as a long-press. [longPress] is nullable for a caller with no
+/// long-press behavior at all, in which case every short press clicks.
+///
+/// Every widget that handles select itself (FocusableSurface,
+/// WatchlistPoster, ContinueWatchingPoster) routes through this rather than
+/// reimplementing it, so a fix here — or a future change to the gesture —
+/// can't drift out of sync between them the way the click-on-select wiring
+/// once did (WatchlistPoster/ContinueWatchingPoster forwarded straight to
+/// DpadLongPressDetector.handle and never called onClick at all).
+KeyEventResult handleDpadSelect(KeyEvent event, {required VoidCallback onClick, DpadLongPressDetector? longPress}) {
+  if (!DpadLongPressDetector.selectKeys.contains(event.logicalKey)) return KeyEventResult.ignored;
+  if (event is KeyDownEvent) {
+    longPress?.handle(event);
+    return KeyEventResult.handled;
+  }
+  if (event is KeyUpEvent) {
+    final swallowedByLongPress = longPress?.handle(event) == KeyEventResult.handled;
+    if (!swallowedByLongPress) onClick();
+    return KeyEventResult.handled;
+  }
+  return KeyEventResult.ignored;
+}
