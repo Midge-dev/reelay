@@ -247,43 +247,45 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildContinueWatchingSection(bool continueWatchingGetsFocus) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        const Padding(
-          padding: EdgeInsets.only(left: 32, top: 32, bottom: 16),
-          child: AppText('Continue Watching', style: AppTypography.titleLarge),
-        ),
-        if (widget.onDeck.isEmpty)
+    return _ScrollSectionIntoView(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
           const Padding(
-            padding: EdgeInsets.only(left: 32),
-            child: AppText('Nothing in progress right now.'),
-          )
-        else
-          SizedBox(
-            height: 190,
-            child: ListView.separated(
-              scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.symmetric(horizontal: 32),
-              itemCount: widget.onDeck.length,
-              separatorBuilder: (context, index) => const SizedBox(width: 24),
-              itemBuilder: (context, index) {
-                final item = widget.onDeck[index];
-                return ContinueWatchingPoster(
-                  key: ValueKey(item.ratingKey),
-                  server: widget.server,
-                  item: item,
-                  onResume: () => widget.onResume(item),
-                  onRemove: () => widget.onRemove(item),
-                  focusNode: index == 0 ? _continueWatchingRowFocus : null,
-                  autofocus: index == 0 && continueWatchingGetsFocus,
-                  staggerDelayMs: (index % _rowStaggerPeriod) * 120,
-                );
-              },
-            ),
+            padding: EdgeInsets.only(left: 32, top: 32, bottom: 16),
+            child: AppText('Continue Watching', style: AppTypography.titleLarge),
           ),
-      ],
+          if (widget.onDeck.isEmpty)
+            const Padding(
+              padding: EdgeInsets.only(left: 32),
+              child: AppText('Nothing in progress right now.'),
+            )
+          else
+            SizedBox(
+              height: 190,
+              child: ListView.separated(
+                scrollDirection: Axis.horizontal,
+                padding: const EdgeInsets.symmetric(horizontal: 32),
+                itemCount: widget.onDeck.length,
+                separatorBuilder: (context, index) => const SizedBox(width: 24),
+                itemBuilder: (context, index) {
+                  final item = widget.onDeck[index];
+                  return ContinueWatchingPoster(
+                    key: ValueKey(item.ratingKey),
+                    server: widget.server,
+                    item: item,
+                    onResume: () => widget.onResume(item),
+                    onRemove: () => widget.onRemove(item),
+                    focusNode: index == 0 ? _continueWatchingRowFocus : null,
+                    autofocus: index == 0 && continueWatchingGetsFocus,
+                    staggerDelayMs: (index % _rowStaggerPeriod) * 120,
+                  );
+                },
+              ),
+            ),
+        ],
+      ),
     );
   }
 }
@@ -301,25 +303,50 @@ class _HomeRow<T> extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (items.isEmpty) return const SizedBox.shrink();
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Padding(
-          padding: const EdgeInsets.only(left: 32, top: 32, bottom: 28),
-          child: AppText(title, style: AppTypography.titleLarge),
-        ),
-        SizedBox(
-          height: 278,
-          child: ListView.separated(
-            scrollDirection: Axis.horizontal,
-            padding: const EdgeInsets.symmetric(horizontal: 32),
-            itemCount: items.length,
-            separatorBuilder: (context, index) => const SizedBox(width: 24),
-            itemBuilder: (context, index) => itemBuilder(items[index], index),
+    return _ScrollSectionIntoView(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Padding(
+            padding: const EdgeInsets.only(left: 32, top: 32, bottom: 28),
+            child: AppText(title, style: AppTypography.titleLarge),
           ),
-        ),
-      ],
+          SizedBox(
+            height: 278,
+            child: ListView.separated(
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.symmetric(horizontal: 32),
+              itemCount: items.length,
+              separatorBuilder: (context, index) => const SizedBox(width: 24),
+              itemBuilder: (context, index) => itemBuilder(items[index], index),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// The default focus-follow-scroll only guarantees the focused card's own
+/// bounding box is visible — not a sibling header sitting above it in the
+/// same section. Navigating back up into a row from below could leave its
+/// title scrolled just out of view even though the row itself is showing.
+/// Explicitly scrolling the whole section (header included) into view
+/// whenever focus lands anywhere inside it fixes that.
+class _ScrollSectionIntoView extends StatelessWidget {
+  final Widget child;
+
+  const _ScrollSectionIntoView({required this.child});
+
+  @override
+  Widget build(BuildContext context) {
+    return Focus(
+      canRequestFocus: false,
+      onFocusChange: (hasFocus) {
+        if (hasFocus) Scrollable.ensureVisible(context, duration: const Duration(milliseconds: 200));
+      },
+      child: child,
     );
   }
 }
