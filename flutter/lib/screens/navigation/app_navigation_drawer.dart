@@ -175,7 +175,16 @@ class _AppNavigationDrawerState extends State<AppNavigationDrawer> {
           child: AnimatedContainer(
             duration: _railAnimDuration,
             width: effectiveExpanded ? _expandedRailWidth : _collapsedRailWidth,
-            color: AppColors.surface,
+            // Reads as floating above the content behind it while open —
+            // BoxShadow.lerpList pads the empty/single-shadow lists with a
+            // zero-alpha shadow at the same offset/blur, so this still
+            // animates smoothly in and out with the width, not a hard cut.
+            decoration: BoxDecoration(
+              color: AppColors.surface,
+              boxShadow: effectiveExpanded
+                  ? [BoxShadow(color: AppColors.scrim.withValues(alpha: 0.5), blurRadius: 24, offset: const Offset(8, 0))]
+                  : const [],
+            ),
             child: Stack(
               children: [
                 Focus(

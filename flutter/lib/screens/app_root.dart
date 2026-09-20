@@ -112,7 +112,7 @@ class _AppContent extends StatelessWidget {
   Widget build(BuildContext context) {
     final state = controller.state;
     return switch (state) {
-      Checking() => const LoadingScreen('Loading…'),
+      Checking() => const LoadingScreen(),
       ConnectingToServer(:final username) =>
         LoadingScreen(username != null ? 'Logged in as $username — connecting to library…' : 'Connecting to library…'),
       LoggedOut() => AuthScreen(onLoggedIn: controller.connect),
@@ -143,17 +143,20 @@ class _AppContent extends StatelessWidget {
             onSelectCollection: (collection) => _openCollection(ctx, collection),
           ),
         ),
-      LoadingSection(:final sections, :final label, :final selectedSectionKey) => AppNavigationDrawer(
-          sections: sections,
-          selectedSectionKey: selectedSectionKey,
-          isSettingsSelected: false,
-          isHomeSelected: false,
-          onSelectSection: (_) {},
-          onOpenSettings: () {},
-          onOpenHome: () {},
-          account: controller.localAccount,
-          versionName: _appVersionName,
-          child: LoadingScreen('Loading $label…'),
+      LoadingSection(:final sections, :final selectedSectionKey, :final returnState) => BackHandler(
+          onBack: () => controller.returnTo(returnState),
+          child: AppNavigationDrawer(
+            sections: sections,
+            selectedSectionKey: selectedSectionKey,
+            isSettingsSelected: false,
+            isHomeSelected: false,
+            onSelectSection: (_) {},
+            onOpenSettings: () {},
+            onOpenHome: () {},
+            account: controller.localAccount,
+            versionName: _appVersionName,
+            child: const LoadingScreen(),
+          ),
         ),
       LoadingHome(:final sections) => AppNavigationDrawer(
           sections: sections,
@@ -165,7 +168,7 @@ class _AppContent extends StatelessWidget {
           onOpenHome: () {},
           account: controller.localAccount,
           versionName: _appVersionName,
-          child: const LoadingScreen('Loading Home…'),
+          child: const LoadingScreen(),
         ),
       Settings(:final ctx, :final returnState, :final relayHint) => _drawer(
           ctx: ctx,

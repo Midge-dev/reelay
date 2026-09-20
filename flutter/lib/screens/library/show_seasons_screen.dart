@@ -15,7 +15,7 @@ const _posterCardHeight = 278.0;
 /// stagger) is carried through to PosterCard/Artwork even though Artwork
 /// doesn't use it yet — see artwork.dart's note on the deferred noise
 /// effect.
-class ShowSeasonsScreen extends StatelessWidget {
+class ShowSeasonsScreen extends StatefulWidget {
   final PlexServer server;
   final String showTitle;
   final List<PlexSeason> seasons;
@@ -32,7 +32,38 @@ class ShowSeasonsScreen extends StatelessWidget {
   });
 
   @override
+  State<ShowSeasonsScreen> createState() => _ShowSeasonsScreenState();
+}
+
+class _ShowSeasonsScreenState extends State<ShowSeasonsScreen> {
+  final _firstPosterFocusNode = FocusNode(debugLabel: 'show-seasons-first-poster');
+
+  @override
+  void initState() {
+    super.initState();
+    // Explicit, not autofocus: this screen replaces the detail screen in the
+    // same frame its "Seasons" button (which held focus) is disposed —
+    // Flutter's autofocus declines to steal focus from an already-focused
+    // scope in that race, leaving focus to fall back to the nav drawer's
+    // rail instead (same root cause as the player controls bar fix).
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _firstPosterFocusNode.requestFocus();
+    });
+  }
+
+  @override
+  void dispose() {
+    _firstPosterFocusNode.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final server = widget.server;
+    final showTitle = widget.showTitle;
+    final seasons = widget.seasons;
+    final onSelect = widget.onSelect;
+    final onBack = widget.onBack;
     return BackHandler(
       onBack: onBack,
       child: ColoredBox(
@@ -62,7 +93,7 @@ class ShowSeasonsScreen extends StatelessWidget {
                     key: ValueKey(season.ratingKey),
                     imageUrl: PlexImageUrl.of(server, season.thumb),
                     title: season.title,
-                    autofocus: index == 0,
+                    focusNode: index == 0 ? _firstPosterFocusNode : null,
                     staggerDelayMs: (index % _gridColumns) * 120,
                     onClick: () => onSelect(season),
                   );

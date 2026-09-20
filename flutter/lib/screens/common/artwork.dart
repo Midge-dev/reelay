@@ -56,6 +56,15 @@ class Artwork extends StatelessWidget {
       fit: BoxFit.cover,
       loadingBuilder: (context, child, progress) => AnimatedSwitcher(
         duration: const Duration(milliseconds: _crossfadeMs),
+        // Default layoutBuilder wraps children in a loose Stack, which lets
+        // the Image auto-size to preserve its own aspect ratio instead of
+        // filling the box tightly — defeating BoxFit.cover whenever the box
+        // aspect ratio doesn't already match the image's (e.g. a 16:9 card
+        // showing a 2:3 poster). Force tight fill instead.
+        layoutBuilder: (currentChild, previousChildren) => Stack(
+          fit: StackFit.expand,
+          children: [...previousChildren, ?currentChild],
+        ),
         child: progress == null
             ? KeyedSubtree(key: const ValueKey('loaded'), child: child)
             : _PosterPlaceholder(key: const ValueKey('loading'), noiseOpacity: noiseOpacity, staggerDelayMs: staggerDelayMs),

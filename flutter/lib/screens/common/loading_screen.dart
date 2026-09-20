@@ -27,10 +27,16 @@ const _flavorMessages = [
 /// status message, purely for personality on what's otherwise a blank
 /// wait — picked once per mount (not re-randomized on every rebuild, which
 /// would just look like flickering text).
+///
+/// `message` is optional: pass it only when it conveys something the
+/// flavor line doesn't (e.g. "Logged in as $username — connecting to
+/// library…"). A generic "Loading X…" tells the user nothing they don't
+/// already know from having just clicked X, and reads as redundant next to
+/// the flavor line — omit it in that case.
 class LoadingScreen extends StatefulWidget {
-  final String message;
+  final String? message;
 
-  const LoadingScreen(this.message, {super.key});
+  const LoadingScreen([this.message, Key? key]) : super(key: key);
 
   @override
   State<LoadingScreen> createState() => _LoadingScreenState();
@@ -41,6 +47,7 @@ class _LoadingScreenState extends State<LoadingScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final message = widget.message;
     return ColoredBox(
       color: AppColors.background,
       child: Center(
@@ -49,8 +56,10 @@ class _LoadingScreenState extends State<LoadingScreen> {
           children: [
             const AppLoadingIndicator(),
             const SizedBox(height: 16),
-            AppText(widget.message),
-            const SizedBox(height: 4),
+            if (message != null) ...[
+              AppText(message),
+              const SizedBox(height: 4),
+            ],
             AppText(_flavor, style: AppTypography.bodySmall, color: AppColors.onSurfaceVariant),
           ],
         ),

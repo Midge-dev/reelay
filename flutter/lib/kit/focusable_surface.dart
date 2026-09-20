@@ -75,6 +75,20 @@ class _FocusableSurfaceState extends State<FocusableSurface> {
       _longPress?.dispose();
       _longPress = widget.onLongClick != null ? DpadLongPressDetector(onLongPress: widget.onLongClick!) : null;
     }
+    // A caller that reuses this Element for a different logical item across
+    // rebuilds (e.g. a list whose row composition shifts, changing which
+    // FocusNode a given position gets) needs this re-synced — otherwise the
+    // old node's focus listener (and its possibly-still-true hasFocus)
+    // keeps driving this surface's visuals even though a new node was
+    // handed in, while the new node's real focus goes unheard here.
+    if (widget.focusNode != oldWidget.focusNode) {
+      _focusNode.removeListener(_handleFocusChange);
+      if (_ownsFocusNode) _focusNode.dispose();
+      _ownsFocusNode = widget.focusNode == null;
+      _focusNode = widget.focusNode ?? FocusNode();
+      _focusNode.addListener(_handleFocusChange);
+      _focused = _focusNode.hasFocus;
+    }
   }
 
   void _handleFocusChange() {

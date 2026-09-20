@@ -55,7 +55,9 @@ final _menuRowColors = SurfaceColors(
   selectedContainer: AppColors.accent.withValues(alpha: 0.35),
 );
 const _menuRowBorder = SurfaceBorder(focused: SurfaceBorderSide.gradient(AppFocusTreatment.focusedGradient));
-const _menuRowGlow = SurfaceGlow(focusedColor: AppColors.accentGlow);
+// The default glow radius (14) is tuned for larger surfaces (cards, tabs) —
+// on these short, narrow rows it reads as oversized, so it's dialed down.
+const _menuRowGlow = SurfaceGlow(focusedColor: AppColors.accentGlow, radius: 8);
 
 class MenuOptionRow extends StatelessWidget {
   final String label;
@@ -160,12 +162,28 @@ class GenreFilterPanel extends StatefulWidget {
 class _GenreFilterPanelState extends State<GenreFilterPanel> {
   final _scrollController = ScrollController();
   int _highlightedIndex = 0;
-  final _rowFocusNodes = <FocusNode>[];
+  // Keyed by stable row identity, not list position — "Clear all" only
+  // exists once some filter is applied, so every row after it used to shift
+  // by one position whenever it appeared/disappeared. With a plain
+  // List<FocusNode> indexed by position, that shift handed each row a
+  // FocusNode object that used to belong to a *different* row (e.g. "Clear
+  // all" would inherit whatever node "Action" — the row that used to sit at
+  // index 0 — had, including that node's real, possibly-still-true
+  // hasFocus), which is exactly what made two rows appear focused at once.
+  // Keying by identity means a row's node follows it, never another row's.
+  final _focusNodesById = <String, FocusNode>{};
 
-  int get _rowCount {
+  List<String> _computeRowIds() {
     final anyApplied = widget.genreFilter != null || widget.decadeFilter != null || widget.dateAddedFilter != null;
-    return (anyApplied ? 1 : 0) + widget.availableGenres.length + widget.availableDecades.length + DateAddedBucket.values.length;
+    return [
+      if (anyApplied) 'clear-all',
+      for (final genre in widget.availableGenres) 'genre:$genre',
+      for (final decade in widget.availableDecades) 'decade:$decade',
+      for (final bucket in DateAddedBucket.values) 'dateAdded:${bucket.name}',
+    ];
   }
+
+  FocusNode _nodeFor(String id) => _focusNodesById.putIfAbsent(id, () => FocusNode(debugLabel: 'genre-filter-$id'));
 
   @override
   void initState() {
@@ -180,19 +198,18 @@ class _GenreFilterPanelState extends State<GenreFilterPanel> {
   }
 
   void _syncFocusNodes() {
-    final needed = _rowCount;
-    while (_rowFocusNodes.length < needed) {
-      _rowFocusNodes.add(FocusNode(debugLabel: 'genre-filter-row-${_rowFocusNodes.length}'));
-    }
-    while (_rowFocusNodes.length > needed) {
-      _rowFocusNodes.removeLast().dispose();
-    }
-    if (_highlightedIndex >= needed) _highlightedIndex = needed > 0 ? needed - 1 : 0;
+    final ids = _computeRowIds().toSet();
+    _focusNodesById.removeWhere((id, node) {
+      final stale = !ids.contains(id);
+      if (stale) node.dispose();
+      return stale;
+    });
+    if (_highlightedIndex >= ids.length) _highlightedIndex = ids.isNotEmpty ? ids.length - 1 : 0;
   }
 
   @override
   void dispose() {
-    for (final node in _rowFocusNodes) {
+    for (final node in _focusNodesById.values) {
       node.dispose();
     }
     _scrollController.dispose();
@@ -201,7 +218,7 @@ class _GenreFilterPanelState extends State<GenreFilterPanel> {
 
   KeyEventResult _handlePanelKeyEvent(FocusNode node, KeyEvent event) {
     if (event is! KeyDownEvent) return KeyEventResult.ignored;
-    if (event.logicalKey == LogicalKeyboardKey.arrowDown && _highlightedIndex == _rowCount - 1) {
+    if (event.logicalKey == LogicalKeyboardKey.arrowDown && _highlightedIndex == _computeRowIds().length - 1) {
       return KeyEventResult.handled;
     }
     if (event.logicalKey == LogicalKeyboardKey.arrowUp && _highlightedIndex == 0) {
@@ -215,26 +232,26 @@ class _GenreFilterPanelState extends State<GenreFilterPanel> {
   Widget build(BuildContext context) {
     final anyApplied = widget.genreFilter != null || widget.decadeFilter != null || widget.dateAddedFilter != null;
     var rowIndex = 0;
-    FocusNode nextNode() => _rowFocusNodes[rowIndex++];
     ValueChanged<bool> onFocus(int index) => (focused) {
           if (focused) setState(() => _highlightedIndex = index);
         };
 
     final rows = <Widget>[];
     if (anyApplied) {
-      final index = rowIndex;
+      final index = rowIndex++;
       rows.add(MenuOptionRow(
+        key: const ValueKey('clear-all'),
         label: 'Clear all',
         applied: false,
         onClick: widget.onClearAll,
-        focusNode: nextNode(),
+        focusNode: _nodeFor('clear-all'),
         onFocusChange: onFocus(index),
       ));
     }
     if (widget.availableGenres.isNotEmpty) {
       rows.add(const MenuSectionHeader(label: 'Genre'));
       for (final genre in widget.availableGenres) {
-        final index = rowIndex;
+        final index = rowIndex++;
         final dimmed = applyLibraryFilters(
           items: widget.items,
           query: '',
@@ -244,11 +261,12 @@ class _GenreFilterPanelState extends State<GenreFilterPanel> {
           dateAddedBucket: widget.dateAddedFilter,
         ).isEmpty;
         rows.add(MenuOptionRow(
+          key: ValueKey('genre:$genre'),
           label: formatGenreLabel(genre),
           applied: genre == widget.genreFilter,
           dimmed: dimmed,
           onClick: () => widget.onGenreSelect(genre),
-          focusNode: nextNode(),
+          focusNode: _nodeFor('genre:$genre'),
           onFocusChange: onFocus(index),
         ));
       }
@@ -256,7 +274,7 @@ class _GenreFilterPanelState extends State<GenreFilterPanel> {
     if (widget.availableDecades.isNotEmpty) {
       rows.add(const MenuSectionHeader(label: 'Release Date'));
       for (final decade in widget.availableDecades) {
-        final index = rowIndex;
+        final index = rowIndex++;
         final dimmed = applyLibraryFilters(
           items: widget.items,
           query: '',
@@ -266,18 +284,19 @@ class _GenreFilterPanelState extends State<GenreFilterPanel> {
           dateAddedBucket: widget.dateAddedFilter,
         ).isEmpty;
         rows.add(MenuOptionRow(
+          key: ValueKey('decade:$decade'),
           label: '${decade}s',
           applied: decade == widget.decadeFilter,
           dimmed: dimmed,
           onClick: () => widget.onDecadeSelect(decade),
-          focusNode: nextNode(),
+          focusNode: _nodeFor('decade:$decade'),
           onFocusChange: onFocus(index),
         ));
       }
     }
     rows.add(const MenuSectionHeader(label: 'Date Added'));
     for (final bucket in DateAddedBucket.values) {
-      final index = rowIndex;
+      final index = rowIndex++;
       final dimmed = applyLibraryFilters(
         items: widget.items,
         query: '',
@@ -287,41 +306,52 @@ class _GenreFilterPanelState extends State<GenreFilterPanel> {
         dateAddedBucket: bucket,
       ).isEmpty;
       rows.add(MenuOptionRow(
+        key: ValueKey('dateAdded:${bucket.name}'),
         label: bucket.label,
         applied: bucket == widget.dateAddedFilter,
         dimmed: dimmed,
         onClick: () => widget.onDateAddedSelect(bucket),
-        focusNode: nextNode(),
+        focusNode: _nodeFor('dateAdded:${bucket.name}'),
         onFocusChange: onFocus(index),
       ));
     }
 
     return ColoredBox(
       color: AppColors.surface,
-      child: Focus(
-        canRequestFocus: false,
-        onKeyEvent: _handlePanelKeyEvent,
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Flexible(
-                child: SingleChildScrollView(
-                  controller: _scrollController,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      for (final row in rows) ...[row, const SizedBox(height: 2)],
-                    ],
+      // The scroll view below can't clip at its own tight edge (that cuts
+      // the focused-row glow off — see its comment), but leaving the panel
+      // with no clip at all let scrolled rows paint straight over the tab
+      // bar above once they scrolled past the top. Clipping here instead —
+      // at the panel's own outer edge, outside the 24px padding — keeps
+      // scrolled content contained to the panel while still leaving that
+      // padding as slack for the glow to bleed into.
+      child: ClipRect(
+        child: Focus(
+          canRequestFocus: false,
+          onKeyEvent: _handlePanelKeyEvent,
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Flexible(
+                  child: SingleChildScrollView(
+                    controller: _scrollController,
+                    clipBehavior: Clip.none,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        for (final row in rows) ...[row, const SizedBox(height: 2)],
+                      ],
+                    ),
                   ),
                 ),
-              ),
-              const SizedBox(width: 8),
-              NeonScrollbar(controller: _scrollController),
-            ],
+                const SizedBox(width: 8),
+                NeonScrollbar(controller: _scrollController),
+              ],
+            ),
           ),
         ),
       ),

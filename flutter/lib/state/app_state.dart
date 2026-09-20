@@ -97,10 +97,10 @@ class Library extends AppState {
 class LoadingSection extends AppState {
   final PlexServer server;
   final List<PlexSection> sections;
-  final String label;
   final String? selectedSectionKey;
+  final AppState returnState;
 
-  const LoadingSection({required this.server, required this.sections, required this.label, this.selectedSectionKey});
+  const LoadingSection({required this.server, required this.sections, this.selectedSectionKey, required this.returnState});
 }
 
 /// Shown while `goHome`'s fetches are in flight — mirrors [LoadingSection],

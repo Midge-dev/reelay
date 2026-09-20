@@ -430,7 +430,9 @@ class AppRootController extends ChangeNotifier {
   }
 
   void openSection(PlexServer server, List<PlexSection> sections, PlexSection section) {
-    _setState(LoadingSection(server: server, sections: sections, label: section.title, selectedSectionKey: section.key));
+    final previous = _state;
+    final loading = LoadingSection(server: server, sections: sections, selectedSectionKey: section.key, returnState: previous);
+    _setState(loading);
     () async {
       List<PlexLibraryItem> items;
       try {
@@ -438,7 +440,13 @@ class AppRootController extends ChangeNotifier {
       } catch (_) {
         items = const [];
       }
-      _setState(Library(ctx: LibraryContext(server: server, sections: sections, selectedSection: section, items: items)));
+      // A slow fetch (e.g. a very large library) can outlast the user's
+      // patience — BackHandler on LoadingSection lets them bail out via
+      // returnState before this resolves. Don't clobber wherever they've
+      // navigated to since with a stale result.
+      if (identical(_state, loading)) {
+        _setState(Library(ctx: LibraryContext(server: server, sections: sections, selectedSection: section, items: items)));
+      }
     }();
   }
 

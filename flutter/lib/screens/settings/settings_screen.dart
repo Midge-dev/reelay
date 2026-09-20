@@ -225,7 +225,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   @override
   Widget build(BuildContext context) {
     if (!_loaded) {
-      return const LoadingScreen('Loading settings…');
+      return const LoadingScreen();
     }
 
     if (_showingRelaySettings) {

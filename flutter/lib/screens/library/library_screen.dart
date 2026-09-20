@@ -3,6 +3,7 @@ import 'package:flutter/widgets.dart';
 
 import '../../data/plex/plex_image_url.dart';
 import '../../data/plex/plex_models.dart';
+import '../../kit/edge_fade_row.dart';
 import '../../kit/text.dart';
 import '../../theme/tokens.dart';
 import '../../theme/typography.dart';
@@ -54,6 +55,10 @@ class _LibraryScreenState extends State<LibraryScreen> {
   List<PlexCollection>? _collections;
   String _searchQuery = '';
 
+  final _allTabScrollController = ScrollController();
+  final _genreResultsScrollController = ScrollController();
+  final _collectionsScrollController = ScrollController();
+  final _searchResultsScrollController = ScrollController();
   final _allTabFocus = FocusNode(debugLabel: 'tab-all');
   final _genreTabFocus = FocusNode(debugLabel: 'tab-genre');
   final _collectionsTabFocus = FocusNode(debugLabel: 'tab-collections');
@@ -84,6 +89,10 @@ class _LibraryScreenState extends State<LibraryScreen> {
 
   @override
   void dispose() {
+    _allTabScrollController.dispose();
+    _genreResultsScrollController.dispose();
+    _collectionsScrollController.dispose();
+    _searchResultsScrollController.dispose();
     _allTabFocus.dispose();
     _genreTabFocus.dispose();
     _collectionsTabFocus.dispose();
@@ -119,6 +128,31 @@ class _LibraryScreenState extends State<LibraryScreen> {
       result = const [];
     }
     if (mounted) setState(() => _collections = result);
+  }
+
+  /// Wraps a vertically-scrolling poster grid with the scroll-aware
+  /// top/bottom fade and a hard clip at its own bounds — the grid's own
+  /// Clip.none (needed so a focused card's scale-up isn't clipped by its
+  /// own cell) would otherwise let scrolled-past rows paint straight
+  /// through into whatever sits above it (the tab bar, a header) once they
+  /// scroll behind it. The top fade only shows once actually scrolled, so
+  /// it doesn't just dim the first row for no reason at rest.
+  Widget _fadingGrid({required ScrollController controller, required Widget grid}) {
+    return ClipRect(
+      child: AnimatedBuilder(
+        animation: controller,
+        builder: (context, child) => EdgeFadeRow(
+          axis: Axis.vertical,
+          fadeStart: controller.hasClients && controller.offset > 0,
+          // Matches PosterCard's ensureRowVisible peek extent, so the gap
+          // it reserves at the bottom of a scroll and the band that
+          // actually fades line up.
+          fadeWidth: posterRowPeekExtent,
+          child: child!,
+        ),
+        child: grid,
+      ),
+    );
   }
 
   KeyEventResult _trapUpAboveTabs(FocusNode node, KeyEvent event) {
@@ -188,7 +222,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 24),
+          padding: const EdgeInsets.fromLTRB(32, 24, 32, 8),
           child: Row(
             children: [
               AppText(widget.selectedSection.title, style: AppTypography.titleMedium),
@@ -200,30 +234,31 @@ class _LibraryScreenState extends State<LibraryScreen> {
         Expanded(
           child: widget.items.isEmpty
               ? const Padding(padding: EdgeInsets.all(32), child: AppText('Nothing in this library yet.'))
-              : GridView.builder(
-                  padding: const EdgeInsets.all(32),
-                  // Flutter's GridView clips its children by default where
-                  // Compose's grid doesn't — matters once a card's
-                  // focus-scale can bleed past its own cell.
-                  clipBehavior: Clip.none,
-                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: _gridColumns,
-                    mainAxisSpacing: 24,
-                    crossAxisSpacing: 24,
-                    mainAxisExtent: _posterCardHeight,
+              : _fadingGrid(
+                  controller: _allTabScrollController,
+                  grid: GridView.builder(
+                    controller: _allTabScrollController,
+                    padding: const EdgeInsets.fromLTRB(32, 8, 32, 48),
+                    clipBehavior: Clip.none,
+                    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: _gridColumns,
+                      mainAxisSpacing: 24,
+                      crossAxisSpacing: 24,
+                      mainAxisExtent: _posterCardHeight,
+                    ),
+                    itemCount: widget.items.length,
+                    itemBuilder: (context, index) {
+                      final item = widget.items[index];
+                      return PosterCard(
+                        key: ValueKey(item.ratingKey),
+                        imageUrl: PlexImageUrl.of(widget.server, item.thumb),
+                        title: item.title,
+                        autofocus: index == 0,
+                        staggerDelayMs: (index % _gridColumns) * 120,
+                        onClick: () => widget.onSelectItem(item),
+                      );
+                    },
                   ),
-                  itemCount: widget.items.length,
-                  itemBuilder: (context, index) {
-                    final item = widget.items[index];
-                    return PosterCard(
-                      key: ValueKey(item.ratingKey),
-                      imageUrl: PlexImageUrl.of(widget.server, item.thumb),
-                      title: item.title,
-                      autofocus: index == 0,
-                      staggerDelayMs: (index % _gridColumns) * 120,
-                      onClick: () => widget.onSelectItem(item),
-                    );
-                  },
                 ),
         ),
       ],
@@ -270,27 +305,36 @@ class _LibraryScreenState extends State<LibraryScreen> {
                 Expanded(
                   child: genreResults.isEmpty
                       ? const Padding(padding: EdgeInsets.only(top: 24), child: AppText('Nothing matches these filters.'))
-                      : GridView.builder(
-                          padding: const EdgeInsets.only(top: 24),
-                          // See the matching comment above on the All tab's grid.
-                          clipBehavior: Clip.none,
-                          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                            crossAxisCount: 4,
-                            mainAxisSpacing: 24,
-                            crossAxisSpacing: 24,
-                            mainAxisExtent: _posterCardHeight,
+                      : _fadingGrid(
+                          controller: _genreResultsScrollController,
+                          grid: GridView.builder(
+                            controller: _genreResultsScrollController,
+                            // Unlike the All/Collections grids, this one has
+                            // no padding of its own margin from the screen
+                            // edge (its ancestor Padding already provides
+                            // that) — but the new outer ClipRect still needs
+                            // *some* slack inside it, or a focused card's
+                            // scale-up has nowhere to bleed into on the left.
+                            padding: const EdgeInsets.fromLTRB(16, 24, 16, 48),
+                            clipBehavior: Clip.none,
+                            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                              crossAxisCount: 4,
+                              mainAxisSpacing: 24,
+                              crossAxisSpacing: 24,
+                              mainAxisExtent: _posterCardHeight,
+                            ),
+                            itemCount: genreResults.length,
+                            itemBuilder: (context, index) {
+                              final item = genreResults[index];
+                              return PosterCard(
+                                key: ValueKey(item.ratingKey),
+                                imageUrl: PlexImageUrl.of(widget.server, item.thumb),
+                                title: item.title,
+                                autofocus: index == 0,
+                                onClick: () => widget.onSelectItem(item),
+                              );
+                            },
                           ),
-                          itemCount: genreResults.length,
-                          itemBuilder: (context, index) {
-                            final item = genreResults[index];
-                            return PosterCard(
-                              key: ValueKey(item.ratingKey),
-                              imageUrl: PlexImageUrl.of(widget.server, item.thumb),
-                              title: item.title,
-                              autofocus: index == 0,
-                              onClick: () => widget.onSelectItem(item),
-                            );
-                          },
                         ),
                 ),
               ],
@@ -304,34 +348,37 @@ class _LibraryScreenState extends State<LibraryScreen> {
   Widget _buildCollectionsTab() {
     final collections = _collections;
     if (collections == null) {
-      return const LoadingScreen('Loading collections…');
+      return const LoadingScreen();
     }
     if (collections.isEmpty) {
       return const Padding(padding: EdgeInsets.all(32), child: AppText('No collections found'));
     }
-    return GridView.builder(
-      padding: const EdgeInsets.all(32),
-      // See the matching comment on the All tab's grid above.
-      clipBehavior: Clip.none,
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: _gridColumns,
-        mainAxisSpacing: 24,
-        crossAxisSpacing: 24,
-        mainAxisExtent: _posterCardHeight,
+    return _fadingGrid(
+      controller: _collectionsScrollController,
+      grid: GridView.builder(
+        controller: _collectionsScrollController,
+        padding: const EdgeInsets.fromLTRB(32, 32, 32, 48),
+        clipBehavior: Clip.none,
+        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: _gridColumns,
+          mainAxisSpacing: 24,
+          crossAxisSpacing: 24,
+          mainAxisExtent: _posterCardHeight,
+        ),
+        itemCount: collections.length,
+        itemBuilder: (context, index) {
+          final collection = collections[index];
+          final childCount = collection.childCount;
+          return PosterCard(
+            key: ValueKey(collection.ratingKey),
+            imageUrl: PlexImageUrl.of(widget.server, collection.thumb),
+            title: collection.title,
+            subtitle: childCount != null ? '$childCount title${childCount == 1 ? '' : 's'}' : null,
+            autofocus: index == 0,
+            onClick: () => widget.onSelectCollection(collection),
+          );
+        },
       ),
-      itemCount: collections.length,
-      itemBuilder: (context, index) {
-        final collection = collections[index];
-        final childCount = collection.childCount;
-        return PosterCard(
-          key: ValueKey(collection.ratingKey),
-          imageUrl: PlexImageUrl.of(widget.server, collection.thumb),
-          title: collection.title,
-          subtitle: childCount != null ? '$childCount title${childCount == 1 ? '' : 's'}' : null,
-          autofocus: index == 0,
-          onClick: () => widget.onSelectCollection(collection),
-        );
-      },
     );
   }
 
@@ -383,26 +430,30 @@ class _LibraryScreenState extends State<LibraryScreen> {
                   Expanded(
                     child: _searchQuery.trim().isEmpty
                         ? const SizedBox.shrink()
-                        : GridView.builder(
-                            padding: const EdgeInsets.only(top: 24),
-                            // See the matching comment on the All tab's grid above.
-                            clipBehavior: Clip.none,
-                            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                              crossAxisCount: 4,
-                              mainAxisSpacing: 24,
-                              crossAxisSpacing: 24,
-                              mainAxisExtent: _posterCardHeight,
+                        : _fadingGrid(
+                            controller: _searchResultsScrollController,
+                            grid: GridView.builder(
+                              controller: _searchResultsScrollController,
+                              // See the matching comment on the Genres tab's grid.
+                              padding: const EdgeInsets.fromLTRB(16, 24, 16, 48),
+                              clipBehavior: Clip.none,
+                              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                                crossAxisCount: 4,
+                                mainAxisSpacing: 24,
+                                crossAxisSpacing: 24,
+                                mainAxisExtent: _posterCardHeight,
+                              ),
+                              itemCount: searchResults.length,
+                              itemBuilder: (context, index) {
+                                final item = searchResults[index];
+                                return PosterCard(
+                                  key: ValueKey(item.ratingKey),
+                                  imageUrl: PlexImageUrl.of(widget.server, item.thumb),
+                                  title: item.title,
+                                  onClick: () => widget.onSelectItem(item),
+                                );
+                              },
                             ),
-                            itemCount: searchResults.length,
-                            itemBuilder: (context, index) {
-                              final item = searchResults[index];
-                              return PosterCard(
-                                key: ValueKey(item.ratingKey),
-                                imageUrl: PlexImageUrl.of(widget.server, item.thumb),
-                                title: item.title,
-                                onClick: () => widget.onSelectItem(item),
-                              );
-                            },
                           ),
                   ),
                 ],

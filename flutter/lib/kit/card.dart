@@ -32,6 +32,7 @@ class AppCard extends StatefulWidget {
   final bool autofocus;
   final double focusScale;
   final ShapeBorder? shape;
+  final bool ensureVisibleOnFocus;
   final Widget child;
 
   const AppCard({
@@ -43,6 +44,7 @@ class AppCard extends StatefulWidget {
     this.autofocus = false,
     this.focusScale = _defaultFocusScale,
     this.shape,
+    this.ensureVisibleOnFocus = true,
     required this.child,
   });
 
@@ -71,7 +73,7 @@ class _AppCardState extends State<AppCard> with SingleTickerProviderStateMixin {
   void _handleFocusChange(bool focused) {
     final target = focused ? widget.focusScale : 1.0;
     _controller.animateWith(SpringSimulation(_cardFocusSpring, _controller.value, target, 0));
-    if (focused) {
+    if (focused && widget.ensureVisibleOnFocus) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) ensureCardVisible(context);
       });

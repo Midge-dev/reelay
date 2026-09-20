@@ -19,19 +19,49 @@ const _backwardAlignment = 0.0;
 /// Scrollable's current position tells us which way we're actually
 /// headed, without needing every caller to track and pass its own index.
 void ensureCardVisible(BuildContext context, {Duration duration = const Duration(milliseconds: 200)}) {
-  final renderObject = context.findRenderObject();
-  if (renderObject == null) return;
-  final scrollableState = Scrollable.maybeOf(context);
-  if (scrollableState == null) return;
-  final viewport = RenderAbstractViewport.maybeOf(renderObject);
-  if (viewport == null) return;
-
-  final leadingEdgeOffset = viewport.getOffsetToReveal(renderObject, 0.0).offset;
-  final movingForward = leadingEdgeOffset >= scrollableState.position.pixels;
+  final movingForward = _isMovingForward(context);
+  if (movingForward == null) return;
 
   Scrollable.ensureVisible(
     context,
     alignment: movingForward ? _forwardAlignment : _backwardAlignment,
     duration: duration,
   );
+}
+
+/// Same idea as [ensureCardVisible], but for a multi-row grid where the
+/// proportional 0.8 alignment doesn't reliably leave a *row's* worth of
+/// peek — the fraction of the viewport one row occupies varies with row
+/// height, unlike a horizontal row of cards sized to roughly match a
+/// fifth of the viewport width. [peekExtent] instead pins the peek to a
+/// fixed pixel amount (matching the caller's fade-affordance width),
+/// computing whatever alignment fraction currently produces that.
+void ensureRowVisible(BuildContext context, {required double peekExtent, Duration duration = const Duration(milliseconds: 200)}) {
+  final movingForward = _isMovingForward(context);
+  if (movingForward == null) return;
+  final scrollableState = Scrollable.maybeOf(context);
+  if (scrollableState == null) return;
+
+  final viewportExtent = scrollableState.position.viewportDimension;
+  final peekAlignment = viewportExtent > 0 ? (1 - peekExtent / viewportExtent).clamp(0.0, 1.0) : _forwardAlignment;
+
+  Scrollable.ensureVisible(
+    context,
+    alignment: movingForward ? peekAlignment : _backwardAlignment,
+    duration: duration,
+  );
+}
+
+/// Null when there's no enclosing Scrollable/viewport to judge direction
+/// against (matches the previous no-op behavior of just returning early).
+bool? _isMovingForward(BuildContext context) {
+  final renderObject = context.findRenderObject();
+  if (renderObject == null) return null;
+  final scrollableState = Scrollable.maybeOf(context);
+  if (scrollableState == null) return null;
+  final viewport = RenderAbstractViewport.maybeOf(renderObject);
+  if (viewport == null) return null;
+
+  final leadingEdgeOffset = viewport.getOffsetToReveal(renderObject, 0.0).offset;
+  return leadingEdgeOffset >= scrollableState.position.pixels;
 }
