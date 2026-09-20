@@ -264,7 +264,14 @@ class _HomeScreenState extends State<HomeScreen> {
             )
           else
             SizedBox(
-              height: 190,
+              // +24 over the card's own content height: EdgeFadeRow's
+              // ShaderMask only fades within its own layout bounds, and a
+              // focused card's scale overflow (let through by Clip.none
+              // below) painted outside a tightly-fit box escapes the mask
+              // entirely — the top of a focused card looked unfaded. Real
+              // vertical headroom, not just Clip.none, keeps the whole
+              // scaled card inside the mask's bounds.
+              height: 214,
               child: EdgeFadeRow(
               child: ListView.separated(
                 scrollDirection: Axis.horizontal,
@@ -275,8 +282,9 @@ class _HomeScreenState extends State<HomeScreen> {
                 clipBehavior: Clip.none,
                 // 48, not 32: the focused card's scale/glow needs headroom
                 // against the screen edge itself, not just the row's own
-                // bounds — the last card was still clipping at 32.
-                padding: const EdgeInsets.symmetric(horizontal: 48),
+                // bounds — the last card was still clipping at 32. Vertical
+                // 12 matches the +24 SizedBox headroom above.
+                padding: const EdgeInsets.symmetric(horizontal: 48, vertical: 12),
                 itemCount: widget.onDeck.length,
                 separatorBuilder: (context, index) => const SizedBox(width: 24),
                 itemBuilder: (context, index) {
@@ -324,13 +332,14 @@ class _HomeRow<T> extends StatelessWidget {
             child: AppText(title, style: AppTypography.titleLarge),
           ),
           SizedBox(
-            height: 278,
+            // See the matching comment on Continue Watching's SizedBox above.
+            height: 302,
             child: EdgeFadeRow(
             child: ListView.separated(
               scrollDirection: Axis.horizontal,
               // See the matching comment on Continue Watching's ListView above.
               clipBehavior: Clip.none,
-              padding: const EdgeInsets.symmetric(horizontal: 48),
+              padding: const EdgeInsets.symmetric(horizontal: 48, vertical: 12),
               itemCount: items.length,
               separatorBuilder: (context, index) => const SizedBox(width: 24),
               itemBuilder: (context, index) => itemBuilder(items[index], index),

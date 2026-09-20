@@ -90,6 +90,14 @@ class _WatchlistPosterState extends State<WatchlistPoster> {
   void _handleFocusChange() {
     if (!mounted) return;
     setState(() => _focused = _focusNode.hasFocus);
+    if (_focused) {
+      // See the matching comment on AppCard._handleFocusChange — leaves
+      // room for the next card to peek in, and keeps the focused one off
+      // the true screen edge, instead of flushing it there.
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) Scrollable.ensureVisible(context, alignment: 0.8, duration: const Duration(milliseconds: 200));
+      });
+    }
   }
 
   void _openConfirm() => setState(() => _confirmingRemove = true);
@@ -216,6 +224,14 @@ class _ContinueWatchingPosterState extends State<ContinueWatchingPoster> {
   void _handleFocusChange() {
     if (!mounted) return;
     setState(() => _focused = _focusNode.hasFocus);
+    if (_focused) {
+      // See the matching comment on AppCard._handleFocusChange — leaves
+      // room for the next card to peek in, and keeps the focused one off
+      // the true screen edge, instead of flushing it there.
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) Scrollable.ensureVisible(context, alignment: 0.8, duration: const Duration(milliseconds: 200));
+      });
+    }
   }
 
   void _openConfirm() => setState(() => _confirmingRemove = true);

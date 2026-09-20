@@ -83,8 +83,10 @@ class WatchTogetherRow extends StatelessWidget {
           // no fixed height at all (Column gives it intrinsic sizing), but
           // Flutter's horizontal ListView needs a bounded cross-axis
           // height, so this picks one with headroom rather than the
-          // arbitrary 260 that clipped the card.
-          height: 320,
+          // arbitrary 260 that clipped the card. +12 further for
+          // EdgeFadeRow's ShaderMask bounds — see the matching comment on
+          // Continue Watching's SizedBox in home_screen.dart.
+          height: 332,
           child: EdgeFadeRow(
           child: ListView.separated(
             controller: scrollController,
@@ -94,7 +96,7 @@ class WatchTogetherRow extends StatelessWidget {
             // and RoomCard also has a focus-scale that can bleed past its
             // own bounds.
             clipBehavior: Clip.none,
-            padding: const EdgeInsets.symmetric(horizontal: 48, vertical: 4),
+            padding: const EdgeInsets.symmetric(horizontal: 48, vertical: 10),
             itemCount: rooms.length + (rooms.length > _visibleRoomCards ? 1 : 0),
             separatorBuilder: (context, index) => const SizedBox(width: 20),
             itemBuilder: (context, index) {
@@ -199,7 +201,8 @@ class _RoomCardState extends State<RoomCard> with SingleTickerProviderStateMixin
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;
         final renderObject = context.findRenderObject();
-        if (renderObject != null) Scrollable.ensureVisible(context, duration: const Duration(milliseconds: 200));
+        // alignment: 0.8, matching Home's rows — see AppCard._handleFocusChange.
+        if (renderObject != null) Scrollable.ensureVisible(context, alignment: 0.8, duration: const Duration(milliseconds: 200));
       });
     }
   }

@@ -32,7 +32,9 @@ class CastCrewRow extends StatelessWidget {
           child: AppText('Cast & Crew', style: AppTypography.titleLarge),
         ),
         SizedBox(
-          height: 150,
+          // See the matching comment on Continue Watching's SizedBox in
+          // home_screen.dart — headroom for EdgeFadeRow's ShaderMask bounds.
+          height: 174,
           child: EdgeFadeRow(
           child: ListView.separated(
             scrollDirection: Axis.horizontal,
@@ -40,7 +42,7 @@ class CastCrewRow extends StatelessWidget {
             // Compose's LazyRow doesn't — matters once a card's focus-scale
             // can bleed past this SizedBox's fixed height.
             clipBehavior: Clip.none,
-            padding: const EdgeInsets.symmetric(horizontal: 48),
+            padding: const EdgeInsets.symmetric(horizontal: 48, vertical: 12),
             itemCount: people.length,
             separatorBuilder: (context, index) => const SizedBox(width: 18),
             itemBuilder: (context, index) {
@@ -136,13 +138,14 @@ class PosterRow extends StatelessWidget {
           child: AppText(title, style: AppTypography.titleLarge),
         ),
         SizedBox(
-          height: 232,
+          // See the matching comment on CastCrewRow above.
+          height: 256,
           child: EdgeFadeRow(
           child: ListView.separated(
             scrollDirection: Axis.horizontal,
             // See the matching comment on CastCrewRow above.
             clipBehavior: Clip.none,
-            padding: const EdgeInsets.symmetric(horizontal: 48),
+            padding: const EdgeInsets.symmetric(horizontal: 48, vertical: 12),
             itemCount: items.length,
             separatorBuilder: (context, index) => const SizedBox(width: 18),
             itemBuilder: (context, index) {
