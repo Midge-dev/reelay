@@ -319,8 +319,8 @@ class _LibraryScreenState extends State<LibraryScreen> {
                             clipBehavior: Clip.none,
                             gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                               crossAxisCount: 4,
-                              mainAxisSpacing: 24,
-                              crossAxisSpacing: 24,
+                              mainAxisSpacing: 16,
+                              crossAxisSpacing: 16,
                               mainAxisExtent: _posterCardHeight,
                             ),
                             itemCount: genreResults.length,
@@ -439,8 +439,8 @@ class _LibraryScreenState extends State<LibraryScreen> {
                               clipBehavior: Clip.none,
                               gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                                 crossAxisCount: 4,
-                                mainAxisSpacing: 24,
-                                crossAxisSpacing: 24,
+                                mainAxisSpacing: 16,
+                                crossAxisSpacing: 16,
                                 mainAxisExtent: _posterCardHeight,
                               ),
                               itemCount: searchResults.length,
