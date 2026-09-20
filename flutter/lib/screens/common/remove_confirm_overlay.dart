@@ -1,0 +1,179 @@
+import 'package:flutter/services.dart';
+import 'package:flutter/widgets.dart';
+
+import '../../kit/button.dart';
+import '../../kit/text.dart';
+import '../../theme/tokens.dart';
+import '../../theme/typography.dart';
+
+/// Ports ui/common/RemoveConfirmOverlay.kt — a full-bleed scrim confirm
+/// dialog, layered on top of a card's still-mounted content (checklist
+/// item #1's Stack-overlay pattern), not swapped in via if/else.
+///
+/// Two hazards this ports deliberately, not just the visuals:
+///
+/// - **checklist item #3, cross-widget variant.** The long-press that
+///   opens this overlay is still physically held when it appears;
+///   RemoveConfirmOverlay immediately grabs focus onto Remove, so the
+///   eventual key-up of that same press lands on Remove as a "bare"
+///   KeyUpEvent with no KeyDownEvent of its own. Compose solves this with
+///   `onPreviewKeyEvent` on an ancestor — true capture/tunnel dispatch
+///   that runs before either button's own click handling. Flutter's key
+///   dispatch bubbles from the focused leaf outward (confirmed via
+///   HardwareKeyboard.addHandler's source: its handlers run before the
+///   focus-tree dispatch but don't gate/cancel it), so an ancestor can't
+///   pre-empt a descendant FocusableSurface's own onClick this way. Ported
+///   instead by guarding the *semantic action*: `_armed` starts false on
+///   every fresh mount (this widget is freshly built each time it
+///   appears, same lifecycle Kotlin's local state relies on) and the
+///   first Confirm/Cancel activation only arms it; the action itself
+///   requires a second, deliberate press.
+/// - **Auto-dismiss on focus loss, correctly sequenced.** Only starts
+///   watching for "focus left" after observing at least one genuine
+///   focus-gained report — otherwise the single frame before the initial
+///   requestFocus() lands would immediately auto-cancel the overlay it
+///   just opened.
+class RemoveConfirmOverlay extends StatefulWidget {
+  final String message;
+  final VoidCallback onConfirm;
+  final VoidCallback onCancel;
+  final bool compact;
+
+  const RemoveConfirmOverlay({
+    super.key,
+    required this.message,
+    required this.onConfirm,
+    required this.onCancel,
+    this.compact = false,
+  });
+
+  @override
+  State<RemoveConfirmOverlay> createState() => _RemoveConfirmOverlayState();
+}
+
+class _RemoveConfirmOverlayState extends State<RemoveConfirmOverlay> {
+  final _removeFocus = FocusNode(debugLabel: 'remove-confirm-remove');
+  final _cancelFocus = FocusNode(debugLabel: 'remove-confirm-cancel');
+  bool _armed = false;
+  bool _hasBeenFocusedSinceShown = false;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _removeFocus.requestFocus());
+  }
+
+  @override
+  void dispose() {
+    _removeFocus.dispose();
+    _cancelFocus.dispose();
+    super.dispose();
+  }
+
+  void _handleRegionFocusChange(bool hasFocus) {
+    if (hasFocus) {
+      _hasBeenFocusedSinceShown = true;
+    } else if (_hasBeenFocusedSinceShown) {
+      widget.onCancel();
+    }
+  }
+
+  void _guardedConfirm() {
+    if (!_armed) {
+      setState(() => _armed = true);
+      return;
+    }
+    widget.onConfirm();
+  }
+
+  void _guardedCancel() {
+    if (!_armed) {
+      setState(() => _armed = true);
+      return;
+    }
+    widget.onCancel();
+  }
+
+  // Remove/Cancel lay out as a Row when not compact (navigated with
+  // left/right) and a Column when compact (navigated with up/down) — the
+  // escape/edge traps below must swap axis to match, or the *only* axis
+  // the buttons can actually be reached on ends up fully blocked instead
+  // of just trapped at the true edge.
+  KeyEventResult _trapEscape(FocusNode node, KeyEvent event) {
+    if (event is! KeyDownEvent) return KeyEventResult.ignored;
+    final key = event.logicalKey;
+    final escaping = widget.compact
+        ? (key == LogicalKeyboardKey.arrowLeft || key == LogicalKeyboardKey.arrowRight)
+        : (key == LogicalKeyboardKey.arrowUp || key == LogicalKeyboardKey.arrowDown);
+    return escaping ? KeyEventResult.handled : KeyEventResult.ignored;
+  }
+
+  KeyEventResult _trapFirstEdge(FocusNode node, KeyEvent event) {
+    if (event is! KeyDownEvent) return KeyEventResult.ignored;
+    final key = widget.compact ? LogicalKeyboardKey.arrowUp : LogicalKeyboardKey.arrowLeft;
+    return event.logicalKey == key ? KeyEventResult.handled : KeyEventResult.ignored;
+  }
+
+  KeyEventResult _trapLastEdge(FocusNode node, KeyEvent event) {
+    if (event is! KeyDownEvent) return KeyEventResult.ignored;
+    final key = widget.compact ? LogicalKeyboardKey.arrowDown : LogicalKeyboardKey.arrowRight;
+    return event.logicalKey == key ? KeyEventResult.handled : KeyEventResult.ignored;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final buttons = [
+      Focus(canRequestFocus: false, onKeyEvent: _trapFirstEdge, child: AppButton(onClick: _guardedConfirm, compact: true, focusNode: _removeFocus, child: const AppText('Remove'))),
+      const SizedBox(width: 16, height: 8),
+      Focus(canRequestFocus: false, onKeyEvent: _trapLastEdge, child: AppButton(onClick: _guardedCancel, compact: true, focusNode: _cancelFocus, child: const AppText('Cancel'))),
+    ];
+
+    return Positioned.fill(
+      child: Focus(
+        canRequestFocus: false,
+        onFocusChange: _handleRegionFocusChange,
+        child: Focus(
+          canRequestFocus: false,
+          onKeyEvent: _trapEscape,
+          child: ColoredBox(
+            color: AppColors.scrim.withValues(alpha: 0.85),
+            child: Center(
+              child: Padding(
+                padding: widget.compact ? const EdgeInsets.symmetric(horizontal: 8) : EdgeInsets.zero,
+                // Compose's Box silently clips content too big for a small
+                // card's overlay instead of throwing; Flutter's Column would
+                // hard-overflow in the same spot (seen on the narrow
+                // ContinueWatchingPoster card), so scale the whole block
+                // down to fit rather than reproducing that layout crash.
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      ConstrainedBox(
+                        constraints: BoxConstraints(maxWidth: widget.compact ? 140 : 260),
+                        child: AppText(
+                          widget.message,
+                          textAlign: TextAlign.center,
+                          style: AppTypography.bodyLarge,
+                          maxLines: 3,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      if (widget.compact)
+                        Column(mainAxisSize: MainAxisSize.min, children: [buttons[0], buttons[1], buttons[2]])
+                      else
+                        Row(mainAxisSize: MainAxisSize.min, children: buttons),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}

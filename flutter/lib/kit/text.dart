@@ -1,0 +1,37 @@
+import 'package:flutter/widgets.dart';
+
+import '../theme/typography.dart';
+import 'content_color.dart';
+
+/// Ports ui/kit/Text.kt — resolves color against the ambient ContentColor
+/// unless one is passed explicitly.
+class AppText extends StatelessWidget {
+  final String text;
+  final Color? color;
+  final TextStyle style;
+  final TextAlign? textAlign;
+  final int? maxLines;
+  final TextOverflow overflow;
+
+  const AppText(
+    this.text, {
+    super.key,
+    this.color,
+    this.style = AppTypography.bodyLarge,
+    this.textAlign,
+    this.maxLines,
+    this.overflow = TextOverflow.clip,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final resolvedColor = color ?? ContentColor.of(context);
+    return Text(
+      text,
+      style: style.copyWith(color: resolvedColor),
+      textAlign: textAlign,
+      maxLines: maxLines,
+      overflow: overflow,
+    );
+  }
+}

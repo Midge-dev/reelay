@@ -1,0 +1,61 @@
+import 'package:flutter/widgets.dart';
+
+import '../../theme/tokens.dart';
+
+const _width = 4.0;
+
+/// Ports ui/common/NeonScrollbar.kt — a hand-drawn vertical scroll
+/// indicator (no native TV scrollbar widget existed on Android either).
+class NeonScrollbar extends StatelessWidget {
+  final ScrollController controller;
+
+  const NeonScrollbar({super.key, required this.controller});
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: _width,
+      child: AnimatedBuilder(
+        animation: controller,
+        builder: (context, _) => CustomPaint(painter: _NeonScrollbarPainter(controller)),
+      ),
+    );
+  }
+}
+
+class _NeonScrollbarPainter extends CustomPainter {
+  final ScrollController controller;
+
+  _NeonScrollbarPainter(this.controller);
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final cornerRadius = Radius.circular(size.width / 2);
+    final trackRect = RRect.fromRectAndRadius(Offset.zero & size, cornerRadius);
+    canvas.drawRRect(trackRect, Paint()..color = AppColors.surfaceVariant);
+
+    if (!controller.hasClients || !controller.position.hasContentDimensions) return;
+    final maxExtent = controller.position.maxScrollExtent;
+    if (maxExtent <= 0) return;
+
+    final totalExtent = size.height + maxExtent;
+    final thumbHeight = (size.height * size.height / totalExtent).clamp(24.0, size.height);
+    final offset = controller.offset.clamp(0.0, maxExtent);
+    final thumbTop = (size.height - thumbHeight) * (offset / maxExtent);
+
+    final thumbRect = RRect.fromRectAndRadius(
+      Rect.fromLTWH(0, thumbTop, size.width, thumbHeight),
+      cornerRadius,
+    );
+    final thumbPaint = Paint()
+      ..shader = const LinearGradient(
+        begin: Alignment.topCenter,
+        end: Alignment.bottomCenter,
+        colors: [AppColors.accentGlow, AppColors.accent],
+      ).createShader(Offset.zero & size);
+    canvas.drawRRect(thumbRect, thumbPaint);
+  }
+
+  @override
+  bool shouldRepaint(covariant _NeonScrollbarPainter oldDelegate) => true;
+}

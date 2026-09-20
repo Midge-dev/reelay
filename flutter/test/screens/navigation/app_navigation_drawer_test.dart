@@ -1,0 +1,110 @@
+import 'package:flutter/material.dart' show Icons;
+import 'package:flutter/widgets.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:reelay/data/plex/plex_models.dart';
+import 'package:reelay/screens/navigation/app_navigation_drawer.dart';
+
+const _sections = [
+  PlexSection(key: 's1', title: 'Movies', type: 'movie'),
+  PlexSection(key: 's2', title: 'Shows', type: 'show'),
+];
+
+Future<void> _pump(WidgetTester tester, Widget child) async {
+  await tester.pumpWidget(
+    Directionality(
+      textDirection: TextDirection.ltr,
+      child: MediaQuery(data: const MediaQueryData(size: Size(1920, 1080)), child: child),
+    ),
+  );
+}
+
+void main() {
+  testWidgets('renders every section plus Home/Settings as icons, labels hidden while collapsed', (tester) async {
+    await _pump(
+      tester,
+      AppNavigationDrawer(
+        sections: _sections,
+        isSettingsSelected: false,
+        isHomeSelected: true,
+        onSelectSection: (_) {},
+        onOpenSettings: () {},
+        onOpenHome: () {},
+        child: const SizedBox(),
+      ),
+    );
+
+    expect(find.byIcon(Icons.home), findsOneWidget);
+    expect(find.byIcon(Icons.settings), findsOneWidget);
+    expect(find.byIcon(Icons.movie), findsOneWidget);
+    expect(find.byIcon(Icons.tv), findsOneWidget);
+    expect(find.text('Home'), findsNothing, reason: 'labels are hidden until the rail is focused/expanded');
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('focusing an item expands the rail and reveals labels', (tester) async {
+    await _pump(
+      tester,
+      AppNavigationDrawer(
+        sections: _sections,
+        isSettingsSelected: false,
+        isHomeSelected: true,
+        onSelectSection: (_) {},
+        onOpenSettings: () {},
+        onOpenHome: () {},
+        child: const SizedBox(),
+      ),
+    );
+
+    await tester.tap(find.byIcon(Icons.settings));
+    await tester.pump();
+    await tester.pump();
+    await tester.pump(_railAnimDurationForTest);
+
+    expect(find.text('Settings'), findsOneWidget);
+    expect(find.text('Movies'), findsOneWidget);
+  });
+
+  testWidgets('tapping a section icon invokes onSelectSection with that section', (tester) async {
+    PlexSection? selected;
+    await _pump(
+      tester,
+      AppNavigationDrawer(
+        sections: _sections,
+        isSettingsSelected: false,
+        isHomeSelected: true,
+        onSelectSection: (s) => selected = s,
+        onOpenSettings: () {},
+        onOpenHome: () {},
+        child: const SizedBox(),
+      ),
+    );
+
+    await tester.tap(find.byIcon(Icons.tv));
+    await tester.pump();
+
+    expect(selected?.key, 's2');
+  });
+
+  testWidgets('tapping Settings invokes onOpenSettings', (tester) async {
+    var opened = false;
+    await _pump(
+      tester,
+      AppNavigationDrawer(
+        sections: _sections,
+        isSettingsSelected: false,
+        isHomeSelected: true,
+        onSelectSection: (_) {},
+        onOpenSettings: () => opened = true,
+        onOpenHome: () {},
+        child: const SizedBox(),
+      ),
+    );
+
+    await tester.tap(find.byIcon(Icons.settings));
+    await tester.pump();
+
+    expect(opened, isTrue);
+  });
+}
+
+const _railAnimDurationForTest = Duration(milliseconds: 250);

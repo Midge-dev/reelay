@@ -66,6 +66,45 @@ Roku implementation needs a simplified fallback (e.g. flat accent-color
 border, no glow) — check this during Roku scoping rather than assuming
 parity is free there.
 
+## Horizontal browsing rows (edge fade, safe margin, scroll peek)
+
+Added during the Flutter port's on-device Shield pass (2026-09-19/20),
+after real-remote testing surfaced it — not present as an explicit spec
+before, so this section is new, not extracted from the Android
+implementation like the rest of this file. Applies to any single-row
+horizontally-scrolling strip of focusable cards (movie/show posters,
+cast/crew avatars, room cards) — not to vertically-scrolling grids,
+which don't have "more content this way" to hint at, and not to fixed
+participant/roster rows.
+
+- **Edge fade:** the row's leading and trailing edges fade to transparent
+  over `space.xxxl` (48) — a `dstIn`-blended linear gradient across the
+  row's own width, always on regardless of scroll position (not
+  conditional on whether there's genuinely more content in that
+  direction). This is the "more this way" affordance most TV browsing
+  UIs use.
+- **Safe margin:** the row's leading/trailing content padding is
+  `space.xxxl` (48), not the general `space.xxl` (32) — a card's
+  focus-scale/glow needs headroom against the actual screen edge, not
+  just against its own row bounds, and a card sitting at the very start
+  or end of a row has no neighbor on that side to borrow visual space
+  from the way a mid-row card does.
+- **Vertical headroom:** a row's cross-axis size (its fixed height, on
+  a platform whose scroll container needs one) must be taller than the
+  unfocused card's own content height — roughly the card height plus
+  24, split above and below as vertical padding — so a focused card's
+  scale can grow without being clipped, *and* so the edge-fade effect's
+  own bounds fully contain that scaled card. A fade that only masks
+  within a tightly-fit row height, while the scale is allowed to
+  overflow past it, leaves the overflowing sliver unfaded — visible as
+  a seam at the top of a focused card sitting near the fade zone.
+- **Scroll peek:** when a card gains focus and the row must scroll to
+  reveal it, stop with the focused card fully visible but offset from
+  the trailing edge — roughly 80% across the viewport, not flush at
+  100% — so the next card is deliberately left partially visible
+  (faded) rather than fully hidden. Reads as "here's what's next," not
+  just "here's what's focused."
+
 ## Spacing scale
 
 Derived from actual usage frequency across the Android codebase (values
