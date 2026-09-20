@@ -10,7 +10,10 @@ const _cardShape = RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.
 
 final _cardColors = SurfaceColors(container: AppColors.surfaceVariant, content: AppColors.white);
 const _cardBorder = SurfaceBorder(focused: SurfaceBorderSide.gradient(AppFocusTreatment.focusedGradient));
-const _cardGlow = SurfaceGlow(focusedColor: AppColors.accentGlow);
+// Default radius (14) blooms wide enough that a scaled-up card's glow gets
+// visibly cut off by the nearest clip boundary (grid edge, row ClipRect) —
+// same fix already applied to GenreFilterPanel's row glow.
+const _cardGlow = SurfaceGlow(focusedColor: AppColors.accentGlow, radius: 8);
 
 const _defaultFocusScale = 1.06;
 
