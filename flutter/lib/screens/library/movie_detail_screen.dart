@@ -201,13 +201,6 @@ class _MovieDetailScreenState extends State<MovieDetailScreen> {
     ];
     if (detail != null) {
       sections.add(CastCrewRow(server: widget.server, cast: detail.roles, crew: [...detail.directors, ...detail.writers], onSelectPerson: widget.onSelectPerson));
-      sections.add(RatingsReviewsSection(
-        rating: detail.rating,
-        audienceRating: detail.audienceRating,
-        ratingImage: detail.ratingImage,
-        audienceRatingImage: detail.audienceRatingImage,
-        reviews: detail.reviews,
-      ));
     }
     for (final hub in _relatedHubs) {
       sections.add(PosterRow(
