@@ -21,7 +21,6 @@ class PlayerControlsBar extends StatelessWidget {
   final double bufferedFraction;
   final bool subtitlesAvailable;
   final FocusNode? playPauseFocusNode;
-  final bool playPauseAutofocus;
   final VoidCallback onPlayPause;
   final VoidCallback onRewind;
   final VoidCallback onForward;
@@ -38,7 +37,6 @@ class PlayerControlsBar extends StatelessWidget {
     this.bufferedFraction = 0,
     required this.subtitlesAvailable,
     this.playPauseFocusNode,
-    this.playPauseAutofocus = false,
     required this.onPlayPause,
     required this.onRewind,
     required this.onForward,
@@ -73,7 +71,6 @@ class PlayerControlsBar extends StatelessWidget {
                 AppIconButton(
                   onClick: onPlayPause,
                   focusNode: playPauseFocusNode,
-                  autofocus: playPauseAutofocus,
                   child: AppIcon(isPlaying ? Icons.pause : Icons.play_arrow, tint: AppColors.white),
                 ),
                 const SizedBox(width: 16),

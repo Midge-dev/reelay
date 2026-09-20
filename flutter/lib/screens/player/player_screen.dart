@@ -112,7 +112,6 @@ class _PlayerScreenState extends State<PlayerScreen> {
 
   final _screenFocusNode = FocusNode(debugLabel: 'player-screen');
   final _playPauseFocusNode = FocusNode(debugLabel: 'player-play-pause');
-  bool _pendingPlayPauseFocus = true;
 
   LogicalKeyboardKey? _heldKey;
   int _heldRepeatCount = 0;
@@ -148,6 +147,16 @@ class _PlayerScreenState extends State<PlayerScreen> {
     HardwareKeyboard.instance.addHandler(_recordInteraction);
     _reportTimer = Timer.periodic(const Duration(milliseconds: _reportIntervalMs), (_) => _reportProgress());
     _scheduleAutoHide();
+    // Explicit, not autofocus: PlayerControlsBar is torn down and remounted
+    // fresh (a genuine conditional-existence swap, not a Stack overlay) on
+    // every hide/show, and by the time it remounts on reveal,
+    // _screenFocusNode already holds focus — Flutter's autofocus declines
+    // to steal focus from an already-focused scope, so it silently no-ops
+    // and every subsequent D-pad press just gets swallowed by the
+    // screen-level handler with the controls stuck visible but unnavigable.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _playPauseFocusNode.requestFocus();
+    });
 
     unawaited(_initPlayer(startPositionMs: widget.detail.viewOffset ?? 0));
 
@@ -289,9 +298,12 @@ class _PlayerScreenState extends State<PlayerScreen> {
   }
 
   void _showControls() {
-    setState(() {
-      _controlsVisible = true;
-      _pendingPlayPauseFocus = true;
+    setState(() => _controlsVisible = true);
+    // See the matching comment in initState — PlayerControlsBar remounts
+    // fresh here, and _screenFocusNode still holds focus at that instant,
+    // so autofocus alone won't claim it. Request explicitly instead.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted && _controlsVisible) _playPauseFocusNode.requestFocus();
     });
     _scheduleAutoHide();
   }
@@ -476,7 +488,6 @@ class _PlayerScreenState extends State<PlayerScreen> {
                     bufferedFraction: _bufferedFraction,
                     subtitlesAvailable: subtitlesAvailable,
                     playPauseFocusNode: _playPauseFocusNode,
-                    playPauseAutofocus: _pendingPlayPauseFocus,
                     onPlayPause: _togglePlayPause,
                     onRewind: () => _seekBy(-_skipIncrementMs),
                     onForward: () => _seekBy(_skipIncrementMs),
