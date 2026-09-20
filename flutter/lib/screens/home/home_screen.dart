@@ -3,6 +3,7 @@ import 'package:flutter/widgets.dart';
 
 import '../../data/plex/plex_image_url.dart';
 import '../../data/plex/plex_models.dart';
+import '../../kit/edge_fade_row.dart';
 import '../../kit/text.dart';
 import '../../theme/tokens.dart';
 import '../../theme/typography.dart';
@@ -264,6 +265,7 @@ class _HomeScreenState extends State<HomeScreen> {
           else
             SizedBox(
               height: 190,
+              child: EdgeFadeRow(
               child: ListView.separated(
                 scrollDirection: Axis.horizontal,
                 // Compose doesn't clip a Row's children to its own bounds by
@@ -271,7 +273,10 @@ class _HomeScreenState extends State<HomeScreen> {
                 // focus-scale grows past this SizedBox's fixed height and
                 // gets hard-clipped at the top/bottom edge.
                 clipBehavior: Clip.none,
-                padding: const EdgeInsets.symmetric(horizontal: 32),
+                // 48, not 32: the focused card's scale/glow needs headroom
+                // against the screen edge itself, not just the row's own
+                // bounds — the last card was still clipping at 32.
+                padding: const EdgeInsets.symmetric(horizontal: 48),
                 itemCount: widget.onDeck.length,
                 separatorBuilder: (context, index) => const SizedBox(width: 24),
                 itemBuilder: (context, index) {
@@ -287,6 +292,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     staggerDelayMs: (index % _rowStaggerPeriod) * 120,
                   );
                 },
+              ),
               ),
             ),
         ],
@@ -319,14 +325,16 @@ class _HomeRow<T> extends StatelessWidget {
           ),
           SizedBox(
             height: 278,
+            child: EdgeFadeRow(
             child: ListView.separated(
               scrollDirection: Axis.horizontal,
               // See the matching comment on Continue Watching's ListView above.
               clipBehavior: Clip.none,
-              padding: const EdgeInsets.symmetric(horizontal: 32),
+              padding: const EdgeInsets.symmetric(horizontal: 48),
               itemCount: items.length,
               separatorBuilder: (context, index) => const SizedBox(width: 24),
               itemBuilder: (context, index) => itemBuilder(items[index], index),
+            ),
             ),
           ),
         ],

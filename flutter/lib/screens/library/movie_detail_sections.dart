@@ -3,6 +3,7 @@ import 'package:flutter/widgets.dart';
 import '../../data/plex/plex_image_url.dart';
 import '../../data/plex/plex_models.dart';
 import '../../kit/card.dart';
+import '../../kit/edge_fade_row.dart';
 import '../../kit/text.dart';
 import '../../theme/tokens.dart';
 import '../../theme/typography.dart';
@@ -32,13 +33,14 @@ class CastCrewRow extends StatelessWidget {
         ),
         SizedBox(
           height: 150,
+          child: EdgeFadeRow(
           child: ListView.separated(
             scrollDirection: Axis.horizontal,
             // Flutter's ListView clips its children by default where
             // Compose's LazyRow doesn't — matters once a card's focus-scale
             // can bleed past this SizedBox's fixed height.
             clipBehavior: Clip.none,
-            padding: const EdgeInsets.symmetric(horizontal: 32),
+            padding: const EdgeInsets.symmetric(horizontal: 48),
             itemCount: people.length,
             separatorBuilder: (context, index) => const SizedBox(width: 18),
             itemBuilder: (context, index) {
@@ -52,6 +54,7 @@ class CastCrewRow extends StatelessWidget {
                 onClick: () => onSelectPerson(person),
               );
             },
+          ),
           ),
         ),
       ],
@@ -134,17 +137,19 @@ class PosterRow extends StatelessWidget {
         ),
         SizedBox(
           height: 232,
+          child: EdgeFadeRow(
           child: ListView.separated(
             scrollDirection: Axis.horizontal,
             // See the matching comment on CastCrewRow above.
             clipBehavior: Clip.none,
-            padding: const EdgeInsets.symmetric(horizontal: 32),
+            padding: const EdgeInsets.symmetric(horizontal: 48),
             itemCount: items.length,
             separatorBuilder: (context, index) => const SizedBox(width: 18),
             itemBuilder: (context, index) {
               final item = items[index];
               return _RelatedPoster(key: ValueKey(item.ratingKey), server: server, item: item, onClick: () => onClick(item));
             },
+          ),
           ),
         ),
       ],

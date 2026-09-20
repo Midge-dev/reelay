@@ -7,6 +7,7 @@ import '../../data/plex/plex_models.dart';
 import '../../data/settings/app_settings.dart';
 import '../../kit/button.dart';
 import '../../kit/card.dart';
+import '../../kit/edge_fade_row.dart';
 import '../../kit/text.dart';
 import '../../sync/relay_protocol.dart';
 import '../../theme/tokens.dart';
@@ -84,6 +85,7 @@ class WatchTogetherRow extends StatelessWidget {
           // height, so this picks one with headroom rather than the
           // arbitrary 260 that clipped the card.
           height: 320,
+          child: EdgeFadeRow(
           child: ListView.separated(
             controller: scrollController,
             scrollDirection: Axis.horizontal,
@@ -92,7 +94,7 @@ class WatchTogetherRow extends StatelessWidget {
             // and RoomCard also has a focus-scale that can bleed past its
             // own bounds.
             clipBehavior: Clip.none,
-            padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 4),
+            padding: const EdgeInsets.symmetric(horizontal: 48, vertical: 4),
             itemCount: rooms.length + (rooms.length > _visibleRoomCards ? 1 : 0),
             separatorBuilder: (context, index) => const SizedBox(width: 20),
             itemBuilder: (context, index) {
@@ -119,6 +121,7 @@ class WatchTogetherRow extends StatelessWidget {
                 autofocus: index == 0 && firstCardAutofocus,
               );
             },
+          ),
           ),
         ),
       ],
