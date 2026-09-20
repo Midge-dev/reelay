@@ -3,44 +3,21 @@ import 'dart:async';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart' show KeyEventResult, VoidCallback;
 
-/// Detects a D-pad key held long enough to count as a long-press. A Timer
-/// started on key-down and cancelled on key-up before it fires is what
-/// actually detects the hold.
+/// Detects the select/center button held long enough to count as a
+/// long-press. A Timer started on key-down and cancelled on key-up before
+/// it fires is what actually detects the hold.
 ///
-/// Originally built for the select/center button — GestureDetector.
-/// onLongPress never fires for it on Android TV (it's pointer/touch-
-/// gesture-only, and a held DPAD_CENTER/select key sends one raw key-down/
-/// key-up pair with real elapsed time between them, no OS auto-repeat;
-/// confirmed via `adb shell input keyevent --longpress KEYCODE_DPAD_CENTER`
-/// during the flutter-reelay PoC — see project_flutter_focus_poc.md).
-///
-/// Also used for arrow-key holds (e.g. the nav rail's long-press-left-to-
-/// home), standing in for DpadLongPress.kt's repeat-count-based approach:
-/// that Kotlin implementation counts the OS's native key-repeat events,
-/// which Flutter's cross-platform key event model doesn't expose
-/// uniformly. The same held-timer technique works for any key, so one
-/// detector class covers both cases rather than porting two different
-/// mechanisms.
+/// GestureDetector.onLongPress never fires for it on Android TV (it's
+/// pointer/touch-gesture-only, and a held DPAD_CENTER/select key sends one
+/// raw key-down/key-up pair with real elapsed time between them, no OS
+/// auto-repeat; confirmed via
+/// `adb shell input keyevent --longpress KEYCODE_DPAD_CENTER` during the
+/// flutter-reelay PoC — see project_flutter_focus_poc.md).
 class DpadLongPressDetector {
-  DpadLongPressDetector({
-    required this.onLongPress,
-    this.threshold = const Duration(milliseconds: 500),
-    Set<LogicalKeyboardKey>? keys,
-    this.consumeKeyDown = true,
-  }) : keys = keys ?? selectKeys;
+  DpadLongPressDetector({required this.onLongPress, this.threshold = const Duration(milliseconds: 500)});
 
   final VoidCallback onLongPress;
   final Duration threshold;
-  final Set<LogicalKeyboardKey> keys;
-
-  // False for a key (e.g. an arrow key) whose short-press behavior is owned
-  // by something else — Flutter's own default directional-focus traversal,
-  // for the nav rail's long-press-left-to-home use. Consuming the KeyDown
-  // there would block that default handling for every short left-press
-  // app-wide, not just the long-press case. True (the original behavior)
-  // for a key like select, where nothing else will invoke a short-press
-  // action, so blocking default handling is exactly what should happen.
-  final bool consumeKeyDown;
 
   // final, not const — a const Set literal of LogicalKeyboardKey values
   // doesn't compile (hit during the flutter-reelay PoC).
@@ -54,14 +31,14 @@ class DpadLongPressDetector {
   bool _fired = false;
 
   KeyEventResult handle(KeyEvent event) {
-    if (!keys.contains(event.logicalKey)) return KeyEventResult.ignored;
+    if (!selectKeys.contains(event.logicalKey)) return KeyEventResult.ignored;
 
     if (event is KeyDownEvent) {
       _timer ??= Timer(threshold, () {
         _fired = true;
         onLongPress();
       });
-      return consumeKeyDown ? KeyEventResult.handled : KeyEventResult.ignored;
+      return KeyEventResult.handled;
     }
     if (event is KeyUpEvent) {
       _timer?.cancel();

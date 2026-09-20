@@ -1,10 +1,8 @@
 import 'package:flutter/material.dart' show Icons;
-import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 
 import '../../data/plex/plex_auth_api.dart';
 import '../../data/plex/plex_models.dart';
-import '../../focus/dpad_long_press.dart';
 import '../../kit/focusable_surface.dart';
 import '../../kit/surface_style.dart';
 import '../../kit/text.dart';
@@ -61,15 +59,6 @@ class _AppNavigationDrawerState extends State<AppNavigationDrawer> {
   bool _expanded = false;
   final _railFocusNode = FocusNode(debugLabel: 'nav-rail');
   final _homeItemFocusNode = FocusNode(debugLabel: 'nav-rail-home');
-  late final _homeLongPress = DpadLongPressDetector(
-    onLongPress: () => _homeItemFocusNode.requestFocus(),
-    keys: {LogicalKeyboardKey.arrowLeft},
-    // A held left should also jump home, but a quick left is normal
-    // directional focus movement (handled by Flutter's own default arrow-key
-    // traversal) — consuming the KeyDown here would swallow every left
-    // press app-wide, not just the long-press case. See DpadLongPressDetector.
-    consumeKeyDown: false,
-  );
 
   @override
   void initState() {
@@ -87,7 +76,6 @@ class _AppNavigationDrawerState extends State<AppNavigationDrawer> {
     _railFocusNode.removeListener(_handleRailFocusChange);
     _railFocusNode.dispose();
     _homeItemFocusNode.dispose();
-    _homeLongPress.dispose();
     super.dispose();
   }
 
@@ -98,11 +86,7 @@ class _AppNavigationDrawerState extends State<AppNavigationDrawer> {
         Positioned.fill(
           child: Padding(
             padding: const EdgeInsets.only(left: _collapsedRailWidth),
-            child: Focus(
-              canRequestFocus: false,
-              onKeyEvent: (node, event) => _homeLongPress.handle(event),
-              child: widget.child,
-            ),
+            child: widget.child,
           ),
         ),
         const Positioned(top: 20, right: 32, child: DigitalClock()),
