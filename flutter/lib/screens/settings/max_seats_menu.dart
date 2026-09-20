@@ -75,6 +75,14 @@ class _MaxSeatsMenuState extends State<MaxSeatsMenu> {
       child: Focus(
         canRequestFocus: false,
         onKeyEvent: _handleMenuKeyEvent,
+        // IntrinsicHeight gives the Row a definite height (matching its
+        // tallest child) for crossAxisAlignment.stretch to stretch the
+        // scrollbar into — without it, the Row's height is unbounded
+        // (this whole menu sits in a Positioned with no top+bottom), and
+        // stretch demanding an infinite height throws a caught-but-fatal
+        // layout exception, which silently renders nothing rather than
+        // crashing: the menu becomes fully invisible.
+        child: IntrinsicHeight(
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
@@ -105,6 +113,7 @@ class _MaxSeatsMenuState extends State<MaxSeatsMenu> {
             const SizedBox(width: 8),
             NeonScrollbar(controller: _scrollController),
           ],
+        ),
         ),
       ),
     );
