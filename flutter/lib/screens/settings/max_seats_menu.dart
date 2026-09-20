@@ -25,6 +25,10 @@ class MaxSeatsMenu extends StatefulWidget {
   State<MaxSeatsMenu> createState() => _MaxSeatsMenuState();
 }
 
+const _rowHeight = 46.0;
+const _rowSpacing = 2.0;
+const _maxMenuHeight = 320.0;
+
 class _MaxSeatsMenuState extends State<MaxSeatsMenu> {
   late int _highlightedIndex = AppSettings.maxHostSeatsOptions.indexOf(widget.selected).clamp(0, AppSettings.maxHostSeatsOptions.length - 1);
   final _scrollController = ScrollController();
@@ -68,6 +72,19 @@ class _MaxSeatsMenuState extends State<MaxSeatsMenu> {
   @override
   Widget build(BuildContext context) {
     final options = AppSettings.maxHostSeatsOptions;
+    // A definite height (matching the rows' own natural content height, up
+    // to a cap) for crossAxisAlignment.stretch to stretch the scrollbar
+    // into — without it, the Row's height is unbounded (this whole menu
+    // sits in a Positioned with no top+bottom), and stretch demanding an
+    // infinite height throws a caught-but-fatal layout exception, which
+    // silently renders nothing rather than crashing: the menu becomes
+    // fully invisible. Computed directly rather than via IntrinsicHeight,
+    // which doesn't work here — Viewport-based widgets like ListView
+    // explicitly don't support intrinsic-dimension queries and throw their
+    // own layout error when asked, the exact same invisible-menu failure
+    // this whole computation exists to avoid.
+    final naturalHeight = options.length * _rowHeight + (options.length - 1) * _rowSpacing;
+    final menuHeight = naturalHeight.clamp(0.0, _maxMenuHeight);
     return Container(
       width: 300,
       padding: const EdgeInsets.all(12),
@@ -75,25 +92,16 @@ class _MaxSeatsMenuState extends State<MaxSeatsMenu> {
       child: Focus(
         canRequestFocus: false,
         onKeyEvent: _handleMenuKeyEvent,
-        // IntrinsicHeight gives the Row a definite height (matching its
-        // tallest child) for crossAxisAlignment.stretch to stretch the
-        // scrollbar into — without it, the Row's height is unbounded
-        // (this whole menu sits in a Positioned with no top+bottom), and
-        // stretch demanding an infinite height throws a caught-but-fatal
-        // layout exception, which silently renders nothing rather than
-        // crashing: the menu becomes fully invisible.
-        child: IntrinsicHeight(
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Flexible(
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxHeight: 320),
+        child: SizedBox(
+          height: menuHeight,
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Flexible(
                 child: ListView.separated(
                   controller: _scrollController,
-                  shrinkWrap: true,
                   itemCount: options.length,
-                  separatorBuilder: (context, index) => const SizedBox(height: 2),
+                  separatorBuilder: (context, index) => const SizedBox(height: _rowSpacing),
                   itemBuilder: (context, index) {
                     final value = options[index];
                     final applied = value == widget.selected;
@@ -109,11 +117,10 @@ class _MaxSeatsMenuState extends State<MaxSeatsMenu> {
                   },
                 ),
               ),
-            ),
-            const SizedBox(width: 8),
-            NeonScrollbar(controller: _scrollController),
-          ],
-        ),
+              const SizedBox(width: 8),
+              NeonScrollbar(controller: _scrollController),
+            ],
+          ),
         ),
       ),
     );
@@ -148,7 +155,7 @@ class _MaxSeatsRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      height: 46,
+      height: _rowHeight,
       child: FocusableSurface(
         onClick: onClick,
         selected: applied,
