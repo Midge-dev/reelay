@@ -363,9 +363,22 @@ class _RoomCardState extends State<RoomCard> with SingleTickerProviderStateMixin
                           if (widget.isHosted)
                             Focus(
                               canRequestFocus: false,
-                              onKeyEvent: (node, event) => event is KeyDownEvent && event.logicalKey == LogicalKeyboardKey.arrowUp
-                                  ? KeyEventResult.handled
-                                  : KeyEventResult.ignored,
+                              // Unlike Join's plain trap, this can't just
+                              // swallow arrowUp: whether "End session" ends
+                              // up on the same line as Join or wraps below
+                              // it (see the Wrap comment above) depends on
+                              // the join label's width, so a blind trap
+                              // here sometimes blocks the legitimate
+                              // End-session -> Join move. Route it directly
+                              // to Join's own node instead of guessing the
+                              // current layout.
+                              onKeyEvent: (node, event) {
+                                if (event is! KeyDownEvent || event.logicalKey != LogicalKeyboardKey.arrowUp) {
+                                  return KeyEventResult.ignored;
+                                }
+                                _joinFocusNode.requestFocus();
+                                return KeyEventResult.handled;
+                              },
                               child: AppOutlinedButton(onClick: _endNow, compact: true, child: const AppText('End session')),
                             ),
                         ],

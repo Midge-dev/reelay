@@ -77,7 +77,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   final _relayDirectoryApi = RelayDirectoryApi();
   Map<String, RelayReachability?> _relayStatuses = {};
 
+  final _firstSourceFocus = FocusNode(debugLabel: 'settings-first-source');
   final _relaySettingsEntryFocus = FocusNode(debugLabel: 'relay-settings-entry');
+  final _relaySettingsBackFocus = FocusNode(debugLabel: 'relay-settings-back');
   final _maxHostSeatsFocus = FocusNode(debugLabel: 'max-host-seats');
   final _addRelayFocus = FocusNode(debugLabel: 'add-relay');
   final _cancelPairingFocus = FocusNode(debugLabel: 'cancel-pairing');
@@ -87,8 +89,23 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   @override
   void initState() {
     super.initState();
-    _loadSettings();
-    _loadSources();
+    // The settings content (including every focusable row) doesn't exist in
+    // the tree until both loads resolve — the nav rail's Settings item
+    // otherwise keeps focus forever once this screen mounts, since nothing
+    // inside it ever claims focus on its own. Same root cause as the
+    // Seasons/Relay-settings "opens the nav drawer" bugs: any screen swap
+    // needs an explicit focus request, autofocus/default traversal won't
+    // steal it from an already-focused ancestor.
+    Future.wait([_loadSettings(), _loadSources()]).then((_) {
+      if (!mounted) return;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (_sources.isNotEmpty) {
+          _firstSourceFocus.requestFocus();
+        } else {
+          _relaySettingsEntryFocus.requestFocus();
+        }
+      });
+    });
   }
 
   Future<void> _loadSettings() async {
@@ -129,7 +146,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   void dispose() {
     _pairingServer?.stop();
     _silentTimer?.cancel();
+    _firstSourceFocus.dispose();
     _relaySettingsEntryFocus.dispose();
+    _relaySettingsBackFocus.dispose();
     _maxHostSeatsFocus.dispose();
     _addRelayFocus.dispose();
     _cancelPairingFocus.dispose();
@@ -239,6 +258,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         testStatus: _testStatus,
         addRelayFocus: _addRelayFocus,
         cancelPairingFocus: _cancelPairingFocus,
+        backFocus: _relaySettingsBackFocus,
         onBack: () {
           setState(() => _showingRelaySettings = false);
           WidgetsBinding.instance.addPostFrameCallback((_) => _relaySettingsEntryFocus.requestFocus());
@@ -350,12 +370,13 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              for (final source in _sources)
+              for (final (index, source) in _sources.indexed)
                 Padding(
                   padding: const EdgeInsets.only(bottom: 8),
                   child: AppListItem(
                     selected: _settings.selectedServerId == source.machineIdentifier,
                     onClick: () => setState(() => _settings = _settings.copyWith(selectedServerId: source.machineIdentifier)),
+                    focusNode: index == 0 ? _firstSourceFocus : null,
                     leading: AppRadioButton(selected: _settings.selectedServerId == source.machineIdentifier),
                     headline: AppText('${source.name}${source.owned ? ' (owned)' : ''}'),
                   ),
@@ -380,6 +401,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           child: FocusableSurface(
             onClick: () {
               setState(() => _showingRelaySettings = true);
+              WidgetsBinding.instance.addPostFrameCallback((_) => _relaySettingsBackFocus.requestFocus());
             },
             focusNode: _relaySettingsEntryFocus,
             shape: const RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(8))),

@@ -27,7 +27,7 @@ Future<void> _pump(
         onBack: () {},
         onPlay: onPlay ?? (_) {},
         onWatchTogether: (_) {},
-        onRestartTogether: (_) {},
+        onRestartSolo: (_) {},
         onSeasons: () {},
         isOnWatchlist: isOnWatchlist ?? (_) => false,
         onToggleWatchlist: (_) {},

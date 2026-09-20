@@ -53,6 +53,7 @@ class RelaySettingsPane extends StatelessWidget {
   final VoidCallback onCancelPairing;
   final FocusNode addRelayFocus;
   final FocusNode cancelPairingFocus;
+  final FocusNode backFocus;
 
   const RelaySettingsPane({
     super.key,
@@ -71,6 +72,7 @@ class RelaySettingsPane extends StatelessWidget {
     required this.onCancelPairing,
     required this.addRelayFocus,
     required this.cancelPairingFocus,
+    required this.backFocus,
   });
 
   @override
@@ -92,6 +94,7 @@ class RelaySettingsPane extends StatelessWidget {
                     padding: const EdgeInsets.only(bottom: 24),
                     child: FocusableSurface(
                       onClick: onBack,
+                      focusNode: backFocus,
                       shape: const StadiumBorder(),
                       colors: SurfaceColors(container: AppColors.transparent, content: AppColors.onSurfaceVariant),
                       child: const AppText('‹ Settings', color: AppColors.onSurfaceVariant),

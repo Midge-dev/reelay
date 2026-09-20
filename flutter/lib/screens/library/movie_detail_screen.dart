@@ -40,7 +40,7 @@ class MovieDetailScreen extends StatefulWidget {
   final VoidCallback onBack;
   final ValueChanged<String> onPlay;
   final ValueChanged<String> onWatchTogether;
-  final ValueChanged<String> onRestartTogether;
+  final ValueChanged<String> onRestartSolo;
   final VoidCallback onSeasons;
   final bool Function(String?) isOnWatchlist;
   final ValueChanged<String?> onToggleWatchlist;
@@ -59,7 +59,7 @@ class MovieDetailScreen extends StatefulWidget {
     required this.onBack,
     required this.onPlay,
     required this.onWatchTogether,
-    required this.onRestartTogether,
+    required this.onRestartSolo,
     required this.onSeasons,
     required this.isOnWatchlist,
     required this.onToggleWatchlist,
@@ -193,7 +193,7 @@ class _MovieDetailScreenState extends State<MovieDetailScreen> {
         isShow: widget.isShow,
         onPlay: playTarget != null ? () => widget.onPlay(playTarget) : null,
         onWatchTogether: playTarget != null ? () => widget.onWatchTogether(playTarget) : null,
-        onRestartTogether: playTarget != null ? () => widget.onRestartTogether(playTarget) : null,
+        onRestartSolo: playTarget != null ? () => widget.onRestartSolo(playTarget) : null,
         onSeasons: widget.onSeasons,
         isOnWatchlist: widget.isOnWatchlist(detail?.guid),
         onToggleWatchlist: () => widget.onToggleWatchlist(detail?.guid),
@@ -251,7 +251,7 @@ class _MovieHero extends StatelessWidget {
   final bool isShow;
   final VoidCallback? onPlay;
   final VoidCallback? onWatchTogether;
-  final VoidCallback? onRestartTogether;
+  final VoidCallback? onRestartSolo;
   final VoidCallback onSeasons;
   final bool isOnWatchlist;
   final VoidCallback onToggleWatchlist;
@@ -268,7 +268,7 @@ class _MovieHero extends StatelessWidget {
     required this.isShow,
     this.onPlay,
     this.onWatchTogether,
-    this.onRestartTogether,
+    this.onRestartSolo,
     required this.onSeasons,
     required this.isOnWatchlist,
     required this.onToggleWatchlist,
@@ -348,7 +348,7 @@ class _MovieHero extends StatelessWidget {
                         if (showRestart) ...[
                           const SizedBox(width: 16),
                           AppIconButton(
-                            onClick: onRestartTogether ?? () {},
+                            onClick: onRestartSolo ?? () {},
                             border: _restartButtonBorder,
                             onFocusChange: _onFocus,
                             child: const AppIcon(Icons.replay, tint: AppColors.white),

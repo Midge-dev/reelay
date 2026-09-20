@@ -256,14 +256,7 @@ class _AppContent extends StatelessWidget {
               targetRatingKey: targetRatingKey,
               restart: false,
             ),
-            onRestartTogether: (targetRatingKey) => controller.startWatchTogether(
-              ctx: ctx,
-              returnState: state,
-              roomTitle: movie.title,
-              thumb: movie.thumb,
-              targetRatingKey: targetRatingKey,
-              restart: true,
-            ),
+            onRestartSolo: (targetRatingKey) => controller.playMovie(ctx, targetRatingKey, state, fromStart: true),
           ),
         ),
       PersonFilmography(:final ctx, :final person, :final items, :final returnState) => _drawer(

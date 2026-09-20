@@ -89,9 +89,16 @@ class _LobbyScreenState extends State<LobbyScreen> {
 
   bool get _isHost => _seatIndex == 0;
 
+  final _startFocus = FocusNode(debugLabel: 'lobby-start');
+
   @override
   void initState() {
     super.initState();
+    // Nothing here claims focus on its own — without this, the nav rail
+    // (still focused from whatever screen led into the lobby) keeps focus
+    // forever, same root cause as the Settings/Relay-settings/Seasons
+    // "opens the nav drawer" bugs fixed elsewhere this session.
+    WidgetsBinding.instance.addPostFrameCallback((_) => _startFocus.requestFocus());
     _connectionState = widget.relay.connectionStateValue;
     _seatIndex = widget.relay.seatIndexValue;
     _statusTracker = RelayStatusTracker(widget.relay.connectionState, initial: _connectionState);
@@ -122,6 +129,7 @@ class _LobbyScreenState extends State<LobbyScreen> {
     _rosterPruneTimer?.cancel();
     _chatMessages.close();
     _statusTracker.dispose();
+    _startFocus.dispose();
     super.dispose();
   }
 
@@ -256,6 +264,7 @@ class _LobbyScreenState extends State<LobbyScreen> {
                           widget.relay.send(RelayEvent(kind: 'start', fromPeerId: widget.relay.myPeerId, username: widget.localUsername));
                           widget.onStart(false);
                         },
+                        focusNode: _startFocus,
                         child: const AppText('Start'),
                       ),
                       if (canRestart) ...[
