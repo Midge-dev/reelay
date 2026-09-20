@@ -4,6 +4,8 @@ import '../../data/plex/plex_image_url.dart';
 import '../../data/plex/plex_models.dart';
 import '../../focus/back_handler.dart';
 import '../../focus/dpad_long_press.dart';
+import '../../kit/focusable_surface.dart';
+import '../../kit/scroll_peek.dart';
 import '../../kit/text.dart';
 import '../../theme/tokens.dart';
 import '../../theme/typography.dart';
@@ -12,6 +14,8 @@ import '../common/remove_confirm_overlay.dart';
 import '../common/time_format.dart';
 
 const _typeEpisode = 'episode';
+
+const _continueWatchingShape = RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(8)));
 
 /// Ports HomeScreen.kt's `recentlyAddedLabel`.
 String recentlyAddedLabel(PlexLibraryItem item) {
@@ -91,11 +95,8 @@ class _WatchlistPosterState extends State<WatchlistPoster> {
     if (!mounted) return;
     setState(() => _focused = _focusNode.hasFocus);
     if (_focused) {
-      // See the matching comment on AppCard._handleFocusChange — leaves
-      // room for the next card to peek in, and keeps the focused one off
-      // the true screen edge, instead of flushing it there.
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) Scrollable.ensureVisible(context, alignment: 0.8, duration: const Duration(milliseconds: 200));
+        if (mounted) ensureCardVisible(context);
       });
     }
   }
@@ -225,11 +226,8 @@ class _ContinueWatchingPosterState extends State<ContinueWatchingPoster> {
     if (!mounted) return;
     setState(() => _focused = _focusNode.hasFocus);
     if (_focused) {
-      // See the matching comment on AppCard._handleFocusChange — leaves
-      // room for the next card to peek in, and keeps the focused one off
-      // the true screen edge, instead of flushing it there.
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) Scrollable.ensureVisible(context, alignment: 0.8, duration: const Duration(milliseconds: 200));
+        if (mounted) ensureCardVisible(context);
       });
     }
   }
@@ -262,74 +260,70 @@ class _ContinueWatchingPosterState extends State<ContinueWatchingPoster> {
               child: AnimatedScale(
                 scale: _focused ? 1.04 : 1.0,
                 duration: const Duration(milliseconds: 150),
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(8),
-                  child: Container(
-                    decoration: BoxDecoration(
-                      border: _focused
-                          ? const Border.fromBorderSide(BorderSide(color: AppColors.accent, width: 2))
-                          : null,
-                      gradient: _focused
-                          ? const RadialGradient(colors: [AppColors.accentGlow, AppColors.accent])
-                          : null,
-                    ),
-                    padding: _focused ? const EdgeInsets.all(2) : EdgeInsets.zero,
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(7),
-                      child: Focus(
-                        focusNode: _focusNode,
-                        autofocus: widget.autofocus,
-                        onKeyEvent: _handleKeyEvent,
-                        child: GestureDetector(
-                          behavior: HitTestBehavior.opaque,
-                          onTap: () {
-                            _focusNode.requestFocus();
-                            if (!_confirmingRemove) widget.onResume();
-                          },
-                          child: Stack(
-                            fit: StackFit.expand,
-                            children: [
-                              Artwork(imageUrl: PlexImageUrl.of(widget.server, widget.item.thumb), staggerDelayMs: widget.staggerDelayMs),
-                              if (_focused && !_confirmingRemove)
-                                Positioned(
-                                  right: 6,
-                                  bottom: 8,
-                                  child: Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                    decoration: BoxDecoration(color: AppColors.scrim.withValues(alpha: 0.7), borderRadius: BorderRadius.circular(4)),
-                                    child: AppText(formatTimecode(widget.item.viewOffset ?? 0), color: AppColors.white, style: AppTypography.bodySmall),
-                                  ),
-                                ),
+                child: CustomPaint(
+                  // A crisp width-pt stroke, matching every other card's
+                  // border via GradientBorderPainter — the previous
+                  // Container(border + gradient-fill + padding) combo drew
+                  // both a border stroke AND a solid-filled padded band,
+                  // reading visibly thicker than the rest of the app's cards.
+                  foregroundPainter: _focused
+                      ? GradientBorderPainter(shape: _continueWatchingShape, gradient: AppFocusTreatment.focusedGradient, width: AppShape.borderWidth)
+                      : null,
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(8),
+                    child: Focus(
+                      focusNode: _focusNode,
+                      autofocus: widget.autofocus,
+                      onKeyEvent: _handleKeyEvent,
+                      child: GestureDetector(
+                        behavior: HitTestBehavior.opaque,
+                        onTap: () {
+                          _focusNode.requestFocus();
+                          if (!_confirmingRemove) widget.onResume();
+                        },
+                        child: Stack(
+                          fit: StackFit.expand,
+                          children: [
+                            Artwork(imageUrl: PlexImageUrl.of(widget.server, widget.item.thumb), staggerDelayMs: widget.staggerDelayMs),
+                            if (_focused && !_confirmingRemove)
                               Positioned(
-                                left: 0,
-                                right: 0,
-                                bottom: 0,
+                                right: 6,
+                                bottom: 8,
                                 child: Container(
-                                  height: 4,
-                                  color: AppColors.scrim.withValues(alpha: 0.4),
-                                  alignment: Alignment.centerLeft,
-                                  child: FractionallySizedBox(
-                                    widthFactor: progress,
-                                    child: Container(
-                                      height: 4,
-                                      decoration: const BoxDecoration(
-                                        gradient: LinearGradient(colors: [AppColors.accent, AppColors.accentGlow]),
-                                      ),
+                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                  decoration: BoxDecoration(color: AppColors.scrim.withValues(alpha: 0.7), borderRadius: BorderRadius.circular(4)),
+                                  child: AppText(formatTimecode(widget.item.viewOffset ?? 0), color: AppColors.white, style: AppTypography.bodySmall),
+                                ),
+                              ),
+                            Positioned(
+                              left: 0,
+                              right: 0,
+                              bottom: 0,
+                              child: Container(
+                                height: 4,
+                                color: AppColors.scrim.withValues(alpha: 0.4),
+                                alignment: Alignment.centerLeft,
+                                child: FractionallySizedBox(
+                                  widthFactor: progress,
+                                  child: Container(
+                                    height: 4,
+                                    decoration: const BoxDecoration(
+                                      gradient: LinearGradient(colors: [AppColors.accent, AppColors.accentGlow]),
                                     ),
                                   ),
                                 ),
                               ),
-                              if (_confirmingRemove)
-                                RemoveConfirmOverlay(
-                                  message: 'Remove from Continue Watching?',
-                                  onConfirm: () {
-                                    setState(() => _confirmingRemove = false);
-                                    widget.onRemove();
-                                  },
-                                  onCancel: _closeConfirm,
-                                ),
-                            ],
-                          ),
+                            ),
+                            if (_confirmingRemove)
+                              RemoveConfirmOverlay(
+                                message: 'Remove from Continue Watching?',
+                                onConfirm: () {
+                                  setState(() => _confirmingRemove = false);
+                                  widget.onRemove();
+                                },
+                                onCancel: _closeConfirm,
+                              ),
+                          ],
                         ),
                       ),
                     ),

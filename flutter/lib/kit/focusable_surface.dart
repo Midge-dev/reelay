@@ -152,7 +152,7 @@ class _FocusableSurfaceState extends State<FocusableSurface> {
 
     if (activeBorder?.gradient != null) {
       surface = CustomPaint(
-        foregroundPainter: _GradientBorderPainter(shape: widget.shape, gradient: activeBorder!.gradient!, width: activeBorder.width),
+        foregroundPainter: GradientBorderPainter(shape: widget.shape, gradient: activeBorder!.gradient!, width: activeBorder.width),
         child: surface,
       );
     }
@@ -180,12 +180,17 @@ class _FocusableSurfaceState extends State<FocusableSurface> {
   }
 }
 
-class _GradientBorderPainter extends CustomPainter {
+/// The crisp gradient focus-border stroke every kit component funnelling
+/// through FocusableSurface gets. Public so a hand-rolled focusable (one
+/// that can't go through FocusableSurface itself) can still match the same
+/// border weight instead of approximating it with a filled/padded Container,
+/// which reads visibly thicker than an actual `width`-pt stroke.
+class GradientBorderPainter extends CustomPainter {
   final OutlinedBorder shape;
   final Gradient gradient;
   final double width;
 
-  _GradientBorderPainter({required this.shape, required this.gradient, required this.width});
+  GradientBorderPainter({required this.shape, required this.gradient, required this.width});
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -200,6 +205,6 @@ class _GradientBorderPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(covariant _GradientBorderPainter oldDelegate) =>
+  bool shouldRepaint(covariant GradientBorderPainter oldDelegate) =>
       oldDelegate.shape != shape || oldDelegate.gradient != gradient || oldDelegate.width != width;
 }
