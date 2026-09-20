@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart' show Icons;
+import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 
 import '../../data/plex/plex_image_url.dart';
@@ -278,6 +279,18 @@ class _MovieHero extends StatelessWidget {
     if (focused) onActionButtonFocused();
   }
 
+  // Nothing sits above the action button row (it's the top of the
+  // hero) — without this, Flutter's default traversal treats the nav
+  // rail's Home item as the nearest candidate in that direction and
+  // escapes there, same class of bug as library_screen.dart's
+  // _trapUpAboveTabs.
+  KeyEventResult _trapUp(FocusNode node, KeyEvent event) {
+    if (event is KeyDownEvent && event.logicalKey == LogicalKeyboardKey.arrowUp) {
+      return KeyEventResult.handled;
+    }
+    return KeyEventResult.ignored;
+  }
+
   @override
   Widget build(BuildContext context) {
     return SizedBox(
@@ -311,7 +324,7 @@ class _MovieHero extends StatelessWidget {
                     Padding(padding: const EdgeInsets.only(top: 16), child: AppText(summary!, color: AppColors.white)),
                   Padding(
                     padding: const EdgeInsets.only(top: 24),
-                    child: Row(
+                    child: Focus(canRequestFocus: false, onKeyEvent: _trapUp, child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         AppButton(onClick: onPlay ?? () {}, focusNode: playFocus, onFocusChange: _onFocus, child: AppText(playLabel)),
@@ -346,7 +359,7 @@ class _MovieHero extends StatelessWidget {
                           WatchlistButton(isOnWatchlist: isOnWatchlist, onClick: onToggleWatchlist, onFocusChange: _onFocus),
                         ],
                       ],
-                    ),
+                    )),
                   ),
                 ],
               ),
