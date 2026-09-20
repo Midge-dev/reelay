@@ -3,6 +3,7 @@ import 'package:flutter/widgets.dart';
 
 import '../theme/tokens.dart';
 import 'focusable_surface.dart';
+import 'scroll_peek.dart';
 import 'surface_style.dart';
 
 const _cardShape = RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(8)));
@@ -71,13 +72,8 @@ class _AppCardState extends State<AppCard> with SingleTickerProviderStateMixin {
     final target = focused ? widget.focusScale : 1.0;
     _controller.animateWith(SpringSimulation(_cardFocusSpring, _controller.value, target, 0));
     if (focused) {
-      // alignment < 1.0 (rather than the ensureVisible default of 0.0,
-      // which flushes the far edge against the viewport edge when
-      // scrolling is needed) leaves deliberate room beyond the focused
-      // card for the next one to partially show — the "more this way"
-      // peek, and keeps the focused card itself off the true screen edge.
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) Scrollable.ensureVisible(context, alignment: 0.8, duration: const Duration(milliseconds: 200));
+        if (mounted) ensureCardVisible(context);
       });
     }
   }

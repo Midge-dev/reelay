@@ -8,6 +8,7 @@ import '../../data/settings/app_settings.dart';
 import '../../kit/button.dart';
 import '../../kit/card.dart';
 import '../../kit/edge_fade_row.dart';
+import '../../kit/scroll_peek.dart';
 import '../../kit/text.dart';
 import '../../sync/relay_protocol.dart';
 import '../../theme/tokens.dart';
@@ -199,10 +200,7 @@ class _RoomCardState extends State<RoomCard> with SingleTickerProviderStateMixin
     _scaleController.animateWith(SpringSimulation(_roomCardSpring, _scaleController.value, target, 0));
     if (hasFocus) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (!mounted) return;
-        final renderObject = context.findRenderObject();
-        // alignment: 0.8, matching Home's rows — see AppCard._handleFocusChange.
-        if (renderObject != null) Scrollable.ensureVisible(context, alignment: 0.8, duration: const Duration(milliseconds: 200));
+        if (mounted) ensureCardVisible(context);
       });
     }
   }
