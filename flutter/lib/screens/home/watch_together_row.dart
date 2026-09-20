@@ -87,6 +87,11 @@ class WatchTogetherRow extends StatelessWidget {
           child: ListView.separated(
             controller: scrollController,
             scrollDirection: Axis.horizontal,
+            // See the matching comment on Home's rows — Flutter's ListView
+            // clips its children by default where Compose's LazyRow doesn't,
+            // and RoomCard also has a focus-scale that can bleed past its
+            // own bounds.
+            clipBehavior: Clip.none,
             padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 4),
             itemCount: rooms.length + (rooms.length > _visibleRoomCards ? 1 : 0),
             separatorBuilder: (context, index) => const SizedBox(width: 20),

@@ -57,6 +57,10 @@ class CollectionDetailScreen extends StatelessWidget {
                     )
                   : GridView.builder(
                       padding: const EdgeInsets.all(32),
+                      // Flutter's GridView clips its children by default
+                      // where Compose's grid doesn't — matters once a
+                      // card's focus-scale can bleed past its own cell.
+                      clipBehavior: Clip.none,
                       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                         crossAxisCount: _gridColumns,
                         mainAxisSpacing: 24,

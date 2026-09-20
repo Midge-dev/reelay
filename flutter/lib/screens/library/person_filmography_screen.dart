@@ -85,6 +85,8 @@ class PersonFilmographyScreen extends StatelessWidget {
             Expanded(
               child: GridView.builder(
                 padding: const EdgeInsets.all(32),
+                // See the matching comment in collection_detail_screen.dart.
+                clipBehavior: Clip.none,
                 gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                   crossAxisCount: _gridColumns,
                   mainAxisSpacing: 24,

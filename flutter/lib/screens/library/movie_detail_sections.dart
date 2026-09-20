@@ -34,6 +34,10 @@ class CastCrewRow extends StatelessWidget {
           height: 150,
           child: ListView.separated(
             scrollDirection: Axis.horizontal,
+            // Flutter's ListView clips its children by default where
+            // Compose's LazyRow doesn't — matters once a card's focus-scale
+            // can bleed past this SizedBox's fixed height.
+            clipBehavior: Clip.none,
             padding: const EdgeInsets.symmetric(horizontal: 32),
             itemCount: people.length,
             separatorBuilder: (context, index) => const SizedBox(width: 18),
@@ -132,6 +136,8 @@ class PosterRow extends StatelessWidget {
           height: 232,
           child: ListView.separated(
             scrollDirection: Axis.horizontal,
+            // See the matching comment on CastCrewRow above.
+            clipBehavior: Clip.none,
             padding: const EdgeInsets.symmetric(horizontal: 32),
             itemCount: items.length,
             separatorBuilder: (context, index) => const SizedBox(width: 18),

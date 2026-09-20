@@ -266,6 +266,11 @@ class _HomeScreenState extends State<HomeScreen> {
               height: 190,
               child: ListView.separated(
                 scrollDirection: Axis.horizontal,
+                // Compose doesn't clip a Row's children to its own bounds by
+                // default; Flutter's ListView does. Without this, a card's
+                // focus-scale grows past this SizedBox's fixed height and
+                // gets hard-clipped at the top/bottom edge.
+                clipBehavior: Clip.none,
                 padding: const EdgeInsets.symmetric(horizontal: 32),
                 itemCount: widget.onDeck.length,
                 separatorBuilder: (context, index) => const SizedBox(width: 24),
@@ -316,6 +321,8 @@ class _HomeRow<T> extends StatelessWidget {
             height: 278,
             child: ListView.separated(
               scrollDirection: Axis.horizontal,
+              // See the matching comment on Continue Watching's ListView above.
+              clipBehavior: Clip.none,
               padding: const EdgeInsets.symmetric(horizontal: 32),
               itemCount: items.length,
               separatorBuilder: (context, index) => const SizedBox(width: 24),

@@ -58,6 +58,9 @@ class ShowEpisodesScreen extends StatelessWidget {
             Expanded(
               child: ListView.separated(
                 padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+                // See the matching comment in collection_detail_screen.dart —
+                // _EpisodeRow uses AppCard's focus-scale too.
+                clipBehavior: Clip.none,
                 itemCount: episodes.length,
                 separatorBuilder: (context, index) => const SizedBox(height: 24),
                 itemBuilder: (context, index) {

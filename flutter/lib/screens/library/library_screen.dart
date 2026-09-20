@@ -202,6 +202,10 @@ class _LibraryScreenState extends State<LibraryScreen> {
               ? const Padding(padding: EdgeInsets.all(32), child: AppText('Nothing in this library yet.'))
               : GridView.builder(
                   padding: const EdgeInsets.all(32),
+                  // Flutter's GridView clips its children by default where
+                  // Compose's grid doesn't — matters once a card's
+                  // focus-scale can bleed past its own cell.
+                  clipBehavior: Clip.none,
                   gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                     crossAxisCount: _gridColumns,
                     mainAxisSpacing: 24,
@@ -268,6 +272,8 @@ class _LibraryScreenState extends State<LibraryScreen> {
                       ? const Padding(padding: EdgeInsets.only(top: 24), child: AppText('Nothing matches these filters.'))
                       : GridView.builder(
                           padding: const EdgeInsets.only(top: 24),
+                          // See the matching comment above on the All tab's grid.
+                          clipBehavior: Clip.none,
                           gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                             crossAxisCount: 4,
                             mainAxisSpacing: 24,
@@ -305,6 +311,8 @@ class _LibraryScreenState extends State<LibraryScreen> {
     }
     return GridView.builder(
       padding: const EdgeInsets.all(32),
+      // See the matching comment on the All tab's grid above.
+      clipBehavior: Clip.none,
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: _gridColumns,
         mainAxisSpacing: 24,
@@ -377,6 +385,8 @@ class _LibraryScreenState extends State<LibraryScreen> {
                         ? const SizedBox.shrink()
                         : GridView.builder(
                             padding: const EdgeInsets.only(top: 24),
+                            // See the matching comment on the All tab's grid above.
+                            clipBehavior: Clip.none,
                             gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                               crossAxisCount: 4,
                               mainAxisSpacing: 24,
