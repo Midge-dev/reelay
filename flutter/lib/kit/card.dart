@@ -55,7 +55,10 @@ class _AppCardState extends State<AppCard> with SingleTickerProviderStateMixin {
   @override
   void initState() {
     super.initState();
-    _controller = AnimationController(value: 1, vsync: this);
+    // AnimationController's default upperBound is 1.0 — since focusScale is
+    // > 1.0, the spring's target was being silently clamped straight back
+    // down to 1.0 on every tick, so the card never visibly grew at all.
+    _controller = AnimationController(value: 1, vsync: this, upperBound: widget.focusScale);
   }
 
   @override

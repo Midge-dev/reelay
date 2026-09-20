@@ -168,7 +168,10 @@ class _RoomCardState extends State<RoomCard> with SingleTickerProviderStateMixin
   @override
   void initState() {
     super.initState();
-    _scaleController = AnimationController(value: 1, vsync: this);
+    // Default upperBound is 1.0 — since the focused target below is 1.04,
+    // an explicit bound is needed or the spring's target gets silently
+    // clamped straight back to 1.0 (see the matching fix in kit/card.dart).
+    _scaleController = AnimationController(value: 1, vsync: this, upperBound: 1.04);
     _ownsJoinFocusNode = widget.joinFocusNode == null;
     _joinFocusNode = widget.joinFocusNode ?? FocusNode(debugLabel: 'room-card-join');
   }
