@@ -41,6 +41,15 @@
         <meta-data
             android:name="flutterEmbedding"
             android:value="2" />
+        <!-- The Shield Pro 2019's Tegra X1+ Vulkan driver appears to crash
+             the whole process during sustained video decode+render (silent
+             process death, no Dart/Java exception, only visible as garbage/
+             rainbow frames beforehand) — confirmed on-device during Phase 4
+             Shield testing. Falls back to the more mature OpenGL ES (Skia)
+             backend, which doesn't exercise that driver path. -->
+        <meta-data
+            android:name="io.flutter.embedding.android.EnableImpeller"
+            android:value="false" />
     </application>
     <!-- Required to query activities that can process text, see:
          https://developer.android.com/training/package-visibility and
