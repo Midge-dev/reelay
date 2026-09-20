@@ -62,34 +62,40 @@ class PlayerControlsBar extends StatelessWidget {
             const SizedBox(height: 12),
             AppText('${formatTimecode(positionMs)} / ${formatTimecode(durationMs)}', color: AppColors.white),
             const SizedBox(height: 12),
-            Row(
-              mainAxisSize: MainAxisSize.min,
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                AppIconButton(onClick: onRewind, child: const AppIcon(Icons.replay_10, tint: AppColors.white)),
-                const SizedBox(width: 16),
-                AppIconButton(
-                  onClick: onPlayPause,
-                  focusNode: playPauseFocusNode,
-                  child: AppIcon(isPlaying ? Icons.pause : Icons.play_arrow, tint: AppColors.white),
-                ),
-                const SizedBox(width: 16),
-                AppIconButton(onClick: onForward, child: const AppIcon(Icons.forward_10, tint: AppColors.white)),
-                const SizedBox(width: 16),
-                AppIconButton(
-                  onClick: onOpenSubtitles,
-                  enabled: subtitlesAvailable,
-                  child: AppIcon(Icons.closed_caption, tint: AppColors.white.withValues(alpha: subtitlesAvailable ? 1 : 0.5)),
-                ),
-                const SizedBox(width: 16),
-                AppIconButton(onClick: onOpenBitrate, child: const AppIcon(Icons.high_quality, tint: AppColors.white)),
-                const SizedBox(width: 16),
-                AppIconButton(
-                  onClick: onOpenChatQr,
-                  enabled: chatAvailable,
-                  child: AppIcon(Icons.chat_bubble_outline, tint: AppColors.white.withValues(alpha: chatAvailable ? 1 : 0.5)),
-                ),
-              ],
+            // mainAxisAlignment.center on a mainAxisSize.min Row is a no-op
+            // (nothing to center within), and the Column above pins it to
+            // the start — Center makes the button group actually center
+            // within the bar's full width without affecting the
+            // left-aligned/full-width progress track and timecode above it.
+            Center(
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  AppIconButton(onClick: onRewind, child: const AppIcon(Icons.replay_10, tint: AppColors.white)),
+                  const SizedBox(width: 16),
+                  AppIconButton(
+                    onClick: onPlayPause,
+                    focusNode: playPauseFocusNode,
+                    child: AppIcon(isPlaying ? Icons.pause : Icons.play_arrow, tint: AppColors.white),
+                  ),
+                  const SizedBox(width: 16),
+                  AppIconButton(onClick: onForward, child: const AppIcon(Icons.forward_10, tint: AppColors.white)),
+                  const SizedBox(width: 16),
+                  AppIconButton(
+                    onClick: onOpenSubtitles,
+                    enabled: subtitlesAvailable,
+                    child: AppIcon(Icons.closed_caption, tint: AppColors.white.withValues(alpha: subtitlesAvailable ? 1 : 0.5)),
+                  ),
+                  const SizedBox(width: 16),
+                  AppIconButton(onClick: onOpenBitrate, child: const AppIcon(Icons.high_quality, tint: AppColors.white)),
+                  const SizedBox(width: 16),
+                  AppIconButton(
+                    onClick: onOpenChatQr,
+                    enabled: chatAvailable,
+                    child: AppIcon(Icons.chat_bubble_outline, tint: AppColors.white.withValues(alpha: chatAvailable ? 1 : 0.5)),
+                  ),
+                ],
+              ),
             ),
           ],
         ),
