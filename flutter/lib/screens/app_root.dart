@@ -385,7 +385,14 @@ class _AppContent extends StatelessWidget {
         ctx: LibraryContext(server: home.server, sections: home.sections, selectedSection: home.sections.first, items: const []),
         returnState: home,
       )),
-      onOpenHome: () {},
+      // Clicking Home while already on Home used to be a pure no-op —
+      // no state change at all means nothing ever reclaims focus from the
+      // nav rail, so the drawer never collapses back down (it only
+      // collapses on focus loss). Reloading Home, same as every other
+      // sidebar item does even when re-selecting its own current screen,
+      // gives HomeScreen a real remount and its existing autofocus does
+      // the rest.
+      onOpenHome: () => controller.goHome(home.server, home.sections),
       account: controller.localAccount,
       versionName: _appVersionName,
       child: HomeScreen(
