@@ -155,6 +155,18 @@ class _AppContent extends StatelessWidget {
           versionName: _appVersionName,
           child: LoadingScreen('Loading $label…'),
         ),
+      LoadingHome(:final sections) => AppNavigationDrawer(
+          sections: sections,
+          selectedSectionKey: null,
+          isSettingsSelected: false,
+          isHomeSelected: true,
+          onSelectSection: (_) {},
+          onOpenSettings: () {},
+          onOpenHome: () {},
+          account: controller.localAccount,
+          versionName: _appVersionName,
+          child: const LoadingScreen('Loading Home…'),
+        ),
       Settings(:final ctx, :final returnState, :final relayHint) => _drawer(
           ctx: ctx,
           isHomeSelected: false,

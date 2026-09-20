@@ -417,6 +417,7 @@ class AppRootController extends ChangeNotifier {
   }
 
   Future<void> goHome(PlexServer server, List<PlexSection> sections) async {
+    _setState(LoadingHome(server: server, sections: sections));
     _setState(await _loadHome(server, sections));
   }
 

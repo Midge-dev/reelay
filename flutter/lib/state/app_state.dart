@@ -103,6 +103,18 @@ class LoadingSection extends AppState {
   const LoadingSection({required this.server, required this.sections, required this.label, this.selectedSectionKey});
 }
 
+/// Shown while `goHome`'s fetches are in flight — mirrors [LoadingSection],
+/// which Home previously had no equivalent of: `goHome` used to hold on a
+/// single `_setState` until every fetch resolved, so re-selecting Home from
+/// the nav drawer showed nothing changing (and kept the drawer visually
+/// expanded, since nothing became focusable to pull focus off the rail).
+class LoadingHome extends AppState {
+  final PlexServer server;
+  final List<PlexSection> sections;
+
+  const LoadingHome({required this.server, required this.sections});
+}
+
 class Settings extends AppState {
   final LibraryContext ctx;
   final AppState returnState;

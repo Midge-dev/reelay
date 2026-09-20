@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart' show Icons;
+import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 
 import '../../data/plex/plex_auth_api.dart';
@@ -57,8 +58,20 @@ class AppNavigationDrawer extends StatefulWidget {
 
 class _AppNavigationDrawerState extends State<AppNavigationDrawer> {
   bool _expanded = false;
+  // Set the instant a rail item is clicked, cleared the next time the rail's
+  // focus state actually changes. Selecting takes a beat to load the new
+  // screen (see LoadingSection/LoadingHome) — during that beat, focus is
+  // still genuinely sitting on the clicked rail item (nothing in the
+  // loading screen is focusable to pull it away), which would otherwise
+  // leave the drawer visibly expanded the whole time. This forces the
+  // width to collapse right away without waiting for focus to move.
+  bool _forceCollapsed = false;
   final _railFocusNode = FocusNode(debugLabel: 'nav-rail');
   final _homeItemFocusNode = FocusNode(debugLabel: 'nav-rail-home');
+  final _settingsItemFocusNode = FocusNode(debugLabel: 'nav-rail-settings');
+  late final Map<String, FocusNode> _sectionFocusNodes = {
+    for (final section in widget.sections) section.key: FocusNode(debugLabel: 'nav-rail-section-${section.key}'),
+  };
 
   @override
   void initState() {
@@ -66,9 +79,69 @@ class _AppNavigationDrawerState extends State<AppNavigationDrawer> {
     _railFocusNode.addListener(_handleRailFocusChange);
   }
 
+  FocusNode get _currentSectionFocusNode {
+    if (widget.isSettingsSelected) return _settingsItemFocusNode;
+    final key = widget.selectedSectionKey;
+    if (!widget.isHomeSelected && key != null && _sectionFocusNodes.containsKey(key)) return _sectionFocusNodes[key]!;
+    return _homeItemFocusNode;
+  }
+
+  List<FocusNode> get _orderedRailFocusNodes => [
+        _homeItemFocusNode,
+        for (final section in widget.sections) _sectionFocusNodes[section.key]!,
+        _settingsItemFocusNode,
+      ];
+
+  // Home sits at the top of the rail and Settings at the bottom, separated
+  // from their nearest section neighbor by a Spacer — a real geometric gap
+  // Flutter's default directional traversal measures literally. At either
+  // end, a content widget off to the side can end up geometrically closer
+  // than the next real rail item across that gap, so UP from Home or DOWN
+  // from Settings (and, less obviously, UP from Settings when the nearest
+  // section item is still a full Spacer's worth of distance away) can jump
+  // straight into content instead of stopping at the rail's own edge.
+  // Handling up/down explicitly here — same trap pattern as
+  // GenreFilterPanel/MaxSeatsMenu/the on-screen keyboard — makes rail
+  // navigation deterministic instead of leaving it to that distance
+  // heuristic.
+  KeyEventResult _handleRailKeyEvent(FocusNode node, KeyEvent event) {
+    if (event is! KeyDownEvent) return KeyEventResult.ignored;
+    final key = event.logicalKey;
+    if (key != LogicalKeyboardKey.arrowUp && key != LogicalKeyboardKey.arrowDown) return KeyEventResult.ignored;
+
+    final ordered = _orderedRailFocusNodes;
+    final currentIndex = ordered.indexWhere((n) => n.hasFocus);
+    if (currentIndex == -1) return KeyEventResult.ignored;
+
+    final nextIndex = currentIndex + (key == LogicalKeyboardKey.arrowUp ? -1 : 1);
+    if (nextIndex >= 0 && nextIndex < ordered.length) ordered[nextIndex].requestFocus();
+    return KeyEventResult.handled;
+  }
+
   void _handleRailFocusChange() {
     if (!mounted) return;
-    setState(() => _expanded = _railFocusNode.hasFocus);
+    final hasFocus = _railFocusNode.hasFocus;
+    final wasExpanded = _expanded;
+    _forceCollapsed = false;
+    if (hasFocus && !wasExpanded) {
+      // Just entered the rail from content (via LEFT or DOWN past the last
+      // row) — land on whichever item matches the section actually on
+      // screen rather than wherever default nearest-neighbor traversal
+      // happens to place focus (e.g. Settings, purely because it's the
+      // rail item geometrically closest to the last focused content row).
+      // Redirect synchronously, not via postFrameCallback — this listener
+      // itself already runs during FocusManager's pre-build focus-change
+      // pass, so a deferred correction would let the wrong target actually
+      // paint for a frame first, visible as a jump/flash before snapping
+      // to the right one.
+      _currentSectionFocusNode.requestFocus();
+    }
+    setState(() => _expanded = hasFocus);
+  }
+
+  void _handleSelect(VoidCallback action) {
+    setState(() => _forceCollapsed = true);
+    action();
   }
 
   @override
@@ -76,11 +149,16 @@ class _AppNavigationDrawerState extends State<AppNavigationDrawer> {
     _railFocusNode.removeListener(_handleRailFocusChange);
     _railFocusNode.dispose();
     _homeItemFocusNode.dispose();
+    _settingsItemFocusNode.dispose();
+    for (final node in _sectionFocusNodes.values) {
+      node.dispose();
+    }
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
+    final effectiveExpanded = _expanded && !_forceCollapsed;
     return Stack(
       children: [
         Positioned.fill(
@@ -96,7 +174,7 @@ class _AppNavigationDrawerState extends State<AppNavigationDrawer> {
           left: 0,
           child: AnimatedContainer(
             duration: _railAnimDuration,
-            width: _expanded ? _expandedRailWidth : _collapsedRailWidth,
+            width: effectiveExpanded ? _expandedRailWidth : _collapsedRailWidth,
             color: AppColors.surface,
             child: Stack(
               children: [
@@ -104,19 +182,20 @@ class _AppNavigationDrawerState extends State<AppNavigationDrawer> {
                   focusNode: _railFocusNode,
                   skipTraversal: true,
                   canRequestFocus: false,
+                  onKeyEvent: _handleRailKeyEvent,
                   child: Padding(
                     padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 12),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        _UserAvatarItem(account: widget.account, expanded: _expanded),
+                        _UserAvatarItem(account: widget.account, expanded: effectiveExpanded),
                         const SizedBox(height: 8),
                         _SidebarItem(
                           icon: Icons.home,
                           label: 'Home',
                           selected: widget.isHomeSelected,
-                          expanded: _expanded,
-                          onClick: widget.onOpenHome,
+                          expanded: effectiveExpanded,
+                          onClick: () => _handleSelect(widget.onOpenHome),
                           focusNode: _homeItemFocusNode,
                         ),
                         const SizedBox(height: 4),
@@ -125,8 +204,9 @@ class _AppNavigationDrawerState extends State<AppNavigationDrawer> {
                             icon: section.type == _sectionTypeShow ? Icons.tv : Icons.movie,
                             label: section.title,
                             selected: !widget.isSettingsSelected && !widget.isHomeSelected && section.key == widget.selectedSectionKey,
-                            expanded: _expanded,
-                            onClick: () => widget.onSelectSection(section),
+                            expanded: effectiveExpanded,
+                            onClick: () => _handleSelect(() => widget.onSelectSection(section)),
+                            focusNode: _sectionFocusNodes[section.key],
                           ),
                           const SizedBox(height: 4),
                         ],
@@ -135,14 +215,15 @@ class _AppNavigationDrawerState extends State<AppNavigationDrawer> {
                           icon: Icons.settings,
                           label: 'Settings',
                           selected: widget.isSettingsSelected,
-                          expanded: _expanded,
-                          onClick: widget.onOpenSettings,
+                          expanded: effectiveExpanded,
+                          onClick: () => _handleSelect(widget.onOpenSettings),
+                          focusNode: _settingsItemFocusNode,
                         ),
                         if (widget.versionName != null)
                           ClipRect(
                             child: AnimatedSize(
                               duration: _railAnimDuration,
-                              child: _expanded
+                              child: effectiveExpanded
                                   ? Padding(
                                       padding: const EdgeInsets.only(left: 16, top: 8),
                                       child: AppText('v${widget.versionName}', style: AppTypography.bodySmall, color: AppColors.onSurfaceVariant),
