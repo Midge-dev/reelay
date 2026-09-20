@@ -94,34 +94,38 @@ class _RemoveConfirmOverlayState extends State<RemoveConfirmOverlay> {
     widget.onCancel();
   }
 
-  KeyEventResult _trapVerticalEscape(FocusNode node, KeyEvent event) {
-    if (event is KeyDownEvent &&
-        (event.logicalKey == LogicalKeyboardKey.arrowUp || event.logicalKey == LogicalKeyboardKey.arrowDown)) {
-      return KeyEventResult.handled;
-    }
-    return KeyEventResult.ignored;
+  // Remove/Cancel lay out as a Row when not compact (navigated with
+  // left/right) and a Column when compact (navigated with up/down) — the
+  // escape/edge traps below must swap axis to match, or the *only* axis
+  // the buttons can actually be reached on ends up fully blocked instead
+  // of just trapped at the true edge.
+  KeyEventResult _trapEscape(FocusNode node, KeyEvent event) {
+    if (event is! KeyDownEvent) return KeyEventResult.ignored;
+    final key = event.logicalKey;
+    final escaping = widget.compact
+        ? (key == LogicalKeyboardKey.arrowLeft || key == LogicalKeyboardKey.arrowRight)
+        : (key == LogicalKeyboardKey.arrowUp || key == LogicalKeyboardKey.arrowDown);
+    return escaping ? KeyEventResult.handled : KeyEventResult.ignored;
   }
 
-  KeyEventResult _trapLeftEdge(FocusNode node, KeyEvent event) {
-    if (event is KeyDownEvent && event.logicalKey == LogicalKeyboardKey.arrowLeft) {
-      return KeyEventResult.handled;
-    }
-    return KeyEventResult.ignored;
+  KeyEventResult _trapFirstEdge(FocusNode node, KeyEvent event) {
+    if (event is! KeyDownEvent) return KeyEventResult.ignored;
+    final key = widget.compact ? LogicalKeyboardKey.arrowUp : LogicalKeyboardKey.arrowLeft;
+    return event.logicalKey == key ? KeyEventResult.handled : KeyEventResult.ignored;
   }
 
-  KeyEventResult _trapRightEdge(FocusNode node, KeyEvent event) {
-    if (event is KeyDownEvent && event.logicalKey == LogicalKeyboardKey.arrowRight) {
-      return KeyEventResult.handled;
-    }
-    return KeyEventResult.ignored;
+  KeyEventResult _trapLastEdge(FocusNode node, KeyEvent event) {
+    if (event is! KeyDownEvent) return KeyEventResult.ignored;
+    final key = widget.compact ? LogicalKeyboardKey.arrowDown : LogicalKeyboardKey.arrowRight;
+    return event.logicalKey == key ? KeyEventResult.handled : KeyEventResult.ignored;
   }
 
   @override
   Widget build(BuildContext context) {
     final buttons = [
-      Focus(canRequestFocus: false, onKeyEvent: _trapLeftEdge, child: AppButton(onClick: _guardedConfirm, compact: true, focusNode: _removeFocus, child: const AppText('Remove'))),
+      Focus(canRequestFocus: false, onKeyEvent: _trapFirstEdge, child: AppButton(onClick: _guardedConfirm, compact: true, focusNode: _removeFocus, child: const AppText('Remove'))),
       const SizedBox(width: 16, height: 8),
-      Focus(canRequestFocus: false, onKeyEvent: _trapRightEdge, child: AppButton(onClick: _guardedCancel, compact: true, focusNode: _cancelFocus, child: const AppText('Cancel'))),
+      Focus(canRequestFocus: false, onKeyEvent: _trapLastEdge, child: AppButton(onClick: _guardedCancel, compact: true, focusNode: _cancelFocus, child: const AppText('Cancel'))),
     ];
 
     return Positioned.fill(
@@ -130,7 +134,7 @@ class _RemoveConfirmOverlayState extends State<RemoveConfirmOverlay> {
         onFocusChange: _handleRegionFocusChange,
         child: Focus(
           canRequestFocus: false,
-          onKeyEvent: _trapVerticalEscape,
+          onKeyEvent: _trapEscape,
           child: ColoredBox(
             color: AppColors.scrim.withValues(alpha: 0.85),
             child: Center(
