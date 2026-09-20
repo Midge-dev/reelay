@@ -58,6 +58,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
   final _genreTabFocus = FocusNode(debugLabel: 'tab-genre');
   final _collectionsTabFocus = FocusNode(debugLabel: 'tab-collections');
   final _searchTabFocus = FocusNode(debugLabel: 'tab-search');
+  final _searchFirstKeyFocus = FocusNode(debugLabel: 'search-key-first');
 
   @override
   void initState() {
@@ -87,6 +88,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
     _genreTabFocus.dispose();
     _collectionsTabFocus.dispose();
     _searchTabFocus.dispose();
+    _searchFirstKeyFocus.dispose();
     super.dispose();
   }
 
@@ -100,6 +102,13 @@ class _LibraryScreenState extends State<LibraryScreen> {
   void _selectTab(BrowseTab tab) {
     setState(() => _browseTab = tab);
     if (tab == BrowseTab.collections && _collections == null) _loadCollections();
+    // The tab button itself keeps focus through this setState — explicit
+    // request needed, same reasoning as the matching player_screen.dart fix.
+    if (tab == BrowseTab.search) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _searchFirstKeyFocus.requestFocus();
+      });
+    }
   }
 
   Future<void> _loadCollections() async {
@@ -347,6 +356,8 @@ class _LibraryScreenState extends State<LibraryScreen> {
                   onChar: (c) => setState(() => _searchQuery += c),
                   onBackspace: () => setState(() => _searchQuery = _searchQuery.isEmpty ? '' : _searchQuery.substring(0, _searchQuery.length - 1)),
                   onClear: () => setState(() => _searchQuery = ''),
+                  autofocus: true,
+                  firstKeyFocusNode: _searchFirstKeyFocus,
                 ),
               ],
             ),

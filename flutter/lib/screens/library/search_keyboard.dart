@@ -67,23 +67,41 @@ class SearchKeyboard extends StatefulWidget {
   final ValueChanged<String> onChar;
   final VoidCallback onBackspace;
   final VoidCallback onClear;
+  final bool autofocus;
+  // Lets a caller (e.g. right after switching to the Search tab) explicitly
+  // request focus onto the first key. autofocus alone isn't reliable here:
+  // whatever had focus before this widget mounted (the Search tab button
+  // itself, in practice) still holds it in the enclosing scope, and
+  // Flutter's autofocus declines to steal focus from an already-focused
+  // scope — see the matching fix in player_screen.dart for the same issue.
+  final FocusNode? firstKeyFocusNode;
 
-  const SearchKeyboard({super.key, required this.onChar, required this.onBackspace, required this.onClear});
+  const SearchKeyboard({
+    super.key,
+    required this.onChar,
+    required this.onBackspace,
+    required this.onClear,
+    this.autofocus = false,
+    this.firstKeyFocusNode,
+  });
 
   @override
   State<SearchKeyboard> createState() => _SearchKeyboardState();
 }
 
 class _SearchKeyboardState extends State<SearchKeyboard> {
-  final Map<SearchKey, FocusNode> _focusNodes = {
-    for (final row in searchKeyRows)
-      for (final key in row) key: FocusNode(debugLabel: 'search-key-${key.label}'),
+  late final Map<SearchKey, FocusNode> _focusNodes = {
+    for (var r = 0; r < searchKeyRows.length; r++)
+      for (var c = 0; c < searchKeyRows[r].length; c++)
+        searchKeyRows[r][c]: (r == 0 && c == 0 && widget.firstKeyFocusNode != null)
+            ? widget.firstKeyFocusNode!
+            : FocusNode(debugLabel: 'search-key-${searchKeyRows[r][c].label}'),
   };
 
   @override
   void dispose() {
     for (final node in _focusNodes.values) {
-      node.dispose();
+      if (node != widget.firstKeyFocusNode) node.dispose();
     }
     super.dispose();
   }
@@ -134,6 +152,7 @@ class _SearchKeyboardState extends State<SearchKeyboard> {
           child: _SearchKeyButton(
             searchKey: key,
             focusNode: _focusNodes[key]!,
+            autofocus: widget.autofocus && rowIndex == 0 && colStart == 0,
             trapUp: rowIndex == 0,
             trapDown: rowIndex == searchKeyRows.length - 1,
             upNeighbor: up,
@@ -153,6 +172,7 @@ class _SearchKeyboardState extends State<SearchKeyboard> {
 class _SearchKeyButton extends StatelessWidget {
   final SearchKey searchKey;
   final FocusNode focusNode;
+  final bool autofocus;
   final bool trapUp;
   final bool trapDown;
   final FocusNode? upNeighbor;
@@ -165,6 +185,7 @@ class _SearchKeyButton extends StatelessWidget {
   const _SearchKeyButton({
     required this.searchKey,
     required this.focusNode,
+    this.autofocus = false,
     required this.trapUp,
     required this.trapDown,
     this.upNeighbor,
@@ -214,6 +235,7 @@ class _SearchKeyButton extends StatelessWidget {
           onClick: onClick,
           onLongClick: onLongClick,
           focusNode: focusNode,
+          autofocus: autofocus,
           shape: _keyShape,
           colors: _keyColors,
           border: _keyBorder,
