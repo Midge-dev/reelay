@@ -15,18 +15,26 @@ class PlexPlayerFactory {
 
   static String directPlayUrl(PlexServer server, PlexPart part) => '${server.baseUrl}${part.key}?X-Plex-Token=${server.accessToken}';
 
+  // offsetMs tells Plex where in the source to *start encoding* — the
+  // returned HLS stream's own position 0 IS offsetMs into the original
+  // file. A client-side seekTo() after opening this URL is not just
+  // redundant but actively wrong: it asks for a position Plex's transcode
+  // session was never told about and hasn't produced segments for, which
+  // 400s (see project notes on the CC-cycle-mid-playback crash this fixed).
   static String transcodeUrl(
     PlexServer server,
     Transcode decision,
     int maxVideoBitrateKbps, {
     String? sessionId,
+    int offsetMs = 0,
   }) {
     final session = sessionId ?? _uuid.v4();
     final path = Uri.encodeComponent('${server.baseUrl}/library/metadata/${decision.ratingKey}');
+    final offsetSeconds = offsetMs ~/ 1000;
     return '${server.baseUrl}/video/:/transcode/universal/start.m3u8'
         '?path=$path'
         '&mediaIndex=0&partIndex=0&protocol=hls'
-        '&fastSeek=1&copyts=1&offset=0'
+        '&fastSeek=1&copyts=1&offset=$offsetSeconds'
         '&directPlay=0&directStream=0'
         '&videoResolution=1920x1080&maxVideoBitrate=$maxVideoBitrateKbps'
         '&subtitleSize=100'
@@ -35,10 +43,16 @@ class PlexPlayerFactory {
         '&X-Plex-Token=${server.accessToken}';
   }
 
-  static String mediaUrl(PlexServer server, PlaybackDecision decision, int maxVideoBitrateKbps, {String? sessionId}) {
+  static String mediaUrl(
+    PlexServer server,
+    PlaybackDecision decision,
+    int maxVideoBitrateKbps, {
+    String? sessionId,
+    int offsetMs = 0,
+  }) {
     return switch (decision) {
       DirectPlay() => directPlayUrl(server, decision.part),
-      Transcode() => transcodeUrl(server, decision, maxVideoBitrateKbps, sessionId: sessionId),
+      Transcode() => transcodeUrl(server, decision, maxVideoBitrateKbps, sessionId: sessionId, offsetMs: offsetMs),
     };
   }
 }

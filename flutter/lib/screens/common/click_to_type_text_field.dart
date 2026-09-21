@@ -1,6 +1,7 @@
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 
+import '../../focus/back_handler.dart';
 import '../../theme/tokens.dart';
 
 const _borderWidth = 3.0;
@@ -122,16 +123,19 @@ class _ClickToTypeTextFieldState extends State<ClickToTypeTextField> {
         border: GradientBoxBorder(gradient: borderGradient, width: _borderWidth),
       ),
       child: _editingEnabled
-          ? EditableText(
-              controller: _controller,
-              focusNode: _editFocusNode,
-              style: style,
-              cursorColor: AppColors.accent,
-              backgroundCursorColor: AppColors.surfaceVariant,
-              autofocus: true,
-              onChanged: widget.onValueChange,
-              onEditingComplete: _stopEditing,
-              onSubmitted: (_) => _stopEditing(),
+          ? BackHandler(
+              onBack: _stopEditing,
+              child: EditableText(
+                controller: _controller,
+                focusNode: _editFocusNode,
+                style: style,
+                cursorColor: AppColors.accent,
+                backgroundCursorColor: AppColors.surfaceVariant,
+                autofocus: true,
+                onChanged: widget.onValueChange,
+                onEditingComplete: _stopEditing,
+                onSubmitted: (_) => _stopEditing(),
+              ),
             )
           : Focus(
               focusNode: _displayFocusNode,

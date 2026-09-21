@@ -140,8 +140,8 @@ class _RelaySetupScreenState extends ConsumerState<RelaySetupScreen> {
                             textAlign: TextAlign.center,
                           ),
                         ),
-                        ConstrainedBox(
-                          constraints: const BoxConstraints(minWidth: 500),
+                        SizedBox(
+                          width: 500,
                           child: ClickToTypeTextField(
                             value: _relayUrl,
                             onValueChange: (v) => setState(() => _relayUrl = v),
@@ -150,10 +150,15 @@ class _RelaySetupScreenState extends ConsumerState<RelaySetupScreen> {
                         ),
                         Padding(
                           padding: const EdgeInsets.only(top: 16),
-                          child: AppButton(
-                            onClick: _startPairing,
-                            focusNode: _pairButtonFocus,
-                            child: const AppText('Pair from phone'),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              AppButton(
+                                onClick: _startPairing,
+                                focusNode: _pairButtonFocus,
+                                child: const AppText('Pair from phone'),
+                              ),
+                            ],
                           ),
                         ),
                         if (_pairingError != null)

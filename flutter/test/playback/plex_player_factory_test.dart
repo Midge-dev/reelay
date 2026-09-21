@@ -49,6 +49,18 @@ void main() {
       final b = PlexPlayerFactory.transcodeUrl(_server, decision, 8000);
       expect(a, isNot(b));
     });
+
+    test('offsetMs tells Plex where to start encoding, converted to whole seconds', () {
+      const decision = Transcode(ratingKey: '100');
+      final url = PlexPlayerFactory.transcodeUrl(_server, decision, 8000, sessionId: 'fixed-session', offsetMs: 725400);
+      expect(url, contains('&offset=725&'));
+    });
+
+    test('offsetMs defaults to 0 when resuming from the start', () {
+      const decision = Transcode(ratingKey: '100');
+      final url = PlexPlayerFactory.transcodeUrl(_server, decision, 8000, sessionId: 'fixed-session');
+      expect(url, contains('&offset=0&'));
+    });
   });
 
   group('mediaUrl', () {
@@ -62,6 +74,12 @@ void main() {
       const decision = Transcode(ratingKey: '100');
       final url = PlexPlayerFactory.mediaUrl(_server, decision, 8000, sessionId: 'fixed-session');
       expect(url, contains('/video/:/transcode/universal/start.m3u8'));
+    });
+
+    test('Transcode forwards offsetMs through to transcodeUrl', () {
+      const decision = Transcode(ratingKey: '100');
+      final url = PlexPlayerFactory.mediaUrl(_server, decision, 8000, sessionId: 'fixed-session', offsetMs: 5000);
+      expect(url, contains('&offset=5&'));
     });
   });
 }

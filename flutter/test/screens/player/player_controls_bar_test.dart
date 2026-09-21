@@ -13,8 +13,8 @@ Future<void> _pump(
   VoidCallback? onPlayPause,
   VoidCallback? onRewind,
   VoidCallback? onForward,
-  VoidCallback? onOpenSubtitles,
-  VoidCallback? onOpenBitrate,
+  VoidCallback? onCycleSubtitles,
+  VoidCallback? onCycleBitrate,
   VoidCallback? onOpenChatQr,
 }) async {
   tester.view.physicalSize = const Size(1920, 1080);
@@ -30,12 +30,20 @@ Future<void> _pump(
         positionMs: positionMs,
         durationMs: durationMs,
         subtitlesAvailable: subtitlesAvailable,
+        progressFocusNode: FocusNode(),
+        rewindFocusNode: FocusNode(),
+        playPauseFocusNode: FocusNode(),
+        forwardFocusNode: FocusNode(),
+        subtitlesFocusNode: FocusNode(),
+        bitrateFocusNode: FocusNode(),
+        chatFocusNode: FocusNode(),
         chatAvailable: chatAvailable,
         onPlayPause: onPlayPause ?? () {},
         onRewind: onRewind ?? () {},
         onForward: onForward ?? () {},
-        onOpenSubtitles: onOpenSubtitles ?? () {},
-        onOpenBitrate: onOpenBitrate ?? () {},
+        onSeekKeyEvent: (_) => KeyEventResult.ignored,
+        onCycleSubtitles: onCycleSubtitles ?? () {},
+        onCycleBitrate: onCycleBitrate ?? () {},
         onOpenChatQr: onOpenChatQr ?? () {},
       ),
     ),
@@ -85,9 +93,9 @@ void main() {
     expect(forwarded, isTrue);
   });
 
-  testWidgets('subtitles button does not invoke onOpenSubtitles when disabled', (tester) async {
+  testWidgets('subtitles button does not invoke onCycleSubtitles when disabled', (tester) async {
     var opened = false;
-    await _pump(tester, subtitlesAvailable: false, onOpenSubtitles: () => opened = true);
+    await _pump(tester, subtitlesAvailable: false, onCycleSubtitles: () => opened = true);
 
     await tester.tap(find.byIcon(Icons.closed_caption));
     await tester.pump();
@@ -95,9 +103,9 @@ void main() {
     expect(opened, isFalse);
   });
 
-  testWidgets('subtitles button invokes onOpenSubtitles when available', (tester) async {
+  testWidgets('subtitles button invokes onCycleSubtitles when available', (tester) async {
     var opened = false;
-    await _pump(tester, onOpenSubtitles: () => opened = true);
+    await _pump(tester, onCycleSubtitles: () => opened = true);
 
     await tester.tap(find.byIcon(Icons.closed_caption));
     await tester.pump();
@@ -105,9 +113,9 @@ void main() {
     expect(opened, isTrue);
   });
 
-  testWidgets('quality button invokes onOpenBitrate', (tester) async {
+  testWidgets('quality button invokes onCycleBitrate', (tester) async {
     var opened = false;
-    await _pump(tester, onOpenBitrate: () => opened = true);
+    await _pump(tester, onCycleBitrate: () => opened = true);
 
     await tester.tap(find.byIcon(Icons.high_quality));
     await tester.pump();

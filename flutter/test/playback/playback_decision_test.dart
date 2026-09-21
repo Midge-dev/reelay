@@ -40,15 +40,16 @@ void main() {
       expect(options[1].label, 'English (Forced)');
     });
 
-    test('an embedded, non-burn-required track is excluded — video_player cannot select it', () {
+    test('an embedded, non-burn-codec track is still offered, but marked as requiring a transcode', () {
       final part = _partWith([
         const PlexStream(id: 1, streamType: 3, language: 'English', index: 0), // no key, not a burn codec
       ]);
 
       final options = subtitleOptions(part);
 
-      expect(options, hasLength(1), reason: 'only Off should remain');
-      expect(options[0].label, 'Off');
+      expect(options, hasLength(2));
+      expect(options[1].label, 'English (transcode)');
+      expect(options[1].requiresBurn, isTrue);
     });
 
     test('an external sidecar track is included even without a burn-required codec', () {
@@ -79,10 +80,16 @@ void main() {
       expect(decision, isA<DirectPlay>());
     });
 
-    test('soft-subtitle codec selected -> DirectPlay', () {
-      final part = _partWith([const PlexStream(id: 1, streamType: 3, codec: 'srt', language: 'English')]);
+    test('external sidecar track selected -> DirectPlay', () {
+      final part = _partWith([const PlexStream(id: 1, streamType: 3, key: '/library/streams/1', codec: 'srt', language: 'English')]);
       final decision = decidePlayback(_detailWith(part), 1);
       expect(decision, isA<DirectPlay>());
+    });
+
+    test('embedded soft-subtitle codec (no sidecar key) selected -> Transcode', () {
+      final part = _partWith([const PlexStream(id: 1, streamType: 3, codec: 'srt', language: 'English')]);
+      final decision = decidePlayback(_detailWith(part), 1);
+      expect(decision, isA<Transcode>());
     });
 
     test('burn-required codec (pgs) selected -> Transcode', () {

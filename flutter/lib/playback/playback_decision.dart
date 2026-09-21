@@ -63,19 +63,19 @@ class ExternalSubtitle extends SubtitleSource {
   const ExternalSubtitle({required this.key, this.languageCode});
 }
 
-/// Deviates from Kotlin's `subtitleOptions` (which lists every track): the
+/// Deviates from Kotlin's `subtitleOptions` in one respect: the
 /// `video_player` package has no API at all for selecting a subtitle track
 /// muxed into the video container — only an externally-supplied caption
-/// file. So an embedded, non-burn-required track (`key == null` and not a
-/// bitmap codec) would be selectable here but silently never render any
-/// captions. Filtered out rather than offering a picker option that's
-/// known not to work. External sidecar tracks (`key != null`, fetchable at
-/// their own URL as a caption file) and burn-required tracks (baked into
-/// the transcoded video itself, so no player-side track selection is
-/// involved at all) are unaffected and still listed.
+/// file, or one already baked into the video. So unlike Kotlin/ExoPlayer
+/// (which can select an embedded text track directly, no transcode
+/// needed), every embedded track here is treated as burn-required — same
+/// as the bitmap codecs (pgs/vobsub/dvdsub) that needed burning even in
+/// Kotlin — trading a transcode (server load, a quality/bitrate hit) for
+/// actually being able to show it. External sidecar tracks (`key != null`,
+/// fetchable at their own URL as a caption file) never need this.
 List<SubtitleOption> subtitleOptions(PlexPart part) {
   final tracks = part.streams
-      .where((s) => s.streamType == _subtitleStreamType && (s.key != null || _requiresBurn(s)))
+      .where((s) => s.streamType == _subtitleStreamType)
       .map((s) => SubtitleOption(streamId: s.id, label: _subtitleLabel(s), requiresBurn: _requiresBurn(s)))
       .toList();
   return [const SubtitleOption(streamId: null, label: 'Off', requiresBurn: false), ...tracks];
@@ -87,7 +87,10 @@ String _subtitleLabel(PlexStream stream) {
   return '$base$suffix';
 }
 
-bool _requiresBurn(PlexStream stream) => _burnRequiredSubtitleCodecs.contains(stream.codec?.toLowerCase());
+/// True for anything `video_player` can't render directly: a bitmap codec
+/// (never player-selectable, even in Kotlin) or an embedded track (no
+/// player-side track-selection API here, unlike ExoPlayer).
+bool _requiresBurn(PlexStream stream) => stream.key == null || _burnRequiredSubtitleCodecs.contains(stream.codec?.toLowerCase());
 
 PlaybackDecision decidePlayback(PlexMovieDetail detail, int? subtitleStreamId, {bool forceBurn = false}) {
   if (detail.media.isEmpty) {

@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:collection/collection.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart' hide ConnectionState;
@@ -21,22 +22,25 @@ import '../../sync/relay_protocol.dart';
 import '../../sync/relay_urls.dart';
 import '../../sync/sync_view_model.dart';
 import '../../theme/tokens.dart';
+import '../../theme/typography.dart';
 import '../common/app_loading_indicator.dart';
 import '../common/chat_overlay.dart';
 import 'chat_qr_overlay.dart';
 import 'player_controls_bar.dart';
-import 'player_menus.dart';
 
 const _reportIntervalMs = 5000;
 const _controlsHideDelayMs = 3000;
 const _skipIncrementMs = 10000;
+const _controlsFadeDuration = Duration(milliseconds: 200);
 
 /// Ports ui/player/PlayerScreen.kt — the biggest platform-boundary piece of
 /// this conversion. See project_flutter_full_conversion.md for the two
 /// spiked risks this resolved (no play/pause reason codes, no seek-
-/// discontinuity event — both handled fine by [VideoPlayerSyncedPlayer])
-/// and the accepted gap (no embedded-subtitle-track selection, filtered
-/// out of [subtitleOptions] rather than offered and silently broken).
+/// discontinuity event — both handled fine by [VideoPlayerSyncedPlayer]).
+/// Unlike Kotlin/ExoPlayer, this player has no API for selecting a
+/// subtitle track muxed into the video container, so [subtitleOptions]
+/// marks every embedded track as burn-required — selecting one forces a
+/// transcode with the subtitles baked in, rather than direct-playing.
 ///
 /// Kotlin recreates the whole player (a fresh ExoPlayer) via
 /// `key(playerIdentity) { PlayerSession(...) }` whenever bitrate changes,
@@ -99,8 +103,6 @@ class _PlayerScreenState extends State<PlayerScreen> {
   bool _controlsVisible = true;
   bool _isBuffering = false;
   bool _isPlaying = false;
-  bool _subtitleMenuOpen = false;
-  bool _bitrateMenuOpen = false;
   bool _chatQrOpen = false;
 
   int _positionMs = 0;
@@ -111,7 +113,13 @@ class _PlayerScreenState extends State<PlayerScreen> {
   Timer? _reportTimer;
 
   final _screenFocusNode = FocusNode(debugLabel: 'player-screen');
+  final _progressFocusNode = FocusNode(debugLabel: 'player-progress');
+  final _rewindFocusNode = FocusNode(debugLabel: 'player-rewind');
   final _playPauseFocusNode = FocusNode(debugLabel: 'player-play-pause');
+  final _forwardFocusNode = FocusNode(debugLabel: 'player-forward');
+  final _subtitlesFocusNode = FocusNode(debugLabel: 'player-subtitles');
+  final _bitrateFocusNode = FocusNode(debugLabel: 'player-bitrate');
+  final _chatFocusNode = FocusNode(debugLabel: 'player-chat');
 
   LogicalKeyboardKey? _heldKey;
   int _heldRepeatCount = 0;
@@ -134,11 +142,13 @@ class _PlayerScreenState extends State<PlayerScreen> {
     _subtitleOptions = _resolvedPart != null ? subtitleOptions(_resolvedPart!) : const [];
 
     final defaultId = defaultSubtitleStreamId(widget.detail);
-    // Clamp to the filtered options list: a stream Plex marked "selected"
-    // might be an embedded, non-burn-required track that video_player
-    // can't render at all — treat that as no selection rather than a
-    // phantom pick that silently shows no captions.
-    _subtitleStreamId = _subtitleOptions.any((o) => o.streamId == defaultId) ? defaultId : null;
+    final defaultOption = _subtitleOptions.firstWhereOrNull((o) => o.streamId == defaultId);
+    // Only auto-select Plex's remembered subtitle if it doesn't force a
+    // transcode: embedded tracks are offered in the CC menu (see
+    // subtitleOptions) but a burn-required transcode should be something
+    // the user opts into there, not something that silently kicks off on
+    // first play just because Plex remembered a language preference.
+    _subtitleStreamId = (defaultOption != null && !defaultOption.requiresBurn) ? defaultId : null;
 
     _maxVideoBitrateKbps = widget.settings.maxVideoBitrateKbps;
     _decision = decidePlayback(widget.detail, _subtitleStreamId, forceBurn: widget.settings.forceBurnSubtitles);
@@ -147,13 +157,15 @@ class _PlayerScreenState extends State<PlayerScreen> {
     HardwareKeyboard.instance.addHandler(_recordInteraction);
     _reportTimer = Timer.periodic(const Duration(milliseconds: _reportIntervalMs), (_) => _reportProgress());
     _scheduleAutoHide();
-    // Explicit, not autofocus: PlayerControlsBar is torn down and remounted
-    // fresh (a genuine conditional-existence swap, not a Stack overlay) on
-    // every hide/show, and by the time it remounts on reveal,
-    // _screenFocusNode already holds focus — Flutter's autofocus declines
-    // to steal focus from an already-focused scope, so it silently no-ops
-    // and every subsequent D-pad press just gets swallowed by the
-    // screen-level handler with the controls stuck visible but unnavigable.
+    // Explicit, not autofocus: PlayerControlsBar stays mounted continuously
+    // (see build() — its visibility is an AnimatedOpacity fade, not a
+    // conditional-existence swap) specifically so ExcludeFocus/IgnorePointer
+    // toggling and the fade animation both have a stable widget to act on.
+    // Autofocus only fires on a widget's first build, so on a widget that's
+    // already built once it silently no-ops, leaving every subsequent D-pad
+    // press swallowed by the screen-level handler with the controls stuck
+    // visible but unnavigable — hence the explicit requestFocus() here and
+    // in _showControls().
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) _playPauseFocusNode.requestFocus();
     });
@@ -179,7 +191,13 @@ class _PlayerScreenState extends State<PlayerScreen> {
     _controller?.removeListener(_handleControllerTick);
     unawaited(_controller?.dispose());
     _screenFocusNode.dispose();
+    _progressFocusNode.dispose();
+    _rewindFocusNode.dispose();
     _playPauseFocusNode.dispose();
+    _forwardFocusNode.dispose();
+    _subtitlesFocusNode.dispose();
+    _bitrateFocusNode.dispose();
+    _chatFocusNode.dispose();
     super.dispose();
   }
 
@@ -192,14 +210,20 @@ class _PlayerScreenState extends State<PlayerScreen> {
 
   Future<void> _initPlayer({required int startPositionMs}) async {
     final generation = ++_playerGeneration;
-    final url = PlexPlayerFactory.mediaUrl(widget.server, _decision, _maxVideoBitrateKbps);
+    final url = PlexPlayerFactory.mediaUrl(widget.server, _decision, _maxVideoBitrateKbps, offsetMs: startPositionMs);
     final controller = VideoPlayerController.networkUrl(Uri.parse(url));
     await controller.initialize();
     if (!mounted || generation != _playerGeneration) {
       unawaited(controller.dispose());
       return;
     }
-    if (startPositionMs > 0) await controller.seekTo(Duration(milliseconds: startPositionMs));
+    // Transcode already starts the stream at startPositionMs via the url's
+    // offset (see PlexPlayerFactory.transcodeUrl) — seeking again here would
+    // target a position the transcode session never produced. Direct play
+    // serves the whole original file, so it still needs the explicit seek.
+    if (startPositionMs > 0 && _decision is DirectPlay) {
+      await controller.seekTo(Duration(milliseconds: startPositionMs));
+    }
     await _attachCaptions(controller);
     controller.addListener(_handleControllerTick);
 
@@ -289,7 +313,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
 
   void _scheduleAutoHide() {
     _controlsHideTimer?.cancel();
-    if (_controlsVisible && !_subtitleMenuOpen && !_bitrateMenuOpen) {
+    if (_controlsVisible) {
       _controlsHideTimer = Timer(const Duration(milliseconds: _controlsHideDelayMs), () {
         if (mounted) setState(() => _controlsVisible = false);
         _screenFocusNode.requestFocus();
@@ -316,38 +340,70 @@ class _PlayerScreenState extends State<PlayerScreen> {
   // button already got first crack at the event through its own
   // onKeyEvent; this only observes.
   bool _recordInteraction(KeyEvent event) {
-    if (event is KeyDownEvent && _controlsVisible && !_subtitleMenuOpen && !_bitrateMenuOpen) {
+    if (_isKeyActive(event) && _controlsVisible) {
       _scheduleAutoHide();
     }
     return false;
   }
 
-  KeyEventResult _handleScreenKeyEvent(FocusNode node, KeyEvent event) {
-    if (_subtitleMenuOpen || _bitrateMenuOpen) return KeyEventResult.ignored;
+  // A held D-pad key arrives as one KeyDownEvent followed by a stream of
+  // KeyRepeatEvents (a third, distinct KeyEvent subtype — not more
+  // KeyDownEvents) until the eventual KeyUpEvent. Treating only
+  // KeyDownEvent as "key active" — the mistake here originally — silently
+  // drops every repeat, so held-key repeat counts never advance past 0 and
+  // hold-to-accelerate never actually accelerates.
+  bool _isKeyActive(KeyEvent event) => event is KeyDownEvent || event is KeyRepeatEvent;
 
-    if (event is KeyUpEvent) {
-      if (_heldKey == event.logicalKey) {
-        _heldKey = null;
-        _heldRepeatCount = 0;
-      }
-      return KeyEventResult.ignored;
-    }
-    if (event is! KeyDownEvent) return KeyEventResult.ignored;
-
-    final key = event.logicalKey;
-    final isFresh = _heldKey != key;
-    if (isFresh) {
+  // Shared by the hidden-controls screen-level shortcut below and the
+  // focused-progress-track handler ([_handleProgressSeekKey]) — a D-pad
+  // hold accelerates the seek jump the longer it's held (see
+  // seekIncrementForHold), keyed off repeats of the *same* logical key
+  // since the last KeyUp. The two call sites are mutually exclusive
+  // (one requires controls hidden, the other requires the progress track
+  // focused, which only exists while controls are visible) so sharing
+  // this bookkeeping is safe, not just DRY.
+  int _trackHeldRepeat(LogicalKeyboardKey key) {
+    if (_heldKey != key) {
       _heldKey = key;
       _heldRepeatCount = 0;
     } else {
       _heldRepeatCount++;
     }
+    return _heldRepeatCount;
+  }
+
+  void _trackKeyUp(LogicalKeyboardKey key) {
+    if (_heldKey == key) {
+      _heldKey = null;
+      _heldRepeatCount = 0;
+    }
+  }
+
+  KeyEventResult _handleProgressSeekKey(KeyEvent event) {
+    if (!_isKeyActive(event)) return KeyEventResult.ignored;
+    final key = event.logicalKey;
+    if (key != LogicalKeyboardKey.arrowLeft && key != LogicalKeyboardKey.arrowRight) return KeyEventResult.ignored;
+    final direction = key == LogicalKeyboardKey.arrowRight ? 1 : -1;
+    _seekBy(direction * seekIncrementForHold(_trackHeldRepeat(key)));
+    return KeyEventResult.handled;
+  }
+
+  KeyEventResult _handleScreenKeyEvent(FocusNode node, KeyEvent event) {
+    if (event is KeyUpEvent) {
+      _trackKeyUp(event.logicalKey);
+      return KeyEventResult.ignored;
+    }
+    if (!_isKeyActive(event)) return KeyEventResult.ignored;
+
+    final key = event.logicalKey;
+    final repeatCount = _trackHeldRepeat(key);
+    final isFresh = repeatCount == 0;
 
     if (_controlsVisible) return KeyEventResult.ignored;
 
     if (key == LogicalKeyboardKey.arrowLeft || key == LogicalKeyboardKey.arrowRight) {
       final direction = key == LogicalKeyboardKey.arrowRight ? 1 : -1;
-      _seekBy(direction * seekIncrementForHold(_heldRepeatCount));
+      _seekBy(direction * seekIncrementForHold(repeatCount));
       return KeyEventResult.handled;
     }
     if (key == LogicalKeyboardKey.select || key == LogicalKeyboardKey.enter) {
@@ -377,25 +433,34 @@ class _PlayerScreenState extends State<PlayerScreen> {
     widget.onExit();
   }
 
-  void _onSelectSubtitle(SubtitleOption option) {
+  void _cycleSubtitle() {
+    final options = _subtitleOptions;
+    final currentIndex = options.indexWhere((o) => o.streamId == _subtitleStreamId);
+    final next = options[(currentIndex + 1) % options.length];
     final restartPositionMs = _player?.currentPosition ?? 0;
-    setState(() {
-      _subtitleStreamId = option.streamId;
-      _subtitleMenuOpen = false;
-    });
+    setState(() => _subtitleStreamId = next.streamId);
     _applyDecisionChange(restartPositionMs: restartPositionMs);
-    _screenFocusNode.requestFocus();
   }
 
-  void _onSelectBitrate(int kbps) {
+  void _cycleBitrate() {
+    final presets = AppSettings.bitratePresets;
+    final currentIndex = presets.indexWhere((p) => p.kbps == _maxVideoBitrateKbps);
+    final next = presets[(currentIndex + 1) % presets.length];
     final restartPositionMs = _player?.currentPosition ?? 0;
-    setState(() {
-      _maxVideoBitrateKbps = kbps;
-      _bitrateMenuOpen = false;
-    });
-    widget.onBitrateChanged(kbps);
+    setState(() => _maxVideoBitrateKbps = next.kbps);
+    widget.onBitrateChanged(next.kbps);
     _applyDecisionChange(restartPositionMs: restartPositionMs);
-    _screenFocusNode.requestFocus();
+  }
+
+  String get _currentSubtitleLabel {
+    final options = _subtitleOptions;
+    final option = options.firstWhereOrNull((o) => o.streamId == _subtitleStreamId);
+    return 'CC: ${option?.label ?? 'Off'}';
+  }
+
+  String get _currentBitrateLabel {
+    final preset = AppSettings.bitratePresets.firstWhereOrNull((p) => p.kbps == _maxVideoBitrateKbps);
+    return preset?.label ?? '${_maxVideoBitrateKbps ~/ 1000} Mbps';
   }
 
   void _applyDecisionChange({required int restartPositionMs}) {
@@ -449,18 +514,6 @@ class _PlayerScreenState extends State<PlayerScreen> {
                   ),
                 ),
               if (_isBuffering) const Center(child: AppLoadingIndicator()),
-              if (_controlsVisible)
-                Positioned(
-                  left: 24,
-                  top: 24,
-                  child: _Chip(child: AppText(widget.detail.title, color: AppColors.white)),
-                ),
-              if (widget.relay != null && _connectionState != ConnectionState.connected && _controlsVisible)
-                Positioned(
-                  right: 24,
-                  top: 24,
-                  child: _Chip(child: AppText(_syncStatusLabel(), color: AppColors.white)),
-                ),
               if (_phase == PlaybackPhase.waitingForPeers && _waitingOn.isNotEmpty)
                 Positioned(
                   top: 24,
@@ -476,64 +529,70 @@ class _PlayerScreenState extends State<PlayerScreen> {
                     child: ChatOverlay(messages: _sync!.chatMessages, corner: widget.settings.chatOverlayCorner),
                   ),
                 ),
-              if (_controlsVisible)
-                Positioned(
-                  left: 0,
-                  right: 0,
-                  bottom: 0,
-                  child: PlayerControlsBar(
-                    isPlaying: _isPlaying,
-                    positionMs: _positionMs,
-                    durationMs: _durationMs,
-                    bufferedFraction: _bufferedFraction,
-                    subtitlesAvailable: subtitlesAvailable,
-                    playPauseFocusNode: _playPauseFocusNode,
-                    onPlayPause: _togglePlayPause,
-                    onRewind: () => _seekBy(-_skipIncrementMs),
-                    onForward: () => _seekBy(_skipIncrementMs),
-                    onOpenSubtitles: () => setState(() {
-                      _controlsVisible = false;
-                      _subtitleMenuOpen = true;
-                    }),
-                    onOpenBitrate: () => setState(() {
-                      _controlsVisible = false;
-                      _bitrateMenuOpen = true;
-                    }),
-                    chatAvailable: _chatUrl != null,
-                    onOpenChatQr: () => setState(() => _chatQrOpen = true),
-                  ),
-                ),
-              if (_subtitleMenuOpen)
-                Align(
-                  alignment: Alignment.centerRight,
-                  child: Padding(
-                    padding: const EdgeInsets.all(24),
-                    child: SubtitleMenu(
-                      options: _subtitleOptions,
-                      selectedStreamId: _subtitleStreamId,
-                      onSelect: _onSelectSubtitle,
-                      onDismiss: () {
-                        setState(() => _subtitleMenuOpen = false);
-                        _screenFocusNode.requestFocus();
-                      },
+              // Kept mounted continuously (unlike the menus/overlays above,
+              // which still use conditional existence) so its visibility can
+              // be an AnimatedOpacity fade rather than an instant swap —
+              // IgnorePointer/ExcludeFocus keep it inert while faded out.
+              Positioned.fill(
+                child: IgnorePointer(
+                  ignoring: !_controlsVisible,
+                  child: ExcludeFocus(
+                    excluding: !_controlsVisible,
+                    child: AnimatedOpacity(
+                      opacity: _controlsVisible ? 1 : 0,
+                      duration: _controlsFadeDuration,
+                      curve: Curves.easeInOut,
+                      child: Stack(
+                        children: [
+                          Positioned(
+                            left: 0,
+                            right: 0,
+                            top: 0,
+                            child: _TitleBar(
+                              title: widget.detail.title,
+                              subtitleLabel: _currentSubtitleLabel,
+                              qualityLabel: _currentBitrateLabel,
+                            ),
+                          ),
+                          if (widget.relay != null && _connectionState != ConnectionState.connected)
+                            Positioned(
+                              right: 24,
+                              top: 24,
+                              child: _Chip(child: AppText(_syncStatusLabel(), color: AppColors.white)),
+                            ),
+                          Positioned(
+                            left: 0,
+                            right: 0,
+                            bottom: 0,
+                            child: PlayerControlsBar(
+                              isPlaying: _isPlaying,
+                              positionMs: _positionMs,
+                              durationMs: _durationMs,
+                              bufferedFraction: _bufferedFraction,
+                              subtitlesAvailable: subtitlesAvailable,
+                              progressFocusNode: _progressFocusNode,
+                              rewindFocusNode: _rewindFocusNode,
+                              playPauseFocusNode: _playPauseFocusNode,
+                              forwardFocusNode: _forwardFocusNode,
+                              subtitlesFocusNode: _subtitlesFocusNode,
+                              bitrateFocusNode: _bitrateFocusNode,
+                              chatFocusNode: _chatFocusNode,
+                              onPlayPause: _togglePlayPause,
+                              onRewind: () => _seekBy(-_skipIncrementMs),
+                              onForward: () => _seekBy(_skipIncrementMs),
+                              onSeekKeyEvent: _handleProgressSeekKey,
+                              onCycleSubtitles: _cycleSubtitle,
+                              onCycleBitrate: _cycleBitrate,
+                              chatAvailable: _chatUrl != null,
+                              onOpenChatQr: () => setState(() => _chatQrOpen = true),
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 ),
-              if (_bitrateMenuOpen)
-                Align(
-                  alignment: Alignment.centerRight,
-                  child: Padding(
-                    padding: const EdgeInsets.all(24),
-                    child: BitrateMenu(
-                      selectedKbps: _maxVideoBitrateKbps,
-                      onSelect: _onSelectBitrate,
-                      onDismiss: () {
-                        setState(() => _bitrateMenuOpen = false);
-                        _screenFocusNode.requestFocus();
-                      },
-                    ),
-                  ),
-                ),
+              ),
               if (_chatQrOpen && _chatUrl != null)
                 Positioned(
                   right: 24,
@@ -572,6 +631,52 @@ class _Chip extends StatelessWidget {
     return DecoratedBox(
       decoration: BoxDecoration(color: AppColors.scrim.withValues(alpha: 0.6)),
       child: Padding(padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6), child: child),
+    );
+  }
+}
+
+/// A full-width header, mirroring [PlayerControlsBar]'s bottom scrim but
+/// inverted — solid at the screen edge, fading to transparent toward the
+/// video — instead of the small floating [_Chip] the title used to sit in.
+/// Also carries the current CC/quality status, right-aligned: cycling
+/// through either via its button in [PlayerControlsBar] (rather than
+/// opening a picker menu) needs somewhere to show which option is active.
+class _TitleBar extends StatelessWidget {
+  final String title;
+  final String subtitleLabel;
+  final String qualityLabel;
+
+  const _TitleBar({required this.title, required this.subtitleLabel, required this.qualityLabel});
+
+  @override
+  Widget build(BuildContext context) {
+    final statusStyle = AppTypography.bodyLarge.copyWith(color: AppColors.white.withValues(alpha: 0.75));
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(24, 24, 24, 48),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [AppColors.scrim.withValues(alpha: 0.6), AppColors.scrim.withValues(alpha: 0)],
+        ),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Expanded(child: AppText(title, color: AppColors.white)),
+          const SizedBox(width: 24),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              AppText(qualityLabel, style: statusStyle),
+              const SizedBox(height: 4),
+              AppText(subtitleLabel, style: statusStyle),
+            ],
+          ),
+        ],
+      ),
     );
   }
 }
