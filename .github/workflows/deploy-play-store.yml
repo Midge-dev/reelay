@@ -40,20 +40,24 @@ jobs:
           storeFile=release.keystore
           EOF
 
+      # Play requires a strictly increasing versionCode per upload. Rather
+      # than relying on pubspec.yaml being bumped by hand before every push
+      # (the first automated run failed on exactly this), derive it from
+      # this workflow's own run number, offset well clear of any versionCode
+      # already uploaded manually (highest so far: 4) — guaranteed to keep
+      # increasing on every run, forever, with no manual step. pubspec.yaml's
+      # version *name* (the human-readable "0.4.0" part) is untouched and
+      # still yours to bump for real milestones; only the numeric build
+      # number is auto-derived.
       - name: Build release AAB
         working-directory: flutter
-        run: flutter build appbundle --release
+        run: flutter build appbundle --release --build-number=$((${{ github.run_number }} + 100))
 
-      # Play requires a strictly increasing versionCode per upload — bump
-      # pubspec.yaml's version (e.g. 0.4.0+4 -> 0.4.1+5) before pushing
-      # whenever you want a new build to actually reach testers. Pushing
-      # without bumping it will make this step fail with a clear "version
-      # code already used" error rather than silently doing nothing.
       - name: Upload to Internal Testing
         uses: r0adkll/upload-google-play@v1
         with:
           serviceAccountJsonPlainText: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
           packageName: com.reelay.tv
           releaseFiles: flutter/build/app/outputs/bundle/release/app-release.aab
-          track: internal
+          tracks: internal
           status: completed
