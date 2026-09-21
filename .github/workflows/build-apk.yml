@@ -21,8 +21,14 @@ jobs:
 
       - uses: android-actions/setup-android@v3
 
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: "3.47.4"
+          channel: stable
+
       - name: Build debug APK
-        run: ./gradlew assembleDebug
+        working-directory: flutter
+        run: flutter build apk --debug
 
       - name: Publish latest release
         uses: softprops/action-gh-release@v2
@@ -31,4 +37,4 @@ jobs:
           name: Latest build
           body: Automatically built from the latest push to main. Download `app-debug.apk` below and sideload it.
           prerelease: false
-          files: app/build/outputs/apk/debug/reelay.apk
+          files: flutter/build/app/outputs/flutter-apk/app-debug.apk

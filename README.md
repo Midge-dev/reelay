@@ -12,57 +12,38 @@ automatically on every push, see
 [Installing the app](#installing-the-app-for-whoever-is-joining-you) below.
 This section is only for making your own changes to the code.
 
+The app (`flutter/`) is a Flutter project targeting Android TV. (An earlier
+native Kotlin/Compose implementation was retired in favor of this one once
+it reached parity — see git history before this point if you need it.)
+
 ### Prerequisites
 
 - **Git**
-- **JDK 17+** — any distro's OpenJDK works (developed against OpenJDK 21).
-  Check with `java -version`.
-- **Android SDK command-line tools** — you don't need the full Android
-  Studio GUI, just the SDK. Easiest path is still to install [Android
-  Studio](https://developer.android.com/studio) and let it manage the SDK
-  for you; if you'd rather stay CLI-only:
-  1. Download the "command line tools only" package from the same page.
-  2. Unzip it so the layout is `<sdk-root>/cmdline-tools/latest/...` (the
-     zip extracts to a `cmdline-tools` folder — you need to move it one
-     level deeper into `latest/`, that trips people up).
-  3. Install the pieces this project needs:
-     ```
-     sdkmanager --sdk_root=<sdk-root> "platform-tools" "platforms;android-36" "build-tools;36.0.0"
-     ```
-  4. Accept the licenses: `sdkmanager --sdk_root=<sdk-root> --licenses`
-- **Environment variables** — add to your `~/.bashrc`/`~/.zshrc` (adjust the
-  path to wherever you installed the SDK):
-  ```
-  export ANDROID_HOME="$HOME/android-sdk"
-  export ANDROID_SDK_ROOT="$HOME/android-sdk"
-  export PATH="$PATH:$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/platform-tools"
-  ```
-  Open a new terminal (or `source` the file) afterwards.
-
-Gradle itself doesn't need installing — the repo ships a wrapper
-(`./gradlew`) that downloads the exact Gradle version (9.4.1) on first run.
+- **Flutter SDK** (stable channel) — [install instructions](https://docs.flutter.dev/get-started/install).
+  Developed against Flutter 3.47.4; run `flutter doctor` after installing to
+  confirm your setup.
+- **Android SDK command-line tools** — `flutter doctor` will tell you if
+  these are missing and how to get them via `sdkmanager`; the full Android
+  Studio GUI isn't required.
+- **JDK 17+** — any distro's OpenJDK works. Check with `java -version`.
 
 ### Clone and build
 
 ```
 git clone https://github.com/Midge-dev/reelay.git
-cd reelay
-./gradlew assembleDebug
+cd reelay/flutter
+flutter pub get
+flutter build apk --debug
 ```
 
-The first run will download Gradle 9.4.1 and all dependencies, so expect it
-to take a few minutes. If it can't find your SDK, create a
-`local.properties` file in the repo root (this file is gitignored —
-everyone needs their own) pointing at it:
-
-```
-sdk.dir=/path/to/your/android-sdk
-```
+The first run will download dependencies, so expect it to take a few
+minutes. If `flutter doctor` flags a missing Android SDK, point Flutter at
+yours via `flutter config --android-sdk-root <path>`.
 
 Once it finishes, the debug APK is at:
 
 ```
-app/build/outputs/apk/debug/reelay.apk
+flutter/build/app/outputs/flutter-apk/app-debug.apk
 ```
 
 The Settings screen falls back to a placeholder LAN address until you set a
@@ -71,9 +52,11 @@ Settings or with the "Pair from phone" button there (see
 [Settings — relay URL](#settings--relay-url) below).
 
 That's the file you sideload — see below. (A release build,
-`./gradlew assembleRelease`, works too, but is unsigned by default since no
-signing config is set up in the project; the debug build is simpler to
-sideload for personal use.)
+`flutter build apk --release`, works too, but is signed with the debug key
+unless you have the real release keystore — `flutter/android/key.properties`
++ `flutter/android/app/release.keystore`, both gitignored and never
+committed — so it installs fine, it just won't match an existing
+release-signed install on-device.)
 
 ## Installing the app (for whoever's joining you)
 

@@ -1,5 +1,18 @@
 # Reelay — Architecture & Design Notes
 
+> **2026-09-20: superseded by the Flutter rewrite.** Everything below
+> describes the original native Kotlin/Jetpack Compose implementation
+> (`app/` + `shared/`), which has been retired — the app is now a single
+> Flutter project at `flutter/`. This document is kept because most of the
+> *reasoning* here (focus-navigation hazards, relay/sync protocol design,
+> the watch-together timing model, hard-won platform gotchas) carried
+> straight over into the port and is still the best record of *why* things
+> work the way they do, even though the Kotlin-specific code paths it
+> references no longer exist. See `flutter/` for current source, and the
+> Flutter test suite for what's actually verified today. If a section here
+> turns out to no longer apply even conceptually, prefer trusting the
+> current code over this doc.
+
 This document exists because the codebase's comments used to carry this
 knowledge inline, one decision at a time, next to the code it explained. That
 made sense while a decision was fresh, but it scattered the reasoning behind

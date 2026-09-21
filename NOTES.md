@@ -5,6 +5,13 @@ real synchronized "watch together" playback with a cousin on a remote Plex
 server. See the full architecture/phase plan for context; this file tracks
 running setup details, decisions, and gotchas as we build.
 
+> **2026-09-20:** the app was rewritten in Flutter (`flutter/`) and the
+> original Kotlin/Compose implementation retired. **"Target device" below is
+> still accurate** (same physical Shield, same ADB workflow). Everything
+> from "Toolchain" onward describes the retired Kotlin/Gradle/Compose stack
+> specifically and is kept only as historical record — see `flutter/README.md`
+> and `flutter/pubspec.yaml` for the current toolchain.
+
 ## Target device
 
 - Nvidia Shield Pro (2019), model `SHIELD_Android_TV`, codename `mdarcy`

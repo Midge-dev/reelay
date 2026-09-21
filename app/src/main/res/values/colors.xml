@@ -1,7 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<resources>
-    <!-- Must match AppBackground in ui/theme/AppColors.kt (0xFF0D0D12) — this
-         copy exists only because the pre-Compose window background (see
-         themes.xml) has to be a plain XML resource, not a Compose Color. -->
-    <color name="app_background">#FF0D0D12</color>
-</resources>
