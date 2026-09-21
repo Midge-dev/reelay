@@ -1,5 +1,12 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
+    <!-- Debug builds get this auto-injected by the Flutter tool; release
+         builds don't, and every network call (Plex, the relay) fails with
+         a bare "Failed host lookup" instead of a permission error, which is
+         why this silently worked in every debug build so far but broke the
+         instant the app was actually run as a release build. -->
+    <uses-permission android:name="android.permission.INTERNET" />
+
     <uses-feature
         android:name="android.software.leanback"
         android:required="true" />
