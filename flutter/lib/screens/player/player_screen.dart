@@ -28,6 +28,7 @@ import '../common/chat_overlay.dart';
 import 'chat_qr_overlay.dart';
 import 'player_controls_bar.dart';
 import 'player_menu_panel.dart';
+import 'up_next_card.dart';
 
 const _reportIntervalMs = 5000;
 const _controlsHideDelayMs = 3000;
@@ -60,6 +61,10 @@ class PlayerScreen extends StatefulWidget {
   final AppSettings settings;
   final ValueChanged<int> onBitrateChanged;
   final VoidCallback onExit;
+  // Screen 16 — both null when playing a movie or when the show context
+  // isn't available (see Player.showRatingKey's doc comment).
+  final Future<PlexOnDeckItem?> Function()? loadNextEpisode;
+  final ValueChanged<PlexOnDeckItem>? onPlayNext;
 
   const PlayerScreen({
     super.key,
@@ -70,6 +75,8 @@ class PlayerScreen extends StatefulWidget {
     required this.settings,
     required this.onBitrateChanged,
     required this.onExit,
+    this.loadNextEpisode,
+    this.onPlayNext,
   });
 
   @override
@@ -109,6 +116,15 @@ class _PlayerScreenState extends State<PlayerScreen> {
   int _positionMs = 0;
   int _durationMs = 0;
   double _bufferedFraction = 0;
+
+  // Screen 16 — appears 40s before the end; dismissing it ("Not now")
+  // holds for the rest of this episode, so _upNextDismissed (not just
+  // clearing _upNextItem) is what actually suppresses it, since the
+  // trigger check would otherwise re-show it the very next tick.
+  static const _upNextTriggerMs = 40000;
+  PlexOnDeckItem? _upNextItem;
+  bool _upNextLoadAttempted = false;
+  bool _upNextDismissed = false;
 
   Timer? _controlsHideTimer;
   Timer? _reportTimer;
@@ -288,6 +304,29 @@ class _PlayerScreenState extends State<PlayerScreen> {
       _durationMs = value.duration.inMilliseconds;
       _bufferedFraction = _durationMs > 0 ? (bufferedMs / _durationMs).clamp(0.0, 1.0) : 0.0;
     });
+    _maybeLoadUpNext();
+  }
+
+  void _maybeLoadUpNext() {
+    if (_upNextDismissed || _upNextLoadAttempted) return;
+    final loadNextEpisode = widget.loadNextEpisode;
+    if (loadNextEpisode == null) return;
+    if (_durationMs <= 0 || _durationMs - _positionMs > _upNextTriggerMs) return;
+    _upNextLoadAttempted = true;
+    loadNextEpisode().then((item) {
+      if (mounted && item != null) setState(() => _upNextItem = item);
+    });
+  }
+
+  void _dismissUpNext() => setState(() {
+        _upNextItem = null;
+        _upNextDismissed = true;
+      });
+
+  void _playUpNext() {
+    final item = _upNextItem;
+    if (item == null) return;
+    widget.onPlayNext?.call(item);
   }
 
   Future<void> _reportProgress() async {
@@ -623,6 +662,20 @@ class _PlayerScreenState extends State<PlayerScreen> {
                   right: 24,
                   top: 24,
                   child: ChatQrOverlay(chatUrl: _chatUrl!, onDismiss: () => setState(() => _chatQrOpen = false)),
+                ),
+              if (_upNextItem != null && !_menuOpen)
+                Positioned(
+                  right: 64,
+                  bottom: 64,
+                  child: BackHandler(
+                    onBack: _dismissUpNext,
+                    child: UpNextCard(
+                      server: widget.server,
+                      item: _upNextItem!,
+                      onPlayNow: _playUpNext,
+                      onDismiss: _dismissUpNext,
+                    ),
+                  ),
                 ),
               if (_menuOpen)
                 PlayerMenuPanel(

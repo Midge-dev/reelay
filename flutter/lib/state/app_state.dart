@@ -284,6 +284,11 @@ class Player extends AppState {
   final PlexMovieDetail detail;
   final AppState returnState;
   final RelayClient? relay;
+  // Null when playing a movie. Set when playing an episode — the only
+  // piece of show/season context that reaches the player at all today
+  // (PlexMovieDetail itself carries no parent/grandparent linkage), just
+  // enough for screen 16's real fetchNextEpisodeForShow lookup.
+  final String? showRatingKey;
 
-  const Player({required this.server, required this.detail, required this.returnState, this.relay});
+  const Player({required this.server, required this.detail, required this.returnState, this.relay, this.showRatingKey});
 }

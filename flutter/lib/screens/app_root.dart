@@ -396,8 +396,8 @@ class _AppContent extends StatelessWidget {
                 return null;
               }
             },
-            onPlay: () => controller.playMovie(ctx, episode.ratingKey, state),
-            onPlayFromStart: () => controller.playMovie(ctx, episode.ratingKey, state, fromStart: true),
+            onPlay: () => controller.playMovie(ctx, episode.ratingKey, state, showRatingKey: show.ratingKey),
+            onPlayFromStart: () => controller.playMovie(ctx, episode.ratingKey, state, fromStart: true, showRatingKey: show.ratingKey),
             onWatchTogether: () => controller.openWatchTogetherStart(
               ctx: ctx,
               returnState: state,
@@ -452,7 +452,7 @@ class _AppContent extends StatelessWidget {
             controller.returnTo(returnState);
           },
         ),
-      Player(:final detail, :final returnState, :final relay) => PlayerScreen(
+      Player(:final detail, :final returnState, :final relay, :final showRatingKey) => PlayerScreen(
           key: ValueKey('player-${detail.ratingKey}'),
           server: state.server,
           detail: detail,
@@ -464,6 +464,17 @@ class _AppContent extends StatelessWidget {
             controller.releaseRelayClient();
             controller.returnTo(returnState);
           },
+          // Screen 16 — only real when we actually know the show (see
+          // Player.showRatingKey's doc comment: null for movies, and the
+          // "next episode" lookup needs a LibraryContext to actually play
+          // it, which only exists when returnState is the EpisodeDetail we
+          // came from).
+          loadNextEpisode: showRatingKey == null
+              ? null
+              : () => PlexServerApi(state.server, controller.clientIdentifier).fetchNextEpisodeForShow(showRatingKey),
+          onPlayNext: returnState is EpisodeDetail
+              ? (next) => controller.playMovie(returnState.ctx, next.ratingKey, returnState, showRatingKey: showRatingKey)
+              : null,
         ),
     };
   }

@@ -611,7 +611,7 @@ class AppRootController extends ChangeNotifier {
 
   // ---- Player entry points ----
 
-  Future<void> playMovie(LibraryContext ctx, String targetRatingKey, AppState returnState, {bool fromStart = false}) async {
+  Future<void> playMovie(LibraryContext ctx, String targetRatingKey, AppState returnState, {bool fromStart = false, String? showRatingKey}) async {
     try {
       final detail = await PlexServerApi(ctx.server, _clientIdentifier).fetchMovieDetail(targetRatingKey);
       _setState(Player(
@@ -619,6 +619,7 @@ class AppRootController extends ChangeNotifier {
         detail: fromStart ? detail.copyWith(viewOffset: 0) : detail,
         returnState: returnState,
         relay: null,
+        showRatingKey: showRatingKey,
       ));
     } catch (_) {
       // Screen 25 — name what failed plainly rather than the raw
