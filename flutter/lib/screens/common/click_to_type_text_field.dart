@@ -113,7 +113,7 @@ class _ClickToTypeTextFieldState extends State<ClickToTypeTextField> {
 
   @override
   Widget build(BuildContext context) {
-    final style = widget.textStyle ?? const TextStyle(color: AppColors.ink);
+    final style = widget.textStyle ?? const TextStyle(fontFamily: 'Inter', color: AppColors.ink);
     final borderColor = _isFocused || _editingEnabled ? AppColors.accent : AppColors.line;
 
     return Container(

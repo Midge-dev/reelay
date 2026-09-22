@@ -279,7 +279,7 @@ class _RoomCardState extends State<RoomCard> with SingleTickerProviderStateMixin
                           child: AppText(
                             widget.isHosted ? "You're hosting" : "You're in",
                             color: AppColors.inkOnArt,
-                            style: const TextStyle(fontSize: 10, letterSpacing: 1, fontWeight: FontWeight.w500),
+                            style: const TextStyle(fontFamily: 'Inter', fontSize: 10, letterSpacing: 1, fontWeight: FontWeight.w500),
                           ),
                         ),
                       ),
@@ -304,7 +304,7 @@ class _RoomCardState extends State<RoomCard> with SingleTickerProviderStateMixin
                           child: AppText(
                             room.hostName.isNotEmpty ? room.hostName[0].toUpperCase() : '?',
                             color: AppColors.inkOnArt,
-                            style: const TextStyle(fontSize: 12),
+                            style: const TextStyle(fontFamily: 'Inter', fontSize: 12),
                           ),
                         ),
                         const SizedBox(width: 10),

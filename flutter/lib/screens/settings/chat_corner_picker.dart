@@ -133,7 +133,7 @@ class _ChatCornerTile extends StatelessWidget {
                 child: AppText(
                   selected ? '$label ✓' : label,
                   color: labelColor,
-                  style: const TextStyle(fontSize: 11, height: 13 / 11),
+                  style: const TextStyle(fontFamily: 'Inter', fontSize: 11, height: 13 / 11),
                 ),
               ),
             ],

@@ -538,7 +538,7 @@ class _SettingsGroup extends StatelessWidget {
           Container(height: 1, color: AppColors.surface),
           const SizedBox(height: 14),
         ],
-        AppText(title.toUpperCase(), style: const TextStyle(fontSize: 12, letterSpacing: 1.2, fontWeight: FontWeight.w500), color: AppColors.ink3),
+        AppText(title.toUpperCase(), style: const TextStyle(fontFamily: 'Inter', fontSize: 12, letterSpacing: 1.2, fontWeight: FontWeight.w500), color: AppColors.ink3),
         const SizedBox(height: 6),
         child,
       ],

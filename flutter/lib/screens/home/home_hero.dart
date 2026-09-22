@@ -108,22 +108,29 @@ class HomeHero extends StatelessWidget {
                 if (remainingMs > 0) ...[
                   const SizedBox(height: AppSpacing.md),
                   Row(
-                    mainAxisSize: MainAxisSize.min,
                     children: [
-                      SizedBox(
-                        width: _progressBarWidth,
-                        height: 4,
-                        child: DecoratedBox(
-                          decoration: BoxDecoration(color: AppColors.ink.withValues(alpha: 0.22), borderRadius: BorderRadius.circular(2)),
-                          child: FractionallySizedBox(
-                            alignment: Alignment.centerLeft,
-                            widthFactor: progress,
-                            child: const DecoratedBox(decoration: BoxDecoration(color: AppColors.accent)),
+                      Flexible(
+                        child: ConstrainedBox(
+                          constraints: const BoxConstraints(maxWidth: _progressBarWidth),
+                          child: SizedBox(
+                            height: 4,
+                            child: DecoratedBox(
+                              decoration: BoxDecoration(color: AppColors.ink.withValues(alpha: 0.22), borderRadius: BorderRadius.circular(2)),
+                              child: FractionallySizedBox(
+                                alignment: Alignment.centerLeft,
+                                widthFactor: progress,
+                                child: const DecoratedBox(decoration: BoxDecoration(color: AppColors.accent)),
+                              ),
+                            ),
                           ),
                         ),
                       ),
                       const SizedBox(width: AppSpacing.lg),
-                      AppText(formatMinutesLeft(remainingMs), color: AppColors.ink2),
+                      // The remaining-time label carries the information the
+                      // bar only visualizes, so it keeps its natural width
+                      // (never truncates) and the decorative bar is what
+                      // yields if the row is ever tighter than bar+label.
+                      AppText(formatMinutesLeft(remainingMs), color: AppColors.ink2, maxLines: 1, overflow: TextOverflow.ellipsis),
                     ],
                   ),
                 ],
