@@ -2,6 +2,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 
 import '../../focus/back_handler.dart';
+import '../../theme/scale.dart';
 import '../../theme/tokens.dart';
 
 const _borderWidth = 3.0;
@@ -129,16 +130,20 @@ class _ClickToTypeTextFieldState extends State<ClickToTypeTextField> {
 
   @override
   Widget build(BuildContext context) {
-    final style =
+    final baseStyle =
         widget.textStyle ??
         TextStyle(fontFamily: 'Inter', color: AppColors.ink);
+    final style = baseStyle.copyWith(
+      fontSize: baseStyle.fontSize?.du(context),
+      letterSpacing: baseStyle.letterSpacing?.du(context),
+    );
     final borderColor = _isFocused || _editingEnabled
         ? AppColors.accent
         : AppColors.line;
 
     return Container(
       decoration: BoxDecoration(
-        border: Border.all(color: borderColor, width: _borderWidth),
+        border: Border.all(color: borderColor, width: _borderWidth.du(context)),
       ),
       child: _editingEnabled
           ? BackHandler(

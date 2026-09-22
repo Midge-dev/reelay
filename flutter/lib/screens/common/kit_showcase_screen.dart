@@ -9,6 +9,7 @@ import '../../kit/list_item.dart';
 import '../../kit/radio_button.dart';
 import '../../kit/switch.dart';
 import '../../kit/text.dart';
+import '../../theme/scale.dart';
 import '../../theme/tokens.dart';
 import '../../theme/typography.dart';
 
@@ -34,59 +35,59 @@ class _KitShowcaseScreenState extends State<KitShowcaseScreen> {
     return ColoredBox(
       color: AppColors.background,
       child: Padding(
-        padding: const EdgeInsets.all(AppSpacing.xxl),
+        padding: EdgeInsets.all(AppSpacing.xxl.du(context)),
         child: SingleChildScrollView(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               AppText('Reelay kit', style: AppTypography.title1),
-              const SizedBox(height: AppSpacing.xs),
+              SizedBox(height: AppSpacing.xs.du(context)),
               AppText(
                 'Phase 3 component showcase — D-pad through these',
                 style: AppTypography.body,
               ),
-              const SizedBox(height: AppSpacing.xxl),
+              SizedBox(height: AppSpacing.xxl.du(context)),
 
               AppText('Buttons', style: AppTypography.rowLabel),
-              const SizedBox(height: AppSpacing.md),
+              SizedBox(height: AppSpacing.md.du(context)),
               Row(
                 children: [
                   AppButton(onClick: () {}, child: const AppText('Play')),
-                  const SizedBox(width: AppSpacing.md),
+                  SizedBox(width: AppSpacing.md.du(context)),
                   AppOutlinedButton(
                     onClick: () {},
                     child: const AppText('Watch together'),
                   ),
-                  const SizedBox(width: AppSpacing.md),
+                  SizedBox(width: AppSpacing.md.du(context)),
                   AppIconButton(
                     onClick: () {},
                     child: const AppIcon(_playIcon),
                   ),
                 ],
               ),
-              const SizedBox(height: AppSpacing.xxl),
+              SizedBox(height: AppSpacing.xxl.du(context)),
 
               AppText('Cards', style: AppTypography.rowLabel),
-              const SizedBox(height: AppSpacing.md),
+              SizedBox(height: AppSpacing.md.du(context)),
               SizedBox(
-                height: 180,
+                height: 180.du(context),
                 child: Row(
                   children: List.generate(4, (i) {
                     return Padding(
-                      padding: const EdgeInsets.only(right: AppSpacing.lg),
+                      padding: EdgeInsets.only(right: AppSpacing.lg.du(context)),
                       child: SizedBox(
-                        width: 140,
+                        width: 140.du(context),
                         child: AppCard(
                           onClick: () {},
                           onLongClick: () {},
                           child: CardContainer(
                             imageCard: Container(
-                              height: 120,
+                              height: 120.du(context),
                               color: AppColors.surface,
                             ),
                             title: Padding(
-                              padding: const EdgeInsets.only(
-                                top: AppSpacing.xs,
+                              padding: EdgeInsets.only(
+                                top: AppSpacing.xs.du(context),
                               ),
                               child: AppText(
                                 'Card ${i + 1}',
@@ -100,14 +101,14 @@ class _KitShowcaseScreenState extends State<KitShowcaseScreen> {
                   }),
                 ),
               ),
-              const SizedBox(height: AppSpacing.xxl),
+              SizedBox(height: AppSpacing.xxl.du(context)),
 
               AppText('Filter chips', style: AppTypography.rowLabel),
-              const SizedBox(height: AppSpacing.md),
+              SizedBox(height: AppSpacing.md.du(context)),
               Row(
                 children: List.generate(3, (i) {
                   return Padding(
-                    padding: const EdgeInsets.only(right: AppSpacing.sm),
+                    padding: EdgeInsets.only(right: AppSpacing.sm.du(context)),
                     child: AppFilterChip(
                       selected: _selectedChip == i,
                       onClick: () => setState(() => _selectedChip = i),
@@ -116,12 +117,12 @@ class _KitShowcaseScreenState extends State<KitShowcaseScreen> {
                   );
                 }),
               ),
-              const SizedBox(height: AppSpacing.xxl),
+              SizedBox(height: AppSpacing.xxl.du(context)),
 
               AppText('List items', style: AppTypography.rowLabel),
-              const SizedBox(height: AppSpacing.md),
+              SizedBox(height: AppSpacing.md.du(context)),
               SizedBox(
-                width: 280,
+                width: 280.du(context),
                 child: Column(
                   children: List.generate(3, (i) {
                     return AppListItem(
@@ -133,10 +134,10 @@ class _KitShowcaseScreenState extends State<KitShowcaseScreen> {
                   }),
                 ),
               ),
-              const SizedBox(height: AppSpacing.xxl),
+              SizedBox(height: AppSpacing.xxl.du(context)),
 
               AppText('Switch', style: AppTypography.rowLabel),
-              const SizedBox(height: AppSpacing.md),
+              SizedBox(height: AppSpacing.md.du(context)),
               AppSwitch(
                 checked: _switchOn,
                 onCheckedChange: (v) => setState(() => _switchOn = v),

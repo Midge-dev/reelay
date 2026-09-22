@@ -6,6 +6,7 @@ import 'package:flutter/widgets.dart' hide ConnectionState;
 import '../../kit/button.dart';
 import '../../kit/text.dart';
 import '../../sync/relay_protocol.dart';
+import '../../theme/scale.dart';
 import '../../theme/tokens.dart';
 
 /// Ports ui/common/RelayStatus.kt's `RelayStatus` sealed interface. Only
@@ -132,8 +133,8 @@ class RelayStatusDot extends StatelessWidget {
       RelayStatus.reconnecting => _amberGrey,
     };
     return Container(
-      width: 8,
-      height: 8,
+      width: 8.du(context),
+      height: 8.du(context),
       decoration: BoxDecoration(shape: BoxShape.circle, color: color),
     );
   }
@@ -167,13 +168,13 @@ class RelayStatusLine extends StatelessWidget {
           children: [
             Row(
               mainAxisSize: MainAxisSize.min,
-              children: const [
-                _Spinner(),
-                SizedBox(width: 12),
-                AppText('Waking up the relay'),
+              children: [
+                const _Spinner(),
+                SizedBox(width: 12.du(context)),
+                const AppText('Waking up the relay'),
               ],
             ),
-            const SizedBox(height: 10),
+            SizedBox(height: 10.du(context)),
             AppText(
               "This can take up to a minute if nobody has used it in a while. Playback works — you'll be synced when it connects.",
               color: AppColors.ink3,
@@ -185,14 +186,14 @@ class RelayStatusLine extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             Container(
-              width: 20,
-              height: 20,
+              width: 20.du(context),
+              height: 20.du(context),
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 color: AppColors.accent,
               ),
             ),
-            const SizedBox(width: 12),
+            SizedBox(width: 12.du(context)),
             const AppText('Connected — room is live'),
           ],
         );
@@ -201,7 +202,7 @@ class RelayStatusLine extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             const RelayStatusDot(status: RelayStatus.reconnecting),
-            const SizedBox(width: 12),
+            SizedBox(width: 12.du(context)),
             AppText('Reconnecting', color: AppColors.ink3),
           ],
         );
@@ -211,7 +212,7 @@ class RelayStatusLine extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             AppText("Can't reach $relayNickname"),
-            const SizedBox(height: 12),
+            SizedBox(height: 12.du(context)),
             Row(
               mainAxisSize: MainAxisSize.min,
               children: [
@@ -220,7 +221,7 @@ class RelayStatusLine extends StatelessWidget {
                   child: const AppText('Retry'),
                 ),
                 if (onHostOnAnother != null) ...[
-                  const SizedBox(width: 16),
+                  SizedBox(width: 16.du(context)),
                   AppOutlinedButton(
                     onClick: onHostOnAnother!,
                     child: const AppText('Host on another relay'),
@@ -263,12 +264,13 @@ class _SpinnerState extends State<_Spinner>
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      width: 18,
-      height: 18,
+      width: 18.du(context),
+      height: 18.du(context),
       child: AnimatedBuilder(
         animation: _controller,
-        builder: (context, _) =>
-            CustomPaint(painter: _SpinnerPainter(_controller.value * 360)),
+        builder: (context, _) => CustomPaint(
+          painter: _SpinnerPainter(_controller.value * 360, 2.du(context)),
+        ),
       ),
     );
   }
@@ -276,8 +278,9 @@ class _SpinnerState extends State<_Spinner>
 
 class _SpinnerPainter extends CustomPainter {
   final double rotationDegrees;
+  final double strokeWidth;
 
-  _SpinnerPainter(this.rotationDegrees);
+  _SpinnerPainter(this.rotationDegrees, this.strokeWidth);
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -285,12 +288,12 @@ class _SpinnerPainter extends CustomPainter {
     final track = Paint()
       ..color = AppColors.accent300.withValues(alpha: 0.5)
       ..style = PaintingStyle.stroke
-      ..strokeWidth = 2
+      ..strokeWidth = strokeWidth
       ..strokeCap = StrokeCap.round;
     final arc = Paint()
       ..color = AppColors.accent300
       ..style = PaintingStyle.stroke
-      ..strokeWidth = 2
+      ..strokeWidth = strokeWidth
       ..strokeCap = StrokeCap.round;
     canvas.drawArc(rect, 0, 2 * math.pi, false, track);
     canvas.drawArc(
@@ -304,7 +307,8 @@ class _SpinnerPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant _SpinnerPainter oldDelegate) =>
-      oldDelegate.rotationDegrees != rotationDegrees;
+      oldDelegate.rotationDegrees != rotationDegrees ||
+      oldDelegate.strokeWidth != strokeWidth;
 }
 
 class _IndeterminateSweep extends StatefulWidget {
@@ -336,9 +340,9 @@ class _IndeterminateSweepState extends State<_IndeterminateSweep>
   @override
   Widget build(BuildContext context) {
     return ClipRRect(
-      borderRadius: BorderRadius.circular(2),
+      borderRadius: BorderRadius.circular(2.du(context)),
       child: Container(
-        height: 3,
+        height: 3.du(context),
         color: AppColors.surface.withValues(alpha: 0.6),
         child: AnimatedBuilder(
           animation: _controller,

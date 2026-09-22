@@ -4,6 +4,7 @@ import '../../kit/button.dart';
 import '../../kit/icon.dart';
 import '../../kit/text.dart';
 import '../../theme/phosphor_icons.dart';
+import '../../theme/scale.dart';
 import '../../theme/tokens.dart';
 import '../../theme/typography.dart';
 
@@ -52,12 +53,12 @@ class _PlaybackFailedScreenState extends State<PlaybackFailedScreen> {
       color: AppColors.background,
       child: Center(
         child: Container(
-          width: 900,
-          padding: const EdgeInsets.all(AppSpacing.xxxl),
+          width: 900.du(context),
+          padding: EdgeInsets.all(AppSpacing.xxxl.du(context)),
           decoration: BoxDecoration(
             color: AppColors.surfaceOverlay,
             border: Border.all(color: AppColors.lineStrong),
-            borderRadius: BorderRadius.circular(AppShape.radiusLg),
+            borderRadius: BorderRadius.circular(AppShape.radiusLg.du(context)),
             boxShadow: AppElevation.overlay,
           ),
           child: Column(
@@ -72,7 +73,7 @@ class _PlaybackFailedScreenState extends State<PlaybackFailedScreen> {
                     size: 28,
                     tint: AppColors.warning,
                   ),
-                  const SizedBox(width: AppSpacing.md),
+                  SizedBox(width: AppSpacing.md.du(context)),
                   AppText(
                     "COULDN'T START",
                     style: AppTypography.micro,
@@ -80,9 +81,9 @@ class _PlaybackFailedScreenState extends State<PlaybackFailedScreen> {
                   ),
                 ],
               ),
-              const SizedBox(height: AppSpacing.xl),
+              SizedBox(height: AppSpacing.xl.du(context)),
               AppText(widget.reason, style: AppTypography.title2),
-              const SizedBox(height: AppSpacing.xxl),
+              SizedBox(height: AppSpacing.xxl.du(context)),
               Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
@@ -96,12 +97,12 @@ class _PlaybackFailedScreenState extends State<PlaybackFailedScreen> {
                           PhosphorIconsRegular.arrowClockwise,
                           size: 22,
                         ),
-                        const SizedBox(width: AppSpacing.sm),
+                        SizedBox(width: AppSpacing.sm.du(context)),
                         const AppText('Try again'),
                       ],
                     ),
                   ),
-                  const SizedBox(width: AppSpacing.md),
+                  SizedBox(width: AppSpacing.md.du(context)),
                   AppOutlinedButton(
                     onClick: widget.onBack,
                     child: const AppText('Back'),

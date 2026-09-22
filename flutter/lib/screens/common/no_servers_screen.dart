@@ -7,6 +7,7 @@ import '../../kit/button.dart';
 import '../../kit/icon.dart';
 import '../../kit/text.dart';
 import '../../theme/phosphor_icons.dart';
+import '../../theme/scale.dart';
 import '../../theme/tokens.dart';
 import '../../theme/typography.dart';
 
@@ -78,7 +79,7 @@ class _NoServersScreenState extends State<NoServersScreen> {
       color: AppColors.canvas,
       child: Center(
         child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 900),
+          constraints: BoxConstraints(maxWidth: 900.du(context)),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -87,30 +88,30 @@ class _NoServersScreenState extends State<NoServersScreen> {
                 size: 72,
                 tint: AppColors.lineStrong,
               ),
-              const SizedBox(height: 18),
+              SizedBox(height: 18.du(context)),
               AppText(
                 "Can't reach any of your servers",
                 style: AppTypography.title1,
                 textAlign: TextAlign.center,
               ),
-              const SizedBox(height: 12),
+              SizedBox(height: 12.du(context)),
               AppText(
                 'Nothing is wrong with Reelay or your account. ${count == 1 ? 'One server is' : '$count servers are'} configured and none of them answered.',
                 color: AppColors.ink3,
                 textAlign: TextAlign.center,
               ),
-              const SizedBox(height: 40),
+              SizedBox(height: 40.du(context)),
               if (widget.resources.isNotEmpty)
                 Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     for (final resource in widget.resources) ...[
                       _ServerRow(resource: resource),
-                      const SizedBox(height: 10),
+                      SizedBox(height: 10.du(context)),
                     ],
                   ],
                 ),
-              const SizedBox(height: 30),
+              SizedBox(height: 30.du(context)),
               Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
@@ -124,19 +125,19 @@ class _NoServersScreenState extends State<NoServersScreen> {
                           PhosphorIconsRegular.arrowClockwise,
                           size: 22,
                         ),
-                        const SizedBox(width: AppSpacing.sm),
+                        SizedBox(width: AppSpacing.sm.du(context)),
                         const AppText('Try again now'),
                       ],
                     ),
                   ),
-                  const SizedBox(width: AppSpacing.md),
+                  SizedBox(width: AppSpacing.md.du(context)),
                   AppOutlinedButton(
                     onClick: widget.onStartOver,
                     child: const AppText('Start over'),
                   ),
                 ],
               ),
-              const SizedBox(height: 18),
+              SizedBox(height: 18.du(context)),
               Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
@@ -145,7 +146,7 @@ class _NoServersScreenState extends State<NoServersScreen> {
                     size: 20,
                     tint: AppColors.ink4,
                   ),
-                  const SizedBox(width: AppSpacing.sm),
+                  SizedBox(width: AppSpacing.sm.du(context)),
                   AppText(
                     'Trying again on its own in $_secondsRemaining second${_secondsRemaining == 1 ? '' : 's'}',
                     color: AppColors.ink4,
@@ -168,13 +169,13 @@ class _ServerRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ConstrainedBox(
-      constraints: const BoxConstraints(minHeight: 82),
+      constraints: BoxConstraints(minHeight: 82.du(context)),
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xl),
+        padding: EdgeInsets.symmetric(horizontal: AppSpacing.xl.du(context)),
         decoration: BoxDecoration(
           color: AppColors.surface,
           border: Border.all(color: AppColors.line),
-          borderRadius: BorderRadius.circular(AppShape.radiusMd),
+          borderRadius: BorderRadius.circular(AppShape.radiusMd.du(context)),
         ),
         child: Row(
           children: [
@@ -183,14 +184,14 @@ class _ServerRow extends StatelessWidget {
               size: 24,
               tint: AppColors.ink3,
             ),
-            const SizedBox(width: AppSpacing.lg),
+            SizedBox(width: AppSpacing.lg.du(context)),
             Expanded(
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   AppText(resource.name, color: AppColors.ink2),
-                  const SizedBox(height: 3),
+                  SizedBox(height: 3.du(context)),
                   AppText(
                     'Plex',
                     style: AppTypography.caption,
@@ -203,14 +204,14 @@ class _ServerRow extends StatelessWidget {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Container(
-                  width: 9,
-                  height: 9,
+                  width: 9.du(context),
+                  height: 9.du(context),
                   decoration: const BoxDecoration(
                     shape: BoxShape.circle,
                     color: AppColors.error,
                   ),
                 ),
-                const SizedBox(width: AppSpacing.sm),
+                SizedBox(width: AppSpacing.sm.du(context)),
                 AppText(
                   'Unreachable',
                   style: AppTypography.caption,

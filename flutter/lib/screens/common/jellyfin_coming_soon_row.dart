@@ -4,6 +4,7 @@ import '../../theme/phosphor_icons.dart';
 
 import '../../kit/icon.dart';
 import '../../kit/text.dart';
+import '../../theme/scale.dart';
 import '../../theme/tokens.dart';
 import '../../theme/typography.dart';
 
@@ -24,17 +25,17 @@ class JellyfinComingSoonRow extends StatelessWidget {
     return Opacity(
       opacity: 0.45,
       child: ConstrainedBox(
-        constraints: const BoxConstraints(minHeight: _rowMinHeight),
+        constraints: BoxConstraints(minHeight: _rowMinHeight.du(context)),
         child: DecoratedBox(
           decoration: BoxDecoration(
             color: AppColors.surface,
             border: Border.all(color: AppColors.line),
-            borderRadius: BorderRadius.circular(AppShape.radiusMd),
+            borderRadius: BorderRadius.circular(AppShape.radiusMd.du(context)),
           ),
           child: Padding(
-            padding: const EdgeInsets.symmetric(
-              horizontal: AppSpacing.xl,
-              vertical: AppSpacing.md,
+            padding: EdgeInsets.symmetric(
+              horizontal: AppSpacing.xl.du(context),
+              vertical: AppSpacing.md.du(context),
             ),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.center,
@@ -44,7 +45,7 @@ class JellyfinComingSoonRow extends StatelessWidget {
                   size: 26,
                   tint: AppColors.ink3,
                 ),
-                const SizedBox(width: AppSpacing.lg),
+                SizedBox(width: AppSpacing.lg.du(context)),
                 Expanded(
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
@@ -55,7 +56,7 @@ class JellyfinComingSoonRow extends StatelessWidget {
                         style: AppTypography.label,
                         color: AppColors.ink2,
                       ),
-                      SizedBox(height: 3),
+                      SizedBox(height: 3.du(context)),
                       AppText(
                         'Not connectable yet',
                         style: AppTypography.caption,
@@ -64,15 +65,15 @@ class JellyfinComingSoonRow extends StatelessWidget {
                     ],
                   ),
                 ),
-                const SizedBox(width: AppSpacing.lg),
+                SizedBox(width: AppSpacing.lg.du(context)),
                 Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: AppSpacing.sm,
-                    vertical: 2,
+                  padding: EdgeInsets.symmetric(
+                    horizontal: AppSpacing.sm.du(context),
+                    vertical: 2.du(context),
                   ),
                   decoration: BoxDecoration(
                     border: _badgeBorder,
-                    borderRadius: BorderRadius.circular(AppShape.radiusSm),
+                    borderRadius: BorderRadius.circular(AppShape.radiusSm.du(context)),
                   ),
                   child: AppText(
                     'COMING SOON',

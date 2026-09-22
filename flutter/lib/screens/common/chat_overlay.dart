@@ -5,6 +5,7 @@ import 'package:flutter/widgets.dart';
 import '../../data/settings/app_settings.dart';
 import '../../kit/text.dart';
 import '../../sync/relay_protocol.dart';
+import '../../theme/scale.dart';
 import '../../theme/tokens.dart';
 
 const _messageVisibleMs = 6000;
@@ -63,7 +64,7 @@ class _ChatOverlayState extends State<ChatOverlay> {
       children: [
         for (final message in ordered) ...[
           _ChatBubble(key: ValueKey(message), message: message, textAlign: textAlign, onExpired: () => _expire(message)),
-          if (message != ordered.last) const SizedBox(height: 6),
+          if (message != ordered.last) SizedBox(height: 6.du(context)),
         ],
       ],
     );
@@ -100,11 +101,11 @@ class _ChatBubbleState extends State<_ChatBubble> {
       opacity: _shown ? 1 : 0,
       duration: const Duration(milliseconds: _fadeOutMs),
       child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 420),
+        constraints: BoxConstraints(maxWidth: 420.du(context)),
         child: DecoratedBox(
           decoration: BoxDecoration(color: AppScrims.dialog.withValues(alpha: 0.6)),
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            padding: EdgeInsets.symmetric(horizontal: 12.du(context), vertical: 6.du(context)),
             child: AppText(
               '${widget.message.username}: ${widget.message.text}',
               color: AppColors.inkOnArt,
