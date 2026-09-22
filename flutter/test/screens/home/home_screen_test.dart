@@ -1,14 +1,17 @@
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:reelay/data/plex/plex_models.dart';
+import 'package:reelay/data/plex/plex_resources_api.dart';
 import 'package:reelay/data/settings/app_settings.dart';
 import 'package:reelay/screens/home/home_posters.dart';
 import 'package:reelay/screens/home/home_screen.dart';
 import 'package:reelay/screens/home/watch_together_bar.dart';
 import 'package:reelay/screens/home/watch_together_row.dart';
+import 'package:reelay/state/duplicate_fold.dart';
 import 'package:reelay/sync/relay_protocol.dart';
 
-const _server = PlexServer(name: 'Home', baseUrl: 'http://192.168.1.5:32400', accessToken: 'tok');
+const _server = PlexServer(name: 'Home', baseUrl: 'http://192.168.1.5:32400', accessToken: 'tok', machineIdentifier: 'home-id');
+const _connectedServers = [ReachableServer(_server, ServerReachability.local)];
 const _relay = RelayEntry(id: 'r1', nickname: 'Home Relay', url: 'wss://relay.example.com');
 
 RelayRoomSummary _room(String id) =>
@@ -44,16 +47,17 @@ Widget _buildHome({
   List<PlexLibraryItem> recentlyAdded = const [],
   List<PlexOnDeckItem> suggestions = const [],
 }) {
+  Sourced<T> sourced<T>(T v) => Sourced(v, _server, ServerReachability.local);
   return Directionality(
     textDirection: TextDirection.ltr,
     child: HomeScreen(
-      server: _server,
+      servers: _connectedServers,
       liveRooms: liveRooms,
       watchlist: watchlist,
-      onDeck: onDeck,
-      recentActivity: recentActivity,
-      recentlyAdded: recentlyAdded,
-      suggestions: suggestions,
+      onDeck: onDeck.map(sourced).toList(),
+      recentActivity: recentActivity.map(sourced).toList(),
+      recentlyAdded: recentlyAdded.map(sourced).toList(),
+      suggestions: suggestions.map(sourced).toList(),
       onEndSession: (_) async => true,
       onSelectRoom: (_) {},
       onResume: (_) {},

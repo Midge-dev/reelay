@@ -14,6 +14,7 @@ import '../../kit/filter_chip.dart';
 import '../../kit/icon.dart';
 import '../../kit/surface_style.dart';
 import '../../kit/text.dart';
+import '../../state/app_state.dart' show SectionGroup;
 import '../../theme/scale.dart';
 import '../../theme/tokens.dart';
 import '../../theme/typography.dart';
@@ -49,12 +50,12 @@ class ServerSwitcherPanel extends StatefulWidget {
   final PlexAccount? account;
   final List<ReachableServer> connectedServers;
   final Set<String> disabledServerIds;
-  final List<PlexSection> sections;
-  final String? selectedSectionKey;
+  final List<SectionGroup> sectionGroups;
+  final String? selectedSectionGroupKey;
   final Future<List<PlexResource>> Function() loadServers;
   final Future<ReachableServer?> Function(PlexResource resource) probeServer;
   final Future<int?> Function(PlexServer server) loadLibraryCount;
-  final ValueChanged<PlexSection> onSelectSection;
+  final ValueChanged<SectionGroup> onSelectSection;
   final void Function(PlexResource resource, bool enabled) onToggleServer;
   final VoidCallback onClose;
 
@@ -63,8 +64,8 @@ class ServerSwitcherPanel extends StatefulWidget {
     this.account,
     required this.connectedServers,
     required this.disabledServerIds,
-    required this.sections,
-    this.selectedSectionKey,
+    required this.sectionGroups,
+    this.selectedSectionGroupKey,
     required this.loadServers,
     required this.probeServer,
     required this.loadLibraryCount,
@@ -167,7 +168,7 @@ class _ServerSwitcherPanelState extends State<ServerSwitcherPanel> {
     });
   }
 
-  void _selectSection(PlexSection section) {
+  void _selectSection(SectionGroup section) {
     widget.onSelectSection(section);
     widget.onClose();
   }
@@ -278,12 +279,12 @@ class _ServerSwitcherPanelState extends State<ServerSwitcherPanel> {
                                 spacing: AppSpacing.md.du(context),
                                 runSpacing: AppSpacing.md.du(context),
                                 children: [
-                                  for (final section in widget.sections)
+                                  for (final section in widget.sectionGroups)
                                     AppFilterChip(
                                       key: ValueKey(section.key),
                                       selected:
                                           section.key ==
-                                          widget.selectedSectionKey,
+                                          widget.selectedSectionGroupKey,
                                       onClick: () => _selectSection(section),
                                       child: AppText(section.title),
                                     ),

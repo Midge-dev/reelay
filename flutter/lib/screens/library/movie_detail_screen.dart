@@ -5,12 +5,14 @@ import '../../theme/phosphor_icons.dart';
 
 import '../../data/plex/plex_image_url.dart';
 import '../../data/plex/plex_models.dart';
+import '../../data/plex/plex_resources_api.dart' show ServerReachability;
 import '../../focus/back_handler.dart';
 import '../../kit/button.dart';
 import '../../kit/icon.dart';
 import '../../kit/icon_button.dart';
 import '../../kit/surface_style.dart';
 import '../../kit/text.dart';
+import '../../state/duplicate_fold.dart';
 import '../../theme/scale.dart';
 import '../../theme/tokens.dart';
 import '../../theme/typography.dart';
@@ -225,9 +227,8 @@ class _MovieDetailScreenState extends State<MovieDetailScreen> {
         PosterRow(
           key: ValueKey(hub.hubIdentifier ?? hub.title),
           title: hub.title,
-          items: hub.items,
-          server: widget.server,
-          onClick: widget.onSelectRelated,
+          items: hub.items.map((i) => Sourced(i, widget.server, ServerReachability.local)).toList(),
+          onClick: (item) => widget.onSelectRelated(item.value),
         ),
       );
     }
@@ -238,16 +239,19 @@ class _MovieDetailScreenState extends State<MovieDetailScreen> {
           title: 'More with ${row.person.tag}',
           items: row.items
               .map(
-                (i) => PlexOnDeckItem(
-                  ratingKey: i.ratingKey,
-                  type: i.type ?? 'movie',
-                  title: i.title,
-                  thumb: i.thumb,
+                (i) => Sourced(
+                  PlexOnDeckItem(
+                    ratingKey: i.ratingKey,
+                    type: i.type ?? 'movie',
+                    title: i.title,
+                    thumb: i.thumb,
+                  ),
+                  widget.server,
+                  ServerReachability.local,
                 ),
               )
               .toList(),
-          server: widget.server,
-          onClick: widget.onSelectRelated,
+          onClick: (item) => widget.onSelectRelated(item.value),
         ),
       );
     }

@@ -2,9 +2,11 @@ import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:reelay/data/plex/plex_models.dart';
+import 'package:reelay/data/plex/plex_resources_api.dart';
 import 'package:reelay/screens/home/home_posters.dart';
+import 'package:reelay/state/duplicate_fold.dart';
 
-const _server = PlexServer(name: 'Home', baseUrl: 'http://192.168.1.5:32400', accessToken: 'tok');
+const _server = PlexServer(name: 'Home', baseUrl: 'http://192.168.1.5:32400', accessToken: 'tok', machineIdentifier: 'home-id');
 
 void main() {
   group('recentlyAddedLabel', () {
@@ -139,8 +141,7 @@ void main() {
           textDirection: TextDirection.ltr,
           child: Center(
             child: ContinueWatchingPoster(
-              server: _server,
-              item: item,
+              item: Sourced(item, _server, ServerReachability.local),
               onResume: onResume ?? () {},
               onRemove: onRemove ?? () {},
               autofocus: true,

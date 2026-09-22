@@ -1,10 +1,13 @@
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:reelay/data/plex/plex_models.dart';
+import 'package:reelay/data/plex/plex_resources_api.dart';
 import 'package:reelay/kit/card.dart';
 import 'package:reelay/screens/library/search_screen.dart';
+import 'package:reelay/state/duplicate_fold.dart';
 
-const _server = PlexServer(name: 'Attic', baseUrl: 'http://192.168.1.5:32400', accessToken: 'tok');
+const _server = PlexServer(name: 'Attic', baseUrl: 'http://192.168.1.5:32400', accessToken: 'tok', machineIdentifier: 'm1');
+const _connectedServers = [ReachableServer(_server, ServerReachability.local)];
 const _debounceSettle = Duration(milliseconds: 400);
 
 Future<void> _pump(
@@ -21,9 +24,12 @@ Future<void> _pump(
     Directionality(
       textDirection: TextDirection.ltr,
       child: SearchScreen(
-        server: _server,
-        search: search,
-        onSelectResult: onSelectResult ?? (_) {},
+        servers: _connectedServers,
+        search: (q) async {
+          final results = await search(q);
+          return results.map((i) => Sourced(i, _server, ServerReachability.local)).toList();
+        },
+        onSelectResult: (item) => (onSelectResult ?? (_) {})(item.value),
         onBack: () {},
       ),
     ),

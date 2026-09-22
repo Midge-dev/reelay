@@ -10,6 +10,7 @@ import '../../kit/focusable_surface.dart';
 import '../../kit/icon.dart';
 import '../../kit/surface_style.dart';
 import '../../kit/text.dart';
+import '../../state/app_state.dart' show SectionGroup;
 import '../../theme/scale.dart';
 import '../../theme/tokens.dart';
 import '../../theme/typography.dart';
@@ -32,12 +33,12 @@ const _railAnimDuration = Duration(milliseconds: 200);
 /// nav rail) is about — every screen it wraps needs the Stack-overlay
 /// pattern already proven in the PoC for any transient UI.
 class AppNavigationDrawer extends StatefulWidget {
-  final List<PlexSection> sections;
-  final String? selectedSectionKey;
+  final List<SectionGroup> sectionGroups;
+  final String? selectedSectionGroupKey;
   final bool isSettingsSelected;
   final bool isHomeSelected;
   final bool isSearchSelected;
-  final ValueChanged<PlexSection> onSelectSection;
+  final ValueChanged<SectionGroup> onSelectSection;
   final VoidCallback onOpenSettings;
   final VoidCallback onOpenHome;
   final VoidCallback onOpenSearch;
@@ -59,8 +60,8 @@ class AppNavigationDrawer extends StatefulWidget {
 
   const AppNavigationDrawer({
     super.key,
-    required this.sections,
-    this.selectedSectionKey,
+    required this.sectionGroups,
+    this.selectedSectionGroupKey,
     required this.isSettingsSelected,
     required this.isHomeSelected,
     this.isSearchSelected = false,
@@ -104,7 +105,7 @@ class _AppNavigationDrawerState extends State<AppNavigationDrawer> {
   final _roomsItemFocusNode = FocusNode(debugLabel: 'nav-rail-rooms');
   final _settingsItemFocusNode = FocusNode(debugLabel: 'nav-rail-settings');
   late final Map<String, FocusNode> _sectionFocusNodes = {
-    for (final section in widget.sections)
+    for (final section in widget.sectionGroups)
       section.key: FocusNode(debugLabel: 'nav-rail-section-${section.key}'),
   };
 
@@ -117,7 +118,7 @@ class _AppNavigationDrawerState extends State<AppNavigationDrawer> {
   FocusNode get _currentSectionFocusNode {
     if (widget.isSettingsSelected) return _settingsItemFocusNode;
     if (widget.isSearchSelected) return _searchItemFocusNode;
-    final key = widget.selectedSectionKey;
+    final key = widget.selectedSectionGroupKey;
     if (!widget.isHomeSelected &&
         key != null &&
         _sectionFocusNodes.containsKey(key))
@@ -130,7 +131,7 @@ class _AppNavigationDrawerState extends State<AppNavigationDrawer> {
     _homeItemFocusNode,
     _searchItemFocusNode,
     _watchlistItemFocusNode,
-    for (final section in widget.sections) _sectionFocusNodes[section.key]!,
+    for (final section in widget.sectionGroups) _sectionFocusNodes[section.key]!,
     _roomsItemFocusNode,
     _settingsItemFocusNode,
   ];
@@ -362,7 +363,7 @@ class _AppNavigationDrawerState extends State<AppNavigationDrawer> {
                                   focusNode: _watchlistItemFocusNode,
                                 ),
                                 const SizedBox(height: 4),
-                                for (final section in widget.sections) ...[
+                                for (final section in widget.sectionGroups) ...[
                                   _SidebarItem(
                                     icon: section.type == _sectionTypeShow
                                         ? PhosphorIconsRegular.televisionSimple
@@ -376,7 +377,7 @@ class _AppNavigationDrawerState extends State<AppNavigationDrawer> {
                                         !widget.isSettingsSelected &&
                                         !widget.isHomeSelected &&
                                         section.key ==
-                                            widget.selectedSectionKey,
+                                            widget.selectedSectionGroupKey,
                                     expanded: effectiveExpanded,
                                     onClick: () => _handleSelect(
                                       () => widget.onSelectSection(section),
@@ -448,8 +449,8 @@ class _AppNavigationDrawerState extends State<AppNavigationDrawer> {
             account: widget.account,
             connectedServers: widget.connectedServers,
             disabledServerIds: widget.disabledServerIds,
-            sections: widget.sections,
-            selectedSectionKey: widget.selectedSectionKey,
+            sectionGroups: widget.sectionGroups,
+            selectedSectionGroupKey: widget.selectedSectionGroupKey,
             loadServers: widget.loadServers,
             probeServer: widget.probeServer,
             loadLibraryCount: widget.loadLibraryCount,

@@ -6,6 +6,7 @@ import '../../kit/card.dart';
 import '../../kit/edge_fade_row.dart';
 import '../../kit/surface_style.dart';
 import '../../kit/text.dart';
+import '../../state/duplicate_fold.dart';
 import '../../theme/scale.dart';
 import '../../theme/tokens.dart';
 import '../../theme/typography.dart';
@@ -158,18 +159,19 @@ class _CastMemberAvatar extends StatelessWidget {
 }
 
 /// Ports ui/library/MovieDetailSections.kt's `PosterRow` — reused for
-/// related-hub rows and co-star rows.
+/// related-hub rows, co-star rows, and (multi-server) search results, so
+/// items carry their own server rather than the row taking one for all of
+/// them — single-server callers just wrap each item in [Sourced] with a
+/// constant reachability, since it's display-only here.
 class PosterRow extends StatelessWidget {
   final String title;
-  final List<PlexOnDeckItem> items;
-  final PlexServer server;
-  final ValueChanged<PlexOnDeckItem> onClick;
+  final List<Sourced<PlexOnDeckItem>> items;
+  final ValueChanged<Sourced<PlexOnDeckItem>> onClick;
 
   const PosterRow({
     super.key,
     required this.title,
     required this.items,
-    required this.server,
     required this.onClick,
   });
 
@@ -204,8 +206,7 @@ class PosterRow extends StatelessWidget {
               itemBuilder: (context, index) {
                 final item = items[index];
                 return _RelatedPoster(
-                  key: ValueKey(item.ratingKey),
-                  server: server,
+                  key: ValueKey('${item.server.machineIdentifier}:${item.value.ratingKey}'),
                   item: item,
                   onClick: () => onClick(item),
                 );
@@ -228,13 +229,11 @@ final _relatedPosterBorder = SurfaceBorder(
 );
 
 class _RelatedPoster extends StatelessWidget {
-  final PlexServer server;
-  final PlexOnDeckItem item;
+  final Sourced<PlexOnDeckItem> item;
   final VoidCallback onClick;
 
   const _RelatedPoster({
     super.key,
-    required this.server,
     required this.item,
     required this.onClick,
   });
@@ -255,14 +254,14 @@ class _RelatedPoster extends StatelessWidget {
               onClick: onClick,
               border: _relatedPosterBorder,
               child: SizedBox.expand(
-                child: Artwork(imageUrl: PlexImageUrl.of(server, item.thumb)),
+                child: Artwork(imageUrl: PlexImageUrl.of(item.server, item.value.thumb)),
               ),
             ),
           ),
           Padding(
             padding: EdgeInsets.only(top: 10.du(context)),
             child: AppText(
-              item.title,
+              item.value.title,
               style: AppTypography.label,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,

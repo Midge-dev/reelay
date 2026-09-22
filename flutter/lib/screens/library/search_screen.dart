@@ -5,9 +5,11 @@ import 'package:flutter/widgets.dart';
 import '../../theme/phosphor_icons.dart';
 
 import '../../data/plex/plex_models.dart';
+import '../../data/plex/plex_resources_api.dart' show ReachableServer;
 import '../../focus/back_handler.dart';
 import '../../kit/icon.dart';
 import '../../kit/text.dart';
+import '../../state/duplicate_fold.dart';
 import '../../theme/scale.dart';
 import '../../theme/tokens.dart';
 import '../../theme/typography.dart';
@@ -23,14 +25,14 @@ const _searchDebounce = Duration(milliseconds: 350);
 /// results only ever reflow as a side effect of typing. Scoped to the
 /// current server (no multi-server fan-out yet — see NOTES.md).
 class SearchScreen extends StatefulWidget {
-  final PlexServer server;
-  final Future<List<PlexOnDeckItem>> Function(String query) search;
-  final ValueChanged<PlexOnDeckItem> onSelectResult;
+  final List<ReachableServer> servers;
+  final Future<List<Sourced<PlexOnDeckItem>>> Function(String query) search;
+  final ValueChanged<Sourced<PlexOnDeckItem>> onSelectResult;
   final VoidCallback onBack;
 
   const SearchScreen({
     super.key,
-    required this.server,
+    required this.servers,
     required this.search,
     required this.onSelectResult,
     required this.onBack,
@@ -43,7 +45,7 @@ class SearchScreen extends StatefulWidget {
 class _SearchScreenState extends State<SearchScreen> {
   final _firstKeyFocus = FocusNode(debugLabel: 'search-first-key');
   String _query = '';
-  List<PlexOnDeckItem> _results = const [];
+  List<Sourced<PlexOnDeckItem>> _results = const [];
   bool _searching = false;
   int _requestId = 0;
   Timer? _debounce;
@@ -79,7 +81,7 @@ class _SearchScreenState extends State<SearchScreen> {
   Future<void> _runSearch(String query) async {
     final requestId = ++_requestId;
     setState(() => _searching = true);
-    List<PlexOnDeckItem> results;
+    List<Sourced<PlexOnDeckItem>> results;
     try {
       results = await widget.search(query);
     } catch (_) {
@@ -101,8 +103,8 @@ class _SearchScreenState extends State<SearchScreen> {
   @override
   Widget build(BuildContext context) {
     final trimmed = _query.trim();
-    final shows = _results.where((r) => r.type == 'show').toList();
-    final movies = _results.where((r) => r.type == 'movie').toList();
+    final shows = _results.where((r) => r.value.type == 'show').toList();
+    final movies = _results.where((r) => r.value.type == 'movie').toList();
 
     return BackHandler(
       onBack: widget.onBack,
@@ -138,7 +140,7 @@ class _SearchScreenState extends State<SearchScreen> {
               SizedBox(width: AppSpacing.xxxl.du(context)),
               Expanded(
                 child: _ResultsPanel(
-                  server: widget.server,
+                  servers: widget.servers,
                   query: trimmed,
                   searching: _searching,
                   shows: shows,
@@ -194,21 +196,33 @@ class _QueryField extends StatelessWidget {
 }
 
 class _ResultsPanel extends StatelessWidget {
-  final PlexServer server;
+  final List<ReachableServer> servers;
   final String query;
   final bool searching;
-  final List<PlexOnDeckItem> shows;
-  final List<PlexOnDeckItem> movies;
-  final ValueChanged<PlexOnDeckItem> onSelect;
+  final List<Sourced<PlexOnDeckItem>> shows;
+  final List<Sourced<PlexOnDeckItem>> movies;
+  final ValueChanged<Sourced<PlexOnDeckItem>> onSelect;
 
   const _ResultsPanel({
-    required this.server,
+    required this.servers,
     required this.query,
     required this.searching,
     required this.shows,
     required this.movies,
     required this.onSelect,
   });
+
+  /// Screen 05's per-result server labelling is real design intent, not
+  /// yet built here — this line is the interim, whole-row summary version
+  /// (same simplification as library_screen.dart's _serverLabel), until
+  /// per-card server badges land alongside duplicate folding.
+  String get _serverLabel {
+    final names = {
+      for (final item in [...shows, ...movies]) item.server.name,
+    }.toList();
+    if (names.length == 1) return 'on ${names.single}';
+    return 'across ${names.length} servers';
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -247,7 +261,7 @@ class _ResultsPanel extends StatelessWidget {
                 // which ignores this screen's own right-edge padding.
                 Flexible(
                   child: AppText(
-                    'on ${server.name}',
+                    _serverLabel,
                     color: AppColors.ink3,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
@@ -261,14 +275,12 @@ class _ResultsPanel extends StatelessWidget {
             PosterRow(
               title: 'SERIES',
               items: shows,
-              server: server,
               onClick: onSelect,
             ),
           if (movies.isNotEmpty)
             PosterRow(
               title: 'MOVIES',
               items: movies,
-              server: server,
               onClick: onSelect,
             ),
         ],

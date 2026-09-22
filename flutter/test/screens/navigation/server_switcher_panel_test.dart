@@ -6,11 +6,12 @@ import 'package:reelay/data/plex/plex_resources_api.dart';
 import 'package:reelay/kit/card.dart';
 import 'package:reelay/kit/filter_chip.dart';
 import 'package:reelay/screens/navigation/server_switcher_panel.dart';
+import 'package:reelay/state/app_state.dart';
 
 const _atticServer = PlexServer(name: 'Attic', baseUrl: 'http://192.168.1.5:32400', accessToken: 'tok', machineIdentifier: 'm1');
-const _sections = [
-  PlexSection(key: 's1', title: 'Movies', type: 'movie'),
-  PlexSection(key: 's2', title: 'TV Shows', type: 'show'),
+const _sectionGroups = [
+  SectionGroup(type: 'movie', title: 'Movies', sectionsByServerId: {'m1': PlexSection(key: 's1', title: 'Movies', type: 'movie')}),
+  SectionGroup(type: 'show', title: 'TV Shows', sectionsByServerId: {'m1': PlexSection(key: 's2', title: 'TV Shows', type: 'show')}),
 ];
 
 const _resources = [
@@ -24,7 +25,7 @@ Future<void> _pump(
   Set<String>? disabledServerIds,
   List<PlexResource>? resources,
   Future<ReachableServer?> Function(PlexResource)? probeServer,
-  ValueChanged<PlexSection>? onSelectSection,
+  ValueChanged<SectionGroup>? onSelectSection,
   void Function(PlexResource, bool)? onToggleServer,
   VoidCallback? onClose,
 }) async {
@@ -42,8 +43,8 @@ Future<void> _pump(
             account: const PlexAccount(username: 'GrimLad'),
             connectedServers: connectedServers ?? const [ReachableServer(_atticServer, ServerReachability.local)],
             disabledServerIds: disabledServerIds ?? const {},
-            sections: _sections,
-            selectedSectionKey: 's1',
+            sectionGroups: _sectionGroups,
+            selectedSectionGroupKey: 'movie::movies',
             loadServers: () async => resources ?? _resources,
             probeServer: probeServer ?? (_) async => null,
             loadLibraryCount: (_) async => 2,
@@ -150,14 +151,14 @@ void main() {
   });
 
   testWidgets('tapping a library chip invokes onSelectSection and onClose', (tester) async {
-    PlexSection? selected;
+    SectionGroup? selected;
     var closed = false;
     await _pump(tester, onSelectSection: (s) => selected = s, onClose: () => closed = true);
 
     await tester.tap(find.byType(AppFilterChip).last);
     await tester.pump();
 
-    expect(selected?.key, 's2');
+    expect(selected?.key, 'show::tv shows');
     expect(closed, isTrue);
   });
 }

@@ -6,6 +6,7 @@ import '../../focus/back_handler.dart';
 import '../../focus/dpad_long_press.dart';
 import '../../kit/scroll_peek.dart';
 import '../../kit/text.dart';
+import '../../state/duplicate_fold.dart';
 import '../../theme/scale.dart';
 import '../../theme/tokens.dart';
 import '../../theme/typography.dart';
@@ -219,8 +220,7 @@ class _WatchlistPosterState extends State<WatchlistPoster> {
 /// the same long-press-to-remove pattern as WatchlistPoster, plus a
 /// progress bar and a focus-scale animation (matches Card.kt's spring).
 class ContinueWatchingPoster extends StatefulWidget {
-  final PlexServer server;
-  final PlexOnDeckItem item;
+  final Sourced<PlexOnDeckItem> item;
   final VoidCallback onResume;
   final VoidCallback onRemove;
   final FocusNode? focusNode;
@@ -229,7 +229,6 @@ class ContinueWatchingPoster extends StatefulWidget {
 
   const ContinueWatchingPoster({
     super.key,
-    required this.server,
     required this.item,
     required this.onResume,
     required this.onRemove,
@@ -292,10 +291,10 @@ class _ContinueWatchingPosterState extends State<ContinueWatchingPoster> {
 
   @override
   Widget build(BuildContext context) {
-    final progress = progressFraction(widget.item);
+    final value = widget.item.value;
+    final progress = progressFraction(value);
 
-    final remainingMs =
-        (widget.item.duration ?? 0) - (widget.item.viewOffset ?? 0);
+    final remainingMs = (value.duration ?? 0) - (value.viewOffset ?? 0);
 
     return BackHandler(
       enabled: _confirmingRemove,
@@ -345,8 +344,8 @@ class _ContinueWatchingPosterState extends State<ContinueWatchingPoster> {
                           children: [
                             Artwork(
                               imageUrl: PlexImageUrl.of(
-                                widget.server,
-                                widget.item.thumb,
+                                widget.item.server,
+                                value.thumb,
                               ),
                               staggerDelayMs: widget.staggerDelayMs,
                             ),
@@ -397,7 +396,7 @@ class _ContinueWatchingPosterState extends State<ContinueWatchingPoster> {
             Padding(
               padding: EdgeInsets.only(top: 12.du(context)),
               child: AppText(
-                continueWatchingTitle(widget.item),
+                continueWatchingTitle(value),
                 style: _focused
                     ? AppTypography.label.copyWith(fontWeight: FontWeight.w500)
                     : AppTypography.label,
@@ -408,7 +407,7 @@ class _ContinueWatchingPosterState extends State<ContinueWatchingPoster> {
             ),
             Builder(
               builder: (context) {
-                final subtitle = continueWatchingSubtitle(widget.item);
+                final subtitle = continueWatchingSubtitle(value);
                 if (subtitle.isEmpty) return const SizedBox.shrink();
                 return Padding(
                   padding: EdgeInsets.only(top: 3.du(context)),

@@ -19,6 +19,7 @@ import '../sync/relay_client.dart';
 import '../sync/relay_directory_api.dart';
 import '../sync/relay_protocol.dart';
 import 'app_state.dart';
+import 'duplicate_fold.dart';
 
 const _sectionTypeShow = 'show';
 const _roomPollIntervalMs = 5000;
@@ -92,13 +93,11 @@ class AppRootController extends ChangeNotifier {
   List<PlexWatchlistItem>? _watchlistItems;
   List<PlexWatchlistItem> get watchlist => _watchlistItems ?? const [];
 
-  // Multi-server hub (Phase 1 of the refactor): every reachable, non-
-  // disabled server the account can see, probed concurrently at connect
-  // time — see PlexResourcesApi.connectToAllServers. AppState still only
-  // renders content from one of these for now (_primaryServer below);
-  // fanning content itself out across all of them lands in a later phase.
-  // The switcher panel (screen 06) already reads the full list, though —
-  // that's real multi-server, just not for library/home content yet.
+  // Multi-server hub: every reachable, non-disabled server the account can
+  // see, probed concurrently at connect time — see
+  // PlexResourcesApi.connectToAllServers. Home/Library content is now
+  // fanned out across all of these and merged (see _loadHome/_fetchGroupItems
+  // below); duplicate folding across them lands in the next phase.
   List<ReachableServer> _connectedServers = const [];
   List<ReachableServer> get connectedServers => _connectedServers;
   List<PlexResource> _unreachableResources = const [];
@@ -248,8 +247,7 @@ class AppRootController extends ChangeNotifier {
       );
       _connectedServers = probed.connected;
       _unreachableResources = probed.unreachable;
-      final server = probed.connected.firstOrNull?.server;
-      if (server == null) {
+      if (probed.connected.isEmpty) {
         // Screen 24 — this is the one failure that earns the whole screen,
         // so it gets a real state (with the account's resource list, for a
         // named-per-server display) rather than falling into the generic
@@ -267,16 +265,21 @@ class AppRootController extends ChangeNotifier {
         unawaited(_refreshWatchlist());
         return;
       }
-      final serverApi = PlexServerApi(server, _clientIdentifier);
-      final sections = await serverApi.fetchSections();
-      final firstSection = sections.firstOrNull;
-      if (firstSection == null) {
-        throw _FriendlyError('No movie or show library found on ${server.name}');
+      final sectionsByServerId = await _fetchAllSections(probed.connected);
+      final sectionGroups = groupSections(sectionsByServerId);
+      final firstGroup = sectionGroups.firstOrNull;
+      if (firstGroup == null) {
+        throw _FriendlyError('No movie or show library found on any connected server');
       }
-      final items = await serverApi.fetchLibraryItems(firstSection.key);
-      final ctx = LibraryContext(server: server, sections: sections, selectedSection: firstSection, items: items);
+      final items = await _fetchGroupItems(probed.connected, firstGroup);
+      final ctx = LibraryContext(
+        servers: probed.connected,
+        sectionGroups: sectionGroups,
+        selectedSectionGroup: firstGroup,
+        items: items,
+      );
       final relayConfigured = settings.relays.isNotEmpty;
-      _setState(relayConfigured ? await _loadHome(server, sections) : RelaySetup(ctx: ctx));
+      _setState(relayConfigured ? await _loadHome(probed.connected, sectionGroups) : RelaySetup(ctx: ctx));
     } catch (e) {
       _setState(AppError(message: '$e', retryState: const LoggedOut()));
     }
@@ -301,6 +304,58 @@ class AppRootController extends ChangeNotifier {
     await _settingsStore.save(settings.copyWith(disabledServerIds: disabled));
     final token = _accountToken;
     if (token != null) await connect(token);
+  }
+
+  // ---- Multi-server fan-out helpers ----
+
+  /// Fetches every connected server's sections concurrently, tolerant of
+  /// per-server failure (a server that stops answering mid-fetch simply
+  /// contributes no sections, same as any other per-call `.catchError` in
+  /// this file — it doesn't fail the other servers' results).
+  Future<Map<String, List<PlexSection>>> _fetchAllSections(List<ReachableServer> servers) async {
+    final results = await Future.wait(servers.map((cs) async {
+      List<PlexSection> sections;
+      try {
+        sections = await PlexServerApi(cs.server, _clientIdentifier).fetchSections();
+      } catch (_) {
+        sections = const [];
+      }
+      return MapEntry(cs.server.machineIdentifier, sections);
+    }));
+    return Map.fromEntries(results);
+  }
+
+  /// Fetches a [SectionGroup]'s items from every server that has a matching
+  /// physical section, fanned out concurrently and merged — not yet folded
+  /// into one card per work, just tagged with which server each copy came
+  /// from (see [Sourced]).
+  Future<List<Sourced<PlexLibraryItem>>> _fetchGroupItems(List<ReachableServer> servers, SectionGroup group) async {
+    final results = await Future.wait(servers.map((cs) async {
+      final section = group.sectionOn(cs.server.machineIdentifier);
+      if (section == null) return const <Sourced<PlexLibraryItem>>[];
+      try {
+        final items = await PlexServerApi(cs.server, _clientIdentifier).fetchLibraryItems(section.key);
+        return items.map((i) => Sourced(i, cs.server, cs.reachability)).toList();
+      } catch (_) {
+        return const <Sourced<PlexLibraryItem>>[];
+      }
+    }));
+    return results.expand((l) => l).toList();
+  }
+
+  /// Looks a ratingKey up on every connected server until one answers —
+  /// used where a piece of content is known only by its ratingKey with no
+  /// server hint at all (a Watch Together room only carries a ratingKey,
+  /// not which server hosted it).
+  Future<(PlexServer, PlexMovieDetail)?> _fetchMovieDetailFromAnyServer(List<ReachableServer> servers, String ratingKey) async {
+    final results = await Future.wait(servers.map((cs) async {
+      try {
+        return (cs.server, await PlexServerApi(cs.server, _clientIdentifier).fetchMovieDetail(ratingKey));
+      } catch (_) {
+        return null;
+      }
+    }));
+    return results.whereType<(PlexServer, PlexMovieDetail)>().firstOrNull;
   }
 
   // ---- Watchlist ----
@@ -460,9 +515,13 @@ class AppRootController extends ChangeNotifier {
   /// Opens screen 09 rather than starting the room immediately — the
   /// actual room creation is still [startWatchTogether] below, called once
   /// the dialog confirms. No network calls here; just a state change, so
-  /// the dialog appears instantly.
+  /// the dialog appears instantly. [server] is whichever server the shared
+  /// content actually lives on (resolved by the caller from the specific
+  /// copy on screen, e.g. a MovieDetail's Sourced movie) — a room is always
+  /// hosted off one concrete file.
   void openWatchTogetherStart({
     required LibraryContext ctx,
+    required PlexServer server,
     required AppState returnState,
     required String roomTitle,
     String? thumb,
@@ -471,6 +530,7 @@ class AppRootController extends ChangeNotifier {
   }) {
     _setState(WatchTogetherStart(
       ctx: ctx,
+      server: server,
       returnState: returnState,
       roomTitle: roomTitle,
       thumb: thumb,
@@ -481,6 +541,7 @@ class AppRootController extends ChangeNotifier {
 
   Future<void> startWatchTogether({
     required LibraryContext ctx,
+    required PlexServer server,
     required AppState returnState,
     required String roomTitle,
     required String? thumb,
@@ -514,9 +575,9 @@ class AppRootController extends ChangeNotifier {
     }
 
     try {
-      final detail = await PlexServerApi(ctx.server, _clientIdentifier).fetchMovieDetail(targetRatingKey);
+      final detail = await PlexServerApi(server, _clientIdentifier).fetchMovieDetail(targetRatingKey);
       _setState(Lobby(
-        server: ctx.server,
+        server: server,
         detail: restart ? detail.copyWith(viewOffset: 0) : detail,
         returnState: returnState,
         relay: relay,
@@ -562,65 +623,79 @@ class AppRootController extends ChangeNotifier {
 
   // ---- Library / Home navigation ----
 
-  Future<Home> _loadHome(PlexServer server, List<PlexSection> sections) async {
-    final api = PlexServerApi(server, _clientIdentifier);
-    final onDeck = await api.fetchOnDeck().catchError((_) => <PlexOnDeckItem>[]);
-    final recentlyAdded = await api.fetchRecentlyAdded().catchError((_) => <PlexLibraryItem>[]);
-    final recentActivity = await api.fetchRecentActivity().catchError((_) => <PlexOnDeckItem>[]);
-    final suggestions = await api.fetchSuggestions().catchError((_) => <PlexOnDeckItem>[]);
+  /// Fans every connected server's Home hubs out concurrently and merges
+  /// the results (not yet folded into one card per work — see
+  /// duplicate_fold.dart's own doc comment on why that's a separate,
+  /// later step) into one [Home]. Each server's own four fetches keep
+  /// their existing per-call `.catchError`, so one dead server never
+  /// blocks or breaks another's contribution — mirrors the fan-out shape
+  /// _pollRooms already uses for the (unrelated) relay directory.
+  Future<Home> _loadHome(List<ReachableServer> servers, List<SectionGroup> sectionGroups) async {
+    final perServer = await Future.wait(servers.map((cs) async {
+      final api = PlexServerApi(cs.server, _clientIdentifier);
+      final onDeck = await api.fetchOnDeck().catchError((_) => <PlexOnDeckItem>[]);
+      final recentlyAdded = await api.fetchRecentlyAdded().catchError((_) => <PlexLibraryItem>[]);
+      final recentActivity = await api.fetchRecentActivity().catchError((_) => <PlexOnDeckItem>[]);
+      final suggestions = await api.fetchSuggestions().catchError((_) => <PlexOnDeckItem>[]);
+      return (cs, onDeck, recentlyAdded, recentActivity, suggestions);
+    }));
+
+    final onDeck = <Sourced<PlexOnDeckItem>>[];
+    final recentlyAdded = <Sourced<PlexLibraryItem>>[];
+    final recentActivity = <Sourced<PlexOnDeckItem>>[];
+    final suggestions = <Sourced<PlexOnDeckItem>>[];
+    for (final (cs, od, ra, rac, sug) in perServer) {
+      onDeck.addAll(od.map((i) => Sourced(i, cs.server, cs.reachability)));
+      recentlyAdded.addAll(ra.map((i) => Sourced(i, cs.server, cs.reachability)));
+      recentActivity.addAll(rac.map((i) => Sourced(i, cs.server, cs.reachability)));
+      suggestions.addAll(sug.map((i) => Sourced(i, cs.server, cs.reachability)));
+    }
+
     return Home(
-      server: server,
-      sections: sections,
+      servers: servers,
+      sectionGroups: sectionGroups,
       onDeck: onDeck,
       recentlyAdded: recentlyAdded.take(15).toList(),
       recentActivity: recentActivity,
       suggestions: suggestions,
+      unreachableResources: _unreachableResources,
     );
   }
 
-  Future<void> goHome(PlexServer server, List<PlexSection> sections) async {
-    _setState(LoadingHome(server: server, sections: sections));
-    _setState(await _loadHome(server, sections));
+  Future<void> goHome(List<ReachableServer> servers, List<SectionGroup> sectionGroups) async {
+    _setState(LoadingHome(servers: servers, sectionGroups: sectionGroups));
+    _setState(await _loadHome(servers, sectionGroups));
   }
 
-  void selectSection(LibraryContext ctx, PlexSection section) {
-    if (section.key == ctx.selectedSection.key) {
+  void selectSection(LibraryContext ctx, SectionGroup group) {
+    if (group.key == ctx.selectedSectionGroup.key) {
       _setState(Library(ctx: ctx));
       return;
     }
-    openSection(ctx.server, ctx.sections, section);
+    openSection(ctx.servers, ctx.sectionGroups, group);
   }
 
-  void openSection(PlexServer server, List<PlexSection> sections, PlexSection section) {
+  void openSection(List<ReachableServer> servers, List<SectionGroup> sectionGroups, SectionGroup group) {
     final previous = _state;
-    final loading = LoadingSection(server: server, sections: sections, selectedSectionKey: section.key, returnState: previous);
+    final loading = LoadingSection(servers: servers, sectionGroups: sectionGroups, selectedSectionGroupKey: group.key, returnState: previous);
     _setState(loading);
     () async {
-      List<PlexLibraryItem> items;
-      try {
-        items = await PlexServerApi(server, _clientIdentifier).fetchLibraryItems(section.key);
-      } catch (_) {
-        items = const [];
-      }
+      final items = await _fetchGroupItems(servers, group);
       // A slow fetch (e.g. a very large library) can outlast the user's
       // patience — BackHandler on LoadingSection lets them bail out via
       // returnState before this resolves. Don't clobber wherever they've
       // navigated to since with a stale result.
       if (identical(_state, loading)) {
-        _setState(Library(ctx: LibraryContext(server: server, sections: sections, selectedSection: section, items: items)));
+        _setState(Library(ctx: LibraryContext(servers: servers, sectionGroups: sectionGroups, selectedSectionGroup: group, items: items)));
       }
     }();
   }
 
   Future<AppState> _refreshReturnState(AppState target) async {
-    if (target is Home) return _loadHome(target.server, target.sections);
+    if (target is Home) return _loadHome(target.servers, target.sectionGroups);
     if (target is Library) {
-      try {
-        final items = await PlexServerApi(target.ctx.server, _clientIdentifier).fetchLibraryItems(target.ctx.selectedSection.key);
-        return Library(ctx: target.ctx.copyWith(items: items));
-      } catch (_) {
-        return target;
-      }
+      final items = await _fetchGroupItems(target.ctx.servers, target.ctx.selectedSectionGroup);
+      return Library(ctx: target.ctx.copyWith(items: items));
     }
     return target;
   }
@@ -633,18 +708,29 @@ class AppRootController extends ChangeNotifier {
     }();
   }
 
-  void removeFromContinueWatching(Home home, PlexOnDeckItem item) {
-    _setState(home.copyWith(onDeck: home.onDeck.where((i) => i.ratingKey != item.ratingKey).toList()));
-    unawaited(PlexServerApi(home.server, _clientIdentifier).removeFromContinueWatching(item.ratingKey).catchError((_) {}));
+  void removeFromContinueWatching(Home home, Sourced<PlexOnDeckItem> item) {
+    _setState(home.copyWith(onDeck: home.onDeck.where((i) => i.value.ratingKey != item.value.ratingKey).toList()));
+    unawaited(PlexServerApi(item.server, _clientIdentifier).removeFromContinueWatching(item.value.ratingKey).catchError((_) {}));
   }
 
   // ---- Player entry points ----
 
-  Future<void> playMovie(LibraryContext ctx, String targetRatingKey, AppState returnState, {bool fromStart = false, String? showRatingKey}) async {
+  /// [server] is whichever server the specific copy being played actually
+  /// lives on (the caller already knows this — a MovieDetail/EpisodeDetail
+  /// screen holds a [Sourced] item, and [ctx] alone can no longer say
+  /// "the" server now that it holds every connected one).
+  Future<void> playMovie(
+    LibraryContext ctx,
+    PlexServer server,
+    String targetRatingKey,
+    AppState returnState, {
+    bool fromStart = false,
+    String? showRatingKey,
+  }) async {
     try {
-      final detail = await PlexServerApi(ctx.server, _clientIdentifier).fetchMovieDetail(targetRatingKey);
+      final detail = await PlexServerApi(server, _clientIdentifier).fetchMovieDetail(targetRatingKey);
       _setState(Player(
-        server: ctx.server,
+        server: server,
         detail: fromStart ? detail.copyWith(viewOffset: 0) : detail,
         returnState: returnState,
         relay: null,
@@ -658,9 +744,10 @@ class AppRootController extends ChangeNotifier {
       // specific underlying network error.
       _setState(PlaybackFailed(
         ctx: ctx,
+        server: server,
         targetRatingKey: targetRatingKey,
         fromStart: fromStart,
-        reason: '${ctx.server.name} stopped answering partway through starting.',
+        reason: '${server.name} stopped answering partway through starting.',
         returnState: returnState,
       ));
     }
@@ -668,19 +755,22 @@ class AppRootController extends ChangeNotifier {
 
   // ---- Home row navigation (ports MainActivity.kt's inline HomeScreen callbacks) ----
 
+  /// A Watch Together room only carries a ratingKey, never which server
+  /// hosted it, so this is the one place content still has to be looked
+  /// up across every connected server rather than already knowing its
+  /// source — see _fetchMovieDetailFromAnyServer.
   Future<void> joinRoom(Home current, MergedRoom merged) async {
     final ratingKey = merged.room.ratingKey;
     if (ratingKey == null) {
       _setState(AppError(message: 'Room has no movie reference', retryState: current));
       return;
     }
-    PlexMovieDetail detail;
-    try {
-      detail = await PlexServerApi(current.server, _clientIdentifier).fetchMovieDetail(ratingKey);
-    } catch (e) {
-      _setState(AppError(message: '$e', retryState: current));
+    final found = await _fetchMovieDetailFromAnyServer(current.servers, ratingKey);
+    if (found == null) {
+      _setState(AppError(message: 'Could not find that title on any connected server', retryState: current));
       return;
     }
+    final (server, detail) = found;
     final relay = await _ensureRelayClient(merged.relay.url, JoinRoom(merged.room.roomId));
     if (relay == null) {
       _setState(AppError(message: 'No relay configured', retryState: current));
@@ -693,7 +783,7 @@ class AppRootController extends ChangeNotifier {
       _setState(AppError(message: 'That room just ended.', retryState: current));
     } else {
       _setState(Lobby(
-        server: current.server,
+        server: server,
         detail: detail,
         returnState: current,
         relay: relay,
@@ -703,90 +793,103 @@ class AppRootController extends ChangeNotifier {
     }
   }
 
-  void resumeOnDeckItem(Home current, PlexOnDeckItem item) {
-    if (item.type == 'episode') {
-      final show = libraryItemFrom(item, type: _sectionTypeShow, title: item.grandparentTitle ?? item.title);
-      final ctx = LibraryContext(
-        server: current.server,
-        sections: current.sections,
-        selectedSection: sectionFor(current.sections, _sectionTypeShow),
-        items: const [],
+  void resumeOnDeckItem(Home current, Sourced<PlexOnDeckItem> item) {
+    final ctx = LibraryContext(
+      servers: current.servers,
+      sectionGroups: current.sectionGroups,
+      selectedSectionGroup: sectionGroupFor(current.sectionGroups, item.value.type == 'episode' ? _sectionTypeShow : item.value.type),
+      items: const [],
+    );
+    if (item.value.type == 'episode') {
+      final show = Sourced(
+        libraryItemFrom(item.value, type: _sectionTypeShow, title: item.value.grandparentTitle ?? item.value.title),
+        item.server,
+        item.reachability,
       );
-      _setState(EpisodeDetail(ctx: ctx, show: show, episode: episodeFrom(item), returnState: current));
+      _setState(EpisodeDetail(ctx: ctx, show: show, episode: episodeFrom(item.value), returnState: current));
     } else {
-      final movie = libraryItemFrom(item);
-      final ctx = LibraryContext(
-        server: current.server,
-        sections: current.sections,
-        selectedSection: sectionFor(current.sections, item.type),
-        items: const [],
-      );
+      final movie = Sourced(libraryItemFrom(item.value), item.server, item.reachability);
       _setState(MovieDetail(ctx: ctx, movie: movie, returnState: current));
     }
   }
 
   Future<void> selectWatchlistItem(Home current, PlexWatchlistItem entry) =>
-      openWatchlistItem(server: current.server, sections: current.sections, entry: entry, returnState: current);
+      openWatchlistItem(servers: current.servers, sectionGroups: current.sectionGroups, entry: entry, returnState: current);
 
   /// Resolves a watchlist entry (an account-wide Plex Discover guid, not
-  /// tied to any server) against the currently-connected server's own
-  /// library by guid — the same cross-reference Home's watchlist row
-  /// already did, generalized so the dedicated Watchlist screen (20) can
-  /// use it too. No cross-server duplicate folding (that's the README's
-  /// "largest single piece of work", not built) — a title not on *this*
-  /// server shows the same "isn't in your Plex library yet" outcome
-  /// regardless of whether some other configured server might have it.
+  /// tied to any one server) against every connected server's library by
+  /// guid, fanned out concurrently, then picks the best-reachability copy
+  /// via the same fold priority used everywhere duplicates are resolved
+  /// (see duplicate_fold.dart) — the multi-server generalization of what
+  /// this method used to do against just the one active server.
   Future<void> openWatchlistItem({
-    required PlexServer server,
-    required List<PlexSection> sections,
+    required List<ReachableServer> servers,
+    required List<SectionGroup> sectionGroups,
     required PlexWatchlistItem entry,
     required AppState returnState,
   }) async {
     final guid = entry.guid;
-    List<PlexLibraryItem> matches = const [];
+    final matches = <Sourced<PlexLibraryItem>>[];
     if (guid != null) {
-      try {
-        matches = await PlexServerApi(server, _clientIdentifier).fetchLibraryItemsByGuid(guid);
-      } catch (_) {}
+      final results = await Future.wait(servers.map((cs) async {
+        try {
+          final items = await PlexServerApi(cs.server, _clientIdentifier).fetchLibraryItemsByGuid(guid);
+          return items.map((i) => Sourced(i, cs.server, cs.reachability)).toList();
+        } catch (_) {
+          return const <Sourced<PlexLibraryItem>>[];
+        }
+      }));
+      matches.addAll(results.expand((l) => l));
     }
-    final match = matches.firstOrNull;
-    if (match == null) {
+    if (matches.isEmpty) {
       _setState(AppError(message: '"${entry.title}" isn\'t in your Plex library yet.', retryState: returnState));
       return;
     }
+    final match = foldByGuid(matches, guidOf: (item) => item.guid).first.primary;
     final ctx = LibraryContext(
-      server: server,
-      sections: sections,
-      selectedSection: sectionFor(sections, match.type ?? ''),
+      servers: servers,
+      sectionGroups: sectionGroups,
+      selectedSectionGroup: sectionGroupFor(sectionGroups, match.value.type ?? ''),
       items: const [],
     );
     _setState(MovieDetail(ctx: ctx, movie: match, returnState: returnState));
   }
 
-  void selectRecentlyAdded(Home current, PlexLibraryItem item) {
-    final parentRatingKey = item.parentRatingKey;
-    final target = item.type == 'season' && parentRatingKey != null
+  void selectRecentlyAdded(Home current, Sourced<PlexLibraryItem> item) {
+    final parentRatingKey = item.value.parentRatingKey;
+    final targetValue = item.value.type == 'season' && parentRatingKey != null
         ? libraryItemFrom(
-            PlexOnDeckItem(ratingKey: parentRatingKey, type: _sectionTypeShow, title: item.parentTitle ?? item.title, thumb: item.thumb, art: item.art),
+            PlexOnDeckItem(
+              ratingKey: parentRatingKey,
+              type: _sectionTypeShow,
+              title: item.value.parentTitle ?? item.value.title,
+              thumb: item.value.thumb,
+              art: item.value.art,
+            ),
           )
-        : item;
+        : item.value;
+    final target = Sourced(targetValue, item.server, item.reachability);
     final ctx = LibraryContext(
-      server: current.server,
-      sections: current.sections,
-      selectedSection: sectionFor(current.sections, target.type ?? ''),
+      servers: current.servers,
+      sectionGroups: current.sectionGroups,
+      selectedSectionGroup: sectionGroupFor(current.sectionGroups, target.value.type ?? ''),
       items: const [],
     );
     _setState(MovieDetail(ctx: ctx, movie: target, returnState: current));
   }
 
-  void selectOnDeckLike(Home current, PlexOnDeckItem item) {
+  void selectOnDeckLike(Home current, Sourced<PlexOnDeckItem> item) {
     final ctx = LibraryContext(
-      server: current.server,
-      sections: current.sections,
-      selectedSection: sectionFor(current.sections, item.type),
+      servers: current.servers,
+      sectionGroups: current.sectionGroups,
+      selectedSectionGroup: sectionGroupFor(current.sectionGroups, item.value.type),
       items: const [],
     );
-    _setState(MovieDetail(ctx: ctx, movie: libraryItemFrom(item), returnState: current));
+    _setState(MovieDetail(
+      ctx: ctx,
+      movie: Sourced(libraryItemFrom(item.value), item.server, item.reachability),
+      returnState: current,
+    ));
   }
 }
 
@@ -814,11 +917,11 @@ PlexEpisode episodeFrom(PlexOnDeckItem item) => PlexEpisode(
       grandparentTitle: item.grandparentTitle,
     );
 
-/// Picks the section matching an item's type, falling back to the first
-/// section — mirrors the `sections.firstOrNull { it.type == X } ?:
+/// Picks the section group matching an item's type, falling back to the
+/// first group — mirrors the `sections.firstOrNull { it.type == X } ?:
 /// sections.first()` pattern repeated throughout MainActivity.kt.
-PlexSection sectionFor(List<PlexSection> sections, String type) =>
-    sections.firstWhereOrNull((s) => s.type == type) ?? sections.first;
+SectionGroup sectionGroupFor(List<SectionGroup> groups, String type) =>
+    groups.firstWhereOrNull((g) => g.type == type) ?? groups.first;
 
 /// Mirrors settings_store.dart's `_randomRelayId` — same shape, separate
 /// copy since that one's private to its own file.

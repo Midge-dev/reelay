@@ -1,14 +1,18 @@
+import 'package:collection/collection.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 
 import '../../data/plex/plex_image_url.dart';
 import '../../data/plex/plex_models.dart';
+import '../../data/plex/plex_resources_api.dart' show ReachableServer;
 import '../../kit/button.dart';
 import '../../kit/edge_fade_row.dart';
 import '../../kit/focusable_surface.dart';
 import '../../kit/icon.dart';
 import '../../kit/surface_style.dart';
 import '../../kit/text.dart';
+import '../../state/app_state.dart' show SectionGroup;
+import '../../state/duplicate_fold.dart';
 import '../../theme/phosphor_icons.dart';
 import '../../theme/scale.dart';
 import '../../theme/tokens.dart';
@@ -42,17 +46,17 @@ enum _FilterKind { genre, decade, added, sort }
 /// resets whenever `selectedSection.key` changes, mirroring Kotlin's
 /// `remember(selectedSection.key)` pattern via didUpdateWidget.
 class LibraryScreen extends StatefulWidget {
-  final PlexServer server;
-  final PlexSection selectedSection;
-  final List<PlexLibraryItem> items;
-  final ValueChanged<PlexLibraryItem> onSelectItem;
-  final Future<List<PlexCollection>> Function() loadCollections;
-  final ValueChanged<PlexCollection> onSelectCollection;
+  final List<ReachableServer> servers;
+  final SectionGroup selectedSectionGroup;
+  final List<Sourced<PlexLibraryItem>> items;
+  final ValueChanged<Sourced<PlexLibraryItem>> onSelectItem;
+  final Future<List<Sourced<PlexCollection>>> Function() loadCollections;
+  final ValueChanged<Sourced<PlexCollection>> onSelectCollection;
 
   const LibraryScreen({
     super.key,
-    required this.server,
-    required this.selectedSection,
+    required this.servers,
+    required this.selectedSectionGroup,
     required this.items,
     required this.onSelectItem,
     required this.loadCollections,
@@ -70,7 +74,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
   DateAddedBucket? _dateAddedFilter;
   SortMode _sortMode = SortMode.title;
   _FilterKind? _openFilter;
-  List<PlexCollection>? _collections;
+  List<Sourced<PlexCollection>>? _collections;
   String _searchQuery = '';
 
   final _gridScrollController = ScrollController();
@@ -96,7 +100,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
   @override
   void didUpdateWidget(covariant LibraryScreen oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.selectedSection.key != widget.selectedSection.key) {
+    if (oldWidget.selectedSectionGroup.key != widget.selectedSectionGroup.key) {
       setState(() {
         _viewMode = _ViewMode.titles;
         _genreFilter = null;
@@ -143,7 +147,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
   }
 
   Future<void> _loadCollections() async {
-    List<PlexCollection> result;
+    List<Sourced<PlexCollection>> result;
     try {
       result = await widget.loadCollections();
     } catch (_) {
@@ -211,22 +215,46 @@ class _LibraryScreenState extends State<LibraryScreen> {
     return KeyEventResult.ignored;
   }
 
-  @override
-  Widget build(BuildContext context) {
-    final availableGenres =
-        widget.items.expand((i) => i.genres.map((g) => g.tag)).toSet().toList()
-          ..sort();
-    final availableDecades =
-        widget.items.map(decadeOf).whereType<int>().toSet().toList()
-          ..sort((a, b) => b.compareTo(a));
-    final titleResults = applyLibraryFilters(
-      items: widget.items,
+  /// [applyLibraryFilters] (library_filters.dart) works on bare
+  /// PlexLibraryItems and stays that way — per the design handoff's own
+  /// note, it's "unchanged, this is purely how the filters are surfaced."
+  /// This unwraps for filtering, then maps the (identity-preserved) results
+  /// back to their [Sourced] wrapper for rendering.
+  List<Sourced<PlexLibraryItem>> _filteredItems() {
+    final byIdentity = {for (final s in widget.items) s.value: s};
+    final bareResults = applyLibraryFilters(
+      items: widget.items.map((s) => s.value).toList(),
       query: _searchQuery,
       sortMode: _sortMode,
       genre: _genreFilter,
       decade: _decadeFilter,
       dateAddedBucket: _dateAddedFilter,
     );
+    return bareResults.map((i) => byIdentity[i]!).toList();
+  }
+
+  List<PlexLibraryItem> get _bareItems => widget.items.map((s) => s.value).toList();
+
+  String get _serverLabel {
+    final ids = widget.selectedSectionGroup.sectionsByServerId.keys;
+    final names = ids
+        .map((id) => widget.servers.firstWhereOrNull((s) => s.server.machineIdentifier == id)?.server.name)
+        .whereType<String>()
+        .toList();
+    if (names.length == 1) return 'Plex · ${names.single}';
+    return 'Plex · ${names.length} servers';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final bareItems = widget.items.map((s) => s.value).toList();
+    final availableGenres =
+        bareItems.expand((i) => i.genres.map((g) => g.tag)).toSet().toList()
+          ..sort();
+    final availableDecades =
+        bareItems.map(decadeOf).whereType<int>().toSet().toList()
+          ..sort((a, b) => b.compareTo(a));
+    final titleResults = _filteredItems();
     final collections = _collections;
     final collectionResults = collections == null
         ? null
@@ -234,7 +262,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
               ? collections
               : collections
                     .where(
-                      (c) => c.title.toLowerCase().contains(
+                      (c) => c.value.title.toLowerCase().contains(
                         _searchQuery.trim().toLowerCase(),
                       ),
                     )
@@ -255,12 +283,12 @@ class _LibraryScreenState extends State<LibraryScreen> {
                   textBaseline: TextBaseline.alphabetic,
                   children: [
                     AppText(
-                      widget.selectedSection.title,
+                      widget.selectedSectionGroup.title,
                       style: AppTypography.title1,
                     ),
                     SizedBox(width: 18.du(context)),
                     AppText(
-                      'Plex · ${widget.server.name}',
+                      _serverLabel,
                       color: AppColors.ink3,
                     ),
                     const Spacer(),
@@ -450,10 +478,10 @@ class _LibraryScreenState extends State<LibraryScreen> {
               FilterOption(
                 label: formatGenreLabel(genre),
                 countLabel:
-                    '${widget.items.where((i) => i.genres.any((g) => g.tag == genre)).length}',
+                    '${_bareItems.where((i) => i.genres.any((g) => g.tag == genre)).length}',
                 applied: genre == _genreFilter,
                 dimmed: applyLibraryFilters(
-                  items: widget.items,
+                  items: _bareItems,
                   query: '',
                   sortMode: SortMode.title,
                   genre: genre,
@@ -477,10 +505,10 @@ class _LibraryScreenState extends State<LibraryScreen> {
               FilterOption(
                 label: '${decade}s',
                 countLabel:
-                    '${widget.items.where((i) => decadeOf(i) == decade).length}',
+                    '${_bareItems.where((i) => decadeOf(i) == decade).length}',
                 applied: decade == _decadeFilter,
                 dimmed: applyLibraryFilters(
-                  items: widget.items,
+                  items: _bareItems,
                   query: '',
                   sortMode: SortMode.title,
                   genre: _genreFilter,
@@ -507,7 +535,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
                 label: bucket.label,
                 applied: bucket == _dateAddedFilter,
                 dimmed: applyLibraryFilters(
-                  items: widget.items,
+                  items: _bareItems,
                   query: '',
                   sortMode: SortMode.title,
                   genre: _genreFilter,
@@ -542,7 +570,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
     }
   }
 
-  Widget _buildTitlesGrid(List<PlexLibraryItem> results) {
+  Widget _buildTitlesGrid(List<Sourced<PlexLibraryItem>> results) {
     if (widget.items.isEmpty) {
       return Padding(
         padding: EdgeInsets.all(32.du(context)),
@@ -568,9 +596,9 @@ class _LibraryScreenState extends State<LibraryScreen> {
         itemBuilder: (context, index) {
           final item = results[index];
           return PosterCard(
-            key: ValueKey(item.ratingKey),
-            imageUrl: PlexImageUrl.of(widget.server, item.thumb),
-            title: item.title,
+            key: ValueKey('${item.server.machineIdentifier}:${item.value.ratingKey}'),
+            imageUrl: PlexImageUrl.of(item.server, item.value.thumb),
+            title: item.value.title,
             autofocus: index == 0,
             staggerDelayMs: (index % _gridColumns) * 120,
             onClick: () => widget.onSelectItem(item),
@@ -600,21 +628,21 @@ class _LibraryScreenState extends State<LibraryScreen> {
             (
               '${formatGenreLabel(_genreFilter!).toLowerCase()} titles',
               'Drop the genre',
-              '${applyLibraryFilters(items: widget.items, query: '', sortMode: SortMode.title, genre: _genreFilter).length} ${formatGenreLabel(_genreFilter!).toLowerCase()} titles',
+              '${applyLibraryFilters(items: _bareItems, query: '', sortMode: SortMode.title, genre: _genreFilter).length} ${formatGenreLabel(_genreFilter!).toLowerCase()} titles',
               () => setState(() => _genreFilter = null),
             ),
           if (_decadeFilter != null)
             (
               'titles from the ${_decadeFilter}s',
               'Drop the decade',
-              '${applyLibraryFilters(items: widget.items, query: '', sortMode: SortMode.title, decade: _decadeFilter).length} titles from the ${_decadeFilter}s',
+              '${applyLibraryFilters(items: _bareItems, query: '', sortMode: SortMode.title, decade: _decadeFilter).length} titles from the ${_decadeFilter}s',
               () => setState(() => _decadeFilter = null),
             ),
           if (_dateAddedFilter != null)
             (
               'titles added ${_dateAddedFilter!.label.toLowerCase()}',
               'Drop "Added"',
-              '${applyLibraryFilters(items: widget.items, query: '', sortMode: SortMode.title, dateAddedBucket: _dateAddedFilter).length} titles added ${_dateAddedFilter!.label.toLowerCase()}',
+              '${applyLibraryFilters(items: _bareItems, query: '', sortMode: SortMode.title, dateAddedBucket: _dateAddedFilter).length} titles added ${_dateAddedFilter!.label.toLowerCase()}',
               () => setState(() => _dateAddedFilter = null),
             ),
         ];
@@ -630,9 +658,9 @@ class _LibraryScreenState extends State<LibraryScreen> {
       factSentence = null;
     } else {
       headline =
-          'No ${causes.map((c) => c.$1).join(' + ')} on ${widget.selectedSection.title}';
+          'No ${causes.map((c) => c.$1).join(' + ')} on ${widget.selectedSectionGroup.title}';
       factSentence = causes.length > 1
-          ? '${widget.selectedSection.title} has ${causes.map((c) => c.$3).join(' and ')}. Together they leave nothing.'
+          ? '${widget.selectedSectionGroup.title} has ${causes.map((c) => c.$3).join(' and ')}. Together they leave nothing.'
           : null;
     }
 
@@ -714,7 +742,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
     );
   }
 
-  Widget _buildCollectionsGrid(List<PlexCollection>? results) {
+  Widget _buildCollectionsGrid(List<Sourced<PlexCollection>>? results) {
     if (results == null) {
       return const LoadingScreen();
     }
@@ -739,11 +767,11 @@ class _LibraryScreenState extends State<LibraryScreen> {
         itemCount: results.length,
         itemBuilder: (context, index) {
           final collection = results[index];
-          final childCount = collection.childCount;
+          final childCount = collection.value.childCount;
           return PosterCard(
-            key: ValueKey(collection.ratingKey),
-            imageUrl: PlexImageUrl.of(widget.server, collection.thumb),
-            title: collection.title,
+            key: ValueKey('${collection.server.machineIdentifier}:${collection.value.ratingKey}'),
+            imageUrl: PlexImageUrl.of(collection.server, collection.value.thumb),
+            title: collection.value.title,
             subtitle: childCount != null
                 ? '$childCount title${childCount == 1 ? '' : 's'}'
                 : null,

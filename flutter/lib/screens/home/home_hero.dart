@@ -7,6 +7,7 @@ import '../../data/plex/plex_models.dart';
 import '../../kit/button.dart';
 import '../../kit/icon.dart';
 import '../../kit/text.dart';
+import '../../state/duplicate_fold.dart';
 import '../../theme/scale.dart';
 import '../../theme/tokens.dart';
 import '../../theme/typography.dart';
@@ -32,16 +33,14 @@ const _progressBarWidth = 380.0;
 /// load the full record, can offer it) — and no restart action, since the
 /// detail screen this hero's Resume action reaches already has one.
 class HomeHero extends StatelessWidget {
-  final PlexServer server;
-  final PlexOnDeckItem item;
+  final Sourced<PlexOnDeckItem> item;
   final VoidCallback onResume;
-  final ValueChanged<PlexOnDeckItem>? onWatchTogether;
+  final ValueChanged<Sourced<PlexOnDeckItem>>? onWatchTogether;
   final FocusNode? resumeFocusNode;
   final bool autofocus;
 
   const HomeHero({
     super.key,
-    required this.server,
     required this.item,
     required this.onResume,
     this.onWatchTogether,
@@ -51,9 +50,10 @@ class HomeHero extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isEpisode = item.type == _typeEpisode;
-    final remainingMs = (item.duration ?? 0) - (item.viewOffset ?? 0);
-    final progress = progressFraction(item);
+    final value = item.value;
+    final isEpisode = value.type == _typeEpisode;
+    final remainingMs = (value.duration ?? 0) - (value.viewOffset ?? 0);
+    final progress = progressFraction(value);
 
     return SizedBox(
       height: _heroHeight.du(context),
@@ -66,7 +66,7 @@ class HomeHero extends StatelessWidget {
               widthFactor: _heroBackdropWidthFraction,
               heightFactor: 1,
               child: Artwork(
-                imageUrl: PlexImageUrl.of(server, item.art ?? item.thumb),
+                imageUrl: PlexImageUrl.of(item.server, value.art ?? value.thumb),
                 noiseOpacity: 0.3,
               ),
             ),
@@ -106,7 +106,7 @@ class HomeHero extends StatelessWidget {
                 ConstrainedBox(
                   constraints: BoxConstraints(maxWidth: 900.du(context)),
                   child: AppText(
-                    continueWatchingTitle(item),
+                    continueWatchingTitle(value),
                     style: AppTypography.display,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
@@ -115,9 +115,9 @@ class HomeHero extends StatelessWidget {
                 if (isEpisode) ...[
                   SizedBox(height: AppSpacing.sm.du(context)),
                   AppText(
-                    item.parentIndex != null && item.index != null
-                        ? 'Season ${item.parentIndex}, Episode ${item.index} · ${item.title}'
-                        : item.title,
+                    value.parentIndex != null && value.index != null
+                        ? 'Season ${value.parentIndex}, Episode ${value.index} · ${value.title}'
+                        : value.title,
                     color: AppColors.ink2,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,

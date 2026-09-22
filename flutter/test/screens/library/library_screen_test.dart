@@ -2,11 +2,16 @@ import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:reelay/data/plex/plex_models.dart';
+import 'package:reelay/data/plex/plex_resources_api.dart';
 import 'package:reelay/screens/common/click_to_type_text_field.dart';
 import 'package:reelay/screens/library/library_screen.dart';
+import 'package:reelay/state/app_state.dart';
+import 'package:reelay/state/duplicate_fold.dart';
 
-const _server = PlexServer(name: 'Home', baseUrl: 'http://192.168.1.5:32400', accessToken: 'tok');
+const _server = PlexServer(name: 'Home', baseUrl: 'http://192.168.1.5:32400', accessToken: 'tok', machineIdentifier: 'home-id');
+const _connectedServers = [ReachableServer(_server, ServerReachability.local)];
 const _section = PlexSection(key: 's1', title: 'Movies', type: 'movie');
+const _sectionGroup = SectionGroup(type: 'movie', title: 'Movies', sectionsByServerId: {'home-id': _section});
 const _items = [
   PlexLibraryItem(ratingKey: '1', title: 'Alien', genres: [PlexTag(tag: 'Horror')]),
   PlexLibraryItem(ratingKey: '2', title: 'Arrival', genres: [PlexTag(tag: 'Sci-Fi')]),
@@ -29,11 +34,14 @@ Future<void> _pump(
     Directionality(
       textDirection: TextDirection.ltr,
       child: LibraryScreen(
-        server: _server,
-        selectedSection: _section,
-        items: items,
+        servers: _connectedServers,
+        selectedSectionGroup: _sectionGroup,
+        items: items.map((i) => Sourced(i, _server, ServerReachability.local)).toList(),
         onSelectItem: (_) {},
-        loadCollections: loadCollections ?? () async => const [],
+        loadCollections: () async {
+          final raw = await (loadCollections ?? () async => const <PlexCollection>[])();
+          return raw.map((c) => Sourced(c, _server, ServerReachability.local)).toList();
+        },
         onSelectCollection: (_) {},
       ),
     ),

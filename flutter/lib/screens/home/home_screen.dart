@@ -3,8 +3,12 @@ import 'package:flutter/widgets.dart';
 
 import '../../data/plex/plex_image_url.dart';
 import '../../data/plex/plex_models.dart';
+import '../../data/plex/plex_resources_api.dart' show ReachableServer;
 import '../../kit/edge_fade_row.dart';
+import '../../kit/icon.dart';
 import '../../kit/text.dart';
+import '../../state/duplicate_fold.dart';
+import '../../theme/phosphor_icons.dart';
 import '../../theme/scale.dart';
 import '../../theme/tokens.dart';
 import '../../theme/typography.dart';
@@ -27,29 +31,31 @@ const _watchTogetherScrollDurationMs = 1100;
 /// *within that row*) via [_ReclaimFocusOnRemoval] — the one checklist
 /// item the flutter-reelay PoC left genuinely untested, now real.
 class HomeScreen extends StatefulWidget {
-  final PlexServer server;
-  final List<PlexOnDeckItem> onDeck;
-  final List<PlexLibraryItem> recentlyAdded;
-  final List<PlexOnDeckItem> recentActivity;
-  final List<PlexOnDeckItem> suggestions;
+  final List<ReachableServer> servers;
+  final List<PlexResource> unreachableResources;
+  final List<Sourced<PlexOnDeckItem>> onDeck;
+  final List<Sourced<PlexLibraryItem>> recentlyAdded;
+  final List<Sourced<PlexOnDeckItem>> recentActivity;
+  final List<Sourced<PlexOnDeckItem>> suggestions;
   final List<PlexWatchlistItem> watchlist;
   final List<MergedRoom> liveRooms;
   final String? myRoomId;
   final Set<String> hostedRoomIds;
   final Future<bool> Function(MergedRoom) onEndSession;
   final ValueChanged<MergedRoom> onSelectRoom;
-  final ValueChanged<PlexOnDeckItem> onResume;
-  final ValueChanged<PlexOnDeckItem> onRemove;
+  final ValueChanged<Sourced<PlexOnDeckItem>> onResume;
+  final ValueChanged<Sourced<PlexOnDeckItem>> onRemove;
   final ValueChanged<PlexWatchlistItem> onSelectWatchlistItem;
   final ValueChanged<PlexWatchlistItem> onRemoveFromWatchlist;
-  final ValueChanged<PlexLibraryItem> onSelectRecentlyAdded;
-  final ValueChanged<PlexOnDeckItem> onSelectRecentActivity;
-  final ValueChanged<PlexOnDeckItem> onSelectSuggestion;
-  final ValueChanged<PlexOnDeckItem>? onHeroWatchTogether;
+  final ValueChanged<Sourced<PlexLibraryItem>> onSelectRecentlyAdded;
+  final ValueChanged<Sourced<PlexOnDeckItem>> onSelectRecentActivity;
+  final ValueChanged<Sourced<PlexOnDeckItem>> onSelectSuggestion;
+  final ValueChanged<Sourced<PlexOnDeckItem>>? onHeroWatchTogether;
 
   const HomeScreen({
     super.key,
-    required this.server,
+    required this.servers,
+    this.unreachableResources = const [],
     this.onDeck = const [],
     this.recentlyAdded = const [],
     this.recentActivity = const [],
@@ -214,6 +220,7 @@ class _HomeScreenState extends State<HomeScreen> {
         controller: _homeScrollController,
         padding: EdgeInsets.only(bottom: 48.du(context)),
         children: [
+          if (widget.unreachableResources.isNotEmpty) _buildPartialOutageBanner(),
           _buildContinueWatchingSection(continueWatchingGetsFocus),
           if (widget.liveRooms.isNotEmpty)
             Padding(
@@ -238,7 +245,7 @@ class _HomeScreenState extends State<HomeScreen> {
             items: watchlistReversed,
             itemBuilder: (entry, index) => WatchlistPoster(
               key: ValueKey(entry.ratingKey),
-              server: widget.server,
+              server: widget.servers.first.server,
               entry: entry,
               onClick: () => widget.onSelectWatchlistItem(entry),
               onRemove: () => widget.onRemoveFromWatchlist(entry),
@@ -247,40 +254,72 @@ class _HomeScreenState extends State<HomeScreen> {
               staggerDelayMs: (index % _rowStaggerPeriod) * 120,
             ),
           ),
-          _HomeRow<PlexOnDeckItem>(
+          _HomeRow<Sourced<PlexOnDeckItem>>(
             title: 'Recently Finished Watching',
             items: widget.recentActivity,
             itemBuilder: (item, index) => PosterCard(
-              key: ValueKey(item.ratingKey),
-              imageUrl: PlexImageUrl.of(widget.server, item.thumb),
-              title: continueWatchingLabel(item),
+              key: ValueKey('${item.server.machineIdentifier}:${item.value.ratingKey}'),
+              imageUrl: PlexImageUrl.of(item.server, item.value.thumb),
+              title: continueWatchingLabel(item.value),
               onClick: () => widget.onSelectRecentActivity(item),
               autofocus: index == 0 && recentActivityGetsFocus,
               staggerDelayMs: (index % _rowStaggerPeriod) * 120,
             ),
           ),
-          _HomeRow<PlexLibraryItem>(
+          _HomeRow<Sourced<PlexLibraryItem>>(
             title: 'Recently Added',
             items: widget.recentlyAdded,
             itemBuilder: (item, index) => PosterCard(
-              key: ValueKey(item.ratingKey),
-              imageUrl: PlexImageUrl.of(widget.server, item.thumb),
-              title: recentlyAddedLabel(item),
+              key: ValueKey('${item.server.machineIdentifier}:${item.value.ratingKey}'),
+              imageUrl: PlexImageUrl.of(item.server, item.value.thumb),
+              title: recentlyAddedLabel(item.value),
               onClick: () => widget.onSelectRecentlyAdded(item),
               autofocus: index == 0 && recentlyAddedGetsFocus,
               staggerDelayMs: (index % _rowStaggerPeriod) * 120,
             ),
           ),
-          _HomeRow<PlexOnDeckItem>(
+          _HomeRow<Sourced<PlexOnDeckItem>>(
             title: 'Suggestions',
             items: widget.suggestions,
             itemBuilder: (item, index) => PosterCard(
-              key: ValueKey(item.ratingKey),
-              imageUrl: PlexImageUrl.of(widget.server, item.thumb),
-              title: continueWatchingLabel(item),
+              key: ValueKey('${item.server.machineIdentifier}:${item.value.ratingKey}'),
+              imageUrl: PlexImageUrl.of(item.server, item.value.thumb),
+              title: continueWatchingLabel(item.value),
               onClick: () => widget.onSelectSuggestion(item),
               autofocus: index == 0 && suggestionsGetsFocus,
               staggerDelayMs: (index % _rowStaggerPeriod) * 120,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// "Partial is not empty" (DESIGN.md) — one or more servers not
+  /// answering at connect time is a header line naming what happened, not
+  /// an error state; only every server being unreachable takes the whole
+  /// screen (NoServersReachable, screen 24).
+  Widget _buildPartialOutageBanner() {
+    final total = widget.servers.length + widget.unreachableResources.length;
+    final names = widget.unreachableResources.map((r) => r.name).join(', ');
+    return Padding(
+      padding: EdgeInsets.fromLTRB(
+        AppSpacing.xxxl.du(context),
+        AppSpacing.lg.du(context),
+        AppSpacing.xxxl.du(context),
+        0,
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          AppIcon(PhosphorIconsRegular.warning, size: 20, tint: AppColors.warning),
+          SizedBox(width: AppSpacing.sm.du(context)),
+          Flexible(
+            child: AppText(
+              '$names unreachable — ${widget.servers.length} of $total shown',
+              color: AppColors.warning,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
             ),
           ),
         ],
@@ -317,14 +356,13 @@ class _HomeScreenState extends State<HomeScreen> {
     final hero = widget.onDeck.first;
     final moreInProgress = widget.onDeck.length > 1
         ? widget.onDeck.sublist(1)
-        : const <PlexOnDeckItem>[];
+        : const <Sourced<PlexOnDeckItem>>[];
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
       children: [
         HomeHero(
-          server: widget.server,
           item: hero,
           onResume: () => widget.onResume(hero),
           onWatchTogether: widget.onHeroWatchTogether,
@@ -386,8 +424,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       itemBuilder: (context, index) {
                         final item = moreInProgress[index];
                         return ContinueWatchingPoster(
-                          key: ValueKey(item.ratingKey),
-                          server: widget.server,
+                          key: ValueKey('${item.server.machineIdentifier}:${item.value.ratingKey}'),
                           item: item,
                           onResume: () => widget.onResume(item),
                           onRemove: () => widget.onRemove(item),
