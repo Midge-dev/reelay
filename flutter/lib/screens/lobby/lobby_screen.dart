@@ -18,6 +18,7 @@ import '../../sync/relay_client.dart';
 import '../../sync/relay_protocol.dart';
 import '../../sync/relay_urls.dart';
 import '../../sync/time_utils.dart';
+import '../../theme/scale.dart';
 import '../../theme/tokens.dart';
 import '../../theme/typography.dart';
 import '../common/artwork.dart';
@@ -254,7 +255,7 @@ class _LobbyScreenState extends State<LobbyScreen> {
             ),
           ),
           Padding(
-            padding: const EdgeInsets.all(48),
+            padding: EdgeInsets.all(48.du(context)),
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               crossAxisAlignment: CrossAxisAlignment.center,
@@ -264,7 +265,7 @@ class _LobbyScreenState extends State<LobbyScreen> {
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
                     const WatchTogetherIcon(),
-                    const SizedBox(width: 16),
+                    SizedBox(width: 16.du(context)),
                     AppText(
                       widget.detail.title,
                       style: AppTypography.title1,
@@ -273,7 +274,7 @@ class _LobbyScreenState extends State<LobbyScreen> {
                   ],
                 ),
                 Padding(
-                  padding: const EdgeInsets.only(top: 8, bottom: 48),
+                  padding: EdgeInsets.only(top: 8.du(context), bottom: 48.du(context)),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     crossAxisAlignment: CrossAxisAlignment.center,
@@ -283,7 +284,7 @@ class _LobbyScreenState extends State<LobbyScreen> {
                         builder: (context, status, _) =>
                             RelayStatusDot(status: status),
                       ),
-                      const SizedBox(width: 10),
+                      SizedBox(width: 10.du(context)),
                       AppText(
                         widget.relayNickname,
                         color: AppColors.inkOnArt.withValues(alpha: 0.7),
@@ -302,21 +303,21 @@ class _LobbyScreenState extends State<LobbyScreen> {
                         subtitle: 'host',
                       ),
                       for (final entry in others) ...[
-                        const SizedBox(width: 64),
+                        SizedBox(width: 64.du(context)),
                         _LobbyPersonCard(
                           name: entry.username,
                           avatarUrl: entry.avatarUrl,
                         ),
                       ],
                       if (others.length + 1 < _roomSeatCap) ...[
-                        const SizedBox(width: 64),
+                        SizedBox(width: 64.du(context)),
                         const _EmptySeat(),
                       ],
                     ],
                   ),
                 ),
                 Padding(
-                  padding: const EdgeInsets.only(top: 48),
+                  padding: EdgeInsets.only(top: 48.du(context)),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
@@ -335,7 +336,7 @@ class _LobbyScreenState extends State<LobbyScreen> {
                         child: const AppText('Start'),
                       ),
                       if (canRestart) ...[
-                        const SizedBox(width: 24),
+                        SizedBox(width: 24.du(context)),
                         AppButton(
                           onClick: () {
                             widget.relay.send(
@@ -354,7 +355,7 @@ class _LobbyScreenState extends State<LobbyScreen> {
                           ),
                         ),
                       ],
-                      const SizedBox(width: 24),
+                      SizedBox(width: 24.du(context)),
                       AppButton(
                         onClick: () => setState(() => _showChatModal = true),
                         child: const AppText('Chat QR code'),
@@ -368,7 +369,7 @@ class _LobbyScreenState extends State<LobbyScreen> {
           Align(
             alignment: _cornerAlignment(widget.chatOverlayCorner),
             child: Padding(
-              padding: const EdgeInsets.all(24),
+              padding: EdgeInsets.all(24.du(context)),
               child: FractionallySizedBox(
                 widthFactor: 0.5,
                 alignment: _cornerAlignment(widget.chatOverlayCorner),
@@ -382,7 +383,7 @@ class _LobbyScreenState extends State<LobbyScreen> {
           Align(
             alignment: Alignment.bottomLeft,
             child: Padding(
-              padding: const EdgeInsets.all(32),
+              padding: EdgeInsets.all(32.du(context)),
               child: FractionallySizedBox(
                 widthFactor: 0.6,
                 alignment: Alignment.centerLeft,
@@ -436,13 +437,13 @@ class _ChatQrModal extends StatelessWidget {
         color: AppScrims.dialog.withValues(alpha: 0.85),
         child: Center(
           child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 560),
+            constraints: BoxConstraints(maxWidth: 560.du(context)),
             child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 24),
+              padding: EdgeInsets.symmetric(vertical: 24.du(context)),
               child: DecoratedBox(
                 decoration: BoxDecoration(color: AppColors.surface),
                 child: SingleChildScrollView(
-                  padding: const EdgeInsets.all(28),
+                  padding: EdgeInsets.all(28.du(context)),
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     crossAxisAlignment: CrossAxisAlignment.center,
@@ -454,7 +455,7 @@ class _ChatQrModal extends StatelessWidget {
                       ),
                       if (chatUrl == null)
                         Padding(
-                          padding: EdgeInsets.only(top: 20),
+                          padding: EdgeInsets.only(top: 20.du(context)),
                           child: AppText(
                             'Still connecting to the room — try again in a moment.',
                             color: AppColors.inkOnArt,
@@ -462,12 +463,12 @@ class _ChatQrModal extends StatelessWidget {
                         )
                       else ...[
                         Padding(
-                          padding: const EdgeInsets.only(top: 20),
+                          padding: EdgeInsets.only(top: 20.du(context)),
                           child: Container(
-                            width: 220,
-                            height: 220,
+                            width: 220.du(context),
+                            height: 220.du(context),
                             color: AppColors.inkOnArt,
-                            padding: const EdgeInsets.all(12),
+                            padding: EdgeInsets.all(12.du(context)),
                             child: QrImageView(
                               data: chatUrl,
                               backgroundColor: AppColors.inkOnArt,
@@ -475,14 +476,14 @@ class _ChatQrModal extends StatelessWidget {
                           ),
                         ),
                         Padding(
-                          padding: EdgeInsets.only(top: 20),
+                          padding: EdgeInsets.only(top: 20.du(context)),
                           child: AppText(
                             'Scan with your phone, or visit:',
                             color: AppColors.inkOnArt,
                           ),
                         ),
                         Padding(
-                          padding: const EdgeInsets.only(top: 8),
+                          padding: EdgeInsets.only(top: 8.du(context)),
                           child: AppText(
                             chatUrl,
                             color: AppColors.inkOnArt,
@@ -491,7 +492,7 @@ class _ChatQrModal extends StatelessWidget {
                         ),
                       ],
                       Padding(
-                        padding: const EdgeInsets.only(top: 28),
+                        padding: EdgeInsets.only(top: 28.du(context)),
                         child: AppOutlinedButton(
                           onClick: onDismiss,
                           autofocus: true,
@@ -525,8 +526,8 @@ class _LobbyPersonCard extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
         Container(
-          width: 96,
-          height: 96,
+          width: 96.du(context),
+          height: 96.du(context),
           decoration: BoxDecoration(
             shape: BoxShape.circle,
             color: AppColors.accent.withValues(alpha: 0.35),
@@ -536,8 +537,8 @@ class _LobbyPersonCard extends StatelessWidget {
               ? ClipOval(
                   child: Image.network(
                     avatar,
-                    width: 96,
-                    height: 96,
+                    width: 96.du(context),
+                    height: 96.du(context),
                     fit: BoxFit.cover,
                   ),
                 )
@@ -548,7 +549,7 @@ class _LobbyPersonCard extends StatelessWidget {
                 ),
         ),
         Padding(
-          padding: const EdgeInsets.only(top: 12),
+          padding: EdgeInsets.only(top: 12.du(context)),
           child: AppText(name, color: AppColors.inkOnArt),
         ),
         if (subtitle != null)
@@ -563,10 +564,10 @@ class _EmptySeat extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const SizedBox(
-      width: 96,
-      height: 96,
-      child: CustomPaint(painter: _EmptySeatPainter()),
+    return SizedBox(
+      width: 96.du(context),
+      height: 96.du(context),
+      child: const CustomPaint(painter: _EmptySeatPainter()),
     );
   }
 }

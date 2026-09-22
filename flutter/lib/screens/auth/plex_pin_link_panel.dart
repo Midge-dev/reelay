@@ -5,6 +5,7 @@ import 'package:qr_flutter/qr_flutter.dart';
 import '../../data/plex/plex_auth_api.dart';
 import '../../kit/text.dart';
 import '../../state/data_providers.dart';
+import '../../theme/scale.dart';
 import '../../theme/tokens.dart';
 import '../../theme/typography.dart';
 
@@ -100,16 +101,16 @@ class _PlexPinLinkPanelState extends ConsumerState<PlexPinLinkPanel> {
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             Container(
-              width: 220,
-              height: 220,
+              width: 220.du(context),
+              height: 220.du(context),
               color: AppColors.inkOnArt,
-              padding: const EdgeInsets.all(16),
+              padding: EdgeInsets.all(16.du(context)),
               child: QrImageView(data: 'https://www.plex.tv/link/', backgroundColor: AppColors.inkOnArt),
             ),
-            const SizedBox(width: 48),
+            SizedBox(width: 48.du(context)),
             Flexible(
               child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 360),
+                constraints: BoxConstraints(maxWidth: 360.du(context)),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.center,
@@ -118,7 +119,7 @@ class _PlexPinLinkPanelState extends ConsumerState<PlexPinLinkPanel> {
                       'Scan with your phone, or on any device visit plex.tv/link, then enter:',
                       textAlign: TextAlign.center,
                     ),
-                    const SizedBox(height: 24),
+                    SizedBox(height: 24.du(context)),
                     AppText(code, style: AppTypography.title2),
                   ],
                 ),

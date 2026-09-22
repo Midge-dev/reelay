@@ -2,6 +2,7 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../state/data_providers.dart';
+import '../../theme/scale.dart';
 import '../../theme/tokens.dart';
 import 'plex_pin_link_panel.dart';
 
@@ -19,7 +20,7 @@ class AuthScreen extends ConsumerWidget {
     return ColoredBox(
       color: AppColors.background,
       child: Padding(
-        padding: const EdgeInsets.all(48),
+        padding: EdgeInsets.all(48.du(context)),
         child: Center(
           child: PlexPinLinkPanel(
             onLinked: (token) async {

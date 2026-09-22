@@ -8,6 +8,7 @@ import '../../kit/surface_style.dart';
 import '../../kit/switch.dart';
 import '../../kit/text.dart';
 import '../../theme/phosphor_icons.dart';
+import '../../theme/scale.dart';
 import '../../theme/tokens.dart';
 import '../../theme/typography.dart';
 
@@ -84,12 +85,12 @@ class _WatchTogetherStartScreenState extends State<WatchTogetherStartScreen> {
       color: AppColors.background,
       child: Center(
         child: Container(
-          width: 860,
-          padding: const EdgeInsets.all(AppSpacing.xxxl),
+          width: 860.du(context),
+          padding: EdgeInsets.all(AppSpacing.xxxl.du(context)),
           decoration: BoxDecoration(
             color: AppColors.surfaceOverlay,
             border: Border.all(color: AppColors.lineStrong),
-            borderRadius: BorderRadius.circular(AppShape.radiusLg),
+            borderRadius: BorderRadius.circular(AppShape.radiusLg.du(context)),
             boxShadow: AppElevation.overlay,
           ),
           child: Column(
@@ -104,7 +105,7 @@ class _WatchTogetherStartScreenState extends State<WatchTogetherStartScreen> {
                     size: 22,
                     tint: AppColors.accent300,
                   ),
-                  const SizedBox(width: AppSpacing.md),
+                  SizedBox(width: AppSpacing.md.du(context)),
                   AppText(
                     'WATCH TOGETHER',
                     style: AppTypography.micro,
@@ -112,26 +113,26 @@ class _WatchTogetherStartScreenState extends State<WatchTogetherStartScreen> {
                   ),
                 ],
               ),
-              const SizedBox(height: AppSpacing.lg),
+              SizedBox(height: AppSpacing.lg.du(context)),
               AppText(
                 'Start a room for ${widget.roomTitle}',
                 style: AppTypography.title2,
               ),
-              const SizedBox(height: AppSpacing.xl),
+              SizedBox(height: AppSpacing.xl.du(context)),
               _ChoiceRow(
                 title: 'Resume',
                 subtitle: 'Where you left off',
                 selected: !_restart,
                 onClick: () => setState(() => _restart = false),
               ),
-              const SizedBox(height: AppSpacing.sm),
+              SizedBox(height: AppSpacing.sm.du(context)),
               _ChoiceRow(
                 title: 'Start from the beginning',
                 subtitle: 'Everyone sees it fresh',
                 selected: _restart,
                 onClick: () => setState(() => _restart = true),
               ),
-              const SizedBox(height: AppSpacing.lg),
+              SizedBox(height: AppSpacing.lg.du(context)),
               Row(
                 children: [
                   Expanded(
@@ -144,7 +145,7 @@ class _WatchTogetherStartScreenState extends State<WatchTogetherStartScreen> {
                       ),
                     ),
                   ),
-                  const SizedBox(width: AppSpacing.md),
+                  SizedBox(width: AppSpacing.md.du(context)),
                   Expanded(
                     child: _InfoRow(
                       title: 'Phone chat',
@@ -158,12 +159,12 @@ class _WatchTogetherStartScreenState extends State<WatchTogetherStartScreen> {
                   ),
                 ],
               ),
-              const SizedBox(height: AppSpacing.lg),
+              SizedBox(height: AppSpacing.lg.du(context)),
               _RelayStatusRow(
                 check: _relayCheck,
                 relayNickname: widget.relayNickname,
               ),
-              const SizedBox(height: AppSpacing.xl),
+              SizedBox(height: AppSpacing.xl.du(context)),
               Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
@@ -180,12 +181,12 @@ class _WatchTogetherStartScreenState extends State<WatchTogetherStartScreen> {
                           PhosphorIconsRegular.usersThree,
                           size: 22,
                         ),
-                        const SizedBox(width: AppSpacing.sm),
+                        SizedBox(width: AppSpacing.sm.du(context)),
                         const AppText('Open the room'),
                       ],
                     ),
                   ),
-                  const SizedBox(width: AppSpacing.md),
+                  SizedBox(width: AppSpacing.md.du(context)),
                   AppOutlinedButton(
                     onClick: widget.onCancel,
                     child: const AppText('Cancel'),
@@ -200,9 +201,10 @@ class _WatchTogetherStartScreenState extends State<WatchTogetherStartScreen> {
   }
 }
 
-final _choiceShape = RoundedRectangleBorder(
-  borderRadius: BorderRadius.circular(AppShape.radiusMd),
-);
+RoundedRectangleBorder _choiceShape(BuildContext context) =>
+    RoundedRectangleBorder(
+      borderRadius: BorderRadius.circular(AppShape.radiusMd.du(context)),
+    );
 final _choiceColors = SurfaceColors(
   container: AppColors.surface,
   content: AppColors.ink2,
@@ -231,15 +233,15 @@ class _ChoiceRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ConstrainedBox(
-      constraints: const BoxConstraints(minHeight: 88),
+      constraints: BoxConstraints(minHeight: 88.du(context)),
       child: FocusableSurface(
         onClick: onClick,
         selected: selected,
-        shape: _choiceShape,
+        shape: _choiceShape(context),
         colors: _choiceColors,
         border: _choiceBorder,
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xl),
+          padding: EdgeInsets.symmetric(horizontal: AppSpacing.xl.du(context)),
           child: Row(
             children: [
               Expanded(
@@ -248,7 +250,7 @@ class _ChoiceRow extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     AppText(title, style: AppTypography.label),
-                    const SizedBox(height: 3),
+                    SizedBox(height: 3.du(context)),
                     AppText(
                       subtitle,
                       style: AppTypography.caption,
@@ -257,7 +259,7 @@ class _ChoiceRow extends StatelessWidget {
                   ],
                 ),
               ),
-              const SizedBox(width: AppSpacing.lg),
+              SizedBox(width: AppSpacing.lg.du(context)),
               AppRadioButton(selected: selected),
             ],
           ),
@@ -281,12 +283,12 @@ class _InfoRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      constraints: const BoxConstraints(minHeight: 88),
-      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xl),
+      constraints: BoxConstraints(minHeight: 88.du(context)),
+      padding: EdgeInsets.symmetric(horizontal: AppSpacing.xl.du(context)),
       decoration: BoxDecoration(
         color: AppColors.surface,
         border: Border.all(color: AppColors.lineStrong),
-        borderRadius: BorderRadius.circular(AppShape.radiusMd),
+        borderRadius: BorderRadius.circular(AppShape.radiusMd.du(context)),
       ),
       child: Row(
         children: [
@@ -296,7 +298,7 @@ class _InfoRow extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 AppText(title, color: AppColors.ink2),
-                const SizedBox(height: 3),
+                SizedBox(height: 3.du(context)),
                 AppText(
                   subtitle,
                   style: AppTypography.caption,
@@ -336,25 +338,25 @@ class _RelayStatusRow extends StatelessWidget {
       ),
     };
     return Container(
-      padding: const EdgeInsets.symmetric(
-        horizontal: AppSpacing.lg,
-        vertical: AppSpacing.md,
+      padding: EdgeInsets.symmetric(
+        horizontal: AppSpacing.lg.du(context),
+        vertical: AppSpacing.md.du(context),
       ),
       decoration: BoxDecoration(
         color: AppColors.surfaceRaised,
         border: Border(
-          left: BorderSide(color: color, width: AppShape.spineWidth),
+          left: BorderSide(color: color, width: AppShape.spineWidth.du(context)),
         ),
-        borderRadius: BorderRadius.circular(AppShape.radiusSm),
+        borderRadius: BorderRadius.circular(AppShape.radiusSm.du(context)),
       ),
       child: Row(
         children: [
           Container(
-            width: 8,
-            height: 8,
+            width: 8.du(context),
+            height: 8.du(context),
             decoration: BoxDecoration(shape: BoxShape.circle, color: color),
           ),
-          const SizedBox(width: AppSpacing.md),
+          SizedBox(width: AppSpacing.md.du(context)),
           Expanded(child: AppText(label, color: AppColors.ink2)),
         ],
       ),

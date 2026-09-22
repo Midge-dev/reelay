@@ -7,6 +7,7 @@ import '../../kit/card.dart';
 import '../../kit/icon.dart';
 import '../../kit/surface_style.dart';
 import '../../kit/text.dart';
+import '../../theme/scale.dart';
 import '../../theme/tokens.dart';
 import '../../theme/typography.dart';
 import 'add_profile_dialog.dart';
@@ -90,14 +91,14 @@ class _ProfilePickerScreenState extends State<ProfilePickerScreen> {
                       style: AppTypography.title2,
                       color: AppColors.ink3,
                     ),
-                    const SizedBox(height: AppSpacing.md),
+                    SizedBox(height: AppSpacing.md.du(context)),
                     AppText("Who's watching?", style: AppTypography.title1),
                   ],
                 ),
-                const SizedBox(height: 72),
+                SizedBox(height: 72.du(context)),
                 Wrap(
-                  spacing: _itemGap,
-                  runSpacing: _itemGap,
+                  spacing: _itemGap.du(context),
+                  runSpacing: _itemGap.du(context),
                   alignment: WrapAlignment.center,
                   children: [
                     for (final (index, profile) in widget.profiles.indexed)
@@ -111,7 +112,7 @@ class _ProfilePickerScreenState extends State<ProfilePickerScreen> {
                     ),
                   ],
                 ),
-                const SizedBox(height: 40),
+                SizedBox(height: 40.du(context)),
                 AppText(
                   'Each profile sees only what its own accounts can reach',
                   color: AppColors.ink3,
@@ -154,13 +155,13 @@ class _ProfileItemState extends State<_ProfileItem> {
     final profile = widget.profile;
     final thumb = profile.thumb;
     return SizedBox(
-      width: _itemWidth,
+      width: _itemWidth.du(context),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
           SizedBox(
-            width: _avatarSize,
-            height: _avatarSize,
+            width: _avatarSize.du(context),
+            height: _avatarSize.du(context),
             child: AppCard(
               onClick: widget.onClick,
               focusNode: widget.focusNode,
@@ -171,8 +172,8 @@ class _ProfileItemState extends State<_ProfileItem> {
                       child: Image.network(
                         thumb,
                         fit: BoxFit.cover,
-                        width: _avatarSize,
-                        height: _avatarSize,
+                        width: _avatarSize.du(context),
+                        height: _avatarSize.du(context),
                       ),
                     )
                   : ColoredBox(
@@ -189,7 +190,7 @@ class _ProfileItemState extends State<_ProfileItem> {
                     ),
             ),
           ),
-          const SizedBox(height: AppSpacing.lg),
+          SizedBox(height: AppSpacing.lg.du(context)),
           AppText(
             profile.name,
             style: _focused
@@ -197,7 +198,7 @@ class _ProfileItemState extends State<_ProfileItem> {
                 : AppTypography.title2.copyWith(fontWeight: FontWeight.w400),
             color: _focused ? AppColors.ink : AppColors.ink2,
           ),
-          const SizedBox(height: AppSpacing.xs),
+          SizedBox(height: AppSpacing.xs.du(context)),
           AppText('Plex · ${profile.plexUsername}', color: AppColors.ink3),
         ],
       ),
@@ -213,13 +214,13 @@ class _AddProfileItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      width: _itemWidth,
+      width: _itemWidth.du(context),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
           SizedBox(
-            width: _avatarSize,
-            height: _avatarSize,
+            width: _avatarSize.du(context),
+            height: _avatarSize.du(context),
             child: AppCard(
               onClick: onClick,
               shape: const CircleBorder(),
@@ -234,7 +235,7 @@ class _AddProfileItem extends StatelessWidget {
               ),
             ),
           ),
-          const SizedBox(height: AppSpacing.lg),
+          SizedBox(height: AppSpacing.lg.du(context)),
           AppText('Add', color: AppColors.ink3),
         ],
       ),

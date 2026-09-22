@@ -6,6 +6,7 @@ import '../../focus/back_handler.dart';
 import '../../kit/button.dart';
 import '../../kit/icon.dart';
 import '../../kit/text.dart';
+import '../../theme/scale.dart';
 import '../../theme/tokens.dart';
 import '../../theme/typography.dart';
 import '../auth/plex_pin_link_panel.dart';
@@ -97,14 +98,14 @@ class _AddProfileDialogState extends State<AddProfileDialog> {
               // info box and buttons can exceed the screen height at this
               // padding; scrolls internally rather than overflowing.
               constraints: BoxConstraints(
-                maxWidth: _dialogWidth,
+                maxWidth: _dialogWidth.du(context),
                 maxHeight: MediaQuery.sizeOf(context).height * 0.9,
               ),
               child: Container(
-                padding: const EdgeInsets.all(AppSpacing.xxxl),
+                padding: EdgeInsets.all(AppSpacing.xxxl.du(context)),
                 decoration: BoxDecoration(
                   color: AppColors.surfaceOverlay,
-                  borderRadius: BorderRadius.circular(AppShape.radiusLg),
+                  borderRadius: BorderRadius.circular(AppShape.radiusLg.du(context)),
                   border: Border.all(color: AppColors.lineStrong),
                   boxShadow: AppElevation.overlay,
                 ),
@@ -121,16 +122,16 @@ class _AddProfileDialogState extends State<AddProfileDialog> {
                             size: 22,
                             tint: AppColors.accent300,
                           ),
-                          const SizedBox(width: AppSpacing.md),
+                          SizedBox(width: AppSpacing.md.du(context)),
                           AppText('NEW PROFILE', style: AppTypography.micro),
                         ],
                       ),
-                      const SizedBox(height: AppSpacing.lg),
+                      SizedBox(height: AppSpacing.lg.du(context)),
                       AppText(
                         'Who\'s joining this device?',
                         style: AppTypography.title2,
                       ),
-                      const SizedBox(height: AppSpacing.xl),
+                      SizedBox(height: AppSpacing.xl.du(context)),
                       Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
@@ -142,7 +143,7 @@ class _AddProfileDialogState extends State<AddProfileDialog> {
                               onChanged: (v) => setState(() => _name = v),
                             ),
                           ),
-                          const SizedBox(width: AppSpacing.lg),
+                          SizedBox(width: AppSpacing.lg.du(context)),
                           Expanded(
                             child: _LabeledField(
                               label: 'Name in Watch Together',
@@ -154,8 +155,8 @@ class _AddProfileDialogState extends State<AddProfileDialog> {
                         ],
                       ),
                       Padding(
-                        padding: const EdgeInsets.symmetric(
-                          vertical: AppSpacing.xl,
+                        padding: EdgeInsets.symmetric(
+                          vertical: AppSpacing.xl.du(context),
                         ),
                         child: DecoratedBox(
                           decoration: BoxDecoration(
@@ -166,7 +167,7 @@ class _AddProfileDialogState extends State<AddProfileDialog> {
                         ),
                       ),
                       AppText(accountsKicker, style: AppTypography.micro),
-                      const SizedBox(height: AppSpacing.lg),
+                      SizedBox(height: AppSpacing.lg.du(context)),
                       _PlexAccountRow(
                         name: _name,
                         linking: _linking,
@@ -175,7 +176,7 @@ class _AddProfileDialogState extends State<AddProfileDialog> {
                       ),
                       if (_linking && _token == null)
                         Padding(
-                          padding: const EdgeInsets.only(top: AppSpacing.lg),
+                          padding: EdgeInsets.only(top: AppSpacing.lg.du(context)),
                           child: widget.linkPanelBuilder(
                             (token) => setState(() {
                               _token = token;
@@ -183,24 +184,24 @@ class _AddProfileDialogState extends State<AddProfileDialog> {
                             }),
                           ),
                         ),
-                      const SizedBox(height: AppSpacing.md),
+                      SizedBox(height: AppSpacing.md.du(context)),
                       const JellyfinComingSoonRow(),
-                      const SizedBox(height: AppSpacing.xl),
+                      SizedBox(height: AppSpacing.xl.du(context)),
                       Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: AppSpacing.lg,
-                          vertical: AppSpacing.md,
+                        padding: EdgeInsets.symmetric(
+                          horizontal: AppSpacing.lg.du(context),
+                          vertical: AppSpacing.md.du(context),
                         ),
                         decoration: BoxDecoration(
                           color: AppColors.surface,
-                          border: const Border(
+                          border: Border(
                             left: BorderSide(
                               color: AppColors.warning,
-                              width: 4,
+                              width: 4.du(context),
                             ),
                           ),
                           borderRadius: BorderRadius.circular(
-                            AppShape.radiusSm,
+                            AppShape.radiusSm.du(context),
                           ),
                         ),
                         child: AppText(
@@ -209,7 +210,7 @@ class _AddProfileDialogState extends State<AddProfileDialog> {
                           color: AppColors.ink2,
                         ),
                       ),
-                      const SizedBox(height: AppSpacing.xl),
+                      SizedBox(height: AppSpacing.xl.du(context)),
                       Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
@@ -218,7 +219,7 @@ class _AddProfileDialogState extends State<AddProfileDialog> {
                             enabled: canCreate,
                             child: const AppText('Create profile'),
                           ),
-                          const SizedBox(width: AppSpacing.md),
+                          SizedBox(width: AppSpacing.md.du(context)),
                           AppOutlinedButton(
                             onClick: widget.onCancel,
                             child: const AppText('Cancel'),
@@ -257,7 +258,7 @@ class _LabeledField extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       children: [
         AppText(label, color: AppColors.ink3),
-        const SizedBox(height: AppSpacing.sm),
+        SizedBox(height: AppSpacing.sm.du(context)),
         ClickToTypeTextField(
           value: value,
           onValueChange: onChanged,
@@ -285,15 +286,15 @@ class _PlexAccountRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final who = name.trim().isEmpty ? 'They' : name.trim();
     return Container(
-      constraints: const BoxConstraints(minHeight: 96),
-      padding: const EdgeInsets.symmetric(
-        horizontal: AppSpacing.xl,
-        vertical: AppSpacing.md,
+      constraints: BoxConstraints(minHeight: 96.du(context)),
+      padding: EdgeInsets.symmetric(
+        horizontal: AppSpacing.xl.du(context),
+        vertical: AppSpacing.md.du(context),
       ),
       decoration: BoxDecoration(
         color: AppColors.surface,
         border: Border.all(color: linked ? AppColors.accent : AppColors.line),
-        borderRadius: BorderRadius.circular(AppShape.radiusMd),
+        borderRadius: BorderRadius.circular(AppShape.radiusMd.du(context)),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
@@ -305,14 +306,14 @@ class _PlexAccountRow extends StatelessWidget {
             size: 26,
             tint: linked ? AppColors.success : AppColors.ink2,
           ),
-          const SizedBox(width: AppSpacing.lg),
+          SizedBox(width: AppSpacing.lg.du(context)),
           Expanded(
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 AppText('Plex', style: AppTypography.label),
-                const SizedBox(height: 3),
+                SizedBox(height: 3.du(context)),
                 AppText(
                   linked
                       ? 'Signed in'
