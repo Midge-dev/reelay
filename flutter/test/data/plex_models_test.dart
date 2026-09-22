@@ -24,6 +24,36 @@ void main() {
     expect(item.collections.single.tag, 'Denis Villeneuve');
   });
 
+  test('PlexLibraryItem maps Guid JSON key to guids, defaulting to empty when absent', () {
+    final withGuids = PlexLibraryItem.fromJson({
+      'ratingKey': '123',
+      'title': 'Arrival',
+      'Guid': [
+        {'id': 'imdb://tt2543164'},
+        {'id': 'tmdb://329865'},
+      ],
+    });
+    final withoutGuids = PlexLibraryItem.fromJson({'ratingKey': '124', 'title': 'Contact'});
+
+    expect(withGuids.guids.map((g) => g.id), ['imdb://tt2543164', 'tmdb://329865']);
+    expect(withoutGuids.guids, isEmpty);
+  });
+
+  test('PlexOnDeckItem maps Guid JSON key to guids, defaulting to empty when absent', () {
+    final withGuids = PlexOnDeckItem.fromJson({
+      'ratingKey': '1',
+      'type': 'movie',
+      'title': 'Arrival',
+      'Guid': [
+        {'id': 'imdb://tt2543164'},
+      ],
+    });
+    final withoutGuids = PlexOnDeckItem.fromJson({'ratingKey': '2', 'type': 'movie', 'title': 'Contact'});
+
+    expect(withGuids.guids.single.id, 'imdb://tt2543164');
+    expect(withoutGuids.guids, isEmpty);
+  });
+
   test('PlexPart maps Stream JSON key to streams, defaults missing list to empty', () {
     final withStreams = PlexPart.fromJson({
       'id': 1,

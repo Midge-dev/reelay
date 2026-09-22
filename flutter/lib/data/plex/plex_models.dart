@@ -80,6 +80,24 @@ class PlexTag {
   Map<String, dynamic> toJson() => _$PlexTagToJson(this);
 }
 
+/// One entry of Plex's `Guid` array — `imdb://tt.../tmdb://.../tvdb://...`,
+/// present on modern agents regardless of which one is the server's
+/// *primary* agent (that's the scalar [PlexLibraryItem.guid]/
+/// [PlexOnDeckItem.guid] instead, which can differ across two servers
+/// indexing the same title under different agents). duplicate_fold.dart's
+/// [foldByGuid] matches on either, so two copies fold together the moment
+/// they agree on any one provider id, not only on an identical primary
+/// agent.
+@JsonSerializable()
+class PlexGuid {
+  final String id;
+
+  const PlexGuid({required this.id});
+
+  factory PlexGuid.fromJson(Map<String, dynamic> json) => _$PlexGuidFromJson(json);
+  Map<String, dynamic> toJson() => _$PlexGuidToJson(this);
+}
+
 @JsonSerializable()
 class PlexLibraryItem {
   final String ratingKey;
@@ -107,6 +125,9 @@ class PlexLibraryItem {
   @JsonKey(name: 'Collection', defaultValue: [])
   final List<PlexTag> collections;
 
+  @JsonKey(name: 'Guid', defaultValue: [])
+  final List<PlexGuid> guids;
+
   const PlexLibraryItem({
     required this.ratingKey,
     this.type,
@@ -122,6 +143,7 @@ class PlexLibraryItem {
     this.guid,
     this.contentRating,
     this.leafCount,
+    this.guids = const [],
     this.genres = const [],
     this.collections = const [],
   });
@@ -408,6 +430,9 @@ class PlexOnDeckItem {
   final int? index;
   final String? guid;
 
+  @JsonKey(name: 'Guid', defaultValue: [])
+  final List<PlexGuid> guids;
+
   const PlexOnDeckItem({
     required this.ratingKey,
     required this.type,
@@ -420,6 +445,7 @@ class PlexOnDeckItem {
     this.parentIndex,
     this.index,
     this.guid,
+    this.guids = const [],
   });
 
   factory PlexOnDeckItem.fromJson(Map<String, dynamic> json) => _$PlexOnDeckItemFromJson(json);

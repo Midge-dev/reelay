@@ -63,6 +63,13 @@ Map<String, dynamic> _$PlexTagToJson(PlexTag instance) => <String, dynamic>{
   'tag': instance.tag,
 };
 
+PlexGuid _$PlexGuidFromJson(Map<String, dynamic> json) =>
+    PlexGuid(id: json['id'] as String);
+
+Map<String, dynamic> _$PlexGuidToJson(PlexGuid instance) => <String, dynamic>{
+  'id': instance.id,
+};
+
 PlexLibraryItem _$PlexLibraryItemFromJson(Map<String, dynamic> json) =>
     PlexLibraryItem(
       ratingKey: json['ratingKey'] as String,
@@ -79,6 +86,11 @@ PlexLibraryItem _$PlexLibraryItemFromJson(Map<String, dynamic> json) =>
       guid: json['guid'] as String?,
       contentRating: json['contentRating'] as String?,
       leafCount: (json['leafCount'] as num?)?.toInt(),
+      guids:
+          (json['Guid'] as List<dynamic>?)
+              ?.map((e) => PlexGuid.fromJson(e as Map<String, dynamic>))
+              .toList() ??
+          [],
       genres:
           (json['Genre'] as List<dynamic>?)
               ?.map((e) => PlexTag.fromJson(e as Map<String, dynamic>))
@@ -109,6 +121,7 @@ Map<String, dynamic> _$PlexLibraryItemToJson(PlexLibraryItem instance) =>
       'leafCount': instance.leafCount,
       'Genre': instance.genres,
       'Collection': instance.collections,
+      'Guid': instance.guids,
     };
 
 PlexWatchlistItem _$PlexWatchlistItemFromJson(Map<String, dynamic> json) =>
@@ -363,6 +376,11 @@ PlexOnDeckItem _$PlexOnDeckItemFromJson(Map<String, dynamic> json) =>
       parentIndex: (json['parentIndex'] as num?)?.toInt(),
       index: (json['index'] as num?)?.toInt(),
       guid: json['guid'] as String?,
+      guids:
+          (json['Guid'] as List<dynamic>?)
+              ?.map((e) => PlexGuid.fromJson(e as Map<String, dynamic>))
+              .toList() ??
+          [],
     );
 
 Map<String, dynamic> _$PlexOnDeckItemToJson(PlexOnDeckItem instance) =>
@@ -378,6 +396,7 @@ Map<String, dynamic> _$PlexOnDeckItemToJson(PlexOnDeckItem instance) =>
       'parentIndex': instance.parentIndex,
       'index': instance.index,
       'guid': instance.guid,
+      'Guid': instance.guids,
     };
 
 PlexHub _$PlexHubFromJson(Map<String, dynamic> json) => PlexHub(

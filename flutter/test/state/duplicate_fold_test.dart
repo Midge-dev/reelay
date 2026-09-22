@@ -5,8 +5,18 @@ import 'package:reelay/state/duplicate_fold.dart';
 
 const _attic = PlexServer(name: 'Attic', baseUrl: 'http://attic', accessToken: 'a', machineIdentifier: 'attic-id');
 const _loft = PlexServer(name: 'Loft', baseUrl: 'http://loft', accessToken: 'l', machineIdentifier: 'loft-id');
+const _cellar = PlexServer(name: 'Cellar', baseUrl: 'http://cellar', accessToken: 'c', machineIdentifier: 'cellar-id');
 
 String? _guidOf(String value) => value;
+
+/// A minimal stand-in for PlexLibraryItem/PlexOnDeckItem's (scalar guid,
+/// alternate ids) shape, so these tests can exercise [foldByGuid]'s
+/// alternate-id matching without needing a real Plex JSON fixture.
+class _Item {
+  final String? guid;
+  final List<String> altIds;
+  const _Item(this.guid, [this.altIds = const []]);
+}
 
 void main() {
   test('items with no guid never fold, each becomes its own singleton', () {
@@ -90,5 +100,71 @@ void main() {
     final folded = foldByGuid<String>(items, guidOf: _guidOf);
 
     expect(folded.map((f) => f.guid), ['plex://movie/2', 'plex://movie/1']);
+  });
+
+  group('alternate ids (Phase 5 — Plex\'s real Guid array)', () {
+    test('different scalar guids still fold together via a shared alternate id', () {
+      final items = [
+        Sourced(const _Item('plex://movie/attic-1', ['imdb://tt123', 'tmdb://1']), _attic, ServerReachability.local),
+        Sourced(const _Item('plex://movie/loft-9', ['imdb://tt123', 'tmdb://1']), _loft, ServerReachability.local),
+      ];
+      final folded = foldByGuid<_Item>(items, guidOf: (i) => i.guid, alternateIdsOf: (i) => i.altIds);
+
+      expect(folded, hasLength(1));
+      expect(folded.single.copies, hasLength(2));
+    });
+
+    test('the fold\'s guid is a representative scalar guid, not the alternate id that matched', () {
+      final items = [
+        Sourced(const _Item(null, ['imdb://tt123']), _attic, ServerReachability.local),
+        Sourced(const _Item('plex://movie/loft-9', ['imdb://tt123']), _loft, ServerReachability.local),
+      ];
+      final folded = foldByGuid<_Item>(items, guidOf: (i) => i.guid, alternateIdsOf: (i) => i.altIds);
+
+      expect(folded.single.guid, 'plex://movie/loft-9');
+    });
+
+    test('alternate ids transitively bridge items that share no id directly', () {
+      final items = [
+        Sourced(const _Item('a', ['imdb://tt1', 'tmdb://1']), _attic, ServerReachability.local),
+        Sourced(const _Item('b', ['tmdb://1', 'tvdb://1']), _loft, ServerReachability.local),
+        Sourced(const _Item('c', ['tvdb://1']), _cellar, ServerReachability.relayed),
+      ];
+      final folded = foldByGuid<_Item>(items, guidOf: (i) => i.guid, alternateIdsOf: (i) => i.altIds);
+
+      expect(folded, hasLength(1));
+      expect(folded.single.copies, hasLength(3));
+    });
+
+    test('an item with only alternate ids and no scalar guid still folds on them', () {
+      final items = [
+        Sourced(const _Item(null, ['imdb://tt1']), _attic, ServerReachability.local),
+        Sourced(const _Item(null, ['imdb://tt1']), _loft, ServerReachability.local),
+      ];
+      final folded = foldByGuid<_Item>(items, guidOf: (i) => i.guid, alternateIdsOf: (i) => i.altIds);
+
+      expect(folded, hasLength(1));
+      expect(folded.single.guid, isNull);
+    });
+
+    test('with alternateIdsOf omitted, only the scalar guid is matched (unchanged Phase 0-3 behavior)', () {
+      final items = [
+        Sourced(const _Item('a', ['imdb://tt1']), _attic, ServerReachability.local),
+        Sourced(const _Item('b', ['imdb://tt1']), _loft, ServerReachability.local),
+      ];
+      final folded = foldByGuid<_Item>(items, guidOf: (i) => i.guid);
+
+      expect(folded, hasLength(2), reason: 'shared alternate id is ignored when alternateIdsOf is not passed');
+    });
+
+    test('unrelated alternate ids never merge unrelated works', () {
+      final items = [
+        Sourced(const _Item('a', ['imdb://tt1']), _attic, ServerReachability.local),
+        Sourced(const _Item('b', ['imdb://tt2']), _loft, ServerReachability.local),
+      ];
+      final folded = foldByGuid<_Item>(items, guidOf: (i) => i.guid, alternateIdsOf: (i) => i.altIds);
+
+      expect(folded, hasLength(2));
+    });
   });
 }

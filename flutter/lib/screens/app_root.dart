@@ -638,7 +638,7 @@ class _AppContent extends StatelessWidget {
         return const <Sourced<PlexOnDeckItem>>[];
       }
     }));
-    return foldByGuid(results.expand((l) => l).toList(), guidOf: (i) => i.guid);
+    return foldByGuid(results.expand((l) => l).toList(), guidOf: (i) => i.guid, alternateIdsOf: (i) => i.guids.map((g) => g.id).toList());
   }
 
   /// Converts every copy of a [FoldedWork]&lt;PlexOnDeckItem&gt; through

@@ -271,7 +271,7 @@ class AppRootController extends ChangeNotifier {
       if (firstGroup == null) {
         throw _FriendlyError('No movie or show library found on any connected server');
       }
-      final items = foldByGuid(await _fetchGroupItems(probed.connected, firstGroup), guidOf: (i) => i.guid);
+      final items = foldByGuid(await _fetchGroupItems(probed.connected, firstGroup), guidOf: (i) => i.guid, alternateIdsOf: (i) => i.guids.map((g) => g.id).toList());
       final ctx = LibraryContext(
         servers: probed.connected,
         sectionGroups: sectionGroups,
@@ -657,10 +657,10 @@ class AppRootController extends ChangeNotifier {
     return Home(
       servers: servers,
       sectionGroups: sectionGroups,
-      onDeck: foldByGuid(onDeck, guidOf: (i) => i.guid),
-      recentlyAdded: foldByGuid(recentlyAdded, guidOf: (i) => i.guid).take(15).toList(),
-      recentActivity: foldByGuid(recentActivity, guidOf: (i) => i.guid),
-      suggestions: foldByGuid(suggestions, guidOf: (i) => i.guid),
+      onDeck: foldByGuid(onDeck, guidOf: (i) => i.guid, alternateIdsOf: (i) => i.guids.map((g) => g.id).toList()),
+      recentlyAdded: foldByGuid(recentlyAdded, guidOf: (i) => i.guid, alternateIdsOf: (i) => i.guids.map((g) => g.id).toList()).take(15).toList(),
+      recentActivity: foldByGuid(recentActivity, guidOf: (i) => i.guid, alternateIdsOf: (i) => i.guids.map((g) => g.id).toList()),
+      suggestions: foldByGuid(suggestions, guidOf: (i) => i.guid, alternateIdsOf: (i) => i.guids.map((g) => g.id).toList()),
       unreachableResources: _unreachableResources,
     );
   }
@@ -683,7 +683,7 @@ class AppRootController extends ChangeNotifier {
     final loading = LoadingSection(servers: servers, sectionGroups: sectionGroups, selectedSectionGroupKey: group.key, returnState: previous);
     _setState(loading);
     () async {
-      final items = foldByGuid(await _fetchGroupItems(servers, group), guidOf: (i) => i.guid);
+      final items = foldByGuid(await _fetchGroupItems(servers, group), guidOf: (i) => i.guid, alternateIdsOf: (i) => i.guids.map((g) => g.id).toList());
       // A slow fetch (e.g. a very large library) can outlast the user's
       // patience — BackHandler on LoadingSection lets them bail out via
       // returnState before this resolves. Don't clobber wherever they've
@@ -697,7 +697,7 @@ class AppRootController extends ChangeNotifier {
   Future<AppState> _refreshReturnState(AppState target) async {
     if (target is Home) return _loadHome(target.servers, target.sectionGroups);
     if (target is Library) {
-      final items = foldByGuid(await _fetchGroupItems(target.ctx.servers, target.ctx.selectedSectionGroup), guidOf: (i) => i.guid);
+      final items = foldByGuid(await _fetchGroupItems(target.ctx.servers, target.ctx.selectedSectionGroup), guidOf: (i) => i.guid, alternateIdsOf: (i) => i.guids.map((g) => g.id).toList());
       return Library(ctx: target.ctx.copyWith(items: items));
     }
     return target;
@@ -850,7 +850,7 @@ class AppRootController extends ChangeNotifier {
       _setState(AppError(message: '"${entry.title}" isn\'t in your Plex library yet.', retryState: returnState));
       return;
     }
-    final work = foldByGuid(matches, guidOf: (item) => item.guid).first;
+    final work = foldByGuid(matches, guidOf: (item) => item.guid, alternateIdsOf: (item) => item.guids.map((g) => g.id).toList()).first;
     final ctx = LibraryContext(
       servers: servers,
       sectionGroups: sectionGroups,
@@ -925,6 +925,8 @@ PlexLibraryItem libraryItemFrom(PlexOnDeckItem item, {String? type, String? titl
       title: title ?? item.title,
       thumb: item.thumb,
       art: item.art,
+      guid: item.guid,
+      guids: item.guids,
     );
 
 PlexEpisode episodeFrom(PlexOnDeckItem item) => PlexEpisode(
