@@ -123,6 +123,14 @@ class Settings extends AppState {
   const Settings({required this.ctx, required this.returnState, this.relayHint});
 }
 
+/// Rail-level and reachable from anywhere — DESIGN.md screen 05.
+class Search extends AppState {
+  final LibraryContext ctx;
+  final AppState returnState;
+
+  const Search({required this.ctx, required this.returnState});
+}
+
 class MovieDetail extends AppState {
   final LibraryContext ctx;
   final PlexLibraryItem movie;

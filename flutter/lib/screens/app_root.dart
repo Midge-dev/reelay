@@ -19,6 +19,7 @@ import 'library/episode_detail_screen.dart';
 import 'library/library_screen.dart';
 import 'library/movie_detail_screen.dart';
 import 'library/person_filmography_screen.dart';
+import 'library/search_screen.dart';
 import 'library/show_detail_screen.dart';
 import 'lobby/lobby_screen.dart';
 import 'navigation/app_navigation_drawer.dart';
@@ -153,6 +154,7 @@ class _AppContent extends StatelessWidget {
             onSelectSection: (_) {},
             onOpenSettings: () {},
             onOpenHome: () {},
+            onOpenSearch: () {},
             account: controller.localAccount,
             versionName: _appVersionName,
             child: const LoadingScreen(),
@@ -166,6 +168,7 @@ class _AppContent extends StatelessWidget {
           onSelectSection: (_) {},
           onOpenSettings: () {},
           onOpenHome: () {},
+          onOpenSearch: () {},
           account: controller.localAccount,
           versionName: _appVersionName,
           child: const HomeLoadingSkeleton(),
@@ -187,6 +190,23 @@ class _AppContent extends StatelessWidget {
                 controller.returnTo(returnState);
               }
             },
+          ),
+        ),
+      Search(:final ctx, :final returnState) => _drawer(
+          ctx: ctx,
+          isHomeSelected: false,
+          isSearchSelected: true,
+          child: SearchScreen(
+            server: ctx.server,
+            search: (query) => _serverApi(ctx).search(query),
+            onSelectResult: (item) => controller.returnTo(
+              MovieDetail(
+                ctx: ctx.copyWith(selectedSection: sectionFor(ctx.sections, item.type)),
+                movie: libraryItemFrom(item),
+                returnState: state,
+              ),
+            ),
+            onBack: () => controller.returnTo(returnState),
           ),
         ),
       MovieDetail(:final ctx, :final movie, :final returnState) when ctx.selectedSection.type == _sectionTypeShow => _drawer(
@@ -396,6 +416,10 @@ class _AppContent extends StatelessWidget {
         ctx: LibraryContext(server: home.server, sections: home.sections, selectedSection: home.sections.first, items: const []),
         returnState: home,
       )),
+      onOpenSearch: () => controller.returnTo(Search(
+        ctx: LibraryContext(server: home.server, sections: home.sections, selectedSection: home.sections.first, items: const []),
+        returnState: home,
+      )),
       // Clicking Home while already on Home used to be a pure no-op —
       // no state change at all means nothing ever reclaims focus from the
       // nav rail, so the drawer never collapses back down (it only
@@ -445,15 +469,23 @@ class _AppContent extends StatelessWidget {
     return item.title;
   }
 
-  Widget _drawer({required LibraryContext ctx, required bool isHomeSelected, bool isSettingsSelected = false, required Widget child}) {
+  Widget _drawer({
+    required LibraryContext ctx,
+    required bool isHomeSelected,
+    bool isSettingsSelected = false,
+    bool isSearchSelected = false,
+    required Widget child,
+  }) {
     return AppNavigationDrawer(
       sections: ctx.sections,
       selectedSectionKey: ctx.selectedSection.key,
       isSettingsSelected: isSettingsSelected,
       isHomeSelected: isHomeSelected,
+      isSearchSelected: isSearchSelected,
       onSelectSection: (section) => controller.selectSection(ctx, section),
       onOpenSettings: () => controller.returnTo(Settings(ctx: ctx, returnState: Library(ctx: ctx))),
       onOpenHome: () => controller.goHome(ctx.server, ctx.sections),
+      onOpenSearch: () => controller.returnTo(Search(ctx: ctx, returnState: Library(ctx: ctx))),
       account: controller.localAccount,
       versionName: _appVersionName,
       child: child,

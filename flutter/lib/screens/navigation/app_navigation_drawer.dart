@@ -32,9 +32,11 @@ class AppNavigationDrawer extends StatefulWidget {
   final String? selectedSectionKey;
   final bool isSettingsSelected;
   final bool isHomeSelected;
+  final bool isSearchSelected;
   final ValueChanged<PlexSection> onSelectSection;
   final VoidCallback onOpenSettings;
   final VoidCallback onOpenHome;
+  final VoidCallback onOpenSearch;
   final PlexAccount? account;
   final String? versionName;
   final Widget child;
@@ -45,9 +47,11 @@ class AppNavigationDrawer extends StatefulWidget {
     this.selectedSectionKey,
     required this.isSettingsSelected,
     required this.isHomeSelected,
+    this.isSearchSelected = false,
     required this.onSelectSection,
     required this.onOpenSettings,
     required this.onOpenHome,
+    required this.onOpenSearch,
     this.account,
     this.versionName,
     required this.child,
@@ -69,6 +73,7 @@ class _AppNavigationDrawerState extends State<AppNavigationDrawer> {
   bool _forceCollapsed = false;
   final _railFocusNode = FocusNode(debugLabel: 'nav-rail');
   final _homeItemFocusNode = FocusNode(debugLabel: 'nav-rail-home');
+  final _searchItemFocusNode = FocusNode(debugLabel: 'nav-rail-search');
   final _settingsItemFocusNode = FocusNode(debugLabel: 'nav-rail-settings');
   late final Map<String, FocusNode> _sectionFocusNodes = {
     for (final section in widget.sections) section.key: FocusNode(debugLabel: 'nav-rail-section-${section.key}'),
@@ -82,6 +87,7 @@ class _AppNavigationDrawerState extends State<AppNavigationDrawer> {
 
   FocusNode get _currentSectionFocusNode {
     if (widget.isSettingsSelected) return _settingsItemFocusNode;
+    if (widget.isSearchSelected) return _searchItemFocusNode;
     final key = widget.selectedSectionKey;
     if (!widget.isHomeSelected && key != null && _sectionFocusNodes.containsKey(key)) return _sectionFocusNodes[key]!;
     return _homeItemFocusNode;
@@ -89,6 +95,7 @@ class _AppNavigationDrawerState extends State<AppNavigationDrawer> {
 
   List<FocusNode> get _orderedRailFocusNodes => [
         _homeItemFocusNode,
+        _searchItemFocusNode,
         for (final section in widget.sections) _sectionFocusNodes[section.key]!,
         _settingsItemFocusNode,
       ];
@@ -115,7 +122,19 @@ class _AppNavigationDrawerState extends State<AppNavigationDrawer> {
     if (currentIndex == -1) return KeyEventResult.ignored;
 
     final nextIndex = currentIndex + (key == LogicalKeyboardKey.arrowUp ? -1 : 1);
-    if (nextIndex >= 0 && nextIndex < ordered.length) ordered[nextIndex].requestFocus();
+    if (nextIndex >= 0 && nextIndex < ordered.length) {
+      final target = ordered[nextIndex];
+      target.requestFocus();
+      // The Home/Search/section list now scrolls (see the matching comment
+      // below on why) — Settings/the avatar sit outside that Scrollable, so
+      // context is null for them and there's nothing to reveal.
+      final targetContext = target.context;
+      if (targetContext != null) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (targetContext.mounted) Scrollable.ensureVisible(targetContext, duration: _railAnimDuration);
+        });
+      }
+    }
     return KeyEventResult.handled;
   }
 
@@ -135,7 +154,14 @@ class _AppNavigationDrawerState extends State<AppNavigationDrawer> {
       // pass, so a deferred correction would let the wrong target actually
       // paint for a frame first, visible as a jump/flash before snapping
       // to the right one.
-      _currentSectionFocusNode.requestFocus();
+      final target = _currentSectionFocusNode;
+      target.requestFocus();
+      final targetContext = target.context;
+      if (targetContext != null) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (targetContext.mounted) Scrollable.ensureVisible(targetContext, duration: _railAnimDuration);
+        });
+      }
     }
     setState(() => _expanded = hasFocus);
   }
@@ -150,6 +176,7 @@ class _AppNavigationDrawerState extends State<AppNavigationDrawer> {
     _railFocusNode.removeListener(_handleRailFocusChange);
     _railFocusNode.dispose();
     _homeItemFocusNode.dispose();
+    _searchItemFocusNode.dispose();
     _settingsItemFocusNode.dispose();
     for (final node in _sectionFocusNodes.values) {
       node.dispose();
@@ -198,29 +225,52 @@ class _AppNavigationDrawerState extends State<AppNavigationDrawer> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        _UserAvatarItem(account: widget.account, expanded: effectiveExpanded),
-                        const SizedBox(height: 8),
-                        _SidebarItem(
-                          icon: Icons.home,
-                          label: 'Home',
-                          selected: widget.isHomeSelected,
-                          expanded: effectiveExpanded,
-                          onClick: () => _handleSelect(widget.onOpenHome),
-                          focusNode: _homeItemFocusNode,
-                        ),
-                        const SizedBox(height: 4),
-                        for (final section in widget.sections) ...[
-                          _SidebarItem(
-                            icon: section.type == _sectionTypeShow ? Icons.tv : Icons.movie,
-                            label: section.title,
-                            selected: !widget.isSettingsSelected && !widget.isHomeSelected && section.key == widget.selectedSectionKey,
-                            expanded: effectiveExpanded,
-                            onClick: () => _handleSelect(() => widget.onSelectSection(section)),
-                            focusNode: _sectionFocusNodes[section.key],
+                        // Scrollable rather than a fixed Column+Spacer — a
+                        // household with enough library sections (or, now,
+                        // Search added ahead of them) can genuinely exceed
+                        // the rail's height; scrolling degrades gracefully
+                        // where a fixed list would just overflow off the
+                        // bottom of the screen.
+                        Expanded(
+                          child: SingleChildScrollView(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
+                                _UserAvatarItem(account: widget.account, expanded: effectiveExpanded),
+                                const SizedBox(height: 8),
+                                _SidebarItem(
+                                  icon: Icons.home,
+                                  label: 'Home',
+                                  selected: widget.isHomeSelected,
+                                  expanded: effectiveExpanded,
+                                  onClick: () => _handleSelect(widget.onOpenHome),
+                                  focusNode: _homeItemFocusNode,
+                                ),
+                                const SizedBox(height: 4),
+                                _SidebarItem(
+                                  icon: Icons.search,
+                                  label: 'Search',
+                                  selected: widget.isSearchSelected,
+                                  expanded: effectiveExpanded,
+                                  onClick: () => _handleSelect(widget.onOpenSearch),
+                                  focusNode: _searchItemFocusNode,
+                                ),
+                                const SizedBox(height: 4),
+                                for (final section in widget.sections) ...[
+                                  _SidebarItem(
+                                    icon: section.type == _sectionTypeShow ? Icons.tv : Icons.movie,
+                                    label: section.title,
+                                    selected: !widget.isSettingsSelected && !widget.isHomeSelected && section.key == widget.selectedSectionKey,
+                                    expanded: effectiveExpanded,
+                                    onClick: () => _handleSelect(() => widget.onSelectSection(section)),
+                                    focusNode: _sectionFocusNodes[section.key],
+                                  ),
+                                  const SizedBox(height: 4),
+                                ],
+                              ],
+                            ),
                           ),
-                          const SizedBox(height: 4),
-                        ],
-                        const Spacer(),
+                        ),
                         _SidebarItem(
                           icon: Icons.settings,
                           label: 'Settings',

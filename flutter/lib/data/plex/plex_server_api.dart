@@ -74,6 +74,16 @@ class PlexServerApi {
     return extractMediaContainerList(json, 'Hub', PlexHub.fromJson);
   }
 
+  /// Global search (screen 05) — Plex's own hubs/search groups results by
+  /// kind server-side (movie, show, episode, actor, ...); the hub grouping
+  /// itself isn't used here since SearchScreen regroups by [PlexOnDeckItem
+  /// .type] to control its own SERIES/MOVIES section order and labels.
+  Future<List<PlexOnDeckItem>> search(String query) async {
+    final json = await _get('${server.baseUrl}/hubs/search?query=${Uri.encodeQueryComponent(query)}&limit=12');
+    final hubs = extractMediaContainerList(json, 'Hub', PlexHub.fromJson);
+    return hubs.expand((hub) => hub.items).toList();
+  }
+
   Future<List<PlexLibraryItem>> fetchLibraryItemsByActor(String sectionKey, int actorId) async {
     final json = await _get('${server.baseUrl}/library/sections/$sectionKey/all?actor=$actorId');
     return extractMediaContainerList(json, 'Metadata', PlexLibraryItem.fromJson);

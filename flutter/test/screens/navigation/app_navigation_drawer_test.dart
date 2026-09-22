@@ -29,6 +29,7 @@ void main() {
         onSelectSection: (_) {},
         onOpenSettings: () {},
         onOpenHome: () {},
+        onOpenSearch: () {},
         child: const SizedBox(),
       ),
     );
@@ -51,6 +52,7 @@ void main() {
         onSelectSection: (_) {},
         onOpenSettings: () {},
         onOpenHome: () {},
+        onOpenSearch: () {},
         child: const SizedBox(),
       ),
     );
@@ -75,6 +77,7 @@ void main() {
         onSelectSection: (s) => selected = s,
         onOpenSettings: () {},
         onOpenHome: () {},
+        onOpenSearch: () {},
         child: const SizedBox(),
       ),
     );
@@ -96,6 +99,7 @@ void main() {
         onSelectSection: (_) {},
         onOpenSettings: () => opened = true,
         onOpenHome: () {},
+        onOpenSearch: () {},
         child: const SizedBox(),
       ),
     );

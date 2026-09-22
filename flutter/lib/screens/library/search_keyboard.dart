@@ -49,9 +49,22 @@ final List<List<SearchKey>> searchKeyGrid = searchKeyRows.map((row) {
   return expanded;
 }).toList();
 
-const _keyShape = RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(8)));
-final _keyColors = SurfaceColors(container: AppColors.surface, content: AppColors.inkOnArt, focusedContainer: AppColors.accent, focusedContent: AppColors.inkOnArt);
-const _keyBorder = SurfaceBorder(focused: SurfaceBorderSide.solid(AppColors.accent));
+const _keyHeight = 52.0;
+const _keyGap = AppSpacing.xs;
+final _keyShape = RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppShape.radiusSm));
+final _keyColors = SurfaceColors(
+  container: AppColors.surface,
+  content: AppColors.ink2,
+  focusedContainer: AppColors.surfaceRaised,
+  focusedContent: AppColors.ink,
+);
+// noSpine — a key is a small, icon-like glyph target (DESIGN.md #3), not a
+// card; a leading spine would read as a sliver on something this square.
+const _keyBorder = SurfaceBorder(
+  idle: SurfaceBorderSide.solid(AppColors.line),
+  focused: SurfaceBorderSide.solid(AppColors.accent),
+  noSpine: true,
+);
 
 /// Ports ui/library/LibraryScreen.kt's `SearchKeyboard` — a hand-wired
 /// D-pad grid (small, tightly-packed keys where span-2 keys make default
@@ -123,7 +136,7 @@ class _SearchKeyboardState extends State<SearchKeyboard> {
       mainAxisSize: MainAxisSize.min,
       children: [
         for (var rowIndex = 0; rowIndex < searchKeyRows.length; rowIndex++) ...[
-          if (rowIndex > 0) const SizedBox(height: 6),
+          if (rowIndex > 0) const SizedBox(height: _keyGap),
           _buildRow(rowIndex),
         ],
       ],
@@ -135,7 +148,7 @@ class _SearchKeyboardState extends State<SearchKeyboard> {
     final children = <Widget>[];
     var col = 0;
     for (final key in row) {
-      if (children.isNotEmpty) children.add(const SizedBox(width: 6));
+      if (children.isNotEmpty) children.add(const SizedBox(width: _keyGap));
       final colStart = col;
       final colEnd = col + key.span - 1;
       col += key.span;
@@ -226,7 +239,7 @@ class _SearchKeyButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      height: 30,
+      height: _keyHeight,
       child: Focus(
         canRequestFocus: false,
         onKeyEvent: _handleArrowKeys,
@@ -241,7 +254,7 @@ class _SearchKeyButton extends StatelessWidget {
           child: AppText(
             searchKey.label,
             textAlign: TextAlign.center,
-            style: AppTypography.caption,
+            style: AppTypography.label,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
           ),
