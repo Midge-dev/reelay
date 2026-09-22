@@ -229,6 +229,34 @@ class EpisodeDetail extends AppState {
   const EpisodeDetail({required this.ctx, required this.show, required this.episode, required this.returnState});
 }
 
+/// Screen 09 — "three decisions, one confirm" before a room is created,
+/// replacing what used to be an immediate startWatchTogether() call from
+/// five different buttons. Rendered as its own full screen rather than a
+/// literal dialog over the dimmed detail page (same disclosed
+/// simplification as PlaybackFailed). [defaultRestart] preselects the
+/// choice based on which existing entry point was pressed (the plain
+/// "Watch Together" button vs. a restart-together affordance) — exact
+/// resume timestamps aren't threaded through from every call site, so the
+/// dialog offers "Resume"/"Start from the beginning" generically rather
+/// than the mockup's specific "Start from 46:12".
+class WatchTogetherStart extends AppState {
+  final LibraryContext ctx;
+  final AppState returnState;
+  final String roomTitle;
+  final String? thumb;
+  final String targetRatingKey;
+  final bool defaultRestart;
+
+  const WatchTogetherStart({
+    required this.ctx,
+    required this.returnState,
+    required this.roomTitle,
+    this.thumb,
+    required this.targetRatingKey,
+    this.defaultRestart = false,
+  });
+}
+
 class Lobby extends AppState {
   final PlexServer server;
   final PlexMovieDetail detail;

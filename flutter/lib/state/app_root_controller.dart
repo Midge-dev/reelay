@@ -428,6 +428,28 @@ class AppRootController extends ChangeNotifier {
     return null;
   }
 
+  /// Opens screen 09 rather than starting the room immediately — the
+  /// actual room creation is still [startWatchTogether] below, called once
+  /// the dialog confirms. No network calls here; just a state change, so
+  /// the dialog appears instantly.
+  void openWatchTogetherStart({
+    required LibraryContext ctx,
+    required AppState returnState,
+    required String roomTitle,
+    String? thumb,
+    required String targetRatingKey,
+    bool defaultRestart = false,
+  }) {
+    _setState(WatchTogetherStart(
+      ctx: ctx,
+      returnState: returnState,
+      roomTitle: roomTitle,
+      thumb: thumb,
+      targetRatingKey: targetRatingKey,
+      defaultRestart: defaultRestart,
+    ));
+  }
+
   Future<void> startWatchTogether({
     required LibraryContext ctx,
     required AppState returnState,

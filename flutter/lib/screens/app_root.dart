@@ -9,6 +9,7 @@ import '../kit/text.dart';
 import '../state/app_root_controller.dart';
 import '../state/app_state.dart';
 import '../state/data_providers.dart';
+import '../sync/relay_directory_api.dart';
 import '../theme/tokens.dart';
 import '../theme/typography.dart';
 import 'auth/auth_screen.dart';
@@ -26,6 +27,7 @@ import 'library/search_screen.dart';
 import 'library/show_detail_screen.dart';
 import 'library/watchlist_screen.dart';
 import 'lobby/lobby_screen.dart';
+import 'lobby/watch_together_start_screen.dart';
 import 'navigation/app_navigation_drawer.dart';
 import 'player/player_screen.dart';
 import 'profiles/profile_picker_screen.dart';
@@ -291,13 +293,12 @@ class _AppContent extends StatelessWidget {
               }
             },
             onPlay: (targetRatingKey) => controller.playMovie(ctx, targetRatingKey, state),
-            onWatchTogether: (targetRatingKey) => controller.startWatchTogether(
+            onWatchTogether: (targetRatingKey) => controller.openWatchTogetherStart(
               ctx: ctx,
               returnState: state,
               roomTitle: movie.title,
               thumb: movie.thumb,
               targetRatingKey: targetRatingKey,
-              restart: false,
             ),
             onSelectEpisode: (episode) => controller.returnTo(EpisodeDetail(ctx: ctx, show: movie, episode: episode, returnState: state)),
           ),
@@ -345,13 +346,12 @@ class _AppContent extends StatelessWidget {
               }
             },
             onPlay: (targetRatingKey) => controller.playMovie(ctx, targetRatingKey, state),
-            onWatchTogether: (targetRatingKey) => controller.startWatchTogether(
+            onWatchTogether: (targetRatingKey) => controller.openWatchTogetherStart(
               ctx: ctx,
               returnState: state,
               roomTitle: movie.title,
               thumb: movie.thumb,
               targetRatingKey: targetRatingKey,
-              restart: false,
             ),
             onRestartSolo: (targetRatingKey) => controller.playMovie(ctx, targetRatingKey, state, fromStart: true),
           ),
@@ -398,23 +398,41 @@ class _AppContent extends StatelessWidget {
             },
             onPlay: () => controller.playMovie(ctx, episode.ratingKey, state),
             onPlayFromStart: () => controller.playMovie(ctx, episode.ratingKey, state, fromStart: true),
-            onWatchTogether: () => controller.startWatchTogether(
+            onWatchTogether: () => controller.openWatchTogetherStart(
               ctx: ctx,
               returnState: state,
               roomTitle: _episodeRoomTitle(show, episode),
               thumb: episode.thumb,
               targetRatingKey: episode.ratingKey,
-              restart: false,
             ),
-            onRestartTogether: () => controller.startWatchTogether(
+            onRestartTogether: () => controller.openWatchTogetherStart(
               ctx: ctx,
               returnState: state,
               roomTitle: _episodeRoomTitle(show, episode),
               thumb: episode.thumb,
               targetRatingKey: episode.ratingKey,
-              restart: true,
+              defaultRestart: true,
             ),
           ),
+        ),
+      WatchTogetherStart(:final ctx, :final returnState, :final roomTitle, :final thumb, :final targetRatingKey, :final defaultRestart) =>
+        WatchTogetherStartScreen(
+          roomTitle: roomTitle,
+          defaultRestart: defaultRestart,
+          maxSeats: controller.currentSettings.maxHostSeats,
+          relayNickname: controller.currentSettings.defaultRelay?.nickname,
+          checkRelayReachable: controller.currentSettings.defaultRelay == null
+              ? null
+              : () => RelayDirectoryApi().testReachable(controller.currentSettings.defaultRelay!.url),
+          onConfirm: ({required restart, required showPhoneChat}) => controller.startWatchTogether(
+            ctx: ctx,
+            returnState: returnState,
+            roomTitle: roomTitle,
+            thumb: thumb,
+            targetRatingKey: targetRatingKey,
+            restart: restart,
+          ),
+          onCancel: () => controller.returnTo(returnState),
         ),
       Lobby(:final detail, :final returnState, :final relay, :final hostName, :final relayNickname, :final isHost) => LobbyScreen(
           key: ValueKey('lobby-${detail.ratingKey}'),
@@ -501,13 +519,12 @@ class _AppContent extends StatelessWidget {
         onSelectRecentlyAdded: (item) => controller.selectRecentlyAdded(home, item),
         onSelectRecentActivity: (item) => controller.selectOnDeckLike(home, item),
         onSelectSuggestion: (item) => controller.selectOnDeckLike(home, item),
-        onHeroWatchTogether: (item) => controller.startWatchTogether(
+        onHeroWatchTogether: (item) => controller.openWatchTogetherStart(
           ctx: LibraryContext(server: home.server, sections: home.sections, selectedSection: sectionFor(home.sections, item.type), items: const []),
           returnState: home,
           roomTitle: _episodeRoomTitleFromOnDeck(item),
           thumb: item.thumb,
           targetRatingKey: item.ratingKey,
-          restart: false,
         ),
       ),
     );
