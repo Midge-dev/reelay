@@ -9,21 +9,27 @@ import '../../theme/tokens.dart';
 import '../../theme/typography.dart';
 
 /// Screen 25 — "COULDN'T START". Names the failed server plainly (no raw
-/// exception, no error codes — DESIGN.md's copy rule), offers Retry as the
-/// primary action. No alternate-source offer yet (see PlaybackFailed's doc
-/// comment: needs cross-server duplicate folding, which doesn't exist).
-/// Rendered as its own full screen rather than a literal dialog over the
-/// dimmed detail page — see the same state's doc comment for why.
+/// exception, no error codes — DESIGN.md's copy rule). Now that duplicate
+/// folding exists, a reachable alternate copy (when [alternateServerName]/
+/// [onPlayAlternate] are given) becomes the primary action — "Play from
+/// Loft" in the mockup — with plain Retry demoted to a secondary option;
+/// with no alternate, Retry stays primary exactly as before. Rendered as
+/// its own full screen rather than a literal dialog over the dimmed detail
+/// page — see PlaybackFailed's own doc comment for why.
 class PlaybackFailedScreen extends StatefulWidget {
   final String reason;
   final VoidCallback onRetry;
   final VoidCallback onBack;
+  final String? alternateServerName;
+  final VoidCallback? onPlayAlternate;
 
   const PlaybackFailedScreen({
     super.key,
     required this.reason,
     required this.onRetry,
     required this.onBack,
+    this.alternateServerName,
+    this.onPlayAlternate,
   });
 
   @override
@@ -31,19 +37,19 @@ class PlaybackFailedScreen extends StatefulWidget {
 }
 
 class _PlaybackFailedScreenState extends State<PlaybackFailedScreen> {
-  final _retryFocus = FocusNode(debugLabel: 'playback-failed-retry');
+  final _primaryFocus = FocusNode(debugLabel: 'playback-failed-primary');
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback(
-      (_) => _retryFocus.requestFocus(),
+      (_) => _primaryFocus.requestFocus(),
     );
   }
 
   @override
   void dispose() {
-    _retryFocus.dispose();
+    _primaryFocus.dispose();
     super.dispose();
   }
 
@@ -84,30 +90,60 @@ class _PlaybackFailedScreenState extends State<PlaybackFailedScreen> {
               SizedBox(height: AppSpacing.xl.du(context)),
               AppText(widget.reason, style: AppTypography.title2),
               SizedBox(height: AppSpacing.xxl.du(context)),
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  AppButton(
-                    onClick: widget.onRetry,
-                    focusNode: _retryFocus,
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const AppIcon(
-                          PhosphorIconsRegular.arrowClockwise,
-                          size: 22,
+              Builder(
+                builder: (context) {
+                  final alternateName = widget.alternateServerName;
+                  final onPlayAlternate = widget.onPlayAlternate;
+                  final hasAlternate = alternateName != null && onPlayAlternate != null;
+                  return Wrap(
+                    // Wrap, not Row — three buttons (alternate offer, retry,
+                    // back) can exceed this dialog's width at some scale
+                    // factors, same overflow hazard as MovieDetailScreen's
+                    // hero action row.
+                    spacing: AppSpacing.md.du(context),
+                    runSpacing: AppSpacing.md.du(context),
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    children: [
+                      if (hasAlternate)
+                        AppButton(
+                          onClick: onPlayAlternate,
+                          focusNode: _primaryFocus,
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const AppIcon(PhosphorIconsFill.play, size: 22),
+                              SizedBox(width: AppSpacing.sm.du(context)),
+                              AppText('Play from $alternateName'),
+                            ],
+                          ),
                         ),
-                        SizedBox(width: AppSpacing.sm.du(context)),
-                        const AppText('Try again'),
-                      ],
-                    ),
-                  ),
-                  SizedBox(width: AppSpacing.md.du(context)),
-                  AppOutlinedButton(
-                    onClick: widget.onBack,
-                    child: const AppText('Back'),
-                  ),
-                ],
+                      hasAlternate
+                          ? AppOutlinedButton(
+                              onClick: widget.onRetry,
+                              child: const AppText('Try again'),
+                            )
+                          : AppButton(
+                              onClick: widget.onRetry,
+                              focusNode: _primaryFocus,
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const AppIcon(
+                                    PhosphorIconsRegular.arrowClockwise,
+                                    size: 22,
+                                  ),
+                                  SizedBox(width: AppSpacing.sm.du(context)),
+                                  const AppText('Try again'),
+                                ],
+                              ),
+                            ),
+                      AppOutlinedButton(
+                        onClick: widget.onBack,
+                        child: const AppText('Back'),
+                      ),
+                    ],
+                  );
+                },
               ),
             ],
           ),

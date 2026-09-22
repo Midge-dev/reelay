@@ -1,15 +1,19 @@
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:reelay/data/plex/plex_models.dart';
+import 'package:reelay/data/plex/plex_resources_api.dart';
 import 'package:reelay/screens/library/movie_detail_screen.dart';
+import 'package:reelay/state/duplicate_fold.dart';
 
-const _server = PlexServer(name: 'Home', baseUrl: 'http://192.168.1.5:32400', accessToken: 'tok');
+const _server = PlexServer(name: 'Home', baseUrl: 'http://192.168.1.5:32400', accessToken: 'tok', machineIdentifier: 'home-id');
 const _movie = PlexLibraryItem(ratingKey: '1', title: 'Arrival', year: 2016, summary: 'A linguist deciphers alien contact.');
 
 Future<void> _pump(
   WidgetTester tester, {
   ValueChanged<String>? onPlay,
   bool Function(String?)? isOnWatchlist,
+  FoldedWork<PlexLibraryItem>? work,
+  ValueChanged<Sourced<PlexLibraryItem>>? onSwitchSource,
 }) async {
   tester.view.physicalSize = const Size(1920, 1080);
   tester.view.devicePixelRatio = 1.0;
@@ -22,6 +26,8 @@ Future<void> _pump(
       child: MovieDetailScreen(
         server: _server,
         movie: _movie,
+        work: work ?? FoldedWork(_movie.guid, [Sourced(_movie, _server, ServerReachability.local)]),
+        onSwitchSource: onSwitchSource ?? (_) {},
         onBack: () {},
         onPlay: onPlay ?? (_) {},
         onWatchTogether: (_) {},
@@ -37,6 +43,8 @@ Future<void> _pump(
     ),
   );
 }
+
+const _otherServer = PlexServer(name: 'Loft', baseUrl: 'http://192.168.1.9:32400', accessToken: 'tok2', machineIdentifier: 'loft-id');
 
 void main() {
   testWidgets('shows the movie title, year, and summary in the hero', (tester) async {
@@ -73,5 +81,51 @@ void main() {
 
     expect(find.text('✓'), findsOneWidget);
     expect(find.text('+'), findsNothing);
+  });
+
+  group('source picker', () {
+    testWidgets('a single-copy work shows no copy count and is not clickable', (tester) async {
+      await _pump(tester);
+      await tester.pump();
+
+      expect(find.textContaining('copies'), findsNothing);
+    });
+
+    testWidgets('a multi-copy work shows the copy count and opens the picker on tap', (tester) async {
+      final work = FoldedWork(_movie.guid, [
+        Sourced(_movie, _server, ServerReachability.local),
+        Sourced(_movie, _otherServer, ServerReachability.relayed),
+      ]);
+      await _pump(tester, work: work);
+      await tester.pump();
+
+      expect(find.text('2 copies'), findsOneWidget);
+
+      await tester.tap(find.text('2 copies'));
+      await tester.pump();
+
+      expect(find.text('${_movie.title} is on 2 of your servers'), findsOneWidget);
+      expect(find.text('Home'), findsOneWidget);
+      expect(find.text('Loft'), findsOneWidget);
+      expect(find.text('Chosen'), findsOneWidget);
+    });
+
+    testWidgets('selecting a reachable alternate invokes onSwitchSource and closes the dialog', (tester) async {
+      Sourced<PlexLibraryItem>? switched;
+      final work = FoldedWork(_movie.guid, [
+        Sourced(_movie, _server, ServerReachability.local),
+        Sourced(_movie, _otherServer, ServerReachability.relayed),
+      ]);
+      await _pump(tester, work: work, onSwitchSource: (s) => switched = s);
+      await tester.pump();
+
+      await tester.tap(find.text('2 copies'));
+      await tester.pump();
+      await tester.tap(find.text('Loft'));
+      await tester.pump();
+
+      expect(switched?.server.name, 'Loft');
+      expect(find.text('Back closes and keeps the current source'), findsNothing);
+    });
   });
 }

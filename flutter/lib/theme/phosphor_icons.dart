@@ -37,6 +37,12 @@ class PhosphorIconsRegular {
     fontPackage: 'phosphor_flutter',
     matchTextDirection: true,
   );
+  static const caretRight = IconData(
+    0xe13a,
+    fontFamily: 'PhosphorRegular',
+    fontPackage: 'phosphor_flutter',
+    matchTextDirection: true,
+  );
   static const caretUp = IconData(
     0xe13c,
     fontFamily: 'PhosphorRegular',

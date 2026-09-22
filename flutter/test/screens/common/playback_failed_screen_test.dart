@@ -7,6 +7,8 @@ Future<void> _pump(
   String reason = 'Attic stopped answering partway through starting.',
   VoidCallback? onRetry,
   VoidCallback? onBack,
+  String? alternateServerName,
+  VoidCallback? onPlayAlternate,
 }) async {
   tester.view.physicalSize = const Size(1920, 1080);
   tester.view.devicePixelRatio = 1.0;
@@ -20,6 +22,8 @@ Future<void> _pump(
         reason: reason,
         onRetry: onRetry ?? () {},
         onBack: onBack ?? () {},
+        alternateServerName: alternateServerName,
+        onPlayAlternate: onPlayAlternate,
       ),
     ),
   );
@@ -52,5 +56,29 @@ void main() {
     await tester.pump();
 
     expect(wentBack, isTrue);
+  });
+
+  testWidgets('with no alternate source, only Try again and Back show', (tester) async {
+    await _pump(tester);
+
+    expect(find.textContaining('Play from'), findsNothing);
+    expect(find.text('Try again'), findsOneWidget);
+  });
+
+  testWidgets('with an alternate source, Play from X becomes primary and Try again stays available', (tester) async {
+    await _pump(tester, alternateServerName: 'Loft', onPlayAlternate: () {});
+
+    expect(find.text('Play from Loft'), findsOneWidget);
+    expect(find.text('Try again'), findsOneWidget);
+  });
+
+  testWidgets('tapping Play from X invokes onPlayAlternate', (tester) async {
+    var playedAlternate = false;
+    await _pump(tester, alternateServerName: 'Loft', onPlayAlternate: () => playedAlternate = true);
+
+    await tester.tap(find.text('Play from Loft'));
+    await tester.pump();
+
+    expect(playedAlternate, isTrue);
   });
 }

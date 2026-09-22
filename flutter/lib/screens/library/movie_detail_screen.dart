@@ -8,6 +8,7 @@ import '../../data/plex/plex_models.dart';
 import '../../data/plex/plex_resources_api.dart' show ServerReachability;
 import '../../focus/back_handler.dart';
 import '../../kit/button.dart';
+import '../../kit/card.dart';
 import '../../kit/icon.dart';
 import '../../kit/icon_button.dart';
 import '../../kit/surface_style.dart';
@@ -21,6 +22,7 @@ import '../common/time_format.dart';
 import '../common/watch_together_icon.dart';
 import '../common/watchlist_button.dart';
 import 'movie_detail_sections.dart';
+import 'source_picker_dialog.dart';
 
 const _heroHeight = 680.0;
 const _posterWidth = 280.0;
@@ -43,6 +45,7 @@ final _restartButtonBorder = SurfaceBorder(
 class MovieDetailScreen extends StatefulWidget {
   final PlexServer server;
   final PlexLibraryItem movie;
+  final FoldedWork<PlexLibraryItem> work;
   final VoidCallback onBack;
   final ValueChanged<String> onPlay;
   final ValueChanged<String> onWatchTogether;
@@ -54,11 +57,13 @@ class MovieDetailScreen extends StatefulWidget {
   final Future<List<PlexLibraryItem>> Function(int actorId) loadByActor;
   final ValueChanged<PlexOnDeckItem> onSelectRelated;
   final ValueChanged<PlexPerson> onSelectPerson;
+  final ValueChanged<Sourced<PlexLibraryItem>> onSwitchSource;
 
   const MovieDetailScreen({
     super.key,
     required this.server,
     required this.movie,
+    required this.work,
     required this.onBack,
     required this.onPlay,
     required this.onWatchTogether,
@@ -70,6 +75,7 @@ class MovieDetailScreen extends StatefulWidget {
     required this.loadByActor,
     required this.onSelectRelated,
     required this.onSelectPerson,
+    required this.onSwitchSource,
   });
 
   @override
@@ -90,6 +96,7 @@ class _MovieDetailScreenState extends State<MovieDetailScreen> {
   PlexMovieDetail? _detail;
   List<PlexHub> _relatedHubs = const [];
   List<_CoStarRow> _coStarRows = const [];
+  bool _showingSourcePicker = false;
 
   @override
   void initState() {
@@ -210,6 +217,10 @@ class _MovieDetailScreenState extends State<MovieDetailScreen> {
         isOnWatchlist: widget.isOnWatchlist(detail?.guid),
         onToggleWatchlist: () => widget.onToggleWatchlist(detail?.guid),
         onActionButtonFocused: _scrollToTop,
+        copyCount: widget.work.copies.length,
+        onOpenSourcePicker: widget.work.copies.length > 1
+            ? () => setState(() => _showingSourcePicker = true)
+            : null,
       ),
     ];
     if (detail != null) {
@@ -265,17 +276,32 @@ class _MovieDetailScreenState extends State<MovieDetailScreen> {
     }
     sections.add(SizedBox(height: 48.du(context)));
 
-    return BackHandler(
-      onBack: widget.onBack,
-      child: ColoredBox(
-        color: AppColors.background,
-        child: ListView.separated(
-          controller: _scrollController,
-          itemCount: sections.length,
-          separatorBuilder: (context, index) => SizedBox(height: 28.du(context)),
-          itemBuilder: (context, index) => sections[index],
+    return Stack(
+      children: [
+        BackHandler(
+          onBack: widget.onBack,
+          child: ColoredBox(
+            color: AppColors.background,
+            child: ListView.separated(
+              controller: _scrollController,
+              itemCount: sections.length,
+              separatorBuilder: (context, index) => SizedBox(height: 28.du(context)),
+              itemBuilder: (context, index) => sections[index],
+            ),
+          ),
         ),
-      ),
+        if (_showingSourcePicker)
+          SourcePickerDialog(
+            title: widget.movie.title,
+            work: widget.work,
+            activeCopy: widget.work.copies.firstWhere(
+              (c) => c.server.machineIdentifier == widget.server.machineIdentifier,
+              orElse: () => widget.work.primary,
+            ),
+            onSelect: widget.onSwitchSource,
+            onClose: () => setState(() => _showingSourcePicker = false),
+          ),
+      ],
     );
   }
 }
@@ -297,6 +323,8 @@ class _MovieHero extends StatelessWidget {
   final bool isOnWatchlist;
   final VoidCallback onToggleWatchlist;
   final VoidCallback onActionButtonFocused;
+  final int copyCount;
+  final VoidCallback? onOpenSourcePicker;
 
   const _MovieHero({
     required this.server,
@@ -315,6 +343,8 @@ class _MovieHero extends StatelessWidget {
     required this.isOnWatchlist,
     required this.onToggleWatchlist,
     required this.onActionButtonFocused,
+    required this.copyCount,
+    this.onOpenSourcePicker,
   });
 
   void _onFocus(bool focused) {
@@ -551,36 +581,10 @@ class _MovieHero extends StatelessWidget {
                         ),
                       ),
                       SizedBox(height: AppSpacing.lg.du(context)),
-                      Container(
-                        padding: EdgeInsets.symmetric(
-                          horizontal: AppSpacing.lg.du(context),
-                          vertical: AppSpacing.sm.du(context),
-                        ),
-                        decoration: BoxDecoration(
-                          color: AppColors.surface,
-                          border: Border.all(color: AppColors.line),
-                          borderRadius: BorderRadius.circular(
-                            AppShape.radiusMd.du(context),
-                          ),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Container(
-                              width: 8.du(context),
-                              height: 8.du(context),
-                              decoration: const BoxDecoration(
-                                shape: BoxShape.circle,
-                                color: AppColors.success,
-                              ),
-                            ),
-                            SizedBox(width: AppSpacing.md.du(context)),
-                            AppText(
-                              'Playing from ${sourceParts.join(' · ')}',
-                              color: AppColors.ink2,
-                            ),
-                          ],
-                        ),
+                      _SourceChip(
+                        sourceParts: sourceParts,
+                        copyCount: copyCount,
+                        onClick: onOpenSourcePicker,
                       ),
                     ],
                   ),
@@ -589,6 +593,81 @@ class _MovieHero extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+final _sourceChipBorder = SurfaceBorder(
+  idle: SurfaceBorderSide.solid(AppColors.line),
+  focused: SurfaceBorderSide.solid(AppColors.accent),
+);
+
+/// Screen 03's "Playing from Attic · 4K HDR | 3 copies >" chip — plain text
+/// when there's only one copy (nothing to disambiguate), a focusable
+/// surface opening [SourcePickerDialog] (screen 03d) once [onClick] is
+/// non-null, i.e. once folding actually found more than one.
+class _SourceChip extends StatelessWidget {
+  final List<String> sourceParts;
+  final int copyCount;
+  final VoidCallback? onClick;
+
+  const _SourceChip({
+    required this.sourceParts,
+    required this.copyCount,
+    this.onClick,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final content = Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          width: 8.du(context),
+          height: 8.du(context),
+          decoration: const BoxDecoration(
+            shape: BoxShape.circle,
+            color: AppColors.success,
+          ),
+        ),
+        SizedBox(width: AppSpacing.md.du(context)),
+        AppText('Playing from ${sourceParts.join(' · ')}', color: AppColors.ink2),
+        if (onClick != null) ...[
+          SizedBox(width: AppSpacing.md.du(context)),
+          Container(width: 1.du(context), height: 26.du(context), color: AppColors.line),
+          SizedBox(width: AppSpacing.md.du(context)),
+          AppText('$copyCount copies', color: AppColors.ink3),
+          SizedBox(width: AppSpacing.sm.du(context)),
+          AppIcon(PhosphorIconsRegular.caretRight, size: 18, tint: AppColors.ink4),
+        ],
+      ],
+    );
+
+    if (onClick == null) {
+      return Container(
+        padding: EdgeInsets.symmetric(
+          horizontal: AppSpacing.lg.du(context),
+          vertical: AppSpacing.sm.du(context),
+        ),
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          border: Border.all(color: AppColors.line),
+          borderRadius: BorderRadius.circular(AppShape.radiusMd.du(context)),
+        ),
+        child: content,
+      );
+    }
+
+    return AppCard(
+      onClick: onClick!,
+      border: _sourceChipBorder,
+      child: Padding(
+        padding: EdgeInsets.symmetric(
+          horizontal: AppSpacing.lg.du(context),
+          vertical: AppSpacing.sm.du(context),
+        ),
+        child: content,
       ),
     );
   }

@@ -139,6 +139,13 @@ class _AppContent extends StatelessWidget {
       PlaybackFailed(:final ctx, :final server, :final targetRatingKey, :final fromStart, :final reason, :final returnState) => PlaybackFailedScreen(
           reason: reason,
           onRetry: () => controller.playMovie(ctx, server, targetRatingKey, returnState, fromStart: fromStart),
+          alternateServerName: _alternateSourceFor(returnState, server)?.server.name,
+          onPlayAlternate: _alternateSourceFor(returnState, server) == null
+              ? null
+              : () {
+                  final alternate = _alternateSourceFor(returnState, server)!;
+                  controller.playMovie(ctx, alternate.server, alternate.value.ratingKey, returnState, fromStart: fromStart);
+                },
           onBack: () => controller.returnTo(returnState),
         ),
       AppError(:final message, :final retryState) => BackHandler(
@@ -312,6 +319,8 @@ class _AppContent extends StatelessWidget {
           child: MovieDetailScreen(
             server: activeCopy.server,
             movie: activeCopy.value,
+            work: work,
+            onSwitchSource: (copy) => controller.returnTo(MovieDetail(ctx: ctx, work: work, activeCopy: copy, returnState: returnState)),
             onBack: () => controller.returnTo(returnState),
             isOnWatchlist: controller.isOnWatchlist,
             onToggleWatchlist: controller.toggleWatchlist,
@@ -681,4 +690,19 @@ class _AppContent extends StatelessWidget {
   ServerReachability _reachabilityOf(LibraryContext ctx, PlexServer server) =>
       ctx.servers.firstWhereOrNull((s) => s.server.machineIdentifier == server.machineIdentifier)?.reachability ??
       ServerReachability.local;
+
+  /// Screen 25's "Play from Loft" offer — the next reachable copy of the
+  /// same work, excluding whichever server just failed. Only movies carry
+  /// a [FoldedWork] wide enough to answer this today (an episode's alternate
+  /// copy would need that episode's ratingKey re-resolved on the other
+  /// server, which nothing here has fetched — see PlaybackFailed's own doc
+  /// comment on why this is wired at the call site, not stored on the
+  /// state, so this scope limit stays a local decision rather than a
+  /// structural one).
+  Sourced<PlexLibraryItem>? _alternateSourceFor(AppState returnState, PlexServer failedServer) {
+    if (returnState is! MovieDetail) return null;
+    return returnState.work.copies.firstWhereOrNull(
+      (c) => c.reachability != ServerReachability.unreachable && c.server.machineIdentifier != failedServer.machineIdentifier,
+    );
+  }
 }
