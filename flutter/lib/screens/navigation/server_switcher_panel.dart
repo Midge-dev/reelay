@@ -13,6 +13,7 @@ import '../../kit/filter_chip.dart';
 import '../../kit/icon.dart';
 import '../../kit/surface_style.dart';
 import '../../kit/text.dart';
+import '../../theme/scale.dart';
 import '../../theme/tokens.dart';
 import '../../theme/typography.dart';
 import '../common/jellyfin_coming_soon_row.dart';
@@ -172,7 +173,7 @@ class _ServerSwitcherPanelState extends State<ServerSwitcherPanel> {
     return Stack(
       children: [
         Positioned.fill(
-          left: _railWidth,
+          left: _railWidth.du(context),
           child: GestureDetector(
             behavior: HitTestBehavior.opaque,
             onTap: widget.onClose,
@@ -180,10 +181,10 @@ class _ServerSwitcherPanelState extends State<ServerSwitcherPanel> {
           ),
         ),
         Positioned(
-          left: _railWidth,
+          left: _railWidth.du(context),
           top: 0,
           bottom: 0,
-          width: _panelWidth,
+          width: _panelWidth.du(context),
           child: BackHandler(
             onBack: widget.onClose,
             child: DecoratedBox(
@@ -193,7 +194,7 @@ class _ServerSwitcherPanelState extends State<ServerSwitcherPanel> {
                 boxShadow: AppElevation.overlay,
               ),
               child: Padding(
-                padding: const EdgeInsets.all(AppSpacing.xxxl),
+                padding: EdgeInsets.all(AppSpacing.xxxl.du(context)),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -201,22 +202,22 @@ class _ServerSwitcherPanelState extends State<ServerSwitcherPanel> {
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         Container(
-                          width: 20,
-                          height: 2,
+                          width: 20.du(context),
+                          height: 2.du(context),
                           color: AppColors.accent,
                         ),
-                        const SizedBox(width: AppSpacing.md),
+                        SizedBox(width: AppSpacing.md.du(context)),
                         AppText('SERVERS', style: AppTypography.micro),
                       ],
                     ),
-                    const SizedBox(height: AppSpacing.sm),
+                    SizedBox(height: AppSpacing.sm.du(context)),
                     AppText(
                       username != null
                           ? "Where $username is watching from"
                           : 'Choose a server',
                       style: AppTypography.title2,
                     ),
-                    const SizedBox(height: AppSpacing.xl),
+                    SizedBox(height: AppSpacing.xl.du(context)),
                     Expanded(
                       child: Focus(
                         canRequestFocus: false,
@@ -235,10 +236,10 @@ class _ServerSwitcherPanelState extends State<ServerSwitcherPanel> {
                                   onClick: () =>
                                       widget.onSwitchServer(row.resource),
                                 ),
-                                const SizedBox(height: AppSpacing.md),
+                                SizedBox(height: AppSpacing.md.du(context)),
                               ],
                               const JellyfinComingSoonRow(),
-                              const SizedBox(height: AppSpacing.xl),
+                              SizedBox(height: AppSpacing.xl.du(context)),
                               DecoratedBox(
                                 decoration: BoxDecoration(
                                   border: Border(
@@ -246,15 +247,15 @@ class _ServerSwitcherPanelState extends State<ServerSwitcherPanel> {
                                   ),
                                 ),
                               ),
-                              const SizedBox(height: AppSpacing.xl),
+                              SizedBox(height: AppSpacing.xl.du(context)),
                               AppText(
                                 'LIBRARIES ON ${widget.currentServer.name.toUpperCase()}',
                                 style: AppTypography.micro,
                               ),
-                              const SizedBox(height: AppSpacing.lg),
+                              SizedBox(height: AppSpacing.lg.du(context)),
                               Wrap(
-                                spacing: AppSpacing.md,
-                                runSpacing: AppSpacing.md,
+                                spacing: AppSpacing.md.du(context),
+                                runSpacing: AppSpacing.md.du(context),
                                 children: [
                                   for (final section in widget.sections)
                                     AppFilterChip(
@@ -320,17 +321,17 @@ class _ServerResultRow extends StatelessWidget {
         focusNode: focusNode,
         border: _rowBorder,
         child: ConstrainedBox(
-          constraints: const BoxConstraints(minHeight: _rowMinHeight),
+          constraints: BoxConstraints(minHeight: _rowMinHeight.du(context)),
           child: Padding(
-            padding: const EdgeInsets.symmetric(
-              horizontal: AppSpacing.xl,
-              vertical: AppSpacing.md,
+            padding: EdgeInsets.symmetric(
+              horizontal: AppSpacing.xl.du(context),
+              vertical: AppSpacing.md.du(context),
             ),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
                 const AppIcon(PhosphorIconsRegular.hardDrives, size: 26),
-                const SizedBox(width: AppSpacing.lg),
+                SizedBox(width: AppSpacing.lg.du(context)),
                 Expanded(
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
@@ -344,7 +345,7 @@ class _ServerResultRow extends StatelessWidget {
                               )
                             : AppTypography.label,
                       ),
-                      const SizedBox(height: 3),
+                      SizedBox(height: 3.du(context)),
                       AppText(
                         subtitleParts.join(' · '),
                         style: AppTypography.caption,
@@ -352,7 +353,7 @@ class _ServerResultRow extends StatelessWidget {
                     ],
                   ),
                 ),
-                const SizedBox(width: AppSpacing.lg),
+                SizedBox(width: AppSpacing.lg.du(context)),
                 _ReachabilityBadge(
                   loading: row.loading,
                   reachability: row.reachability,
@@ -387,11 +388,11 @@ class _ReachabilityBadge extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       children: [
         Container(
-          width: 8,
-          height: 8,
+          width: 8.du(context),
+          height: 8.du(context),
           decoration: BoxDecoration(shape: BoxShape.circle, color: color),
         ),
-        const SizedBox(width: AppSpacing.sm),
+        SizedBox(width: AppSpacing.sm.du(context)),
         AppText(label, style: AppTypography.caption, color: color),
       ],
     );

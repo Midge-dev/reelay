@@ -10,6 +10,7 @@ import '../../kit/focusable_surface.dart';
 import '../../kit/icon.dart';
 import '../../kit/surface_style.dart';
 import '../../kit/text.dart';
+import '../../theme/scale.dart';
 import '../../theme/tokens.dart';
 import '../../theme/typography.dart';
 import '../common/digital_clock.dart';
@@ -256,18 +257,23 @@ class _AppNavigationDrawerState extends State<AppNavigationDrawer> {
       children: [
         Positioned.fill(
           child: Padding(
-            padding: const EdgeInsets.only(left: _collapsedRailWidth),
+            padding: EdgeInsets.only(left: _collapsedRailWidth.du(context)),
             child: widget.child,
           ),
         ),
-        const Positioned(top: 20, right: 32, child: DigitalClock()),
+        Positioned(
+          top: 20.du(context),
+          right: 32.du(context),
+          child: const DigitalClock(),
+        ),
         Positioned(
           top: 0,
           bottom: 0,
           left: 0,
           child: AnimatedContainer(
             duration: _railAnimDuration,
-            width: effectiveExpanded ? _expandedRailWidth : _collapsedRailWidth,
+            width: (effectiveExpanded ? _expandedRailWidth : _collapsedRailWidth)
+                .du(context),
             // Reads as floating above the content behind it while open —
             // BoxShadow.lerpList pads the empty/single-shadow lists with a
             // zero-alpha shadow at the same offset/blur, so this still
@@ -278,8 +284,8 @@ class _AppNavigationDrawerState extends State<AppNavigationDrawer> {
                   ? [
                       BoxShadow(
                         color: AppScrims.dialog.withValues(alpha: 0.5),
-                        blurRadius: 24,
-                        offset: const Offset(8, 0),
+                        blurRadius: 24.du(context),
+                        offset: Offset(8.du(context), 0),
                       ),
                     ]
                   : const [],
@@ -292,9 +298,9 @@ class _AppNavigationDrawerState extends State<AppNavigationDrawer> {
                   canRequestFocus: false,
                   onKeyEvent: _handleRailKeyEvent,
                   child: Padding(
-                    padding: const EdgeInsets.symmetric(
-                      vertical: 24,
-                      horizontal: 12,
+                    padding: EdgeInsets.symmetric(
+                      vertical: 24.du(context),
+                      horizontal: 12.du(context),
                     ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -317,7 +323,7 @@ class _AppNavigationDrawerState extends State<AppNavigationDrawer> {
                                   focusNode: _avatarFocusNode,
                                   onClick: _openServerSwitcher,
                                 ),
-                                const SizedBox(height: 8),
+                                SizedBox(height: 8.du(context)),
                                 _SidebarItem(
                                   icon: PhosphorIconsRegular.house,
                                   selectedIcon: PhosphorIconsFill.house,
@@ -328,7 +334,7 @@ class _AppNavigationDrawerState extends State<AppNavigationDrawer> {
                                       _handleSelect(widget.onOpenHome),
                                   focusNode: _homeItemFocusNode,
                                 ),
-                                const SizedBox(height: 4),
+                                SizedBox(height: 4.du(context)),
                                 _SidebarItem(
                                   icon: PhosphorIconsRegular.magnifyingGlass,
                                   selectedIcon:
@@ -340,7 +346,7 @@ class _AppNavigationDrawerState extends State<AppNavigationDrawer> {
                                       _handleSelect(widget.onOpenSearch),
                                   focusNode: _searchItemFocusNode,
                                 ),
-                                const SizedBox(height: 4),
+                                SizedBox(height: 4.du(context)),
                                 _SidebarItem(
                                   icon: PhosphorIconsRegular.bookmarkSimple,
                                   selectedIcon:
@@ -376,7 +382,7 @@ class _AppNavigationDrawerState extends State<AppNavigationDrawer> {
                                     ),
                                     focusNode: _sectionFocusNodes[section.key],
                                   ),
-                                  const SizedBox(height: 4),
+                                  SizedBox(height: 4.du(context)),
                                 ],
                                 _SidebarItem(
                                   icon: PhosphorIconsRegular.usersThree,
@@ -409,9 +415,9 @@ class _AppNavigationDrawerState extends State<AppNavigationDrawer> {
                               duration: _railAnimDuration,
                               child: effectiveExpanded
                                   ? Padding(
-                                      padding: const EdgeInsets.only(
-                                        left: 16,
-                                        top: 8,
+                                      padding: EdgeInsets.only(
+                                        left: 16.du(context),
+                                        top: 8.du(context),
                                       ),
                                       child: AppText(
                                         'v${widget.versionName}',
@@ -430,7 +436,7 @@ class _AppNavigationDrawerState extends State<AppNavigationDrawer> {
                   top: 0,
                   bottom: 0,
                   right: 0,
-                  child: Container(width: 1, color: AppColors.surface),
+                  child: Container(width: 1.du(context), color: AppColors.surface),
                 ),
               ],
             ),
@@ -455,9 +461,10 @@ class _AppNavigationDrawerState extends State<AppNavigationDrawer> {
   }
 }
 
-final _railItemShape = RoundedRectangleBorder(
-  borderRadius: BorderRadius.circular(AppShape.radiusMd),
-);
+RoundedRectangleBorder _railItemShape(BuildContext context) =>
+    RoundedRectangleBorder(
+      borderRadius: BorderRadius.circular(AppShape.radiusMd.du(context)),
+    );
 final _railItemColors = SurfaceColors(
   container: AppColors.transparent,
   content: AppColors.ink4,
@@ -492,17 +499,17 @@ class _SidebarItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      height: _railItemHeight,
+      height: _railItemHeight.du(context),
       child: FocusableSurface(
         onClick: onClick,
         selected: selected,
         focusNode: focusNode,
-        shape: _railItemShape,
+        shape: _railItemShape(context),
         colors: _railItemColors,
         border: _railItemBorder,
         contentAlignment: AlignmentDirectional.centerStart,
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 12),
+          padding: EdgeInsets.symmetric(horizontal: 12.du(context)),
           child: Row(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.center,
@@ -520,7 +527,7 @@ class _SidebarItem extends StatelessWidget {
                     duration: _railAnimDuration,
                     child: expanded
                         ? Padding(
-                            padding: const EdgeInsets.only(left: 14),
+                            padding: EdgeInsets.only(left: 14.du(context)),
                             child: AppText(
                               label,
                               maxLines: 1,
@@ -558,24 +565,24 @@ class _UserAvatarItem extends StatelessWidget {
   Widget build(BuildContext context) {
     final thumb = account?.thumb;
     return SizedBox(
-      height: _railItemHeight,
+      height: _railItemHeight.du(context),
       child: FocusableSurface(
         onClick: onClick,
         selected: selected,
         focusNode: focusNode,
-        shape: _railItemShape,
+        shape: _railItemShape(context),
         colors: _railItemColors,
         border: _railItemBorder,
         contentAlignment: AlignmentDirectional.centerStart,
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 4),
+          padding: EdgeInsets.symmetric(horizontal: 4.du(context)),
           child: Row(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               Container(
-                width: 40,
-                height: 40,
+                width: 40.du(context),
+                height: 40.du(context),
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   color: AppColors.surfaceOverlay,
@@ -585,8 +592,8 @@ class _UserAvatarItem extends StatelessWidget {
                     ? ClipOval(
                         child: Image.network(
                           thumb,
-                          width: 40,
-                          height: 40,
+                          width: 40.du(context),
+                          height: 40.du(context),
                           fit: BoxFit.cover,
                         ),
                       )
@@ -604,7 +611,7 @@ class _UserAvatarItem extends StatelessWidget {
                   duration: _railAnimDuration,
                   child: expanded
                       ? Padding(
-                          padding: const EdgeInsets.only(left: 14),
+                          padding: EdgeInsets.only(left: 14.du(context)),
                           // TODO: port basicMarquee() for usernames that overflow — deferred polish, not needed for basic functionality.
                           child: AppText(
                             account?.username ?? '',
