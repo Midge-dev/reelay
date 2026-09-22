@@ -141,7 +141,7 @@ void main() {
           textDirection: TextDirection.ltr,
           child: Center(
             child: ContinueWatchingPoster(
-              item: Sourced(item, _server, ServerReachability.local),
+              item: FoldedWork(item.guid, [Sourced(item, _server, ServerReachability.local)]),
               onResume: onResume ?? () {},
               onRemove: onRemove ?? () {},
               autofocus: true,

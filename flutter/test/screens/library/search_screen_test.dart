@@ -27,9 +27,9 @@ Future<void> _pump(
         servers: _connectedServers,
         search: (q) async {
           final results = await search(q);
-          return results.map((i) => Sourced(i, _server, ServerReachability.local)).toList();
+          return results.map((i) => FoldedWork(i.guid, [Sourced(i, _server, ServerReachability.local)])).toList();
         },
-        onSelectResult: (item) => (onSelectResult ?? (_) {})(item.value),
+        onSelectResult: (item) => (onSelectResult ?? (_) {})(item.primary.value),
         onBack: () {},
       ),
     ),

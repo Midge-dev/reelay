@@ -47,17 +47,17 @@ Widget _buildHome({
   List<PlexLibraryItem> recentlyAdded = const [],
   List<PlexOnDeckItem> suggestions = const [],
 }) {
-  Sourced<T> sourced<T>(T v) => Sourced(v, _server, ServerReachability.local);
+  FoldedWork<T> folded<T>(T v) => FoldedWork(null, [Sourced(v, _server, ServerReachability.local)]);
   return Directionality(
     textDirection: TextDirection.ltr,
     child: HomeScreen(
       servers: _connectedServers,
       liveRooms: liveRooms,
       watchlist: watchlist,
-      onDeck: onDeck.map(sourced).toList(),
-      recentActivity: recentActivity.map(sourced).toList(),
-      recentlyAdded: recentlyAdded.map(sourced).toList(),
-      suggestions: suggestions.map(sourced).toList(),
+      onDeck: onDeck.map(folded).toList(),
+      recentActivity: recentActivity.map(folded).toList(),
+      recentlyAdded: recentlyAdded.map(folded).toList(),
+      suggestions: suggestions.map(folded).toList(),
       onEndSession: (_) async => true,
       onSelectRoom: (_) {},
       onResume: (_) {},

@@ -33,7 +33,7 @@ const _progressBarWidth = 380.0;
 /// load the full record, can offer it) — and no restart action, since the
 /// detail screen this hero's Resume action reaches already has one.
 class HomeHero extends StatelessWidget {
-  final Sourced<PlexOnDeckItem> item;
+  final FoldedWork<PlexOnDeckItem> item;
   final VoidCallback onResume;
   final ValueChanged<Sourced<PlexOnDeckItem>>? onWatchTogether;
   final FocusNode? resumeFocusNode;
@@ -50,7 +50,8 @@ class HomeHero extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final value = item.value;
+    final active = item.primary;
+    final value = active.value;
     final isEpisode = value.type == _typeEpisode;
     final remainingMs = (value.duration ?? 0) - (value.viewOffset ?? 0);
     final progress = progressFraction(value);
@@ -66,7 +67,7 @@ class HomeHero extends StatelessWidget {
               widthFactor: _heroBackdropWidthFraction,
               heightFactor: 1,
               child: Artwork(
-                imageUrl: PlexImageUrl.of(item.server, value.art ?? value.thumb),
+                imageUrl: PlexImageUrl.of(active.server, value.art ?? value.thumb),
                 noiseOpacity: 0.3,
               ),
             ),
@@ -186,7 +187,7 @@ class HomeHero extends StatelessWidget {
                     if (onWatchTogether != null) ...[
                       SizedBox(width: AppSpacing.md.du(context)),
                       AppOutlinedButton(
-                        onClick: () => onWatchTogether!(item),
+                        onClick: () => onWatchTogether!(active),
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [

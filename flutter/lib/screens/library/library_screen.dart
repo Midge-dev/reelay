@@ -48,8 +48,8 @@ enum _FilterKind { genre, decade, added, sort }
 class LibraryScreen extends StatefulWidget {
   final List<ReachableServer> servers;
   final SectionGroup selectedSectionGroup;
-  final List<Sourced<PlexLibraryItem>> items;
-  final ValueChanged<Sourced<PlexLibraryItem>> onSelectItem;
+  final List<FoldedWork<PlexLibraryItem>> items;
+  final ValueChanged<FoldedWork<PlexLibraryItem>> onSelectItem;
   final Future<List<Sourced<PlexCollection>>> Function() loadCollections;
   final ValueChanged<Sourced<PlexCollection>> onSelectCollection;
 
@@ -220,10 +220,10 @@ class _LibraryScreenState extends State<LibraryScreen> {
   /// note, it's "unchanged, this is purely how the filters are surfaced."
   /// This unwraps for filtering, then maps the (identity-preserved) results
   /// back to their [Sourced] wrapper for rendering.
-  List<Sourced<PlexLibraryItem>> _filteredItems() {
-    final byIdentity = {for (final s in widget.items) s.value: s};
+  List<FoldedWork<PlexLibraryItem>> _filteredItems() {
+    final byIdentity = {for (final s in widget.items) s.primary.value: s};
     final bareResults = applyLibraryFilters(
-      items: widget.items.map((s) => s.value).toList(),
+      items: widget.items.map((s) => s.primary.value).toList(),
       query: _searchQuery,
       sortMode: _sortMode,
       genre: _genreFilter,
@@ -233,7 +233,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
     return bareResults.map((i) => byIdentity[i]!).toList();
   }
 
-  List<PlexLibraryItem> get _bareItems => widget.items.map((s) => s.value).toList();
+  List<PlexLibraryItem> get _bareItems => widget.items.map((s) => s.primary.value).toList();
 
   String get _serverLabel {
     final ids = widget.selectedSectionGroup.sectionsByServerId.keys;
@@ -247,7 +247,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final bareItems = widget.items.map((s) => s.value).toList();
+    final bareItems = widget.items.map((s) => s.primary.value).toList();
     final availableGenres =
         bareItems.expand((i) => i.genres.map((g) => g.tag)).toSet().toList()
           ..sort();
@@ -570,7 +570,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
     }
   }
 
-  Widget _buildTitlesGrid(List<Sourced<PlexLibraryItem>> results) {
+  Widget _buildTitlesGrid(List<FoldedWork<PlexLibraryItem>> results) {
     if (widget.items.isEmpty) {
       return Padding(
         padding: EdgeInsets.all(32.du(context)),
@@ -596,9 +596,9 @@ class _LibraryScreenState extends State<LibraryScreen> {
         itemBuilder: (context, index) {
           final item = results[index];
           return PosterCard(
-            key: ValueKey('${item.server.machineIdentifier}:${item.value.ratingKey}'),
-            imageUrl: PlexImageUrl.of(item.server, item.value.thumb),
-            title: item.value.title,
+            key: ValueKey('${item.primary.server.machineIdentifier}:${item.primary.value.ratingKey}'),
+            imageUrl: PlexImageUrl.of(item.primary.server, item.primary.value.thumb),
+            title: item.primary.value.title,
             autofocus: index == 0,
             staggerDelayMs: (index % _gridColumns) * 120,
             onClick: () => widget.onSelectItem(item),

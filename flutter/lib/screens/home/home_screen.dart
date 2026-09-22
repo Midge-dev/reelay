@@ -33,23 +33,23 @@ const _watchTogetherScrollDurationMs = 1100;
 class HomeScreen extends StatefulWidget {
   final List<ReachableServer> servers;
   final List<PlexResource> unreachableResources;
-  final List<Sourced<PlexOnDeckItem>> onDeck;
-  final List<Sourced<PlexLibraryItem>> recentlyAdded;
-  final List<Sourced<PlexOnDeckItem>> recentActivity;
-  final List<Sourced<PlexOnDeckItem>> suggestions;
+  final List<FoldedWork<PlexOnDeckItem>> onDeck;
+  final List<FoldedWork<PlexLibraryItem>> recentlyAdded;
+  final List<FoldedWork<PlexOnDeckItem>> recentActivity;
+  final List<FoldedWork<PlexOnDeckItem>> suggestions;
   final List<PlexWatchlistItem> watchlist;
   final List<MergedRoom> liveRooms;
   final String? myRoomId;
   final Set<String> hostedRoomIds;
   final Future<bool> Function(MergedRoom) onEndSession;
   final ValueChanged<MergedRoom> onSelectRoom;
-  final ValueChanged<Sourced<PlexOnDeckItem>> onResume;
-  final ValueChanged<Sourced<PlexOnDeckItem>> onRemove;
+  final ValueChanged<FoldedWork<PlexOnDeckItem>> onResume;
+  final ValueChanged<FoldedWork<PlexOnDeckItem>> onRemove;
   final ValueChanged<PlexWatchlistItem> onSelectWatchlistItem;
   final ValueChanged<PlexWatchlistItem> onRemoveFromWatchlist;
-  final ValueChanged<Sourced<PlexLibraryItem>> onSelectRecentlyAdded;
-  final ValueChanged<Sourced<PlexOnDeckItem>> onSelectRecentActivity;
-  final ValueChanged<Sourced<PlexOnDeckItem>> onSelectSuggestion;
+  final ValueChanged<FoldedWork<PlexLibraryItem>> onSelectRecentlyAdded;
+  final ValueChanged<FoldedWork<PlexOnDeckItem>> onSelectRecentActivity;
+  final ValueChanged<FoldedWork<PlexOnDeckItem>> onSelectSuggestion;
   final ValueChanged<Sourced<PlexOnDeckItem>>? onHeroWatchTogether;
 
   const HomeScreen({
@@ -254,37 +254,37 @@ class _HomeScreenState extends State<HomeScreen> {
               staggerDelayMs: (index % _rowStaggerPeriod) * 120,
             ),
           ),
-          _HomeRow<Sourced<PlexOnDeckItem>>(
+          _HomeRow<FoldedWork<PlexOnDeckItem>>(
             title: 'Recently Finished Watching',
             items: widget.recentActivity,
             itemBuilder: (item, index) => PosterCard(
-              key: ValueKey('${item.server.machineIdentifier}:${item.value.ratingKey}'),
-              imageUrl: PlexImageUrl.of(item.server, item.value.thumb),
-              title: continueWatchingLabel(item.value),
+              key: ValueKey('${item.primary.server.machineIdentifier}:${item.primary.value.ratingKey}'),
+              imageUrl: PlexImageUrl.of(item.primary.server, item.primary.value.thumb),
+              title: continueWatchingLabel(item.primary.value),
               onClick: () => widget.onSelectRecentActivity(item),
               autofocus: index == 0 && recentActivityGetsFocus,
               staggerDelayMs: (index % _rowStaggerPeriod) * 120,
             ),
           ),
-          _HomeRow<Sourced<PlexLibraryItem>>(
+          _HomeRow<FoldedWork<PlexLibraryItem>>(
             title: 'Recently Added',
             items: widget.recentlyAdded,
             itemBuilder: (item, index) => PosterCard(
-              key: ValueKey('${item.server.machineIdentifier}:${item.value.ratingKey}'),
-              imageUrl: PlexImageUrl.of(item.server, item.value.thumb),
-              title: recentlyAddedLabel(item.value),
+              key: ValueKey('${item.primary.server.machineIdentifier}:${item.primary.value.ratingKey}'),
+              imageUrl: PlexImageUrl.of(item.primary.server, item.primary.value.thumb),
+              title: recentlyAddedLabel(item.primary.value),
               onClick: () => widget.onSelectRecentlyAdded(item),
               autofocus: index == 0 && recentlyAddedGetsFocus,
               staggerDelayMs: (index % _rowStaggerPeriod) * 120,
             ),
           ),
-          _HomeRow<Sourced<PlexOnDeckItem>>(
+          _HomeRow<FoldedWork<PlexOnDeckItem>>(
             title: 'Suggestions',
             items: widget.suggestions,
             itemBuilder: (item, index) => PosterCard(
-              key: ValueKey('${item.server.machineIdentifier}:${item.value.ratingKey}'),
-              imageUrl: PlexImageUrl.of(item.server, item.value.thumb),
-              title: continueWatchingLabel(item.value),
+              key: ValueKey('${item.primary.server.machineIdentifier}:${item.primary.value.ratingKey}'),
+              imageUrl: PlexImageUrl.of(item.primary.server, item.primary.value.thumb),
+              title: continueWatchingLabel(item.primary.value),
               onClick: () => widget.onSelectSuggestion(item),
               autofocus: index == 0 && suggestionsGetsFocus,
               staggerDelayMs: (index % _rowStaggerPeriod) * 120,
@@ -356,7 +356,7 @@ class _HomeScreenState extends State<HomeScreen> {
     final hero = widget.onDeck.first;
     final moreInProgress = widget.onDeck.length > 1
         ? widget.onDeck.sublist(1)
-        : const <Sourced<PlexOnDeckItem>>[];
+        : const <FoldedWork<PlexOnDeckItem>>[];
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -424,7 +424,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       itemBuilder: (context, index) {
                         final item = moreInProgress[index];
                         return ContinueWatchingPoster(
-                          key: ValueKey('${item.server.machineIdentifier}:${item.value.ratingKey}'),
+                          key: ValueKey('${item.primary.server.machineIdentifier}:${item.primary.value.ratingKey}'),
                           item: item,
                           onResume: () => widget.onResume(item),
                           onRemove: () => widget.onRemove(item),

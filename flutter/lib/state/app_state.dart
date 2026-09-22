@@ -60,14 +60,13 @@ List<SectionGroup> groupSections(Map<String, List<PlexSection>> sectionsByServer
 /// library-adjacent AppState. Widened for the multi-server hub: [servers]
 /// is every connected server (not one), [sectionGroups]/[selectedSectionGroup]
 /// union same-named libraries across them (see [SectionGroup]), and [items]
-/// pairs each result with the server it came from — merged across servers,
-/// not yet folded into one card per work (that's [FoldedWork], applied at
-/// the screens that render these lists, not stored here).
+/// is folded by guid ([FoldedWork]) — a title on two servers is one entry
+/// here with two copies, not two entries.
 class LibraryContext {
   final List<ReachableServer> servers;
   final List<SectionGroup> sectionGroups;
   final SectionGroup selectedSectionGroup;
-  final List<Sourced<PlexLibraryItem>> items;
+  final List<FoldedWork<PlexLibraryItem>> items;
 
   const LibraryContext({
     required this.servers,
@@ -76,7 +75,7 @@ class LibraryContext {
     required this.items,
   });
 
-  LibraryContext copyWith({SectionGroup? selectedSectionGroup, List<Sourced<PlexLibraryItem>>? items}) => LibraryContext(
+  LibraryContext copyWith({SectionGroup? selectedSectionGroup, List<FoldedWork<PlexLibraryItem>>? items}) => LibraryContext(
         servers: servers,
         sectionGroups: sectionGroups,
         selectedSectionGroup: selectedSectionGroup ?? this.selectedSectionGroup,
@@ -178,10 +177,10 @@ class RelaySetup extends AppState {
 class Home extends AppState {
   final List<ReachableServer> servers;
   final List<SectionGroup> sectionGroups;
-  final List<Sourced<PlexOnDeckItem>> onDeck;
-  final List<Sourced<PlexLibraryItem>> recentlyAdded;
-  final List<Sourced<PlexOnDeckItem>> recentActivity;
-  final List<Sourced<PlexOnDeckItem>> suggestions;
+  final List<FoldedWork<PlexOnDeckItem>> onDeck;
+  final List<FoldedWork<PlexLibraryItem>> recentlyAdded;
+  final List<FoldedWork<PlexOnDeckItem>> recentActivity;
+  final List<FoldedWork<PlexOnDeckItem>> suggestions;
   // "Partial is not empty" (DESIGN.md) — servers that didn't answer at
   // connect time, named in a header line rather than treated as an error.
   final List<PlexResource> unreachableResources;
@@ -196,7 +195,7 @@ class Home extends AppState {
     this.unreachableResources = const [],
   });
 
-  Home copyWith({List<Sourced<PlexOnDeckItem>>? onDeck}) => Home(
+  Home copyWith({List<FoldedWork<PlexOnDeckItem>>? onDeck}) => Home(
         servers: servers,
         sectionGroups: sectionGroups,
         onDeck: onDeck ?? this.onDeck,
@@ -268,12 +267,18 @@ class Watchlist extends AppState {
   const Watchlist({required this.ctx});
 }
 
+/// [work] is every known copy of this title across connected servers;
+/// [activeCopy] is which one detail is actually loaded from (fold's
+/// reachability-priority pick by default — see duplicate_fold.dart).
+/// Screen 03d's source picker (when built) lets the user override
+/// [activeCopy] to another of [work]'s copies without losing [work] itself.
 class MovieDetail extends AppState {
   final LibraryContext ctx;
-  final Sourced<PlexLibraryItem> movie;
+  final FoldedWork<PlexLibraryItem> work;
+  final Sourced<PlexLibraryItem> activeCopy;
   final AppState returnState;
 
-  const MovieDetail({required this.ctx, required this.movie, required this.returnState});
+  const MovieDetail({required this.ctx, required this.work, required this.activeCopy, required this.returnState});
 }
 
 /// [server] is whichever server [person] (and the movie/show they were
@@ -308,15 +313,17 @@ class CollectionDetail extends AppState {
   const CollectionDetail({required this.ctx, required this.collection, required this.items, required this.returnState});
 }
 
-/// [episode] is fetched from [show]'s own server — same single-server
-/// simplification as [PersonFilmography] (see its doc comment).
+/// [episode] is fetched from [activeCopy]'s server — same single-server
+/// simplification as [PersonFilmography] (see its doc comment). [work] is
+/// every known copy of the show, same shape as [MovieDetail.work].
 class EpisodeDetail extends AppState {
   final LibraryContext ctx;
-  final Sourced<PlexLibraryItem> show;
+  final FoldedWork<PlexLibraryItem> work;
+  final Sourced<PlexLibraryItem> activeCopy;
   final PlexEpisode episode;
   final AppState returnState;
 
-  const EpisodeDetail({required this.ctx, required this.show, required this.episode, required this.returnState});
+  const EpisodeDetail({required this.ctx, required this.work, required this.activeCopy, required this.episode, required this.returnState});
 }
 
 /// Screen 09 — "three decisions, one confirm" before a room is created,

@@ -220,7 +220,7 @@ class _WatchlistPosterState extends State<WatchlistPoster> {
 /// the same long-press-to-remove pattern as WatchlistPoster, plus a
 /// progress bar and a focus-scale animation (matches Card.kt's spring).
 class ContinueWatchingPoster extends StatefulWidget {
-  final Sourced<PlexOnDeckItem> item;
+  final FoldedWork<PlexOnDeckItem> item;
   final VoidCallback onResume;
   final VoidCallback onRemove;
   final FocusNode? focusNode;
@@ -291,7 +291,8 @@ class _ContinueWatchingPosterState extends State<ContinueWatchingPoster> {
 
   @override
   Widget build(BuildContext context) {
-    final value = widget.item.value;
+    final active = widget.item.primary;
+    final value = active.value;
     final progress = progressFraction(value);
 
     final remainingMs = (value.duration ?? 0) - (value.viewOffset ?? 0);
@@ -344,7 +345,7 @@ class _ContinueWatchingPosterState extends State<ContinueWatchingPoster> {
                           children: [
                             Artwork(
                               imageUrl: PlexImageUrl.of(
-                                widget.item.server,
+                                active.server,
                                 value.thumb,
                               ),
                               staggerDelayMs: widget.staggerDelayMs,

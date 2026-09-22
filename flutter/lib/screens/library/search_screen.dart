@@ -26,8 +26,8 @@ const _searchDebounce = Duration(milliseconds: 350);
 /// current server (no multi-server fan-out yet — see NOTES.md).
 class SearchScreen extends StatefulWidget {
   final List<ReachableServer> servers;
-  final Future<List<Sourced<PlexOnDeckItem>>> Function(String query) search;
-  final ValueChanged<Sourced<PlexOnDeckItem>> onSelectResult;
+  final Future<List<FoldedWork<PlexOnDeckItem>>> Function(String query) search;
+  final ValueChanged<FoldedWork<PlexOnDeckItem>> onSelectResult;
   final VoidCallback onBack;
 
   const SearchScreen({
@@ -45,7 +45,7 @@ class SearchScreen extends StatefulWidget {
 class _SearchScreenState extends State<SearchScreen> {
   final _firstKeyFocus = FocusNode(debugLabel: 'search-first-key');
   String _query = '';
-  List<Sourced<PlexOnDeckItem>> _results = const [];
+  List<FoldedWork<PlexOnDeckItem>> _results = const [];
   bool _searching = false;
   int _requestId = 0;
   Timer? _debounce;
@@ -81,7 +81,7 @@ class _SearchScreenState extends State<SearchScreen> {
   Future<void> _runSearch(String query) async {
     final requestId = ++_requestId;
     setState(() => _searching = true);
-    List<Sourced<PlexOnDeckItem>> results;
+    List<FoldedWork<PlexOnDeckItem>> results;
     try {
       results = await widget.search(query);
     } catch (_) {
@@ -103,8 +103,8 @@ class _SearchScreenState extends State<SearchScreen> {
   @override
   Widget build(BuildContext context) {
     final trimmed = _query.trim();
-    final shows = _results.where((r) => r.value.type == 'show').toList();
-    final movies = _results.where((r) => r.value.type == 'movie').toList();
+    final shows = _results.where((r) => r.primary.value.type == 'show').toList();
+    final movies = _results.where((r) => r.primary.value.type == 'movie').toList();
 
     return BackHandler(
       onBack: widget.onBack,
@@ -199,9 +199,9 @@ class _ResultsPanel extends StatelessWidget {
   final List<ReachableServer> servers;
   final String query;
   final bool searching;
-  final List<Sourced<PlexOnDeckItem>> shows;
-  final List<Sourced<PlexOnDeckItem>> movies;
-  final ValueChanged<Sourced<PlexOnDeckItem>> onSelect;
+  final List<FoldedWork<PlexOnDeckItem>> shows;
+  final List<FoldedWork<PlexOnDeckItem>> movies;
+  final ValueChanged<FoldedWork<PlexOnDeckItem>> onSelect;
 
   const _ResultsPanel({
     required this.servers,
@@ -218,7 +218,7 @@ class _ResultsPanel extends StatelessWidget {
   /// per-card server badges land alongside duplicate folding.
   String get _serverLabel {
     final names = {
-      for (final item in [...shows, ...movies]) item.server.name,
+      for (final item in [...shows, ...movies]) item.primary.server.name,
     }.toList();
     if (names.length == 1) return 'on ${names.single}';
     return 'across ${names.length} servers';

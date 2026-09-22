@@ -36,7 +36,7 @@ Future<void> _pump(
       child: LibraryScreen(
         servers: _connectedServers,
         selectedSectionGroup: _sectionGroup,
-        items: items.map((i) => Sourced(i, _server, ServerReachability.local)).toList(),
+        items: items.map((i) => FoldedWork(i.guid, [Sourced(i, _server, ServerReachability.local)])).toList(),
         onSelectItem: (_) {},
         loadCollections: () async {
           final raw = await (loadCollections ?? () async => const <PlexCollection>[])();

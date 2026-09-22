@@ -271,7 +271,7 @@ class AppRootController extends ChangeNotifier {
       if (firstGroup == null) {
         throw _FriendlyError('No movie or show library found on any connected server');
       }
-      final items = await _fetchGroupItems(probed.connected, firstGroup);
+      final items = foldByGuid(await _fetchGroupItems(probed.connected, firstGroup), guidOf: (i) => i.guid);
       final ctx = LibraryContext(
         servers: probed.connected,
         sectionGroups: sectionGroups,
@@ -623,13 +623,15 @@ class AppRootController extends ChangeNotifier {
 
   // ---- Library / Home navigation ----
 
-  /// Fans every connected server's Home hubs out concurrently and merges
-  /// the results (not yet folded into one card per work — see
-  /// duplicate_fold.dart's own doc comment on why that's a separate,
-  /// later step) into one [Home]. Each server's own four fetches keep
-  /// their existing per-call `.catchError`, so one dead server never
-  /// blocks or breaks another's contribution — mirrors the fan-out shape
-  /// _pollRooms already uses for the (unrelated) relay directory.
+  /// Fans every connected server's Home hubs out concurrently, merges, and
+  /// folds each list by guid into one [Home] — a title on two servers is
+  /// one card, not two (see duplicate_fold.dart). Each server's own four
+  /// fetches keep their existing per-call `.catchError`, so one dead
+  /// server never blocks or breaks another's contribution — mirrors the
+  /// fan-out shape _pollRooms already uses for the (unrelated) relay
+  /// directory. Recently Added is sorted by addedAt before folding/capping
+  /// — concatenating per-server lists in server order (their fetch order)
+  /// would otherwise interleave wrong once a second server contributes.
   Future<Home> _loadHome(List<ReachableServer> servers, List<SectionGroup> sectionGroups) async {
     final perServer = await Future.wait(servers.map((cs) async {
       final api = PlexServerApi(cs.server, _clientIdentifier);
@@ -650,14 +652,15 @@ class AppRootController extends ChangeNotifier {
       recentActivity.addAll(rac.map((i) => Sourced(i, cs.server, cs.reachability)));
       suggestions.addAll(sug.map((i) => Sourced(i, cs.server, cs.reachability)));
     }
+    recentlyAdded.sort((a, b) => (b.value.addedAt ?? 0).compareTo(a.value.addedAt ?? 0));
 
     return Home(
       servers: servers,
       sectionGroups: sectionGroups,
-      onDeck: onDeck,
-      recentlyAdded: recentlyAdded.take(15).toList(),
-      recentActivity: recentActivity,
-      suggestions: suggestions,
+      onDeck: foldByGuid(onDeck, guidOf: (i) => i.guid),
+      recentlyAdded: foldByGuid(recentlyAdded, guidOf: (i) => i.guid).take(15).toList(),
+      recentActivity: foldByGuid(recentActivity, guidOf: (i) => i.guid),
+      suggestions: foldByGuid(suggestions, guidOf: (i) => i.guid),
       unreachableResources: _unreachableResources,
     );
   }
@@ -680,7 +683,7 @@ class AppRootController extends ChangeNotifier {
     final loading = LoadingSection(servers: servers, sectionGroups: sectionGroups, selectedSectionGroupKey: group.key, returnState: previous);
     _setState(loading);
     () async {
-      final items = await _fetchGroupItems(servers, group);
+      final items = foldByGuid(await _fetchGroupItems(servers, group), guidOf: (i) => i.guid);
       // A slow fetch (e.g. a very large library) can outlast the user's
       // patience — BackHandler on LoadingSection lets them bail out via
       // returnState before this resolves. Don't clobber wherever they've
@@ -694,7 +697,7 @@ class AppRootController extends ChangeNotifier {
   Future<AppState> _refreshReturnState(AppState target) async {
     if (target is Home) return _loadHome(target.servers, target.sectionGroups);
     if (target is Library) {
-      final items = await _fetchGroupItems(target.ctx.servers, target.ctx.selectedSectionGroup);
+      final items = foldByGuid(await _fetchGroupItems(target.ctx.servers, target.ctx.selectedSectionGroup), guidOf: (i) => i.guid);
       return Library(ctx: target.ctx.copyWith(items: items));
     }
     return target;
@@ -708,9 +711,14 @@ class AppRootController extends ChangeNotifier {
     }();
   }
 
-  void removeFromContinueWatching(Home home, Sourced<PlexOnDeckItem> item) {
-    _setState(home.copyWith(onDeck: home.onDeck.where((i) => i.value.ratingKey != item.value.ratingKey).toList()));
-    unawaited(PlexServerApi(item.server, _clientIdentifier).removeFromContinueWatching(item.value.ratingKey).catchError((_) {}));
+  void removeFromContinueWatching(Home home, FoldedWork<PlexOnDeckItem> work) {
+    final target = work.primary;
+    _setState(home.copyWith(
+      onDeck: home.onDeck
+          .where((w) => w.primary.server.machineIdentifier != target.server.machineIdentifier || w.primary.value.ratingKey != target.value.ratingKey)
+          .toList(),
+    ));
+    unawaited(PlexServerApi(target.server, _clientIdentifier).removeFromContinueWatching(target.value.ratingKey).catchError((_) {}));
   }
 
   // ---- Player entry points ----
@@ -793,23 +801,20 @@ class AppRootController extends ChangeNotifier {
     }
   }
 
-  void resumeOnDeckItem(Home current, Sourced<PlexOnDeckItem> item) {
+  void resumeOnDeckItem(Home current, FoldedWork<PlexOnDeckItem> onDeckWork) {
+    final activeOnDeck = onDeckWork.primary;
     final ctx = LibraryContext(
       servers: current.servers,
       sectionGroups: current.sectionGroups,
-      selectedSectionGroup: sectionGroupFor(current.sectionGroups, item.value.type == 'episode' ? _sectionTypeShow : item.value.type),
+      selectedSectionGroup: sectionGroupFor(current.sectionGroups, activeOnDeck.value.type == 'episode' ? _sectionTypeShow : activeOnDeck.value.type),
       items: const [],
     );
-    if (item.value.type == 'episode') {
-      final show = Sourced(
-        libraryItemFrom(item.value, type: _sectionTypeShow, title: item.value.grandparentTitle ?? item.value.title),
-        item.server,
-        item.reachability,
-      );
-      _setState(EpisodeDetail(ctx: ctx, show: show, episode: episodeFrom(item.value), returnState: current));
+    if (activeOnDeck.value.type == 'episode') {
+      final work = _libraryWorkFrom(onDeckWork, (v) => libraryItemFrom(v, type: _sectionTypeShow, title: v.grandparentTitle ?? v.title));
+      _setState(EpisodeDetail(ctx: ctx, work: work, activeCopy: work.primary, episode: episodeFrom(activeOnDeck.value), returnState: current));
     } else {
-      final movie = Sourced(libraryItemFrom(item.value), item.server, item.reachability);
-      _setState(MovieDetail(ctx: ctx, movie: movie, returnState: current));
+      final work = _libraryWorkFrom(onDeckWork, libraryItemFrom);
+      _setState(MovieDetail(ctx: ctx, work: work, activeCopy: work.primary, returnState: current));
     }
   }
 
@@ -845,53 +850,69 @@ class AppRootController extends ChangeNotifier {
       _setState(AppError(message: '"${entry.title}" isn\'t in your Plex library yet.', retryState: returnState));
       return;
     }
-    final match = foldByGuid(matches, guidOf: (item) => item.guid).first.primary;
+    final work = foldByGuid(matches, guidOf: (item) => item.guid).first;
     final ctx = LibraryContext(
       servers: servers,
       sectionGroups: sectionGroups,
-      selectedSectionGroup: sectionGroupFor(sectionGroups, match.value.type ?? ''),
+      selectedSectionGroup: sectionGroupFor(sectionGroups, work.primary.value.type ?? ''),
       items: const [],
     );
-    _setState(MovieDetail(ctx: ctx, movie: match, returnState: returnState));
+    _setState(MovieDetail(ctx: ctx, work: work, activeCopy: work.primary, returnState: returnState));
   }
 
-  void selectRecentlyAdded(Home current, Sourced<PlexLibraryItem> item) {
-    final parentRatingKey = item.value.parentRatingKey;
-    final targetValue = item.value.type == 'season' && parentRatingKey != null
-        ? libraryItemFrom(
-            PlexOnDeckItem(
-              ratingKey: parentRatingKey,
-              type: _sectionTypeShow,
-              title: item.value.parentTitle ?? item.value.title,
-              thumb: item.value.thumb,
-              art: item.value.art,
+  /// A season in Recently Added promotes to its parent show, same as
+  /// before — applied only to [work]'s primary copy (a season's sibling
+  /// copies on other servers could in principle need a different
+  /// parentRatingKey; this is a rare enough edge case that the promoted
+  /// result is a fresh singleton fold rather than trying to re-derive
+  /// every copy's own parent).
+  void selectRecentlyAdded(Home current, FoldedWork<PlexLibraryItem> work) {
+    final primary = work.primary;
+    final parentRatingKey = primary.value.parentRatingKey;
+    final effectiveWork = primary.value.type == 'season' && parentRatingKey != null
+        ? FoldedWork<PlexLibraryItem>(null, [
+            Sourced(
+              libraryItemFrom(
+                PlexOnDeckItem(
+                  ratingKey: parentRatingKey,
+                  type: _sectionTypeShow,
+                  title: primary.value.parentTitle ?? primary.value.title,
+                  thumb: primary.value.thumb,
+                  art: primary.value.art,
+                ),
+              ),
+              primary.server,
+              primary.reachability,
             ),
-          )
-        : item.value;
-    final target = Sourced(targetValue, item.server, item.reachability);
+          ])
+        : work;
     final ctx = LibraryContext(
       servers: current.servers,
       sectionGroups: current.sectionGroups,
-      selectedSectionGroup: sectionGroupFor(current.sectionGroups, target.value.type ?? ''),
+      selectedSectionGroup: sectionGroupFor(current.sectionGroups, effectiveWork.primary.value.type ?? ''),
       items: const [],
     );
-    _setState(MovieDetail(ctx: ctx, movie: target, returnState: current));
+    _setState(MovieDetail(ctx: ctx, work: effectiveWork, activeCopy: effectiveWork.primary, returnState: current));
   }
 
-  void selectOnDeckLike(Home current, Sourced<PlexOnDeckItem> item) {
+  void selectOnDeckLike(Home current, FoldedWork<PlexOnDeckItem> onDeckWork) {
+    final work = _libraryWorkFrom(onDeckWork, libraryItemFrom);
     final ctx = LibraryContext(
       servers: current.servers,
       sectionGroups: current.sectionGroups,
-      selectedSectionGroup: sectionGroupFor(current.sectionGroups, item.value.type),
+      selectedSectionGroup: sectionGroupFor(current.sectionGroups, work.primary.value.type ?? ''),
       items: const [],
     );
-    _setState(MovieDetail(
-      ctx: ctx,
-      movie: Sourced(libraryItemFrom(item.value), item.server, item.reachability),
-      returnState: current,
-    ));
+    _setState(MovieDetail(ctx: ctx, work: work, activeCopy: work.primary, returnState: current));
   }
 }
+
+/// Converts every copy of a [FoldedWork]&lt;PlexOnDeckItem&gt; through [convert]
+/// into a library-item-shaped [FoldedWork], preserving the fold's guid and
+/// copy set — used wherever a Home row's on-deck-shaped selection needs to
+/// become a MovieDetail/EpisodeDetail work.
+FoldedWork<PlexLibraryItem> _libraryWorkFrom(FoldedWork<PlexOnDeckItem> work, PlexLibraryItem Function(PlexOnDeckItem) convert) =>
+    FoldedWork(work.guid, work.copies.map((c) => Sourced(convert(c.value), c.server, c.reachability)).toList());
 
 /// Builds a `PlexLibraryItem`/show-typed placeholder from an on-deck-shaped
 /// item — ports the manual reconstruction MainActivity.kt does at several

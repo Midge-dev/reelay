@@ -227,8 +227,10 @@ class _MovieDetailScreenState extends State<MovieDetailScreen> {
         PosterRow(
           key: ValueKey(hub.hubIdentifier ?? hub.title),
           title: hub.title,
-          items: hub.items.map((i) => Sourced(i, widget.server, ServerReachability.local)).toList(),
-          onClick: (item) => widget.onSelectRelated(item.value),
+          items: hub.items
+              .map((i) => FoldedWork(i.guid, [Sourced(i, widget.server, ServerReachability.local)]))
+              .toList(),
+          onClick: (item) => widget.onSelectRelated(item.primary.value),
         ),
       );
     }
@@ -239,19 +241,25 @@ class _MovieDetailScreenState extends State<MovieDetailScreen> {
           title: 'More with ${row.person.tag}',
           items: row.items
               .map(
-                (i) => Sourced(
-                  PlexOnDeckItem(
-                    ratingKey: i.ratingKey,
-                    type: i.type ?? 'movie',
-                    title: i.title,
-                    thumb: i.thumb,
-                  ),
-                  widget.server,
-                  ServerReachability.local,
+                (i) => FoldedWork(
+                  i.guid,
+                  [
+                    Sourced(
+                      PlexOnDeckItem(
+                        ratingKey: i.ratingKey,
+                        type: i.type ?? 'movie',
+                        title: i.title,
+                        thumb: i.thumb,
+                        guid: i.guid,
+                      ),
+                      widget.server,
+                      ServerReachability.local,
+                    ),
+                  ],
                 ),
               )
               .toList(),
-          onClick: (item) => widget.onSelectRelated(item.value),
+          onClick: (item) => widget.onSelectRelated(item.primary.value),
         ),
       );
     }
