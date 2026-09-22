@@ -218,7 +218,7 @@ class _LobbyScreenState extends State<LobbyScreen> {
                   children: [
                     const WatchTogetherIcon(),
                     const SizedBox(width: 16),
-                    AppText(widget.detail.title, style: AppTypography.displaySmall, color: AppColors.white),
+                    AppText(widget.detail.title, style: AppTypography.title1, color: AppColors.inkOnArt),
                   ],
                 ),
                 Padding(
@@ -232,7 +232,7 @@ class _LobbyScreenState extends State<LobbyScreen> {
                         builder: (context, status, _) => RelayStatusDot(status: status),
                       ),
                       const SizedBox(width: 10),
-                      AppText(widget.relayNickname, color: AppColors.white.withValues(alpha: 0.7)),
+                      AppText(widget.relayNickname, color: AppColors.inkOnArt.withValues(alpha: 0.7)),
                     ],
                   ),
                 ),
@@ -274,7 +274,7 @@ class _LobbyScreenState extends State<LobbyScreen> {
                             widget.relay.send(RelayEvent(kind: 'start', fromPeerId: widget.relay.myPeerId, username: widget.localUsername));
                             widget.onStart(true);
                           },
-                          child: const AppIcon(Icons.replay, tint: AppColors.white, size: 22),
+                          child: const AppIcon(Icons.replay, tint: AppColors.inkOnArt, size: 22),
                         ),
                       ],
                       const SizedBox(width: 24),
@@ -343,25 +343,25 @@ class _ChatQrModal extends StatelessWidget {
 
     return Positioned.fill(
       child: ColoredBox(
-        color: AppColors.scrim.withValues(alpha: 0.85),
+        color: AppScrims.dialog.withValues(alpha: 0.85),
         child: Center(
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 560),
             child: Padding(
               padding: const EdgeInsets.symmetric(vertical: 24),
               child: DecoratedBox(
-                decoration: const BoxDecoration(color: AppColors.surfaceVariant),
+                decoration: const BoxDecoration(color: AppColors.surface),
                 child: SingleChildScrollView(
                   padding: const EdgeInsets.all(28),
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
-                      AppText('Join the chat', style: AppTypography.headlineMedium, color: AppColors.white),
+                      AppText('Join the chat', style: AppTypography.title2, color: AppColors.inkOnArt),
                       if (chatUrl == null)
                         const Padding(
                           padding: EdgeInsets.only(top: 20),
-                          child: AppText('Still connecting to the room — try again in a moment.', color: AppColors.white),
+                          child: AppText('Still connecting to the room — try again in a moment.', color: AppColors.inkOnArt),
                         )
                       else ...[
                         Padding(
@@ -369,18 +369,18 @@ class _ChatQrModal extends StatelessWidget {
                           child: Container(
                             width: 220,
                             height: 220,
-                            color: AppColors.white,
+                            color: AppColors.inkOnArt,
                             padding: const EdgeInsets.all(12),
-                            child: QrImageView(data: chatUrl, backgroundColor: AppColors.white),
+                            child: QrImageView(data: chatUrl, backgroundColor: AppColors.inkOnArt),
                           ),
                         ),
                         const Padding(
                           padding: EdgeInsets.only(top: 20),
-                          child: AppText('Scan with your phone, or visit:', color: AppColors.white),
+                          child: AppText('Scan with your phone, or visit:', color: AppColors.inkOnArt),
                         ),
                         Padding(
                           padding: const EdgeInsets.only(top: 8),
-                          child: AppText(chatUrl, color: AppColors.white, style: AppTypography.bodyLarge),
+                          child: AppText(chatUrl, color: AppColors.inkOnArt, style: AppTypography.body),
                         ),
                       ],
                       Padding(
@@ -420,10 +420,10 @@ class _LobbyPersonCard extends StatelessWidget {
           alignment: Alignment.center,
           child: avatar != null
               ? ClipOval(child: Image.network(avatar, width: 96, height: 96, fit: BoxFit.cover))
-              : AppText(name.isNotEmpty ? name[0].toUpperCase() : '?', style: AppTypography.headlineMedium, color: AppColors.white),
+              : AppText(name.isNotEmpty ? name[0].toUpperCase() : '?', style: AppTypography.title2, color: AppColors.inkOnArt),
         ),
-        Padding(padding: const EdgeInsets.only(top: 12), child: AppText(name, color: AppColors.white)),
-        if (subtitle != null) AppText(subtitle!, color: AppColors.white.withValues(alpha: 0.6)),
+        Padding(padding: const EdgeInsets.only(top: 12), child: AppText(name, color: AppColors.inkOnArt)),
+        if (subtitle != null) AppText(subtitle!, color: AppColors.inkOnArt.withValues(alpha: 0.6)),
       ],
     );
   }
@@ -446,7 +446,7 @@ class _EmptySeatPainter extends CustomPainter {
     final center = size.center(Offset.zero);
     final radius = size.width / 2;
 
-    canvas.drawCircle(center, radius, Paint()..color = AppColors.white.withValues(alpha: 0.06));
+    canvas.drawCircle(center, radius, Paint()..color = AppColors.inkOnArt.withValues(alpha: 0.06));
 
     const dashLength = 8.0;
     const gapLength = 6.0;
@@ -455,7 +455,7 @@ class _EmptySeatPainter extends CustomPainter {
     final anglePerDash = 2 * math.pi / dashCount;
     final dashSweep = anglePerDash * (dashLength / (dashLength + gapLength));
     final dashPaint = Paint()
-      ..color = AppColors.white.withValues(alpha: 0.18)
+      ..color = AppColors.inkOnArt.withValues(alpha: 0.18)
       ..style = PaintingStyle.stroke
       ..strokeWidth = 2;
     final rect = Rect.fromCircle(center: center, radius: radius);

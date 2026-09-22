@@ -4,6 +4,7 @@ import 'package:reelay/data/plex/plex_models.dart';
 import 'package:reelay/data/settings/app_settings.dart';
 import 'package:reelay/screens/home/home_posters.dart';
 import 'package:reelay/screens/home/home_screen.dart';
+import 'package:reelay/screens/home/watch_together_bar.dart';
 import 'package:reelay/screens/home/watch_together_row.dart';
 import 'package:reelay/sync/relay_protocol.dart';
 
@@ -117,7 +118,7 @@ void main() {
         ),
       );
 
-      expect(_focusIsWithin(RoomCard), isTrue);
+      expect(_focusIsWithin(WatchTogetherBar), isTrue);
     });
 
     testWidgets('Watchlist wins when Watch Together is empty', (tester) async {
@@ -126,7 +127,7 @@ void main() {
         _buildHome(watchlist: [_watchlistItem('1')], onDeck: [_onDeckItem('1')]),
       );
 
-      expect(_focusIsWithin(RoomCard), isFalse);
+      expect(_focusIsWithin(WatchTogetherBar), isFalse);
     });
 
     testWidgets('Continue Watching wins when Watch Together and Watchlist are both empty', (tester) async {
@@ -138,7 +139,7 @@ void main() {
         ),
       );
 
-      expect(_focusIsWithin(RoomCard), isFalse);
+      expect(_focusIsWithin(WatchTogetherBar), isFalse);
     });
   });
 
@@ -150,7 +151,7 @@ void main() {
         watchlist: [_watchlistItem('1'), _watchlistItem('2')],
       );
       await _pump(tester, widget1);
-      expect(_focusIsWithin(RoomCard), isTrue);
+      expect(_focusIsWithin(WatchTogetherBar), isTrue);
 
       // Same HomeScreen instance shape, watchlist shrinks by one item —
       // this should reclaim focus onto the watchlist row's anchor even

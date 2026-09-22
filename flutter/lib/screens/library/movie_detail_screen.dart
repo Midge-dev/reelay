@@ -19,8 +19,8 @@ import 'movie_detail_sections.dart';
 
 const _heroHeight = 420.0;
 const _restartButtonBorder = SurfaceBorder(
-  idle: SurfaceBorderSide.solid(AppColors.dimBorder),
-  focused: SurfaceBorderSide.gradient(AppFocusTreatment.focusedGradient),
+  idle: SurfaceBorderSide.solid(AppColors.line),
+  focused: SurfaceBorderSide.solid(AppColors.accent),
 );
 
 /// Ports ui/library/MovieDetailScreen.kt. The hero's action buttons each
@@ -309,7 +309,7 @@ class _MovieHero extends StatelessWidget {
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
                   stops: [0, 0.35, 1],
-                  colors: [AppColors.transparent, Color(0xCC000000), AppColors.scrim],
+                  colors: [AppColors.transparent, Color(0xCC000000), AppScrims.dialog],
                 ),
               ),
               padding: const EdgeInsets.all(48),
@@ -317,11 +317,11 @@ class _MovieHero extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  AppText(movie.title, style: AppTypography.displaySmall, color: AppColors.white),
+                  AppText(movie.title, style: AppTypography.title1, color: AppColors.inkOnArt),
                   if (movie.year != null)
-                    Padding(padding: const EdgeInsets.only(top: 8), child: AppText('${movie.year}', color: AppColors.white)),
+                    Padding(padding: const EdgeInsets.only(top: 8), child: AppText('${movie.year}', color: AppColors.inkOnArt)),
                   if (summary != null)
-                    Padding(padding: const EdgeInsets.only(top: 16), child: AppText(summary!, color: AppColors.white)),
+                    Padding(padding: const EdgeInsets.only(top: 16), child: AppText(summary!, color: AppColors.inkOnArt)),
                   Padding(
                     padding: const EdgeInsets.only(top: 24),
                     child: Focus(canRequestFocus: false, onKeyEvent: _trapUp, child: Row(
@@ -351,7 +351,7 @@ class _MovieHero extends StatelessWidget {
                             onClick: onRestartSolo ?? () {},
                             border: _restartButtonBorder,
                             onFocusChange: _onFocus,
-                            child: const AppIcon(Icons.replay, tint: AppColors.white),
+                            child: const AppIcon(Icons.replay, tint: AppColors.inkOnArt),
                           ),
                         ],
                         if (isShow) ...[

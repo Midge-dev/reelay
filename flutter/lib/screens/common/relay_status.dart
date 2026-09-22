@@ -108,8 +108,8 @@ class RelayStatusDot extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final color = switch (status) {
-      RelayStatus.silent || RelayStatus.failed => AppColors.onSurfaceVariant.withValues(alpha: 0.3),
-      RelayStatus.waking => AppColors.accentGlow,
+      RelayStatus.silent || RelayStatus.failed => AppColors.ink3.withValues(alpha: 0.3),
+      RelayStatus.waking => AppColors.accent300,
       RelayStatus.connectedConfirm || RelayStatus.dotOnly => AppColors.accent,
       RelayStatus.reconnecting => _amberGrey,
     };
@@ -150,7 +150,7 @@ class RelayStatusLine extends StatelessWidget {
             const SizedBox(height: 10),
             const AppText(
               "This can take up to a minute if nobody has used it in a while. Playback works — you'll be synced when it connects.",
-              color: AppColors.onSurfaceVariant,
+              color: AppColors.ink3,
             ),
           ],
         );
@@ -169,7 +169,7 @@ class RelayStatusLine extends StatelessWidget {
           children: [
             const RelayStatusDot(status: RelayStatus.reconnecting),
             const SizedBox(width: 12),
-            const AppText('Reconnecting', color: AppColors.onSurfaceVariant),
+            const AppText('Reconnecting', color: AppColors.ink3),
           ],
         );
       case RelayStatus.failed:
@@ -239,12 +239,12 @@ class _SpinnerPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     final rect = Offset.zero & size;
     final track = Paint()
-      ..color = AppColors.accentGlow.withValues(alpha: 0.5)
+      ..color = AppColors.accent300.withValues(alpha: 0.5)
       ..style = PaintingStyle.stroke
       ..strokeWidth = 2
       ..strokeCap = StrokeCap.round;
     final arc = Paint()
-      ..color = AppColors.accentGlow
+      ..color = AppColors.accent300
       ..style = PaintingStyle.stroke
       ..strokeWidth = 2
       ..strokeCap = StrokeCap.round;
@@ -284,7 +284,7 @@ class _IndeterminateSweepState extends State<_IndeterminateSweep> with SingleTic
       borderRadius: BorderRadius.circular(2),
       child: Container(
         height: 3,
-        color: AppColors.surfaceVariant.withValues(alpha: 0.6),
+        color: AppColors.surface.withValues(alpha: 0.6),
         child: AnimatedBuilder(
           animation: _controller,
           builder: (context, _) => CustomPaint(painter: _SweepPainter(-0.4 + 1.4 * _controller.value)),
@@ -305,7 +305,7 @@ class _SweepPainter extends CustomPainter {
     final x = (size.width + segmentWidth) * position - segmentWidth;
     final paint = Paint()
       ..shader = LinearGradient(
-        colors: [AppColors.accentGlow.withValues(alpha: 0), AppColors.accentGlow],
+        colors: [AppColors.accent300.withValues(alpha: 0), AppColors.accent300],
       ).createShader(Rect.fromLTWH(x, 0, segmentWidth, size.height));
     canvas.drawRect(Rect.fromLTWH(x, 0, segmentWidth, size.height), paint);
   }

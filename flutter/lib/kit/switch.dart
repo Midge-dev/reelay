@@ -1,16 +1,22 @@
 import 'package:flutter/widgets.dart';
 
 import '../theme/tokens.dart';
+import 'content_color.dart';
 import 'focusable_surface.dart';
 import 'surface_style.dart';
 
-const _trackWidth = 44.0;
-const _trackHeight = 24.0;
-const _thumbSize = 18.0;
-const _thumbInset = 3.0;
+const _trackWidth = 72.0;
+const _trackHeight = 40.0;
+const _thumbSize = 28.0;
+const _thumbInset = 4.0;
 
-const _switchBorder = SurfaceBorder(focused: SurfaceBorderSide.gradient(AppFocusTreatment.focusedGradient));
-const _switchGlow = SurfaceGlow(focusedColor: AppColors.accentGlow);
+/// Too small for a leading spine, so focus is the border alone stepping to
+/// accent — the track's own fill already carries on/off state.
+const _switchBorder = SurfaceBorder(
+  idle: SurfaceBorderSide.solid(AppColors.line),
+  focused: SurfaceBorderSide.solid(AppColors.accent),
+  noSpine: true,
+);
 
 /// Ports ui/kit/Switch.kt — the track color already carries on/off state,
 /// so press feedback shrinks the thumb instead.
@@ -31,8 +37,10 @@ class _AppSwitchState extends State<AppSwitch> {
   @override
   Widget build(BuildContext context) {
     final colors = SurfaceColors(
-      container: widget.checked ? AppColors.accent : AppColors.surfaceVariant,
-      content: AppColors.white,
+      container: widget.checked ? AppColors.accent700 : AppColors.surface,
+      content: AppColors.ink3,
+      focusedContainer: widget.checked ? AppColors.accent700 : AppColors.surfaceRaised,
+      focusedContent: AppColors.ink,
     );
     final thumbOffset = widget.checked ? _trackWidth - _thumbSize - _thumbInset : _thumbInset;
     final thumbScale = _pressed ? 0.88 : 1.0;
@@ -46,7 +54,6 @@ class _AppSwitchState extends State<AppSwitch> {
         shape: const StadiumBorder(),
         colors: colors,
         border: _switchBorder,
-        glow: _switchGlow,
         contentAlignment: AlignmentDirectional.centerStart,
         onPressChange: (pressed) => setState(() => _pressed = pressed),
         child: Stack(
@@ -59,10 +66,12 @@ class _AppSwitchState extends State<AppSwitch> {
               child: AnimatedScale(
                 scale: thumbScale,
                 duration: const Duration(milliseconds: 100),
-                child: Container(
-                  width: _thumbSize,
-                  height: _thumbSize,
-                  decoration: const BoxDecoration(shape: BoxShape.circle, color: AppColors.white),
+                child: Builder(
+                  builder: (context) => Container(
+                    width: _thumbSize,
+                    height: _thumbSize,
+                    decoration: BoxDecoration(shape: BoxShape.circle, color: ContentColor.of(context)),
+                  ),
                 ),
               ),
             ),

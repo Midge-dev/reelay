@@ -4,18 +4,24 @@ import '../theme/tokens.dart';
 import 'focusable_surface.dart';
 import 'surface_style.dart';
 
-const _listItemShape = RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(8)));
-const _listItemPadding = EdgeInsets.symmetric(horizontal: 16, vertical: 12);
+final _listItemShape = RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppShape.radiusMd));
+const _listItemHeight = 96.0;
+const _listItemPadding = EdgeInsets.symmetric(horizontal: AppSpacing.xl);
 
 final _listItemColors = SurfaceColors(
-  container: AppColors.transparent,
-  content: AppColors.white,
-  focusedContainer: AppColors.accent,
-  selectedContainer: AppColors.accent.withValues(alpha: 0.35),
+  container: AppColors.surface,
+  content: AppColors.ink2,
+  focusedContainer: AppColors.surfaceRaised,
+  focusedContent: AppColors.ink,
+  selectedContent: AppColors.ink,
+);
+const _listItemBorder = SurfaceBorder(
+  idle: SurfaceBorderSide.solid(AppColors.line),
+  focused: SurfaceBorderSide.solid(AppColors.accent),
 );
 
-/// Ports ui/kit/ListItem.kt — used by the nav rail, Settings' server list,
-/// and the player's subtitle/quality menus.
+/// Ports ui/kit/ListItem.kt — used by Settings' server list and the
+/// player's subtitle/quality menus.
 class AppListItem extends StatelessWidget {
   final bool selected;
   final VoidCallback onClick;
@@ -45,15 +51,19 @@ class AppListItem extends StatelessWidget {
         autofocus: autofocus,
         shape: _listItemShape,
         colors: _listItemColors,
+        border: _listItemBorder,
         contentAlignment: AlignmentDirectional.centerStart,
-        child: Padding(
-          padding: _listItemPadding,
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              if (leading != null) ...[leading!, const SizedBox(width: 16)],
-              headline,
-            ],
+        child: SizedBox(
+          height: _listItemHeight,
+          child: Padding(
+            padding: _listItemPadding,
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                if (leading != null) ...[leading!, const SizedBox(width: AppSpacing.lg)],
+                headline,
+              ],
+            ),
           ),
         ),
       ),

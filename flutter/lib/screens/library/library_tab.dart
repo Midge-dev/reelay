@@ -7,16 +7,16 @@ import '../../theme/tokens.dart';
 import '../../theme/typography.dart';
 
 const _tabHeight = 48.0;
-const _tabShape = RoundedRectangleBorder(borderRadius: BorderRadius.only(topLeft: Radius.circular(10), topRight: Radius.circular(10)));
+final _tabShape = RoundedRectangleBorder(borderRadius: BorderRadius.only(topLeft: Radius.circular(AppShape.radiusMd), topRight: Radius.circular(AppShape.radiusMd)));
 final _tabColors = SurfaceColors(
   container: AppColors.surface,
-  content: AppColors.onSurfaceVariant,
-  focusedContainer: AppColors.accent,
-  focusedContent: AppColors.white,
+  content: AppColors.ink3,
+  focusedContainer: AppColors.surfaceRaised,
+  focusedContent: AppColors.ink,
   selectedContainer: AppColors.background,
-  selectedContent: AppColors.onSurface,
+  selectedContent: AppColors.ink,
 );
-const _tabBorder = SurfaceBorder(focused: SurfaceBorderSide.gradient(AppFocusTreatment.focusedGradient));
+const _tabBorder = SurfaceBorder(focused: SurfaceBorderSide.solid(AppColors.accent));
 // A selected tab draws its own top-only indicator bar instead of
 // FocusableSurface's usual full-perimeter focus border — that border is a
 // foreground painter that traces the whole shape, which would either fight
@@ -25,9 +25,13 @@ const _tabBorder = SurfaceBorder(focused: SurfaceBorderSide.gradient(AppFocusTre
 // `focused` side) and switching the bar's own color on focus gets a
 // top-only highlight with nothing competing for the same pixels.
 const _selectedTabBorder = SurfaceBorder();
-const _tabGlow = SurfaceGlow(focusedColor: AppColors.accentGlow);
 
-/// Ports ui/library/LibraryScreen.kt's private `LibraryTab`.
+/// Ports ui/library/LibraryScreen.kt's private `LibraryTab`. Superseded by
+/// the Nocturne redesign's library screen (All is the screen itself, Genres
+/// becomes a filter bar, Search moves to the rail) — see DESIGN.md and the
+/// "LIBRARY · WHERE THE OLD TABS WENT" note in the design handoff. Kept
+/// compiling with current tokens until that screen work lands; not a
+/// candidate for further polish.
 class LibraryTab extends StatefulWidget {
   final String label;
   final bool selected;
@@ -49,7 +53,7 @@ class _LibraryTabState extends State<LibraryTab> {
     // Focused normally reads via a solid purple fill (focusedContainer) —
     // against that, the bar's usual purple gradient nearly disappears, so it
     // switches to solid white while focused.
-    final barColors = _focused ? const [AppColors.white, AppColors.white] : const [AppColors.accentGlow, AppColors.accent];
+    final barColor = _focused ? AppColors.ink : AppColors.accent;
 
     return SizedBox(
       height: _tabHeight,
@@ -60,7 +64,6 @@ class _LibraryTabState extends State<LibraryTab> {
         shape: _tabShape,
         colors: _tabColors,
         border: selected ? _selectedTabBorder : _tabBorder,
-        glow: _tabGlow,
         onFocusChange: (focused) => setState(() => _focused = focused),
         // FocusableSurface centers its child by default (Align), which would
         // otherwise center this Stack's own (shorter) intrinsic height as a
@@ -82,14 +85,14 @@ class _LibraryTabState extends State<LibraryTab> {
                   child: Container(
                     height: 3,
                     decoration: BoxDecoration(
-                      gradient: LinearGradient(colors: barColors),
+                      color: barColor,
                       borderRadius: const BorderRadius.only(topLeft: Radius.circular(3), topRight: Radius.circular(3)),
                     ),
                   ),
                 ),
               Padding(
                 padding: EdgeInsets.only(top: selected ? 3 : 0, left: 26, right: 26),
-                child: AppText(widget.label, style: selected ? AppTypography.titleMedium : AppTypography.bodyLarge),
+                child: AppText(widget.label, style: selected ? AppTypography.label : AppTypography.body),
               ),
             ],
           ),

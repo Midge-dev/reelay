@@ -110,9 +110,9 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
             Container(
               width: 220,
               height: 220,
-              color: AppColors.white,
+              color: AppColors.inkOnArt,
               padding: const EdgeInsets.all(16),
-              child: QrImageView(data: 'https://www.plex.tv/link/', backgroundColor: AppColors.white),
+              child: QrImageView(data: 'https://www.plex.tv/link/', backgroundColor: AppColors.inkOnArt),
             ),
             const SizedBox(width: 48),
             Flexible(
@@ -127,7 +127,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
                       textAlign: TextAlign.center,
                     ),
                     const SizedBox(height: 24),
-                    AppText(code, style: AppTypography.displayMedium),
+                    AppText(code, style: AppTypography.title2),
                   ],
                 ),
               ),

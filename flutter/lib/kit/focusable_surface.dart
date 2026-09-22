@@ -2,16 +2,24 @@ import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 
 import '../focus/dpad_long_press.dart';
+import '../theme/tokens.dart';
 import 'content_color.dart';
 import 'surface_style.dart';
 
 /// Ports ui/kit/FocusableSurface.kt — the primitive every other kit
 /// component (Button, Card, FilterChip, IconButton, ListItem, Switch)
-/// funnels through. Resolves container/content color, border, and glow
-/// from focus/press/selected/enabled state (precedence: disabled > pressed
-/// > focused > selected > default, matching the Kotlin `when` blocks
-/// exactly), handles D-pad select as a click (and, if [onLongClick] is
+/// funnels through. Resolves container/content color, border and the
+/// Nocturne focus signal (fill step, accent hairline, leading spine, 1.03x
+/// scale — see DESIGN.md non-negotiable #3) from focus/press/selected/
+/// enabled state (precedence: disabled > pressed > focused > selected >
+/// default), handles D-pad select as a click (and, if [onLongClick] is
 /// set, a held select via [DpadLongPressDetector]) alongside pointer taps.
+///
+/// The three focus signals are drawn together and never independently —
+/// changing one without the others is exactly the drift DESIGN.md warns
+/// against. If a screen needs a one-off focusable that can't go through
+/// this widget, use [LeadingSpinePainter] directly rather than
+/// approximating the signal by hand.
 class FocusableSurface extends StatefulWidget {
   final VoidCallback onClick;
   final VoidCallback? onLongClick;
@@ -20,7 +28,6 @@ class FocusableSurface extends StatefulWidget {
   final OutlinedBorder shape;
   final SurfaceColors colors;
   final SurfaceBorder border;
-  final SurfaceGlow glow;
   final FocusNode? focusNode;
   final bool autofocus;
   final AlignmentGeometry contentAlignment;
@@ -37,7 +44,6 @@ class FocusableSurface extends StatefulWidget {
     required this.shape,
     required this.colors,
     this.border = const SurfaceBorder(),
-    this.glow = const SurfaceGlow(),
     this.focusNode,
     this.autofocus = false,
     this.contentAlignment = Alignment.center,
@@ -123,37 +129,75 @@ class _FocusableSurfaceState extends State<FocusableSurface> {
   @override
   Widget build(BuildContext context) {
     final colors = widget.colors;
+    final border = widget.border;
+    final motionFull = AppMotion.level == MotionLevel.full;
+
     final Color containerColor;
     final Color contentColor;
+    final SurfaceBorderSide? activeBorderSide;
+    final bool showSpine;
+    final Color spineColor;
+    final double targetScale;
+    final List<BoxShadow> shadows;
+
     if (!widget.enabled) {
-      containerColor = colors.disabledContainer;
-      contentColor = colors.disabledContent;
+      // Disabled ignores focus/press/selection entirely and renders the
+      // idle appearance — the whole surface is dimmed to 45% opacity
+      // afterwards, rather than this branch picking its own faded colors.
+      containerColor = colors.container;
+      contentColor = colors.content;
+      activeBorderSide = border.idle;
+      showSpine = false;
+      spineColor = AppColors.transparent;
+      targetScale = 1.0;
+      shadows = const [];
     } else if (_pressed) {
+      // Colour only, no scale change, no spine — DESIGN.md's motion section.
       containerColor = colors.pressedContainer;
       contentColor = colors.pressedContent;
+      activeBorderSide = SurfaceBorderSide.solid(AppFocusTreatment.pressedBorderColor, width: border.idle?.width ?? AppShape.borderWidth);
+      showSpine = false;
+      spineColor = AppColors.transparent;
+      targetScale = 1.0;
+      shadows = const [];
     } else if (_focused) {
       containerColor = colors.focusedContainer;
       contentColor = colors.focusedContent;
+      activeBorderSide = border.focused ?? SurfaceBorderSide.solid(AppFocusTreatment.focusedBorderColor);
+      showSpine = !border.noSpine;
+      spineColor = AppFocusTreatment.focusedSpineColor;
+      targetScale = motionFull ? AppFocusTreatment.focusScale : 1.0;
+      shadows = motionFull ? AppElevation.raised : const [];
     } else if (widget.selected) {
       containerColor = colors.selectedContainer;
       contentColor = colors.selectedContent;
+      activeBorderSide = border.idle;
+      showSpine = !border.noSpine;
+      spineColor = AppFocusTreatment.selectedSpineColor;
+      targetScale = 1.0;
+      shadows = const [];
     } else {
       containerColor = colors.container;
       contentColor = colors.content;
+      activeBorderSide = border.idle;
+      showSpine = false;
+      spineColor = AppColors.transparent;
+      targetScale = 1.0;
+      shadows = const [];
     }
 
-    final activeBorder = _focused ? widget.border.focused : widget.border.idle;
-    final glowColor = _focused ? widget.glow.focusedColor : null;
+    final duration = _focused ? AppMotion.focusEnter : AppMotion.focusExit;
+    final curve = _focused ? AppMotion.enter : AppMotion.exit;
 
-    Widget surface = DecoratedBox(
+    Widget surface = AnimatedContainer(
+      duration: duration,
+      curve: curve,
       decoration: ShapeDecoration(
         color: containerColor,
-        shape: activeBorder?.color != null
-            ? widget.shape.copyWith(side: BorderSide(color: activeBorder!.color!, width: activeBorder.width))
+        shape: activeBorderSide != null
+            ? widget.shape.copyWith(side: BorderSide(color: activeBorderSide.color, width: activeBorderSide.width))
             : widget.shape,
-        shadows: glowColor != null
-            ? [BoxShadow(color: glowColor.withValues(alpha: widget.glow.alpha), blurRadius: widget.glow.radius * 2)]
-            : null,
+        shadows: shadows,
       ),
       child: ClipPath(
         clipper: ShapeBorderClipper(shape: widget.shape),
@@ -164,11 +208,46 @@ class _FocusableSurfaceState extends State<FocusableSurface> {
       ),
     );
 
-    if (activeBorder?.gradient != null) {
-      surface = CustomPaint(
-        foregroundPainter: GradientBorderPainter(shape: widget.shape, gradient: activeBorder!.gradient!, width: activeBorder.width),
+    if (showSpine) {
+      surface = TweenAnimationBuilder<double>(
+        tween: Tween(begin: 0, end: AppShape.spineWidth),
+        duration: AppMotion.focusSpineWipe,
+        curve: AppMotion.enter,
+        builder: (context, width, child) => CustomPaint(
+          foregroundPainter: LeadingSpinePainter(shape: widget.shape, color: spineColor, width: width),
+          child: child,
+        ),
         child: surface,
       );
+    }
+
+    if (widget.selected && _focused) {
+      surface = Stack(
+        fit: StackFit.passthrough,
+        children: [
+          surface,
+          Positioned(
+            top: AppSpacing.sm,
+            right: AppSpacing.sm,
+            child: Container(
+              width: AppSpacing.md,
+              height: AppSpacing.md,
+              decoration: const BoxDecoration(shape: BoxShape.circle, color: AppColors.ink),
+            ),
+          ),
+        ],
+      );
+    }
+
+    surface = AnimatedScale(
+      scale: targetScale,
+      duration: duration,
+      curve: curve,
+      child: surface,
+    );
+
+    if (!widget.enabled) {
+      surface = Opacity(opacity: 0.45, child: surface);
     }
 
     return Focus(
@@ -194,31 +273,31 @@ class _FocusableSurfaceState extends State<FocusableSurface> {
   }
 }
 
-/// The crisp gradient focus-border stroke every kit component funnelling
-/// through FocusableSurface gets. Public so a hand-rolled focusable (one
-/// that can't go through FocusableSurface itself) can still match the same
-/// border weight instead of approximating it with a filled/padded Container,
-/// which reads visibly thicker than an actual `width`-pt stroke.
-class GradientBorderPainter extends CustomPainter {
+/// The solid leading-edge spine every kit component funnelling through
+/// FocusableSurface gets when focused (or, in ink, when selected-but-not-
+/// focused) — a flat bar of colour clipped to the surface's own rounded
+/// shape, not a soft edge, so it survives a washed-out TV panel. Public so
+/// a hand-rolled focusable (one that can't go through FocusableSurface
+/// itself) can still match the same signal instead of approximating it.
+class LeadingSpinePainter extends CustomPainter {
   final OutlinedBorder shape;
-  final Gradient gradient;
+  final Color color;
   final double width;
 
-  GradientBorderPainter({required this.shape, required this.gradient, required this.width});
+  LeadingSpinePainter({required this.shape, required this.color, required this.width});
 
   @override
   void paint(Canvas canvas, Size size) {
+    if (width <= 0) return;
     final rect = Offset.zero & size;
-    final insetRect = rect.deflate(width / 2);
-    final path = shape.getOuterPath(insetRect);
-    final paint = Paint()
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = width
-      ..shader = gradient.createShader(rect);
-    canvas.drawPath(path, paint);
+    final clipPath = shape.getOuterPath(rect);
+    canvas.save();
+    canvas.clipPath(clipPath);
+    canvas.drawRect(Rect.fromLTWH(0, 0, width, size.height), Paint()..color = color);
+    canvas.restore();
   }
 
   @override
-  bool shouldRepaint(covariant GradientBorderPainter oldDelegate) =>
-      oldDelegate.shape != shape || oldDelegate.gradient != gradient || oldDelegate.width != width;
+  bool shouldRepaint(covariant LeadingSpinePainter oldDelegate) =>
+      oldDelegate.shape != shape || oldDelegate.color != color || oldDelegate.width != width;
 }

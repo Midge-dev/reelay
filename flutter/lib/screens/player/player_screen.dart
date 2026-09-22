@@ -500,7 +500,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
         focusNode: _screenFocusNode,
         onKeyEvent: _handleScreenKeyEvent,
         child: ColoredBox(
-          color: AppColors.scrim,
+          color: AppScrims.dialog,
           child: Stack(
             fit: StackFit.expand,
             children: [
@@ -519,7 +519,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
                   top: 24,
                   left: 0,
                   right: 0,
-                  child: Center(child: _Chip(child: const AppText('Waiting for the room to catch up…', color: AppColors.white))),
+                  child: Center(child: _Chip(child: const AppText('Waiting for the room to catch up…', color: AppColors.inkOnArt))),
                 ),
               if (widget.settings.showChatOverlay && _sync != null)
                 Align(
@@ -558,7 +558,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
                             Positioned(
                               right: 24,
                               top: 24,
-                              child: _Chip(child: AppText(_syncStatusLabel(), color: AppColors.white)),
+                              child: _Chip(child: AppText(_syncStatusLabel(), color: AppColors.inkOnArt)),
                             ),
                           Positioned(
                             left: 0,
@@ -629,7 +629,7 @@ class _Chip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return DecoratedBox(
-      decoration: BoxDecoration(color: AppColors.scrim.withValues(alpha: 0.6)),
+      decoration: BoxDecoration(color: AppScrims.dialog.withValues(alpha: 0.6)),
       child: Padding(padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6), child: child),
     );
   }
@@ -650,7 +650,7 @@ class _TitleBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final statusStyle = AppTypography.bodyLarge.copyWith(color: AppColors.white.withValues(alpha: 0.75));
+    final statusStyle = AppTypography.body.copyWith(color: AppColors.inkOnArt.withValues(alpha: 0.75));
 
     return Container(
       width: double.infinity,
@@ -659,13 +659,13 @@ class _TitleBar extends StatelessWidget {
         gradient: LinearGradient(
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
-          colors: [AppColors.scrim.withValues(alpha: 0.6), AppColors.scrim.withValues(alpha: 0)],
+          colors: [AppScrims.dialog.withValues(alpha: 0.6), AppScrims.dialog.withValues(alpha: 0)],
         ),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Expanded(child: AppText(title, color: AppColors.white)),
+          Expanded(child: AppText(title, color: AppColors.inkOnArt)),
           const SizedBox(width: 24),
           Column(
             crossAxisAlignment: CrossAxisAlignment.end,

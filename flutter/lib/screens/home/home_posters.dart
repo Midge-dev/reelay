@@ -4,7 +4,6 @@ import '../../data/plex/plex_image_url.dart';
 import '../../data/plex/plex_models.dart';
 import '../../focus/back_handler.dart';
 import '../../focus/dpad_long_press.dart';
-import '../../kit/focusable_surface.dart';
 import '../../kit/scroll_peek.dart';
 import '../../kit/text.dart';
 import '../../theme/tokens.dart';
@@ -14,8 +13,6 @@ import '../common/remove_confirm_overlay.dart';
 import '../common/time_format.dart';
 
 const _typeEpisode = 'episode';
-
-const _continueWatchingShape = RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(8)));
 
 /// Ports HomeScreen.kt's `recentlyAddedLabel`.
 String recentlyAddedLabel(PlexLibraryItem item) {
@@ -30,6 +27,28 @@ String continueWatchingLabel(PlexOnDeckItem item) {
     return '${item.grandparentTitle} · S${item.parentIndex}E${item.index}';
   }
   return item.title;
+}
+
+/// The show name for an episode, otherwise the item's own title — the
+/// primary line on a hero or "More in progress" card. Nocturne two-line
+/// captions split what [continueWatchingLabel] combines into one.
+String continueWatchingTitle(PlexOnDeckItem item) {
+  if (item.type == _typeEpisode && item.grandparentTitle != null) return item.grandparentTitle!;
+  return item.title;
+}
+
+/// "S3 E1 · 38 min left" — the secondary line under [continueWatchingTitle].
+String continueWatchingSubtitle(PlexOnDeckItem item) {
+  final parts = <String>[];
+  if (item.type == _typeEpisode && item.parentIndex != null && item.index != null) {
+    parts.add('S${item.parentIndex} E${item.index}');
+  }
+  final duration = item.duration;
+  if (duration != null && duration > 0) {
+    final remaining = duration - (item.viewOffset ?? 0);
+    if (remaining > 0) parts.add(formatMinutesLeft(remaining));
+  }
+  return parts.join(' · ');
 }
 
 /// Ports HomeScreen.kt's `progressFraction`.
@@ -246,11 +265,13 @@ class _ContinueWatchingPosterState extends State<ContinueWatchingPoster> {
   Widget build(BuildContext context) {
     final progress = progressFraction(widget.item);
 
+    final remainingMs = (widget.item.duration ?? 0) - (widget.item.viewOffset ?? 0);
+
     return BackHandler(
       enabled: _confirmingRemove,
       onBack: _closeConfirm,
       child: SizedBox(
-        width: 240,
+        width: 372,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           mainAxisSize: MainAxisSize.min,
@@ -258,17 +279,20 @@ class _ContinueWatchingPosterState extends State<ContinueWatchingPoster> {
             AspectRatio(
               aspectRatio: 16 / 9,
               child: AnimatedScale(
-                scale: _focused ? 1.04 : 1.0,
-                duration: const Duration(milliseconds: 150),
-                child: CustomPaint(
-                  // A crisp width-pt stroke, matching every other card's
-                  // border via GradientBorderPainter — the previous
-                  // Container(border + gradient-fill + padding) combo drew
-                  // both a border stroke AND a solid-filled padded band,
-                  // reading visibly thicker than the rest of the app's cards.
-                  foregroundPainter: _focused
-                      ? GradientBorderPainter(shape: _continueWatchingShape, gradient: AppFocusTreatment.focusedGradient, width: AppShape.borderWidth)
-                      : null,
+                scale: _focused ? AppFocusTreatment.focusScale : 1.0,
+                duration: AppMotion.focusEnter,
+                curve: AppMotion.enter,
+                child: Container(
+                  // Artwork takes a frame all the way round instead of a
+                  // spine on focus — a spine would cover the thumbnail.
+                  // DESIGN.md #3.
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(AppShape.radiusMd),
+                    border: Border.all(
+                      color: _focused ? AppFocusTreatment.artFrameColor : AppColors.line,
+                      width: _focused ? AppShape.artFrameWidth : AppShape.borderWidth,
+                    ),
+                  ),
                   child: ClipRRect(
                     borderRadius: BorderRadius.circular(8),
                     child: Focus(
@@ -285,15 +309,11 @@ class _ContinueWatchingPosterState extends State<ContinueWatchingPoster> {
                           fit: StackFit.expand,
                           children: [
                             Artwork(imageUrl: PlexImageUrl.of(widget.server, widget.item.thumb), staggerDelayMs: widget.staggerDelayMs),
-                            if (_focused && !_confirmingRemove)
+                            if (_focused && !_confirmingRemove && remainingMs > 0)
                               Positioned(
-                                right: 6,
-                                bottom: 8,
-                                child: Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                  decoration: BoxDecoration(color: AppColors.scrim.withValues(alpha: 0.7), borderRadius: BorderRadius.circular(4)),
-                                  child: AppText(formatTimecode(widget.item.viewOffset ?? 0), color: AppColors.white, style: AppTypography.bodySmall),
-                                ),
+                                left: 16,
+                                bottom: 16,
+                                child: AppText(formatMinutesLeft(remainingMs), color: AppColors.inkOnArt, style: AppTypography.caption),
                               ),
                             Positioned(
                               left: 0,
@@ -301,16 +321,12 @@ class _ContinueWatchingPosterState extends State<ContinueWatchingPoster> {
                               bottom: 0,
                               child: Container(
                                 height: 4,
-                                color: AppColors.scrim.withValues(alpha: 0.4),
+                                color: AppColors.ink.withValues(alpha: 0.22),
                                 alignment: Alignment.centerLeft,
                                 child: FractionallySizedBox(
                                   widthFactor: progress,
-                                  child: Container(
-                                    height: 4,
-                                    decoration: const BoxDecoration(
-                                      gradient: LinearGradient(colors: [AppColors.accent, AppColors.accentGlow]),
-                                    ),
-                                  ),
+                                  // Flat fill, not a gradient — DESIGN.md #4/#8.
+                                  child: const ColoredBox(color: AppColors.accent),
                                 ),
                               ),
                             ),
@@ -332,9 +348,23 @@ class _ContinueWatchingPosterState extends State<ContinueWatchingPoster> {
               ),
             ),
             Padding(
-              padding: const EdgeInsets.only(top: 8),
-              child: AppText(continueWatchingLabel(widget.item), maxLines: 1, overflow: TextOverflow.ellipsis),
+              padding: const EdgeInsets.only(top: 12),
+              child: AppText(
+                continueWatchingTitle(widget.item),
+                style: _focused ? AppTypography.label.copyWith(fontWeight: FontWeight.w500) : AppTypography.label,
+                color: _focused ? AppColors.ink : AppColors.ink2,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
             ),
+            Builder(builder: (context) {
+              final subtitle = continueWatchingSubtitle(widget.item);
+              if (subtitle.isEmpty) return const SizedBox.shrink();
+              return Padding(
+                padding: const EdgeInsets.only(top: 3),
+                child: AppText(subtitle, style: AppTypography.caption, color: AppColors.ink3, maxLines: 1, overflow: TextOverflow.ellipsis),
+              );
+            }),
           ],
         ),
       ),

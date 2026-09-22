@@ -113,14 +113,12 @@ class _ClickToTypeTextFieldState extends State<ClickToTypeTextField> {
 
   @override
   Widget build(BuildContext context) {
-    final style = widget.textStyle ?? const TextStyle(color: AppColors.onSurface);
-    final borderGradient = _isFocused || _editingEnabled
-        ? const LinearGradient(colors: [AppColors.accentGlow, AppColors.accent])
-        : const LinearGradient(colors: [AppColors.dimBorder, AppColors.dimBorder]);
+    final style = widget.textStyle ?? const TextStyle(color: AppColors.ink);
+    final borderColor = _isFocused || _editingEnabled ? AppColors.accent : AppColors.line;
 
     return Container(
       decoration: BoxDecoration(
-        border: GradientBoxBorder(gradient: borderGradient, width: _borderWidth),
+        border: Border.all(color: borderColor, width: _borderWidth),
       ),
       child: _editingEnabled
           ? BackHandler(
@@ -130,7 +128,7 @@ class _ClickToTypeTextFieldState extends State<ClickToTypeTextField> {
                 focusNode: _editFocusNode,
                 style: style,
                 cursorColor: AppColors.accent,
-                backgroundCursorColor: AppColors.surfaceVariant,
+                backgroundCursorColor: AppColors.surface,
                 autofocus: true,
                 onChanged: widget.onValueChange,
                 onEditingComplete: _stopEditing,
@@ -144,37 +142,4 @@ class _ClickToTypeTextFieldState extends State<ClickToTypeTextField> {
             ),
     );
   }
-}
-
-/// A Border with a gradient stroke — Flutter's BoxDecoration.border only
-/// supports flat colors natively.
-class GradientBoxBorder extends BoxBorder {
-  final Gradient gradient;
-  final double width;
-
-  const GradientBoxBorder({required this.gradient, required this.width});
-
-  @override
-  BorderSide get bottom => BorderSide(width: width);
-  @override
-  BorderSide get top => BorderSide(width: width);
-
-  @override
-  EdgeInsetsGeometry get dimensions => EdgeInsets.all(width);
-
-  @override
-  bool get isUniform => true;
-
-  @override
-  void paint(Canvas canvas, Rect rect, {TextDirection? textDirection, BoxShape shape = BoxShape.rectangle, BorderRadius? borderRadius}) {
-    final paint = Paint()
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = width
-      ..shader = gradient.createShader(rect);
-    final inset = rect.deflate(width / 2);
-    canvas.drawRect(inset, paint);
-  }
-
-  @override
-  ShapeBorder scale(double t) => GradientBoxBorder(gradient: gradient, width: width * t);
 }

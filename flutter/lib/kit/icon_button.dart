@@ -4,21 +4,29 @@ import '../theme/tokens.dart';
 import 'focusable_surface.dart';
 import 'surface_style.dart';
 
-const _iconButtonShape = CircleBorder();
-const _iconButtonSize = 44.0;
+final _iconButtonShape = RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppShape.radiusMd));
+const _iconButtonSize = 62.0;
 
 final _iconButtonColors = SurfaceColors(
   container: AppColors.transparent,
-  content: AppColors.white,
-  focusedContainer: AppColors.accent,
-  pressedContainer: AppColors.accentPressed,
-  disabledContent: AppColors.white.withValues(alpha: 0.5),
+  content: AppColors.ink2,
+  focusedContainer: AppColors.surfaceRaised,
+  focusedContent: AppColors.ink,
+  pressedContainer: AppColors.accent900,
+  pressedContent: AppColors.ink2,
 );
-const _defaultIconButtonBorder = SurfaceBorder(focused: SurfaceBorderSide.gradient(AppFocusTreatment.focusedGradient));
-const _iconButtonGlow = SurfaceGlow(focusedColor: AppColors.accentGlow);
 
-/// Ports ui/kit/IconButton.kt — transparent at rest so it floats over
-/// video/photos (e.g. player controls).
+/// A spine would eat a quarter of a 62x62 square, so icon-only buttons take
+/// the hairline frame alone — DESIGN.md non-negotiable #3.
+const _defaultIconButtonBorder = SurfaceBorder(
+  idle: SurfaceBorderSide.solid(AppColors.lineStrong),
+  focused: SurfaceBorderSide.solid(AppColors.accent),
+  noSpine: true,
+);
+
+/// Ports ui/kit/IconButton.kt — square (not circular; only avatars and seat
+/// circles are round in Nocturne), transparent at rest so it reads on the
+/// scrims it usually sits over (player controls, a detail page's backdrop).
 class AppIconButton extends StatelessWidget {
   final VoidCallback onClick;
   final bool enabled;
@@ -53,7 +61,6 @@ class AppIconButton extends StatelessWidget {
         shape: _iconButtonShape,
         colors: _iconButtonColors,
         border: border,
-        glow: _iconButtonGlow,
         child: child,
       ),
     );

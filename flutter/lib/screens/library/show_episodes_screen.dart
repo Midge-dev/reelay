@@ -50,8 +50,8 @@ class ShowEpisodesScreen extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  AppText(showTitle, style: AppTypography.displaySmall),
-                  AppText(seasonTitle, style: AppTypography.bodyLarge),
+                  AppText(showTitle, style: AppTypography.title1),
+                  AppText(seasonTitle, style: AppTypography.body),
                 ],
               ),
             ),
@@ -115,7 +115,7 @@ class _EpisodeRow extends StatelessWidget {
                     bottom: 0,
                     child: Container(
                       height: 4,
-                      color: AppColors.scrim.withValues(alpha: 0.4),
+                      color: AppScrims.dialog.withValues(alpha: 0.4),
                       alignment: Alignment.centerLeft,
                       child: FractionallySizedBox(
                         widthFactor: progress,

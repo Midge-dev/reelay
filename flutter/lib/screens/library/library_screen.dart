@@ -15,7 +15,7 @@ import 'poster_card.dart';
 import 'search_keyboard.dart';
 
 const _gridColumns = 5;
-const _posterCardHeight = 278.0;
+const _posterCardHeight = 310.0; // 160w*3/2 image (240) + 16 padding + label line (26) + optional caption line (24)
 
 enum BrowseTab { all, genre, collections, search }
 
@@ -203,7 +203,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
               ),
             ),
           ),
-          Container(height: 2, color: AppColors.surfaceVariant),
+          Container(height: 2, color: AppColors.surface),
           Expanded(
             child: switch (_browseTab) {
               BrowseTab.all => _buildAllTab(),
@@ -225,9 +225,9 @@ class _LibraryScreenState extends State<LibraryScreen> {
           padding: const EdgeInsets.fromLTRB(32, 24, 32, 8),
           child: Row(
             children: [
-              AppText(widget.selectedSection.title, style: AppTypography.titleMedium),
+              AppText(widget.selectedSection.title, style: AppTypography.label),
               const Spacer(),
-              AppText('${widget.items.length} titles · A–Z', color: AppColors.onSurfaceVariant),
+              AppText('${widget.items.length} titles · A–Z', color: AppColors.ink3),
             ],
           ),
         ),
@@ -299,7 +299,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
                     if (_decadeFilter != null) ...[AppliedFilterChip(label: '${_decadeFilter}s'), const SizedBox(width: 12)],
                     if (_dateAddedFilter != null) ...[AppliedFilterChip(label: _dateAddedFilter!.label), const SizedBox(width: 12)],
                     const Spacer(),
-                    AppText('${genreResults.length} titles · Sort: Title', color: AppColors.onSurfaceVariant),
+                    AppText('${genreResults.length} titles · Sort: Title', color: AppColors.ink3),
                   ],
                 ),
                 Expanded(
@@ -398,12 +398,12 @@ class _LibraryScreenState extends State<LibraryScreen> {
                   decoration: BoxDecoration(
                     color: AppColors.surface,
                     borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: AppColors.surfaceVariant, width: 2),
+                    border: Border.all(color: AppColors.surface, width: 2),
                   ),
                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                   child: AppText(
                     _searchQuery.isEmpty ? 'Type a title…' : _searchQuery,
-                    color: _searchQuery.isEmpty ? AppColors.onSurfaceVariant : AppColors.white,
+                    color: _searchQuery.isEmpty ? AppColors.ink3 : AppColors.inkOnArt,
                   ),
                 ),
                 const SizedBox(height: 12),
@@ -425,7 +425,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
                 children: [
                   AppText(
                     _searchQuery.trim().isEmpty ? 'Results' : 'Results · ${searchResults.length} titles for "$_searchQuery"',
-                    color: AppColors.onSurfaceVariant,
+                    color: AppColors.ink3,
                   ),
                   Expanded(
                     child: _searchQuery.trim().isEmpty

@@ -12,7 +12,7 @@ class ContentColor extends InheritedWidget {
 
   static Color of(BuildContext context) {
     final widget = context.dependOnInheritedWidgetOfExactType<ContentColor>();
-    return widget?.color ?? AppColors.onBackground;
+    return widget?.color ?? AppColors.ink;
   }
 
   @override

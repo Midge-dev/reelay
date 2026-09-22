@@ -10,7 +10,7 @@ import '../common/artwork.dart';
 import 'poster_card.dart';
 
 const _gridColumns = 5;
-const _posterCardHeight = 278.0;
+const _posterCardHeight = 310.0; // 160w*3/2 image (240) + 16 padding + label line (26) + optional caption line (24)
 
 /// Ports ui/library/PersonFilmographyScreen.kt.
 class PersonFilmographyScreen extends StatelessWidget {
@@ -59,25 +59,27 @@ class PersonFilmographyScreen extends StatelessWidget {
                               child: Center(
                                 child: AppText(
                                   personName.isNotEmpty ? personName[0].toUpperCase() : '?',
-                                  style: AppTypography.headlineMedium,
-                                  color: AppColors.white,
+                                  style: AppTypography.title1,
+                                  color: AppColors.inkOnArt,
                                 ),
                               ),
                             ),
                     ),
                   ),
                   const SizedBox(width: 20),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      AppText(personName, style: AppTypography.headlineMedium),
-                      const SizedBox(height: 4),
-                      AppText(
-                        '${items.length} title${items.length == 1 ? '' : 's'} in your library',
-                        color: AppColors.onSurfaceVariant,
-                      ),
-                    ],
+                  Flexible(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        AppText(personName, style: AppTypography.title1, maxLines: 1, overflow: TextOverflow.ellipsis),
+                        const SizedBox(height: 4),
+                        AppText(
+                          '${items.length} title${items.length == 1 ? '' : 's'} in your library',
+                          color: AppColors.ink3,
+                        ),
+                      ],
+                    ),
                   ),
                 ],
               ),

@@ -1,14 +1,15 @@
 import 'package:flutter/widgets.dart';
 
-import '../../kit/focusable_surface.dart';
+import '../../kit/icon_button.dart';
 import '../../kit/surface_style.dart';
 import '../../kit/text.dart';
 import '../../theme/tokens.dart';
 import '../../theme/typography.dart';
 
-const _watchlistButtonSize = 44.0;
-
-/// Ports ui/common/WatchlistButton.kt.
+/// Ports ui/common/WatchlistButton.kt. Square, not round — this sits in the
+/// detail-page action row alongside the other icon-only buttons (restart,
+/// more), so it takes the same 62x62 frame-only treatment as AppIconButton
+/// rather than a circular badge.
 class WatchlistButton extends StatelessWidget {
   final bool isOnWatchlist;
   final VoidCallback onClick;
@@ -18,38 +19,17 @@ class WatchlistButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = isOnWatchlist
-        ? SurfaceColors(
-            container: AppColors.accent.withValues(alpha: 0.3),
-            content: AppColors.white,
-            focusedContainer: AppColors.accent,
-            pressedContainer: AppColors.accentPressed,
-          )
-        : SurfaceColors(
-            container: AppColors.transparent,
-            content: AppColors.white,
-            focusedContainer: AppColors.accent,
-            pressedContainer: AppColors.accentPressed,
-          );
     final border = SurfaceBorder(
-      idle: isOnWatchlist
-          ? const SurfaceBorderSide.gradient(AppFocusTreatment.focusedGradient)
-          : const SurfaceBorderSide.solid(AppColors.dimBorder),
-      focused: const SurfaceBorderSide.gradient(AppFocusTreatment.focusedGradient),
+      idle: SurfaceBorderSide.solid(isOnWatchlist ? AppColors.accent : AppColors.lineStrong),
+      focused: const SurfaceBorderSide.solid(AppColors.accent),
+      noSpine: true,
     );
 
-    return SizedBox(
-      width: _watchlistButtonSize,
-      height: _watchlistButtonSize,
-      child: FocusableSurface(
-        onClick: onClick,
-        onFocusChange: onFocusChange,
-        shape: const CircleBorder(),
-        colors: colors,
-        border: border,
-        glow: const SurfaceGlow(focusedColor: AppColors.accentGlow),
-        child: AppText(isOnWatchlist ? '✓' : '+', style: AppTypography.titleLarge),
-      ),
+    return AppIconButton(
+      onClick: onClick,
+      onFocusChange: onFocusChange,
+      border: border,
+      child: AppText(isOnWatchlist ? '✓' : '+', style: AppTypography.label, color: isOnWatchlist ? AppColors.accent : AppColors.ink2),
     );
   }
 }

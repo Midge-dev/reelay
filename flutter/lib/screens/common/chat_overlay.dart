@@ -102,12 +102,12 @@ class _ChatBubbleState extends State<_ChatBubble> {
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 420),
         child: DecoratedBox(
-          decoration: BoxDecoration(color: AppColors.scrim.withValues(alpha: 0.6)),
+          decoration: BoxDecoration(color: AppScrims.dialog.withValues(alpha: 0.6)),
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
             child: AppText(
               '${widget.message.username}: ${widget.message.text}',
-              color: AppColors.white,
+              color: AppColors.inkOnArt,
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
               textAlign: widget.textAlign,

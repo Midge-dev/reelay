@@ -53,23 +53,23 @@ class _ChatQrOverlayState extends State<ChatQrOverlay> {
       child: ClipRRect(
         borderRadius: BorderRadius.circular(16),
         child: DecoratedBox(
-          decoration: BoxDecoration(color: AppColors.scrim.withValues(alpha: 0.9)),
+          decoration: BoxDecoration(color: AppScrims.dialog.withValues(alpha: 0.9)),
           child: Padding(
             padding: const EdgeInsets.all(20),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                const AppText('Join the chat', style: AppTypography.titleMedium, color: AppColors.white),
+                const AppText('Join the chat', style: AppTypography.label, color: AppColors.inkOnArt),
                 const SizedBox(height: 12),
                 ClipRRect(
                   borderRadius: BorderRadius.circular(8),
                   child: Container(
                     width: 120,
                     height: 120,
-                    color: AppColors.white,
+                    color: AppColors.inkOnArt,
                     padding: const EdgeInsets.all(8),
-                    child: QrImageView(data: widget.chatUrl, backgroundColor: AppColors.white),
+                    child: QrImageView(data: widget.chatUrl, backgroundColor: AppColors.inkOnArt),
                   ),
                 ),
               ],

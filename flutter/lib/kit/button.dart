@@ -4,24 +4,28 @@ import '../theme/tokens.dart';
 import 'focusable_surface.dart';
 import 'surface_style.dart';
 
-const _buttonMinWidth = 58.0;
-const _buttonMinHeight = 40.0;
-const _buttonContentPadding = EdgeInsets.symmetric(horizontal: 16, vertical: 10);
+const _buttonHeight = 62.0;
+const _buttonContentPadding = EdgeInsets.symmetric(horizontal: AppSpacing.xxl);
 
-const _buttonCompactMinHeight = 32.0;
-const _buttonCompactContentPadding = EdgeInsets.symmetric(horizontal: 12, vertical: 6);
+const _buttonCompactHeight = 52.0;
+const _buttonCompactContentPadding = EdgeInsets.symmetric(horizontal: AppSpacing.lg);
+
+final _buttonShape = RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppShape.radiusMd));
 
 final _filledColors = SurfaceColors(
-  container: AppColors.surfaceVariant,
-  content: AppColors.white,
-  focusedContainer: AppColors.accent,
-  pressedContainer: AppColors.accentPressed,
-  disabledContent: AppColors.white.withValues(alpha: 0.5),
+  container: AppColors.surface,
+  content: AppColors.ink2,
+  focusedContent: AppColors.ink,
+  pressedContainer: AppColors.accent900,
+  pressedContent: AppColors.ink2,
 );
-const _filledBorder = SurfaceBorder(focused: SurfaceBorderSide.gradient(AppFocusTreatment.focusedGradient));
-const _filledGlow = SurfaceGlow(focusedColor: AppColors.accentGlow);
+const _filledBorder = SurfaceBorder(
+  idle: SurfaceBorderSide.solid(AppColors.line),
+  focused: SurfaceBorderSide.solid(AppColors.accent),
+);
 
-/// Ports ui/kit/Button.kt's `Button` — a pill-shaped filled button.
+/// Ports ui/kit/Button.kt's `Button` — a filled button, radius 8 (not a
+/// pill — the old stadium shape fought the 8px cards, see DESIGN.md).
 class AppButton extends StatelessWidget {
   final VoidCallback onClick;
   final bool enabled;
@@ -50,15 +54,11 @@ class AppButton extends StatelessWidget {
       focusNode: focusNode,
       autofocus: autofocus,
       onFocusChange: onFocusChange,
-      shape: const StadiumBorder(),
+      shape: _buttonShape,
       colors: _filledColors,
       border: _filledBorder,
-      glow: _filledGlow,
-      child: ConstrainedBox(
-        constraints: BoxConstraints(
-          minWidth: compact ? 0 : _buttonMinWidth,
-          minHeight: compact ? _buttonCompactMinHeight : _buttonMinHeight,
-        ),
+      child: SizedBox(
+        height: compact ? _buttonCompactHeight : _buttonHeight,
         child: Padding(
           padding: compact ? _buttonCompactContentPadding : _buttonContentPadding,
           child: Row(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.center, children: [child]),
@@ -70,18 +70,18 @@ class AppButton extends StatelessWidget {
 
 final _outlinedColors = SurfaceColors(
   container: AppColors.transparent,
-  content: AppColors.white,
-  focusedContainer: AppColors.transparent,
-  pressedContainer: AppColors.accent.withValues(alpha: 0.25),
-  disabledContent: AppColors.white.withValues(alpha: 0.5),
+  content: AppColors.ink2,
+  focusedContainer: AppColors.surfaceRaised,
+  focusedContent: AppColors.ink,
+  pressedContainer: AppColors.accent900,
+  pressedContent: AppColors.ink2,
 );
 const _outlinedBorder = SurfaceBorder(
-  idle: SurfaceBorderSide.solid(AppColors.dimBorder),
-  focused: SurfaceBorderSide.gradient(AppFocusTreatment.focusedGradient),
+  idle: SurfaceBorderSide.solid(AppColors.lineStrong),
+  focused: SurfaceBorderSide.solid(AppColors.accent),
 );
-const _outlinedGlow = SurfaceGlow(focusedColor: AppColors.accentGlow);
 
-/// Ports ui/kit/Button.kt's `OutlinedButton`.
+/// Ports ui/kit/Button.kt's `OutlinedButton` — the secondary action style.
 class AppOutlinedButton extends StatelessWidget {
   final VoidCallback onClick;
   final bool enabled;
@@ -110,15 +110,11 @@ class AppOutlinedButton extends StatelessWidget {
       focusNode: focusNode,
       autofocus: autofocus,
       onFocusChange: onFocusChange,
-      shape: const StadiumBorder(),
+      shape: _buttonShape,
       colors: _outlinedColors,
       border: _outlinedBorder,
-      glow: _outlinedGlow,
-      child: ConstrainedBox(
-        constraints: BoxConstraints(
-          minWidth: compact ? 0 : _buttonMinWidth,
-          minHeight: compact ? _buttonCompactMinHeight : _buttonMinHeight,
-        ),
+      child: SizedBox(
+        height: compact ? _buttonCompactHeight : _buttonHeight,
         child: Padding(
           padding: compact ? _buttonCompactContentPadding : _buttonContentPadding,
           child: Row(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.center, children: [child]),

@@ -41,10 +41,10 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Text('Reelay', style: AppTypography.displaySmall.copyWith(color: AppColors.white)),
+              Text('Reelay', style: AppTypography.title1.copyWith(color: AppColors.inkOnArt)),
               Padding(
                 padding: const EdgeInsets.only(top: 12),
-                child: Text('Watch together', style: AppTypography.bodyLarge.copyWith(color: AppColors.white.withValues(alpha: 0.7))),
+                child: Text('Watch together', style: AppTypography.body.copyWith(color: AppColors.inkOnArt.withValues(alpha: 0.7))),
               ),
             ],
           ),

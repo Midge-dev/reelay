@@ -60,7 +60,7 @@ class _LoadingScreenState extends State<LoadingScreen> {
               AppText(message),
               const SizedBox(height: 4),
             ],
-            AppText(_flavor, style: AppTypography.bodySmall, color: AppColors.onSurfaceVariant),
+            AppText(_flavor, style: AppTypography.caption, color: AppColors.ink3),
           ],
         ),
       ),

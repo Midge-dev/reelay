@@ -24,7 +24,7 @@ class AppliedFilterChip extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
       decoration: BoxDecoration(color: AppColors.accent, borderRadius: BorderRadius.circular(50)),
-      child: AppText(label, color: AppColors.white),
+      child: AppText(label, color: AppColors.inkOnArt),
     );
   }
 }
@@ -40,24 +40,22 @@ class MenuSectionHeader extends StatelessWidget {
       padding: const EdgeInsets.only(top: 10, bottom: 4),
       child: AppText(
         label.toUpperCase(),
-        style: AppTypography.bodySmall.copyWith(letterSpacing: 1.5),
-        color: AppColors.onSurfaceVariant,
+        style: AppTypography.micro,
       ),
     );
   }
 }
 
-const _menuShape = RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(8)));
+final _menuShape = RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppShape.radiusMd));
 final _menuRowColors = SurfaceColors(
   container: AppColors.transparent,
-  content: AppColors.white,
-  focusedContainer: AppColors.accent,
-  selectedContainer: AppColors.accent.withValues(alpha: 0.35),
+  content: AppColors.ink2,
+  focusedContainer: AppColors.surfaceRaised,
+  focusedContent: AppColors.ink,
+  selectedContainer: AppColors.surface,
+  selectedContent: AppColors.ink,
 );
-const _menuRowBorder = SurfaceBorder(focused: SurfaceBorderSide.gradient(AppFocusTreatment.focusedGradient));
-// The default glow radius (14) is tuned for larger surfaces (cards, tabs) —
-// on these short, narrow rows it reads as oversized, so it's dialed down.
-const _menuRowGlow = SurfaceGlow(focusedColor: AppColors.accentGlow, radius: 8);
+const _menuRowBorder = SurfaceBorder(focused: SurfaceBorderSide.solid(AppColors.accent));
 
 class MenuOptionRow extends StatelessWidget {
   final String label;
@@ -100,7 +98,6 @@ class MenuOptionRow extends StatelessWidget {
         shape: _menuShape,
         colors: colors,
         border: _menuRowBorder,
-        glow: _menuRowGlow,
         contentAlignment: AlignmentDirectional.centerStart,
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 14),

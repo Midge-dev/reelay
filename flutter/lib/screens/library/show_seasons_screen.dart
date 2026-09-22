@@ -9,7 +9,7 @@ import '../../theme/typography.dart';
 import 'poster_card.dart';
 
 const _gridColumns = 5;
-const _posterCardHeight = 278.0;
+const _posterCardHeight = 310.0; // 160w*3/2 image (240) + 16 padding + label line (26) + optional caption line (24)
 
 /// Ports ui/library/ShowSeasonsScreen.kt. `staggerDelayMs` (per-card noise
 /// stagger) is carried through to PosterCard/Artwork even though Artwork
@@ -73,7 +73,7 @@ class _ShowSeasonsScreenState extends State<ShowSeasonsScreen> {
           children: [
             Padding(
               padding: const EdgeInsets.only(left: 32, top: 16, right: 32, bottom: 24),
-              child: AppText(showTitle, style: AppTypography.displaySmall),
+              child: AppText(showTitle, style: AppTypography.title1),
             ),
             Expanded(
               child: GridView.builder(

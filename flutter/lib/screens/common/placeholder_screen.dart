@@ -13,7 +13,7 @@ class PlaceholderScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Center(
-      child: Text(label, style: AppTypography.headlineMedium.copyWith(color: AppColors.onBackground)),
+      child: Text(label, style: AppTypography.title2.copyWith(color: AppColors.ink)),
     );
   }
 }

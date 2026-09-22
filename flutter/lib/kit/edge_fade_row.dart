@@ -38,12 +38,12 @@ class EdgeFadeRow extends StatelessWidget {
       shaderCallback: (bounds) {
         final extent = axis == Axis.horizontal ? bounds.width : bounds.height;
         final fraction = extent > 0 ? (fadeWidth / extent).clamp(0.0, 0.5) : 0.0;
-        final startColor = fadeStart ? AppColors.transparent : AppColors.white;
-        final endColor = fadeEnd ? AppColors.transparent : AppColors.white;
+        final startColor = fadeStart ? AppColors.transparent : AppColors.ink;
+        final endColor = fadeEnd ? AppColors.transparent : AppColors.ink;
         return LinearGradient(
           begin: axis == Axis.horizontal ? Alignment.centerLeft : Alignment.topCenter,
           end: axis == Axis.horizontal ? Alignment.centerRight : Alignment.bottomCenter,
-          colors: [startColor, AppColors.white, AppColors.white, endColor],
+          colors: [startColor, AppColors.ink, AppColors.ink, endColor],
           stops: [0.0, fraction, 1 - fraction, 1.0],
         ).createShader(bounds);
       },

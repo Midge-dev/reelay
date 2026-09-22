@@ -291,7 +291,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const AppText('Settings', style: AppTypography.displaySmall),
+                      const AppText('Settings', style: AppTypography.title1),
                       const SizedBox(height: 32),
                       _SettingsGroup(
                         title: 'Libraries',
@@ -333,7 +333,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             ],
           ),
           if (_maxSeatsMenuExpanded) ...[
-            Positioned.fill(child: ColoredBox(color: AppColors.scrim.withValues(alpha: 0.4))),
+            Positioned.fill(child: ColoredBox(color: AppScrims.dialog.withValues(alpha: 0.4))),
             Positioned(
               left: 220,
               top: 220,
@@ -405,9 +405,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             },
             focusNode: _relaySettingsEntryFocus,
             shape: const RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(8))),
-            colors: SurfaceColors(container: AppColors.background, content: AppColors.onSurfaceVariant, focusedContent: AppColors.white),
-            border: const SurfaceBorder(idle: SurfaceBorderSide.solid(AppColors.dimBorder), focused: SurfaceBorderSide.gradient(AppFocusTreatment.focusedGradient)),
-            glow: const SurfaceGlow(focusedColor: AppColors.accentGlow),
+            colors: SurfaceColors(container: AppColors.background, content: AppColors.ink3, focusedContent: AppColors.inkOnArt),
+            border: const SurfaceBorder(idle: SurfaceBorderSide.solid(AppColors.line), focused: SurfaceBorderSide.solid(AppColors.accent)),
             contentAlignment: AlignmentDirectional.centerStart,
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -421,12 +420,12 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                       const AppText('Relay settings'),
                       AppText(
                         defaultRelay != null ? '${defaultRelay.nickname} · Default' : 'None configured',
-                        color: AppColors.onSurfaceVariant,
+                        color: AppColors.ink3,
                       ),
                     ],
                   ),
                   const Spacer(),
-                  const AppText('›', color: AppColors.onSurfaceVariant),
+                  const AppText('›', color: AppColors.ink3),
                 ],
               ),
             ),
@@ -439,9 +438,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             onClick: () => setState(() => _maxSeatsMenuExpanded = true),
             focusNode: _maxHostSeatsFocus,
             shape: const RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(8))),
-            colors: SurfaceColors(container: AppColors.background, content: AppColors.onSurfaceVariant, focusedContent: AppColors.white),
-            border: const SurfaceBorder(idle: SurfaceBorderSide.solid(AppColors.dimBorder), focused: SurfaceBorderSide.gradient(AppFocusTreatment.focusedGradient)),
-            glow: const SurfaceGlow(focusedColor: AppColors.accentGlow),
+            colors: SurfaceColors(container: AppColors.background, content: AppColors.ink3, focusedContent: AppColors.inkOnArt),
+            border: const SurfaceBorder(idle: SurfaceBorderSide.solid(AppColors.line), focused: SurfaceBorderSide.solid(AppColors.accent)),
             contentAlignment: AlignmentDirectional.centerStart,
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -450,7 +448,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 children: [
                   const AppText('Maximum seats'),
                   const Spacer(),
-                  AppText('${_settings.maxHostSeats}', color: AppColors.onSurfaceVariant),
+                  AppText('${_settings.maxHostSeats}', color: AppColors.ink3),
                 ],
               ),
             ),
@@ -512,7 +510,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         const SizedBox(height: 24),
         const AppText('Chat position'),
         const SizedBox(height: 4),
-        const AppText('Pick the corner messages appear in', color: AppColors.onSurfaceVariant),
+        const AppText('Pick the corner messages appear in', color: AppColors.ink3),
         const SizedBox(height: 14),
         ChatCornerPicker(
           selected: _settings.chatOverlayCorner,
@@ -537,10 +535,10 @@ class _SettingsGroup extends StatelessWidget {
       children: [
         if (showRule) ...[
           const SizedBox(height: 26),
-          Container(height: 1, color: AppColors.surfaceVariant),
+          Container(height: 1, color: AppColors.surface),
           const SizedBox(height: 14),
         ],
-        AppText(title.toUpperCase(), style: const TextStyle(fontSize: 12, letterSpacing: 1.2, fontWeight: FontWeight.w500), color: AppColors.onSurfaceVariant),
+        AppText(title.toUpperCase(), style: const TextStyle(fontSize: 12, letterSpacing: 1.2, fontWeight: FontWeight.w500), color: AppColors.ink3),
         const SizedBox(height: 6),
         child,
       ],

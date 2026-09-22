@@ -39,12 +39,12 @@ class _KitShowcaseScreenState extends State<KitShowcaseScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const AppText('Reelay kit', style: AppTypography.displaySmall),
+              const AppText('Reelay kit', style: AppTypography.title1),
               const SizedBox(height: AppSpacing.xs),
-              const AppText('Phase 3 component showcase — D-pad through these', style: AppTypography.bodyLarge),
+              const AppText('Phase 3 component showcase — D-pad through these', style: AppTypography.body),
               const SizedBox(height: AppSpacing.xxl),
 
-              const AppText('Buttons', style: AppTypography.headlineMedium),
+              const AppText('Buttons', style: AppTypography.rowLabel),
               const SizedBox(height: AppSpacing.md),
               Row(
                 children: [
@@ -57,7 +57,7 @@ class _KitShowcaseScreenState extends State<KitShowcaseScreen> {
               ),
               const SizedBox(height: AppSpacing.xxl),
 
-              const AppText('Cards', style: AppTypography.headlineMedium),
+              const AppText('Cards', style: AppTypography.rowLabel),
               const SizedBox(height: AppSpacing.md),
               SizedBox(
                 height: 180,
@@ -71,10 +71,10 @@ class _KitShowcaseScreenState extends State<KitShowcaseScreen> {
                           onClick: () {},
                           onLongClick: () {},
                           child: CardContainer(
-                            imageCard: Container(height: 120, color: AppColors.surfaceVariant),
+                            imageCard: Container(height: 120, color: AppColors.surface),
                             title: Padding(
                               padding: const EdgeInsets.only(top: AppSpacing.xs),
-                              child: AppText('Card ${i + 1}', style: AppTypography.titleMedium),
+                              child: AppText('Card ${i + 1}', style: AppTypography.label),
                             ),
                           ),
                         ),
@@ -85,7 +85,7 @@ class _KitShowcaseScreenState extends State<KitShowcaseScreen> {
               ),
               const SizedBox(height: AppSpacing.xxl),
 
-              const AppText('Filter chips', style: AppTypography.headlineMedium),
+              const AppText('Filter chips', style: AppTypography.rowLabel),
               const SizedBox(height: AppSpacing.md),
               Row(
                 children: List.generate(3, (i) {
@@ -101,7 +101,7 @@ class _KitShowcaseScreenState extends State<KitShowcaseScreen> {
               ),
               const SizedBox(height: AppSpacing.xxl),
 
-              const AppText('List items', style: AppTypography.headlineMedium),
+              const AppText('List items', style: AppTypography.rowLabel),
               const SizedBox(height: AppSpacing.md),
               SizedBox(
                 width: 280,
@@ -118,7 +118,7 @@ class _KitShowcaseScreenState extends State<KitShowcaseScreen> {
               ),
               const SizedBox(height: AppSpacing.xxl),
 
-              const AppText('Switch', style: AppTypography.headlineMedium),
+              const AppText('Switch', style: AppTypography.rowLabel),
               const SizedBox(height: AppSpacing.md),
               AppSwitch(checked: _switchOn, onCheckedChange: (v) => setState(() => _switchOn = v)),
             ],

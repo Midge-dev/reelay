@@ -1,4 +1,3 @@
-import 'package:flutter/physics.dart';
 import 'package:flutter/widgets.dart';
 
 import '../theme/tokens.dart';
@@ -6,35 +5,34 @@ import 'focusable_surface.dart';
 import 'scroll_peek.dart';
 import 'surface_style.dart';
 
-const _cardShape = RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(8)));
+final _cardShape = RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppShape.radiusMd));
 
-final _cardColors = SurfaceColors(container: AppColors.surfaceVariant, content: AppColors.white);
-const _cardBorder = SurfaceBorder(focused: SurfaceBorderSide.gradient(AppFocusTreatment.focusedGradient));
-// Default radius (14) blooms wide enough that a scaled-up card's glow gets
-// visibly cut off by the nearest clip boundary (grid edge, row ClipRect) —
-// same fix already applied to GenreFilterPanel's row glow.
-const _cardGlow = SurfaceGlow(focusedColor: AppColors.accentGlow, radius: 8);
+final _cardColors = SurfaceColors(
+  container: AppColors.surface,
+  content: AppColors.ink2,
+  focusedContent: AppColors.ink,
+);
+const _cardBorder = SurfaceBorder(
+  idle: SurfaceBorderSide.solid(AppColors.line),
+  focused: SurfaceBorderSide.solid(AppColors.accent),
+);
 
-const _defaultFocusScale = 1.06;
-
-/// Compose's `spring(dampingRatio = 0.75f, stiffness = Spring.StiffnessMediumLow)`.
-/// Flutter's SpringDescription.damping is an absolute coefficient, not a
-/// ratio — damping = dampingRatio * 2 * sqrt(mass * stiffness).
-/// StiffnessMediumLow is Compose's own named constant (400).
-const _cardFocusSpring = SpringDescription(mass: 1, stiffness: 400, damping: 30);
-
-/// Ports ui/kit/Card.kt's `Card` — focus triggers scale-only magnification
-/// via a spring (intentional slight overshoot), never scales below 1x even
-/// when pressed, and elevates above neighbors while focused (so it isn't
-/// visually clipped by adjacent cards at the scaled-up size).
-class AppCard extends StatefulWidget {
+/// Ports ui/kit/Card.kt's `Card`. Focus is the standard Nocturne signal —
+/// fill step, hairline, leading spine, 1.03x scale, no bounce — via
+/// FocusableSurface; nothing card-specific left to layer on top of it. Use
+/// [border]/[colors] overrides (or build a dedicated component) for cards
+/// that sit on artwork, which take a frame instead of a spine — see
+/// DESIGN.md non-negotiable #3 and `SurfaceBorder.noSpine`.
+class AppCard extends StatelessWidget {
   final VoidCallback onClick;
   final VoidCallback? onLongClick;
   final bool enabled;
+  final bool selected;
   final FocusNode? focusNode;
   final bool autofocus;
-  final double focusScale;
   final ShapeBorder? shape;
+  final SurfaceColors? colors;
+  final SurfaceBorder border;
   final bool ensureVisibleOnFocus;
   final Widget child;
 
@@ -43,72 +41,40 @@ class AppCard extends StatefulWidget {
     required this.onClick,
     this.onLongClick,
     this.enabled = true,
+    this.selected = false,
     this.focusNode,
     this.autofocus = false,
-    this.focusScale = _defaultFocusScale,
     this.shape,
+    this.colors,
+    this.border = _cardBorder,
     this.ensureVisibleOnFocus = true,
     required this.child,
   });
 
-  @override
-  State<AppCard> createState() => _AppCardState();
-}
-
-class _AppCardState extends State<AppCard> with SingleTickerProviderStateMixin {
-  late final AnimationController _controller;
-
-  @override
-  void initState() {
-    super.initState();
-    // AnimationController's default upperBound is 1.0 — since focusScale is
-    // > 1.0, the spring's target was being silently clamped straight back
-    // down to 1.0 on every tick, so the card never visibly grew at all.
-    _controller = AnimationController(value: 1, vsync: this, upperBound: widget.focusScale);
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  void _handleFocusChange(bool focused) {
-    final target = focused ? widget.focusScale : 1.0;
-    _controller.animateWith(SpringSimulation(_cardFocusSpring, _controller.value, target, 0));
-    if (focused && widget.ensureVisibleOnFocus) {
+  void _handleFocusChange(BuildContext context, bool focused) {
+    if (focused && ensureVisibleOnFocus) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) ensureCardVisible(context);
+        if (context.mounted) ensureCardVisible(context);
       });
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final shape = widget.shape is OutlinedBorder ? widget.shape as OutlinedBorder : _cardShape;
+    final outlinedShape = shape is OutlinedBorder ? shape as OutlinedBorder : _cardShape;
 
-    // Compose additionally bumps zIndex(1f) while focused so a scaled-up
-    // card paints over its still-unscaled neighbors. Flutter's Row/List
-    // paint order has no per-child zIndex equivalent; the PoC's real fix
-    // for the same occlusion hazard was reserving extra row height +
-    // centering (see project_flutter_focus_poc.md), not z-ordering — that
-    // remains the caller's job when it lays out a row of these.
-    return AnimatedBuilder(
-      animation: _controller,
-      builder: (context, child) => Transform.scale(scale: _controller.value, child: child),
-      child: FocusableSurface(
-        onClick: widget.onClick,
-        onLongClick: widget.onLongClick,
-        enabled: widget.enabled,
-        focusNode: widget.focusNode,
-        autofocus: widget.autofocus,
-        onFocusChange: _handleFocusChange,
-        shape: shape,
-        colors: _cardColors,
-        border: _cardBorder,
-        glow: _cardGlow,
-        child: widget.child,
-      ),
+    return FocusableSurface(
+      onClick: onClick,
+      onLongClick: onLongClick,
+      enabled: enabled,
+      selected: selected,
+      focusNode: focusNode,
+      autofocus: autofocus,
+      onFocusChange: (focused) => _handleFocusChange(context, focused),
+      shape: outlinedShape,
+      colors: colors ?? _cardColors,
+      border: border,
+      child: child,
     );
   }
 }

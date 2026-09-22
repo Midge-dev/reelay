@@ -69,11 +69,11 @@ class WatchTogetherRow extends StatelessWidget {
             children: [
               Container(width: 8, height: 8, decoration: const BoxDecoration(shape: BoxShape.circle, color: AppColors.accent)),
               const SizedBox(width: 12),
-              const AppText('Watch Together', style: AppTypography.titleLarge),
+              const AppText('Watch Together', style: AppTypography.rowLabel),
               const SizedBox(width: 12),
               AppText(
                 '${rooms.length} room${rooms.length == 1 ? '' : 's'} live · $relayCount relay${relayCount == 1 ? '' : 's'}',
-                color: AppColors.onSurfaceVariant,
+                color: AppColors.ink3,
               ),
             ],
           ),
@@ -86,8 +86,11 @@ class WatchTogetherRow extends StatelessWidget {
           // height, so this picks one with headroom rather than the
           // arbitrary 260 that clipped the card. +12 further for
           // EdgeFadeRow's ShaderMask bounds — see the matching comment on
-          // Continue Watching's SizedBox in home_screen.dart.
-          height: 332,
+          // Continue Watching's SizedBox in home_screen.dart. Bumped for
+          // Nocturne's larger type scale; this whole row is superseded by
+          // the single-slot Watch Together bar in the redesign (see
+          // DESIGN.md), so it isn't worth tuning further than "fits".
+          height: 410,
           child: EdgeFadeRow(
           child: ListView.separated(
             controller: scrollController,
@@ -236,9 +239,9 @@ class _RoomCardState extends State<RoomCard> with SingleTickerProviderStateMixin
             color: AppColors.surface,
             borderRadius: BorderRadius.circular(8),
             border: _cardFocused ? Border.all(color: AppColors.accent, width: 2) : null,
-            boxShadow: _cardFocused
-                ? [BoxShadow(color: AppColors.accentGlow.withValues(alpha: 0.22), blurRadius: 28)]
-                : null,
+            // Elevation is an edge plus ambient darkness, never a coloured
+            // glow — DESIGN.md #4.
+            boxShadow: _cardFocused ? AppElevation.raised : null,
           ),
           clipBehavior: Clip.antiAlias,
           child: Column(
@@ -264,7 +267,7 @@ class _RoomCardState extends State<RoomCard> with SingleTickerProviderStateMixin
                       left: 14,
                       right: 14,
                       bottom: 14,
-                      child: AppText(room.title, color: AppColors.white, maxLines: 1, overflow: TextOverflow.ellipsis),
+                      child: AppText(room.title, color: AppColors.inkOnArt, maxLines: 1, overflow: TextOverflow.ellipsis),
                     ),
                     if (widget.isHosted || widget.isMine)
                       Positioned(
@@ -275,7 +278,7 @@ class _RoomCardState extends State<RoomCard> with SingleTickerProviderStateMixin
                           decoration: BoxDecoration(color: AppColors.accent.withValues(alpha: 0.9), borderRadius: BorderRadius.circular(50)),
                           child: AppText(
                             widget.isHosted ? "You're hosting" : "You're in",
-                            color: AppColors.white,
+                            color: AppColors.inkOnArt,
                             style: const TextStyle(fontSize: 10, letterSpacing: 1, fontWeight: FontWeight.w500),
                           ),
                         ),
@@ -300,7 +303,7 @@ class _RoomCardState extends State<RoomCard> with SingleTickerProviderStateMixin
                           alignment: Alignment.center,
                           child: AppText(
                             room.hostName.isNotEmpty ? room.hostName[0].toUpperCase() : '?',
-                            color: AppColors.white,
+                            color: AppColors.inkOnArt,
                             style: const TextStyle(fontSize: 12),
                           ),
                         ),
@@ -316,7 +319,7 @@ class _RoomCardState extends State<RoomCard> with SingleTickerProviderStateMixin
                                 overflow: TextOverflow.ellipsis,
                               ),
                               const SizedBox(height: 4),
-                              AppText('${room.occupants} of ${room.maxSeats} watching', color: AppColors.onSurfaceVariant),
+                              AppText('${room.occupants} of ${room.maxSeats} watching', color: AppColors.ink3),
                             ],
                           ),
                         ),
@@ -331,17 +334,17 @@ class _RoomCardState extends State<RoomCard> with SingleTickerProviderStateMixin
                           width: 6,
                           height: 6,
                           decoration: BoxDecoration(
-                            color: widget.isHosted && _failed ? AppColors.onSurfaceVariant : AppColors.accent,
+                            color: widget.isHosted && _failed ? AppColors.ink3 : AppColors.accent,
                             borderRadius: BorderRadius.circular(50),
                           ),
                         ),
                         const SizedBox(width: 8),
-                        Flexible(child: AppText('Available on ${widget.merged.relay.nickname}', color: AppColors.onSurfaceVariant)),
+                        Flexible(child: AppText('Available on ${widget.merged.relay.nickname}', color: AppColors.ink3)),
                       ],
                     ),
                     const SizedBox(height: 12),
                     if (widget.isHosted && _failed)
-                      const AppText("Can't reach relay", color: AppColors.onSurfaceVariant)
+                      const AppText("Can't reach relay", color: AppColors.ink3)
                     else
                       // Wrap, not Row: "Join"/"Rejoin" + "End session" side
                       // by side can be wider than the 300px card allows
@@ -412,8 +415,8 @@ class _OverflowTile extends StatelessWidget {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              AppText('+$count', style: AppTypography.headlineMedium),
-              const AppText('more rooms', color: AppColors.onSurfaceVariant),
+              AppText('+$count', style: AppTypography.rowLabel),
+              const AppText('more rooms', color: AppColors.ink3),
             ],
           ),
         ),

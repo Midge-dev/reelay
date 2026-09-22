@@ -5,6 +5,7 @@ import 'package:flutter/widgets.dart';
 import '../../data/plex/plex_auth_api.dart';
 import '../../data/plex/plex_models.dart';
 import '../../kit/focusable_surface.dart';
+import '../../kit/icon.dart';
 import '../../kit/surface_style.dart';
 import '../../kit/text.dart';
 import '../../theme/tokens.dart';
@@ -182,7 +183,7 @@ class _AppNavigationDrawerState extends State<AppNavigationDrawer> {
             decoration: BoxDecoration(
               color: AppColors.surface,
               boxShadow: effectiveExpanded
-                  ? [BoxShadow(color: AppColors.scrim.withValues(alpha: 0.5), blurRadius: 24, offset: const Offset(8, 0))]
+                  ? [BoxShadow(color: AppScrims.dialog.withValues(alpha: 0.5), blurRadius: 24, offset: const Offset(8, 0))]
                   : const [],
             ),
             child: Stack(
@@ -235,7 +236,7 @@ class _AppNavigationDrawerState extends State<AppNavigationDrawer> {
                               child: effectiveExpanded
                                   ? Padding(
                                       padding: const EdgeInsets.only(left: 16, top: 8),
-                                      child: AppText('v${widget.versionName}', style: AppTypography.bodySmall, color: AppColors.onSurfaceVariant),
+                                      child: AppText('v${widget.versionName}', style: AppTypography.caption, color: AppColors.ink3),
                                     )
                                   : const SizedBox.shrink(),
                             ),
@@ -244,7 +245,7 @@ class _AppNavigationDrawerState extends State<AppNavigationDrawer> {
                     ),
                   ),
                 ),
-                Positioned(top: 0, bottom: 0, right: 0, child: Container(width: 1, color: AppColors.surfaceVariant)),
+                Positioned(top: 0, bottom: 0, right: 0, child: Container(width: 1, color: AppColors.surface)),
               ],
             ),
           ),
@@ -254,12 +255,16 @@ class _AppNavigationDrawerState extends State<AppNavigationDrawer> {
   }
 }
 
+final _railItemShape = RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppShape.radiusMd));
 final _railItemColors = SurfaceColors(
   container: AppColors.transparent,
-  content: AppColors.white,
-  focusedContainer: AppColors.accent,
-  selectedContainer: AppColors.accent.withValues(alpha: 0.35),
+  content: AppColors.ink4,
+  focusedContainer: AppColors.surfaceRaised,
+  focusedContent: AppColors.ink,
+  selectedContainer: AppColors.surfaceRaised,
+  selectedContent: AppColors.ink,
 );
+const _railItemBorder = SurfaceBorder(focused: SurfaceBorderSide.solid(AppColors.accent));
 
 class _SidebarItem extends StatelessWidget {
   final IconData icon;
@@ -286,25 +291,34 @@ class _SidebarItem extends StatelessWidget {
         onClick: onClick,
         selected: selected,
         focusNode: focusNode,
-        shape: const StadiumBorder(),
+        shape: _railItemShape,
         colors: _railItemColors,
+        border: _railItemBorder,
         contentAlignment: AlignmentDirectional.centerStart,
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16),
+          padding: const EdgeInsets.symmetric(horizontal: 12),
           child: Row(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              Icon(icon, color: AppColors.white, size: 24),
-              ClipRect(
-                child: AnimatedSize(
-                  duration: _railAnimDuration,
-                  child: expanded
-                      ? Padding(
-                          padding: const EdgeInsets.only(left: 14),
-                          child: AppText(label, color: AppColors.white),
-                        )
-                      : const SizedBox.shrink(),
+              AppIcon(icon, size: 26),
+              // Flexible, not a bare child — the rail's own width and this
+              // label's reveal are two independently-animated widths (the
+              // AnimatedContainer above and this AnimatedSize), so a frame
+              // partway through either transition can briefly ask for more
+              // label width than the rail currently has. Flexible lets the
+              // label give way at that frame instead of overflowing.
+              Flexible(
+                child: ClipRect(
+                  child: AnimatedSize(
+                    duration: _railAnimDuration,
+                    child: expanded
+                        ? Padding(
+                            padding: const EdgeInsets.only(left: 14),
+                            child: AppText(label, maxLines: 1, overflow: TextOverflow.ellipsis),
+                          )
+                        : const SizedBox.shrink(),
+                  ),
                 ),
               ),
             ],
@@ -339,7 +353,7 @@ class _UserAvatarItem extends StatelessWidget {
               alignment: Alignment.center,
               child: thumb != null
                   ? ClipOval(child: Image.network(thumb, width: 40, height: 40, fit: BoxFit.cover))
-                  : AppText((account?.username.isNotEmpty == true ? account!.username[0] : '?').toUpperCase(), style: AppTypography.bodyLarge, color: AppColors.white),
+                  : AppText((account?.username.isNotEmpty == true ? account!.username[0] : '?').toUpperCase(), style: AppTypography.body, color: AppColors.inkOnArt),
             ),
             ClipRect(
               child: AnimatedSize(
@@ -350,7 +364,7 @@ class _UserAvatarItem extends StatelessWidget {
                         // TODO: port basicMarquee() for usernames that overflow — deferred polish, not needed for basic functionality.
                         child: AppText(
                           account?.username ?? '',
-                          color: AppColors.white,
+                          color: AppColors.inkOnArt,
                           maxLines: 1,
                           overflow: TextOverflow.clip,
                         ),

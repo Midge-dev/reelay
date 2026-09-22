@@ -131,7 +131,7 @@ class _RelaySetupScreenState extends ConsumerState<RelaySetupScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.center,
                       children: [
-                        const AppText('Set up watch-together', style: AppTypography.headlineMedium),
+                        const AppText('Set up watch-together', style: AppTypography.title2),
                         const Padding(
                           padding: EdgeInsets.only(top: 8, bottom: 32),
                           child: AppText(
@@ -170,7 +170,7 @@ class _RelaySetupScreenState extends ConsumerState<RelaySetupScreen> {
                           Container(
                             margin: const EdgeInsets.only(top: 24),
                             padding: const EdgeInsets.all(24),
-                            color: AppColors.surfaceVariant,
+                            color: AppColors.surface,
                             child: Row(
                               mainAxisSize: MainAxisSize.min,
                               crossAxisAlignment: CrossAxisAlignment.center,
@@ -178,9 +178,9 @@ class _RelaySetupScreenState extends ConsumerState<RelaySetupScreen> {
                                 Container(
                                   width: 160,
                                   height: 160,
-                                  color: AppColors.white,
+                                  color: AppColors.inkOnArt,
                                   padding: const EdgeInsets.all(12),
-                                  child: QrImageView(data: _pairingUrl!, backgroundColor: AppColors.white),
+                                  child: QrImageView(data: _pairingUrl!, backgroundColor: AppColors.inkOnArt),
                                 ),
                                 const SizedBox(width: 24),
                                 Flexible(
@@ -190,7 +190,7 @@ class _RelaySetupScreenState extends ConsumerState<RelaySetupScreen> {
                                     children: [
                                       const AppText('Scan with your phone (same Wi-Fi as the TV), or visit:'),
                                       const SizedBox(height: 12),
-                                      AppText(_pairingUrl!, style: AppTypography.bodyLarge),
+                                      AppText(_pairingUrl!, style: AppTypography.body),
                                       const SizedBox(height: 12),
                                       const AppText("Paste the relay URL there and it'll appear here automatically."),
                                       const SizedBox(height: 12),

@@ -13,13 +13,19 @@ SurfaceColors _testColors() => SurfaceColors(
       pressedContent: const Color(0xFF000006),
       selectedContainer: const Color(0xFF000007),
       selectedContent: const Color(0xFF000008),
-      disabledContainer: const Color(0xFF000009),
-      disabledContent: const Color(0xFF00000A),
     );
 
 Color? _decorationColor(WidgetTester tester) {
-  final decoratedBox = tester.widget<DecoratedBox>(find.byType(DecoratedBox));
+  // Selected-and-focused adds a small ink-dot indicator (its own Container,
+  // hence its own DecoratedBox) on top of the surface's — take the surface's
+  // own, which paints first.
+  final decoratedBox = tester.widgetList<DecoratedBox>(find.byType(DecoratedBox)).first;
   return (decoratedBox.decoration as ShapeDecoration).color;
+}
+
+double _opacity(WidgetTester tester) {
+  final opacity = tester.widgetList<Opacity>(find.byType(Opacity));
+  return opacity.isEmpty ? 1.0 : opacity.first.opacity;
 }
 
 Future<void> _pump(WidgetTester tester, Widget child) async {
@@ -57,8 +63,7 @@ void main() {
     );
 
     focusNode.requestFocus();
-    await tester.pump();
-    await tester.pump();
+    await tester.pumpAndSettle();
 
     expect(focusNode.hasFocus, isTrue, reason: 'sanity check the FocusNode itself before inspecting rendering');
     expect(_decorationColor(tester), const Color(0xFF000003));
@@ -83,13 +88,12 @@ void main() {
     expect(_decorationColor(tester), const Color(0xFF000007), reason: 'selected, not focused');
 
     focusNode.requestFocus();
-    await tester.pump();
-    await tester.pump();
+    await tester.pumpAndSettle();
 
     expect(_decorationColor(tester), const Color(0xFF000003), reason: 'focus takes precedence over selected');
   });
 
-  testWidgets('disabled takes precedence over every other state', (tester) async {
+  testWidgets('disabled renders the idle appearance at 45% opacity, not a separate color', (tester) async {
     final focusNode = FocusNode();
     addTearDown(focusNode.dispose);
 
@@ -106,9 +110,10 @@ void main() {
       ),
     );
     focusNode.requestFocus();
-    await tester.pump();
+    await tester.pumpAndSettle();
 
-    expect(_decorationColor(tester), const Color(0xFF000009));
+    expect(_decorationColor(tester), const Color(0xFF000001), reason: 'disabled ignores selected/focused and shows the idle container');
+    expect(_opacity(tester), 0.45);
   });
 
   testWidgets('a select-key press invokes onClick on key-up, not key-down', (tester) async {
@@ -127,10 +132,10 @@ void main() {
       ),
     );
     focusNode.requestFocus();
-    await tester.pump();
+    await tester.pumpAndSettle();
 
     await tester.sendKeyDownEvent(LogicalKeyboardKey.select);
-    await tester.pump();
+    await tester.pumpAndSettle();
     expect(clicks, 0, reason: 'click fires on release, not press');
     expect(_decorationColor(tester), const Color(0xFF000005), reason: 'pressed color while held');
 

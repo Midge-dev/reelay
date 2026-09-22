@@ -4,20 +4,24 @@ import '../theme/tokens.dart';
 import 'focusable_surface.dart';
 import 'surface_style.dart';
 
-const _chipShape = StadiumBorder();
-const _chipContentPadding = EdgeInsets.symmetric(horizontal: 14, vertical: 8);
+final _chipShape = RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppShape.radiusSm));
+const _chipHeight = 48.0;
+const _chipContentPadding = EdgeInsets.symmetric(horizontal: 22);
 
 final _chipColors = SurfaceColors(
-  container: AppColors.surfaceVariant,
-  content: AppColors.onSurfaceVariant,
-  focusedContainer: AppColors.accent,
-  focusedContent: AppColors.white,
-  selectedContainer: AppColors.surfaceVariant,
-  selectedContent: AppColors.white,
-  disabledContent: AppColors.onSurfaceVariant.withValues(alpha: 0.5),
+  container: AppColors.transparent,
+  content: AppColors.ink3,
+  focusedContainer: AppColors.surfaceRaised,
+  focusedContent: AppColors.ink,
+  selectedContainer: AppColors.surface,
+  selectedContent: AppColors.ink,
+  pressedContainer: AppColors.accent900,
+  pressedContent: AppColors.ink2,
 );
-const _chipBorder = SurfaceBorder(focused: SurfaceBorderSide.gradient(AppFocusTreatment.focusedGradient));
-const _chipGlow = SurfaceGlow(focusedColor: AppColors.accentGlow);
+const _chipBorder = SurfaceBorder(
+  idle: SurfaceBorderSide.solid(AppColors.line),
+  focused: SurfaceBorderSide.solid(AppColors.accent),
+);
 
 /// Ports ui/kit/FilterChip.kt.
 class AppFilterChip extends StatelessWidget {
@@ -46,10 +50,12 @@ class AppFilterChip extends StatelessWidget {
       shape: _chipShape,
       colors: _chipColors,
       border: _chipBorder,
-      glow: _chipGlow,
-      child: Padding(
-        padding: _chipContentPadding,
-        child: Row(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.center, children: [child]),
+      child: SizedBox(
+        height: _chipHeight,
+        child: Padding(
+          padding: _chipContentPadding,
+          child: Row(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.center, children: [child]),
+        ),
       ),
     );
   }

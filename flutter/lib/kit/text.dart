@@ -17,7 +17,7 @@ class AppText extends StatelessWidget {
     this.text, {
     super.key,
     this.color,
-    this.style = AppTypography.bodyLarge,
+    this.style = AppTypography.body,
     this.textAlign,
     this.maxLines,
     this.overflow = TextOverflow.clip,

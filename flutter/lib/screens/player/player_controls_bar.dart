@@ -155,7 +155,7 @@ class PlayerControlsBar extends StatelessWidget {
         gradient: LinearGradient(
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
-          colors: [AppColors.scrim.withValues(alpha: 0), AppColors.scrim.withValues(alpha: 0.6)],
+          colors: [AppScrims.dialog.withValues(alpha: 0), AppScrims.dialog.withValues(alpha: 0.6)],
         ),
       ),
       child: Padding(
@@ -177,7 +177,7 @@ class PlayerControlsBar extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 12),
-            AppText('${formatTimecode(positionMs)} / ${formatTimecode(durationMs)}', color: AppColors.white),
+            AppText('${formatTimecode(positionMs)} / ${formatTimecode(durationMs)}', color: AppColors.inkOnArt),
             const SizedBox(height: 12),
             // mainAxisAlignment.center on a mainAxisSize.min Row is a no-op
             // (nothing to center within), and the Column above pins it to
@@ -188,18 +188,18 @@ class PlayerControlsBar extends StatelessWidget {
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  trapped(0, AppIconButton(onClick: onRewind, focusNode: rewindFocusNode, child: const AppIcon(Icons.replay_10, tint: AppColors.white))),
+                  trapped(0, AppIconButton(onClick: onRewind, focusNode: rewindFocusNode, child: const AppIcon(Icons.replay_10, tint: AppColors.inkOnArt))),
                   const SizedBox(width: 16),
                   trapped(
                     1,
                     AppIconButton(
                       onClick: onPlayPause,
                       focusNode: playPauseFocusNode,
-                      child: AppIcon(isPlaying ? Icons.pause : Icons.play_arrow, tint: AppColors.white),
+                      child: AppIcon(isPlaying ? Icons.pause : Icons.play_arrow, tint: AppColors.inkOnArt),
                     ),
                   ),
                   const SizedBox(width: 16),
-                  trapped(2, AppIconButton(onClick: onForward, focusNode: forwardFocusNode, child: const AppIcon(Icons.forward_10, tint: AppColors.white))),
+                  trapped(2, AppIconButton(onClick: onForward, focusNode: forwardFocusNode, child: const AppIcon(Icons.forward_10, tint: AppColors.inkOnArt))),
                   const SizedBox(width: 16),
                   trapped(
                     3,
@@ -207,11 +207,11 @@ class PlayerControlsBar extends StatelessWidget {
                       onClick: onCycleSubtitles,
                       enabled: subtitlesAvailable,
                       focusNode: subtitlesFocusNode,
-                      child: AppIcon(Icons.closed_caption, tint: AppColors.white.withValues(alpha: subtitlesAvailable ? 1 : 0.5)),
+                      child: AppIcon(Icons.closed_caption, tint: AppColors.inkOnArt.withValues(alpha: subtitlesAvailable ? 1 : 0.5)),
                     ),
                   ),
                   const SizedBox(width: 16),
-                  trapped(4, AppIconButton(onClick: onCycleBitrate, focusNode: bitrateFocusNode, child: const AppIcon(Icons.high_quality, tint: AppColors.white))),
+                  trapped(4, AppIconButton(onClick: onCycleBitrate, focusNode: bitrateFocusNode, child: const AppIcon(Icons.high_quality, tint: AppColors.inkOnArt))),
                   const SizedBox(width: 16),
                   trapped(
                     5,
@@ -219,7 +219,7 @@ class PlayerControlsBar extends StatelessWidget {
                       onClick: onOpenChatQr,
                       enabled: chatAvailable,
                       focusNode: chatFocusNode,
-                      child: AppIcon(Icons.chat_bubble_outline, tint: AppColors.white.withValues(alpha: chatAvailable ? 1 : 0.5)),
+                      child: AppIcon(Icons.chat_bubble_outline, tint: AppColors.inkOnArt.withValues(alpha: chatAvailable ? 1 : 0.5)),
                     ),
                   ),
                 ],
@@ -259,16 +259,17 @@ class _ProgressTrack extends StatelessWidget {
                   child: Stack(
                     fit: StackFit.expand,
                     children: [
-                      const ColoredBox(color: Color(0x40FFFFFF)),
+                      ColoredBox(color: AppColors.ink.withValues(alpha: 0.22)),
                       FractionallySizedBox(
                         alignment: Alignment.centerLeft,
                         widthFactor: bufferedFraction.clamp(0.0, 1.0),
-                        child: const ColoredBox(color: Color(0x66FFFFFF)),
+                        child: ColoredBox(color: AppColors.ink.withValues(alpha: 0.4)),
                       ),
                       FractionallySizedBox(
                         alignment: Alignment.centerLeft,
                         widthFactor: playedFraction,
-                        child: const DecoratedBox(decoration: BoxDecoration(gradient: AppFocusTreatment.progressGradient)),
+                        // Flat fill, not a gradient — DESIGN.md #4/#8.
+                        child: const ColoredBox(color: AppColors.accent),
                       ),
                     ],
                   ),

@@ -45,7 +45,7 @@ class _DigitalClockState extends State<DigitalClock> {
   @override
   Widget build(BuildContext context) {
     final use24Hour = MediaQuery.maybeOf(context)?.alwaysUse24HourFormat ?? false;
-    return AppText(_format(_now, use24Hour), style: AppTypography.bodyLarge, color: AppColors.onSurfaceVariant);
+    return AppText(_format(_now, use24Hour), style: AppTypography.body, color: AppColors.ink3);
   }
 
   String _format(DateTime time, bool use24Hour) {

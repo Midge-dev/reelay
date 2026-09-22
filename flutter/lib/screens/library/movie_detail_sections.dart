@@ -29,7 +29,7 @@ class CastCrewRow extends StatelessWidget {
       children: [
         const Padding(
           padding: EdgeInsets.only(left: 32, bottom: 16),
-          child: AppText('Cast & Crew', style: AppTypography.titleLarge),
+          child: AppText('Cast & Crew', style: AppTypography.rowLabel),
         ),
         SizedBox(
           // See the matching comment on Continue Watching's SizedBox in
@@ -89,12 +89,12 @@ class _CastMemberAvatar extends StatelessWidget {
               child: person.thumb != null
                   ? SizedBox.expand(child: Artwork(imageUrl: PlexImageUrl.of(server, person.thumb)))
                   : ColoredBox(
-                      color: AppColors.surfaceVariant,
+                      color: AppColors.surface,
                       child: Center(
                         child: AppText(
                           person.tag.isNotEmpty ? person.tag[0].toUpperCase() : '?',
-                          style: AppTypography.titleMedium,
-                          color: AppColors.white,
+                          style: AppTypography.label,
+                          color: AppColors.inkOnArt,
                         ),
                       ),
                     ),
@@ -107,7 +107,7 @@ class _CastMemberAvatar extends StatelessWidget {
           if (subtitle != null)
             Padding(
               padding: const EdgeInsets.only(top: 3),
-              child: AppText(subtitle!, color: AppColors.onSurfaceVariant, maxLines: 1, overflow: TextOverflow.ellipsis, textAlign: TextAlign.center),
+              child: AppText(subtitle!, color: AppColors.ink3, maxLines: 1, overflow: TextOverflow.ellipsis, textAlign: TextAlign.center),
             ),
         ],
       ),
@@ -135,7 +135,7 @@ class PosterRow extends StatelessWidget {
       children: [
         Padding(
           padding: const EdgeInsets.only(left: 32, top: 4, bottom: 16),
-          child: AppText(title, style: AppTypography.titleLarge),
+          child: AppText(title, style: AppTypography.rowLabel),
         ),
         SizedBox(
           // See the matching comment on CastCrewRow above.

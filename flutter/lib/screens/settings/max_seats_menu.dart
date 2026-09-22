@@ -130,12 +130,11 @@ class _MaxSeatsMenuState extends State<MaxSeatsMenu> {
 const _rowShape = RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(8)));
 final _rowColors = SurfaceColors(
   container: AppColors.transparent,
-  content: AppColors.white,
+  content: AppColors.inkOnArt,
   focusedContainer: AppColors.accent,
   selectedContainer: AppColors.accent.withValues(alpha: 0.35),
 );
-const _rowBorder = SurfaceBorder(focused: SurfaceBorderSide.gradient(AppFocusTreatment.focusedGradient));
-const _rowGlow = SurfaceGlow(focusedColor: AppColors.accentGlow);
+const _rowBorder = SurfaceBorder(focused: SurfaceBorderSide.solid(AppColors.accent));
 
 class _MaxSeatsRow extends StatelessWidget {
   final int value;
@@ -164,7 +163,6 @@ class _MaxSeatsRow extends StatelessWidget {
         shape: _rowShape,
         colors: _rowColors,
         border: _rowBorder,
-        glow: _rowGlow,
         contentAlignment: AlignmentDirectional.centerStart,
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 14),

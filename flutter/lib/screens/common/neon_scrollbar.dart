@@ -32,7 +32,7 @@ class _NeonScrollbarPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     final cornerRadius = Radius.circular(size.width / 2);
     final trackRect = RRect.fromRectAndRadius(Offset.zero & size, cornerRadius);
-    canvas.drawRRect(trackRect, Paint()..color = AppColors.surfaceVariant);
+    canvas.drawRRect(trackRect, Paint()..color = AppColors.line);
 
     if (!controller.hasClients || !controller.position.hasContentDimensions) return;
     final maxExtent = controller.position.maxScrollExtent;
@@ -47,13 +47,9 @@ class _NeonScrollbarPainter extends CustomPainter {
       Rect.fromLTWH(0, thumbTop, size.width, thumbHeight),
       cornerRadius,
     );
-    final thumbPaint = Paint()
-      ..shader = const LinearGradient(
-        begin: Alignment.topCenter,
-        end: Alignment.bottomCenter,
-        colors: [AppColors.accentGlow, AppColors.accent],
-      ).createShader(Offset.zero & size);
-    canvas.drawRRect(thumbRect, thumbPaint);
+    // Flat fill, not a gradient — Nocturne's one accent never appears as a
+    // glow or gradient, only as a line, a spine or a mark. DESIGN.md #4/#8.
+    canvas.drawRRect(thumbRect, Paint()..color = AppColors.accent);
   }
 
   @override

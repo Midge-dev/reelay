@@ -50,9 +50,8 @@ final List<List<SearchKey>> searchKeyGrid = searchKeyRows.map((row) {
 }).toList();
 
 const _keyShape = RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(8)));
-final _keyColors = SurfaceColors(container: AppColors.surface, content: AppColors.white, focusedContainer: AppColors.accent, focusedContent: AppColors.white);
-const _keyBorder = SurfaceBorder(focused: SurfaceBorderSide.gradient(AppFocusTreatment.focusedGradient));
-const _keyGlow = SurfaceGlow(focusedColor: AppColors.accentGlow);
+final _keyColors = SurfaceColors(container: AppColors.surface, content: AppColors.inkOnArt, focusedContainer: AppColors.accent, focusedContent: AppColors.inkOnArt);
+const _keyBorder = SurfaceBorder(focused: SurfaceBorderSide.solid(AppColors.accent));
 
 /// Ports ui/library/LibraryScreen.kt's `SearchKeyboard` — a hand-wired
 /// D-pad grid (small, tightly-packed keys where span-2 keys make default
@@ -239,11 +238,10 @@ class _SearchKeyButton extends StatelessWidget {
           shape: _keyShape,
           colors: _keyColors,
           border: _keyBorder,
-          glow: _keyGlow,
           child: AppText(
             searchKey.label,
             textAlign: TextAlign.center,
-            style: AppTypography.bodySmall,
+            style: AppTypography.caption,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
           ),

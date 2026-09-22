@@ -3,12 +3,24 @@ import 'package:flutter/widgets.dart';
 import '../../kit/card.dart';
 import '../../kit/marquee_text.dart';
 import '../../kit/scroll_peek.dart';
+import '../../kit/surface_style.dart';
 import '../../kit/text.dart';
 import '../../theme/tokens.dart';
+import '../../theme/typography.dart';
 import '../common/artwork.dart';
 
 const _posterWidth = 160.0;
 const _posterAspectRatio = 2 / 3;
+
+/// Artwork cards take a frame all the way round instead of a spine — a
+/// spine would cover the poster — and the caption steps ink3 -> ink on
+/// focus instead of the fill+hairline+spine signal. DESIGN.md non-
+/// negotiable #3.
+const _posterBorder = SurfaceBorder(
+  idle: SurfaceBorderSide.solid(AppColors.line),
+  focused: SurfaceBorderSide.solid(AppColors.accent, width: AppShape.artFrameWidth),
+  noSpine: true,
+);
 
 /// How much of the next row a focused card's grid should leave peeking
 /// (and fading) below it — shared with the grid's own EdgeFadeRow so the
@@ -100,6 +112,7 @@ class _PosterCardState extends State<PosterCard> {
                 onClick: widget.onClick,
                 focusNode: _focusNode,
                 autofocus: widget.autofocus,
+                border: _posterBorder,
                 // This widget's own _handleFocusChange already does a
                 // title-inclusive ensureRowVisible; AppCard's narrower,
                 // image-only default would otherwise fire right after it
@@ -117,8 +130,14 @@ class _PosterCardState extends State<PosterCard> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  MarqueeText(widget.title, active: _focused),
-                  if (widget.subtitle != null) AppText(widget.subtitle!, color: AppColors.onSurfaceVariant),
+                  MarqueeText(
+                    widget.title,
+                    active: _focused,
+                    style: _focused ? AppTypography.label.copyWith(fontWeight: FontWeight.w500) : AppTypography.label,
+                    color: _focused ? AppColors.ink : AppColors.ink2,
+                  ),
+                  if (widget.subtitle != null)
+                    AppText(widget.subtitle!, style: AppTypography.caption, color: _focused ? AppColors.ink : AppColors.ink3),
                 ],
               ),
             ),

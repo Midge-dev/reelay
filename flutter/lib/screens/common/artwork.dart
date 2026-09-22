@@ -14,8 +14,8 @@ const _scanlinePeriodPx = 3.0;
 
 const _placeholderBase = Color(0xFF101015);
 final _vignetteColor = AppColors.accent.withValues(alpha: 0.22);
-final _rollBarColor = AppColors.accentGlow.withValues(alpha: 0.11);
-final _scanlineColor = AppColors.scrim.withValues(alpha: 0.22);
+final _rollBarColor = AppColors.accent300.withValues(alpha: 0.11);
+final _scanlineColor = AppScrims.dialog.withValues(alpha: 0.22);
 
 const _noiseFrameAssets = [
   'assets/images/static_noise_1.jpg',

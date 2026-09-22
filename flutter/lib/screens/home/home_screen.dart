@@ -8,8 +8,10 @@ import '../../kit/text.dart';
 import '../../theme/tokens.dart';
 import '../../theme/typography.dart';
 import '../library/poster_card.dart';
+import 'home_hero.dart';
 import 'home_posters.dart';
-import 'watch_together_row.dart';
+import 'watch_together_bar.dart';
+import 'watch_together_row.dart' show MergedRoom;
 
 const _rowStaggerPeriod = 6;
 const _watchTogetherFocusQuietMs = 1200;
@@ -42,6 +44,7 @@ class HomeScreen extends StatefulWidget {
   final ValueChanged<PlexLibraryItem> onSelectRecentlyAdded;
   final ValueChanged<PlexOnDeckItem> onSelectRecentActivity;
   final ValueChanged<PlexOnDeckItem> onSelectSuggestion;
+  final ValueChanged<PlexOnDeckItem>? onHeroWatchTogether;
 
   const HomeScreen({
     super.key,
@@ -63,6 +66,7 @@ class HomeScreen extends StatefulWidget {
     required this.onSelectRecentlyAdded,
     required this.onSelectRecentActivity,
     required this.onSelectSuggestion,
+    this.onHeroWatchTogether,
   });
 
   @override
@@ -71,7 +75,6 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   final _homeScrollController = ScrollController();
-  final _watchTogetherScrollController = ScrollController();
 
   final _watchTogetherRowFocus = FocusNode(debugLabel: 'home-watch-together-row');
   final _watchlistRowFocus = FocusNode(debugLabel: 'home-watchlist-row');
@@ -113,7 +116,6 @@ class _HomeScreenState extends State<HomeScreen> {
   void dispose() {
     HardwareKeyboard.instance.removeHandler(_recordInput);
     _homeScrollController.dispose();
-    _watchTogetherScrollController.dispose();
     _watchTogetherRowFocus.dispose();
     _watchlistRowFocus.dispose();
     _continueWatchingRowFocus.dispose();
@@ -180,17 +182,20 @@ class _HomeScreenState extends State<HomeScreen> {
         controller: _homeScrollController,
         padding: const EdgeInsets.only(bottom: 48),
         children: [
-          WatchTogetherRow(
-            server: widget.server,
-            rooms: widget.liveRooms,
-            myRoomId: widget.myRoomId,
-            hostedRoomIds: widget.hostedRoomIds,
-            onEndSession: widget.onEndSession,
-            onSelectRoom: widget.onSelectRoom,
-            firstCardAutofocus: watchTogetherGetsFocus,
-            rowAnchorFocusNode: _watchTogetherRowFocus,
-            scrollController: _watchTogetherScrollController,
-          ),
+          _buildContinueWatchingSection(continueWatchingGetsFocus),
+          if (widget.liveRooms.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(AppSpacing.xxxl, 0, AppSpacing.xxxl, AppSpacing.xl),
+              child: WatchTogetherBar(
+                rooms: widget.liveRooms,
+                myRoomId: widget.myRoomId,
+                hostedRoomIds: widget.hostedRoomIds,
+                onEndSession: widget.onEndSession,
+                onSelectRoom: widget.onSelectRoom,
+                focusNode: _watchTogetherRowFocus,
+                autofocus: watchTogetherGetsFocus,
+              ),
+            ),
           _HomeRow<PlexWatchlistItem>(
             title: 'Watchlist',
             items: watchlistReversed,
@@ -205,7 +210,6 @@ class _HomeScreenState extends State<HomeScreen> {
               staggerDelayMs: (index % _rowStaggerPeriod) * 120,
             ),
           ),
-          _buildContinueWatchingSection(continueWatchingGetsFocus),
           _HomeRow<PlexOnDeckItem>(
             title: 'Recently Finished Watching',
             items: widget.recentActivity,
@@ -247,64 +251,101 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  /// Empty: the old "Continue Watching" row, kept verbatim — a first-run
+  /// empty is a fact, not a failure (DESIGN.md's empty/error section), so
+  /// it's a plain heading and one sentence, not a hero with nothing to show.
+  /// Non-empty: the top item is promoted to [HomeHero] — real data, no
+  /// invented curation — and whatever's left becomes the "More in
+  /// progress" row, per the Nocturne redesign's screen 01.
   Widget _buildContinueWatchingSection(bool continueWatchingGetsFocus) {
-    return _ScrollSectionIntoView(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const Padding(
-            padding: EdgeInsets.only(left: 32, top: 32, bottom: 16),
-            child: AppText('Continue Watching', style: AppTypography.titleLarge),
-          ),
-          if (widget.onDeck.isEmpty)
-            const Padding(
-              padding: EdgeInsets.only(left: 32),
-              child: AppText('Nothing in progress right now.'),
-            )
-          else
-            SizedBox(
-              // +24 over the card's own content height: EdgeFadeRow's
-              // ShaderMask only fades within its own layout bounds, and a
-              // focused card's scale overflow (let through by Clip.none
-              // below) painted outside a tightly-fit box escapes the mask
-              // entirely — the top of a focused card looked unfaded. Real
-              // vertical headroom, not just Clip.none, keeps the whole
-              // scaled card inside the mask's bounds.
-              height: 214,
-              child: EdgeFadeRow(
-              child: ListView.separated(
-                scrollDirection: Axis.horizontal,
-                // Compose doesn't clip a Row's children to its own bounds by
-                // default; Flutter's ListView does. Without this, a card's
-                // focus-scale grows past this SizedBox's fixed height and
-                // gets hard-clipped at the top/bottom edge.
-                clipBehavior: Clip.none,
-                // 48, not 32: the focused card's scale/glow needs headroom
-                // against the screen edge itself, not just the row's own
-                // bounds — the last card was still clipping at 32. Vertical
-                // 12 matches the +24 SizedBox headroom above.
-                padding: const EdgeInsets.symmetric(horizontal: 48, vertical: 12),
-                itemCount: widget.onDeck.length,
-                separatorBuilder: (context, index) => const SizedBox(width: 24),
-                itemBuilder: (context, index) {
-                  final item = widget.onDeck[index];
-                  return ContinueWatchingPoster(
-                    key: ValueKey(item.ratingKey),
-                    server: widget.server,
-                    item: item,
-                    onResume: () => widget.onResume(item),
-                    onRemove: () => widget.onRemove(item),
-                    focusNode: index == 0 ? _continueWatchingRowFocus : null,
-                    autofocus: index == 0 && continueWatchingGetsFocus,
-                    staggerDelayMs: (index % _rowStaggerPeriod) * 120,
-                  );
-                },
-              ),
-              ),
+    if (widget.onDeck.isEmpty) {
+      return const Padding(
+        padding: EdgeInsets.only(left: AppSpacing.xxxl, top: AppSpacing.xxxl, bottom: AppSpacing.lg),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            AppText('Continue Watching', style: AppTypography.rowLabel),
+            SizedBox(height: AppSpacing.md),
+            AppText('Nothing in progress right now.'),
+          ],
+        ),
+      );
+    }
+
+    final hero = widget.onDeck.first;
+    final moreInProgress = widget.onDeck.length > 1 ? widget.onDeck.sublist(1) : const <PlexOnDeckItem>[];
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        HomeHero(
+          server: widget.server,
+          item: hero,
+          onResume: () => widget.onResume(hero),
+          onWatchTogether: widget.onHeroWatchTogether,
+          resumeFocusNode: moreInProgress.isEmpty ? _continueWatchingRowFocus : null,
+          autofocus: continueWatchingGetsFocus,
+        ),
+        if (moreInProgress.isNotEmpty)
+          _ScrollSectionIntoView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Padding(
+                  padding: EdgeInsets.only(left: AppSpacing.xxxl, top: AppSpacing.xl, bottom: AppSpacing.lg),
+                  child: AppText('More in progress', style: AppTypography.rowLabel),
+                ),
+                SizedBox(
+                  // +24 over the card's own content height: EdgeFadeRow's
+                  // ShaderMask only fades within its own layout bounds, and
+                  // a focused card's scale overflow (let through by
+                  // Clip.none below) painted outside a tightly-fit box
+                  // escapes the mask entirely — the top of a focused card
+                  // looked unfaded. Real vertical headroom, not just
+                  // Clip.none, keeps the whole scaled card inside the
+                  // mask's bounds. Content height: 209 image + 12 padding +
+                  // a label line (26) + a 3px gap + a caption line (24),
+                  // +24 headroom. Confirmed on-device (Shield): 296 clipped
+                  // by ~2px, so this carries a few extra for safety.
+                  height: 304,
+                  child: EdgeFadeRow(
+                    child: ListView.separated(
+                      scrollDirection: Axis.horizontal,
+                      // Compose doesn't clip a Row's children to its own
+                      // bounds by default; Flutter's ListView does. Without
+                      // this, a card's focus-scale grows past this
+                      // SizedBox's fixed height and gets hard-clipped at
+                      // the top/bottom edge.
+                      clipBehavior: Clip.none,
+                      // 48, not 32: the focused card's scale/glow needs
+                      // headroom against the screen edge itself, not just
+                      // the row's own bounds. Vertical 12 matches the +24
+                      // SizedBox headroom above.
+                      padding: const EdgeInsets.symmetric(horizontal: 48, vertical: 12),
+                      itemCount: moreInProgress.length,
+                      separatorBuilder: (context, index) => const SizedBox(width: 24),
+                      itemBuilder: (context, index) {
+                        final item = moreInProgress[index];
+                        return ContinueWatchingPoster(
+                          key: ValueKey(item.ratingKey),
+                          server: widget.server,
+                          item: item,
+                          onResume: () => widget.onResume(item),
+                          onRemove: () => widget.onRemove(item),
+                          focusNode: index == 0 ? _continueWatchingRowFocus : null,
+                          staggerDelayMs: (index % _rowStaggerPeriod) * 120,
+                        );
+                      },
+                    ),
+                  ),
+                ),
+              ],
             ),
-        ],
-      ),
+          ),
+      ],
     );
   }
 }
@@ -328,12 +369,14 @@ class _HomeRow<T> extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           Padding(
-            padding: const EdgeInsets.only(left: 32, top: 32, bottom: 28),
-            child: AppText(title, style: AppTypography.titleLarge),
+            padding: const EdgeInsets.only(left: AppSpacing.xxxl, top: AppSpacing.xxl, bottom: AppSpacing.xl),
+            child: AppText(title, style: AppTypography.rowLabel),
           ),
           SizedBox(
             // See the matching comment on Continue Watching's SizedBox above.
-            height: 302,
+            // Content height 288 (240 poster + 16 padding + a Nocturne body
+            // line at ~32) + 24 headroom.
+            height: 316,
             child: EdgeFadeRow(
             child: ListView.separated(
               scrollDirection: Axis.horizontal,

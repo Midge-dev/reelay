@@ -7,12 +7,11 @@ import '../../kit/text.dart';
 import '../../theme/tokens.dart';
 
 const _tileShape = RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(8)));
-final _tileColors = SurfaceColors(container: AppColors.background, content: AppColors.onSurfaceVariant);
+final _tileColors = SurfaceColors(container: AppColors.background, content: AppColors.ink3);
 const _tileBorder = SurfaceBorder(
-  idle: SurfaceBorderSide.solid(AppColors.dimBorder),
-  focused: SurfaceBorderSide.gradient(AppFocusTreatment.focusedGradient),
+  idle: SurfaceBorderSide.solid(AppColors.line),
+  focused: SurfaceBorderSide.solid(AppColors.accent),
 );
-const _tileGlow = SurfaceGlow(focusedColor: AppColors.accentGlow);
 
 /// Ports ui/settings/SettingsScreen.kt's `ChatCornerPicker` + `ChatCornerTile`
 /// — a 2x2 grid mimicking a screen with two "chat bubble" bars stacked in
@@ -99,9 +98,9 @@ class _ChatCornerTile extends StatelessWidget {
       ChatOverlayCorner.bottomStart => AlignmentDirectional.topEnd,
       ChatOverlayCorner.bottomEnd => AlignmentDirectional.topStart,
     };
-    final brightBar = selected ? AppColors.onSurface : AppColors.onSurfaceVariant;
+    final brightBar = selected ? AppColors.ink : AppColors.ink3;
     final dimBar = brightBar.withValues(alpha: selected ? 0.5 : 0.45);
-    final labelColor = selected ? AppColors.accentGlow : AppColors.onSurfaceVariant;
+    final labelColor = selected ? AppColors.accent : AppColors.ink3;
 
     final bars = [
       Container(width: 44, height: 8, decoration: BoxDecoration(color: brightBar, borderRadius: BorderRadius.circular(2))),
@@ -117,7 +116,6 @@ class _ChatCornerTile extends StatelessWidget {
         shape: _tileShape,
         colors: _tileColors,
         border: _tileBorder,
-        glow: _tileGlow,
         child: Padding(
           padding: const EdgeInsets.all(8),
           child: Stack(

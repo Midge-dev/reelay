@@ -20,7 +20,7 @@ class MarqueeText extends StatefulWidget {
   final Color? color;
   final bool active;
 
-  const MarqueeText(this.text, {super.key, this.style = AppTypography.bodyLarge, this.color, required this.active});
+  const MarqueeText(this.text, {super.key, this.style = AppTypography.body, this.color, required this.active});
 
   @override
   State<MarqueeText> createState() => _MarqueeTextState();

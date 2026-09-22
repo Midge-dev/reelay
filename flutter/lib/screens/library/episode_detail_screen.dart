@@ -19,10 +19,10 @@ import '../common/watchlist_button.dart';
 
 const _heroHeight = 420.0;
 const _restartButtonBorder = SurfaceBorder(
-  idle: SurfaceBorderSide.solid(AppColors.dimBorder),
-  focused: SurfaceBorderSide.gradient(AppFocusTreatment.focusedGradient),
+  idle: SurfaceBorderSide.solid(AppColors.line),
+  focused: SurfaceBorderSide.solid(AppColors.accent),
 );
-const _kickerStyle = TextStyle(fontSize: 12, letterSpacing: 1.4, fontWeight: FontWeight.w500, color: AppColors.accentGlow);
+const _kickerStyle = TextStyle(fontSize: 12, letterSpacing: 1.4, fontWeight: FontWeight.w500, color: AppColors.accent);
 
 String _formatRuntime(int ms) {
   final totalMinutes = ms ~/ 60000;
@@ -146,7 +146,7 @@ class _EpisodeDetailScreenState extends State<EpisodeDetailScreen> {
                       begin: Alignment.topCenter,
                       end: Alignment.bottomCenter,
                       stops: [0, 0.35, 1],
-                      colors: [AppColors.transparent, Color(0xCC000000), AppColors.scrim],
+                      colors: [AppColors.transparent, Color(0xCC000000), AppScrims.dialog],
                     ),
                   ),
                   padding: const EdgeInsets.all(48),
@@ -157,15 +157,15 @@ class _EpisodeDetailScreenState extends State<EpisodeDetailScreen> {
                       AppText(kicker, style: _kickerStyle),
                       Padding(
                         padding: const EdgeInsets.only(top: 8),
-                        child: AppText(episode.title, style: AppTypography.displaySmall, color: AppColors.white),
+                        child: AppText(episode.title, style: AppTypography.title1, color: AppColors.inkOnArt),
                       ),
                       if (metaLine.isNotEmpty)
                         Padding(
                           padding: const EdgeInsets.only(top: 8),
-                          child: AppText(metaLine, color: AppColors.white.withValues(alpha: 0.7)),
+                          child: AppText(metaLine, color: AppColors.inkOnArt.withValues(alpha: 0.7)),
                         ),
                       if (episode.summary != null)
-                        Padding(padding: const EdgeInsets.only(top: 16), child: AppText(episode.summary!, color: AppColors.white)),
+                        Padding(padding: const EdgeInsets.only(top: 16), child: AppText(episode.summary!, color: AppColors.inkOnArt)),
                       Padding(
                         padding: const EdgeInsets.only(top: 24),
                         child: Focus(canRequestFocus: false, onKeyEvent: _trapUp, child: Row(
@@ -201,7 +201,7 @@ class _EpisodeDetailScreenState extends State<EpisodeDetailScreen> {
                               AppIconButton(
                                 onClick: widget.onRestartTogether,
                                 border: _restartButtonBorder,
-                                child: const AppIcon(Icons.replay, tint: AppColors.white),
+                                child: const AppIcon(Icons.replay, tint: AppColors.inkOnArt),
                               ),
                             ],
                           ],

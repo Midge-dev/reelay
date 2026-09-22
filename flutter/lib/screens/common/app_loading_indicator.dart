@@ -54,7 +54,7 @@ class _ArcPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     final rect = Offset.zero & size;
     final track = Paint()
-      ..color = AppColors.surfaceVariant
+      ..color = AppColors.surface
       ..style = PaintingStyle.stroke
       ..strokeWidth = _strokeWidth
       ..strokeCap = StrokeCap.round;

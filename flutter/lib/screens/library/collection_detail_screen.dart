@@ -9,7 +9,7 @@ import '../../theme/typography.dart';
 import 'poster_card.dart';
 
 const _gridColumns = 5;
-const _posterCardHeight = 278.0; // 160w*3/2 image + 16 padding + ~1 line of title text
+const _posterCardHeight = 310.0; // 160w*3/2 image (240) + 16 padding + label line (26) + optional caption line (24)
 
 /// Ports ui/library/CollectionDetailScreen.kt.
 class CollectionDetailScreen extends StatelessWidget {
@@ -43,9 +43,9 @@ class CollectionDetailScreen extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.end,
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  AppText(collection.title, style: AppTypography.headlineMedium),
+                  AppText(collection.title, style: AppTypography.title1),
                   const SizedBox(width: 16),
-                  AppText('${items.length} title${items.length == 1 ? '' : 's'}', color: AppColors.onSurfaceVariant),
+                  AppText('${items.length} title${items.length == 1 ? '' : 's'}', color: AppColors.ink3),
                 ],
               ),
             ),

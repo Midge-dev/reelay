@@ -136,7 +136,7 @@ class _RemoveConfirmOverlayState extends State<RemoveConfirmOverlay> {
           canRequestFocus: false,
           onKeyEvent: _trapEscape,
           child: ColoredBox(
-            color: AppColors.scrim.withValues(alpha: 0.85),
+            color: AppScrims.dialog.withValues(alpha: 0.85),
             child: Center(
               child: Padding(
                 padding: widget.compact ? const EdgeInsets.symmetric(horizontal: 8) : EdgeInsets.zero,
@@ -156,7 +156,7 @@ class _RemoveConfirmOverlayState extends State<RemoveConfirmOverlay> {
                         child: AppText(
                           widget.message,
                           textAlign: TextAlign.center,
-                          style: AppTypography.bodyLarge,
+                          style: AppTypography.body,
                           maxLines: 3,
                           overflow: TextOverflow.ellipsis,
                         ),

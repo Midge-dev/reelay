@@ -120,7 +120,7 @@ class _AppContent extends StatelessWidget {
           onBack: () => controller.returnTo(retryState),
           child: ColoredBox(
             color: AppColors.background,
-            child: Center(child: AppText('Error: $message', style: AppTypography.bodyLarge)),
+            child: Center(child: AppText('Error: $message', style: AppTypography.body)),
           ),
         ),
       RelaySetup(:final ctx) => RelaySetupScreen(onDone: () => controller.goHome(ctx.server, ctx.sections)),
@@ -422,8 +422,24 @@ class _AppContent extends StatelessWidget {
         onSelectRecentlyAdded: (item) => controller.selectRecentlyAdded(home, item),
         onSelectRecentActivity: (item) => controller.selectOnDeckLike(home, item),
         onSelectSuggestion: (item) => controller.selectOnDeckLike(home, item),
+        onHeroWatchTogether: (item) => controller.startWatchTogether(
+          ctx: LibraryContext(server: home.server, sections: home.sections, selectedSection: sectionFor(home.sections, item.type), items: const []),
+          returnState: home,
+          roomTitle: _episodeRoomTitleFromOnDeck(item),
+          thumb: item.thumb,
+          targetRatingKey: item.ratingKey,
+          restart: false,
+        ),
       ),
     );
+  }
+
+  String _episodeRoomTitleFromOnDeck(PlexOnDeckItem item) {
+    final season = item.parentIndex;
+    final ep = item.index;
+    final show = item.grandparentTitle;
+    if (show != null && season != null && ep != null) return '$show · S${season}E$ep';
+    return item.title;
   }
 
   Widget _drawer({required LibraryContext ctx, required bool isHomeSelected, bool isSettingsSelected = false, required Widget child}) {
