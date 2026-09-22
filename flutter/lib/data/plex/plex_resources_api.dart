@@ -80,7 +80,12 @@ class PlexResourcesApi {
 
   PlexServer _toServer(PlexResource resource, String token, PlexConnection connection) {
     final baseUrl = connection.uri.endsWith('/') ? connection.uri.substring(0, connection.uri.length - 1) : connection.uri;
-    return PlexServer(name: resource.name, baseUrl: baseUrl, accessToken: token);
+    return PlexServer(
+      name: resource.name,
+      baseUrl: baseUrl,
+      accessToken: token,
+      machineIdentifier: resource.machineIdentifier,
+    );
   }
 
   Future<PlexConnection?> _firstReachable(List<PlexConnection> candidates, String token) async {

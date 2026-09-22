@@ -44,7 +44,18 @@ class PlexServer {
   final String baseUrl;
   final String accessToken;
 
-  const PlexServer({required this.name, required this.baseUrl, required this.accessToken});
+  /// Stable per-server id (Plex's `machineIdentifier`, from [PlexResource]) —
+  /// survives IP/URL changes, unlike [baseUrl]. Empty for servers built
+  /// without one (e.g. older test fixtures); the multi-server hub uses this
+  /// to key connected/disabled servers, so real connections always set it.
+  final String machineIdentifier;
+
+  const PlexServer({
+    required this.name,
+    required this.baseUrl,
+    required this.accessToken,
+    this.machineIdentifier = '',
+  });
 }
 
 @JsonSerializable()
@@ -395,6 +406,7 @@ class PlexOnDeckItem {
   final String? grandparentTitle;
   final int? parentIndex;
   final int? index;
+  final String? guid;
 
   const PlexOnDeckItem({
     required this.ratingKey,
@@ -407,6 +419,7 @@ class PlexOnDeckItem {
     this.grandparentTitle,
     this.parentIndex,
     this.index,
+    this.guid,
   });
 
   factory PlexOnDeckItem.fromJson(Map<String, dynamic> json) => _$PlexOnDeckItemFromJson(json);

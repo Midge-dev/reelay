@@ -362,6 +362,7 @@ PlexOnDeckItem _$PlexOnDeckItemFromJson(Map<String, dynamic> json) =>
       grandparentTitle: json['grandparentTitle'] as String?,
       parentIndex: (json['parentIndex'] as num?)?.toInt(),
       index: (json['index'] as num?)?.toInt(),
+      guid: json['guid'] as String?,
     );
 
 Map<String, dynamic> _$PlexOnDeckItemToJson(PlexOnDeckItem instance) =>
@@ -376,6 +377,7 @@ Map<String, dynamic> _$PlexOnDeckItemToJson(PlexOnDeckItem instance) =>
       'grandparentTitle': instance.grandparentTitle,
       'parentIndex': instance.parentIndex,
       'index': instance.index,
+      'guid': instance.guid,
     };
 
 PlexHub _$PlexHubFromJson(Map<String, dynamic> json) => PlexHub(
