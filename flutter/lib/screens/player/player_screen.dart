@@ -27,6 +27,7 @@ import '../common/app_loading_indicator.dart';
 import '../common/chat_overlay.dart';
 import 'chat_qr_overlay.dart';
 import 'player_controls_bar.dart';
+import 'player_menu_panel.dart';
 
 const _reportIntervalMs = 5000;
 const _controlsHideDelayMs = 3000;
@@ -120,6 +121,8 @@ class _PlayerScreenState extends State<PlayerScreen> {
   final _subtitlesFocusNode = FocusNode(debugLabel: 'player-subtitles');
   final _bitrateFocusNode = FocusNode(debugLabel: 'player-bitrate');
   final _chatFocusNode = FocusNode(debugLabel: 'player-chat');
+  final _menuFocusNode = FocusNode(debugLabel: 'player-menu');
+  bool _menuOpen = false;
 
   LogicalKeyboardKey? _heldKey;
   int _heldRepeatCount = 0;
@@ -198,6 +201,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
     _subtitlesFocusNode.dispose();
     _bitrateFocusNode.dispose();
     _chatFocusNode.dispose();
+    _menuFocusNode.dispose();
     super.dispose();
   }
 
@@ -452,6 +456,25 @@ class _PlayerScreenState extends State<PlayerScreen> {
     _applyDecisionChange(restartPositionMs: restartPositionMs);
   }
 
+  // Same effect as _cycleSubtitle/_cycleBitrate above, but jumping straight
+  // to a chosen option rather than stepping to the next one — what the
+  // Player menu panel (screen 14) needs, the button-row cycle shortcuts
+  // don't.
+  void _selectSubtitle(int? streamId) {
+    if (streamId == _subtitleStreamId) return;
+    final restartPositionMs = _player?.currentPosition ?? 0;
+    setState(() => _subtitleStreamId = streamId);
+    _applyDecisionChange(restartPositionMs: restartPositionMs);
+  }
+
+  void _selectBitrate(int kbps) {
+    if (kbps == _maxVideoBitrateKbps) return;
+    final restartPositionMs = _player?.currentPosition ?? 0;
+    setState(() => _maxVideoBitrateKbps = kbps);
+    widget.onBitrateChanged(kbps);
+    _applyDecisionChange(restartPositionMs: restartPositionMs);
+  }
+
   String get _currentSubtitleLabel {
     final options = _subtitleOptions;
     final option = options.firstWhereOrNull((o) => o.streamId == _subtitleStreamId);
@@ -585,6 +608,8 @@ class _PlayerScreenState extends State<PlayerScreen> {
                               onCycleBitrate: _cycleBitrate,
                               chatAvailable: _chatUrl != null,
                               onOpenChatQr: () => setState(() => _chatQrOpen = true),
+                              menuFocusNode: _menuFocusNode,
+                              onOpenMenu: () => setState(() => _menuOpen = true),
                             ),
                           ),
                         ],
@@ -598,6 +623,20 @@ class _PlayerScreenState extends State<PlayerScreen> {
                   right: 24,
                   top: 24,
                   child: ChatQrOverlay(chatUrl: _chatUrl!, onDismiss: () => setState(() => _chatQrOpen = false)),
+                ),
+              if (_menuOpen)
+                PlayerMenuPanel(
+                  subtitleOptions: _subtitleOptions,
+                  selectedSubtitleStreamId: _subtitleStreamId,
+                  onSelectSubtitle: _selectSubtitle,
+                  selectedBitrateKbps: _maxVideoBitrateKbps,
+                  onSelectBitrate: _selectBitrate,
+                  onClose: () {
+                    setState(() => _menuOpen = false);
+                    WidgetsBinding.instance.addPostFrameCallback((_) {
+                      if (mounted) _menuFocusNode.requestFocus();
+                    });
+                  },
                 ),
             ],
           ),

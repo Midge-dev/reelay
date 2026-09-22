@@ -60,6 +60,8 @@ class PlayerControlsBar extends StatelessWidget {
   final VoidCallback onCycleBitrate;
   final bool chatAvailable;
   final VoidCallback onOpenChatQr;
+  final FocusNode menuFocusNode;
+  final VoidCallback onOpenMenu;
 
   const PlayerControlsBar({
     super.key,
@@ -83,6 +85,8 @@ class PlayerControlsBar extends StatelessWidget {
     required this.onCycleBitrate,
     required this.chatAvailable,
     required this.onOpenChatQr,
+    required this.menuFocusNode,
+    required this.onOpenMenu,
   });
 
   @override
@@ -98,6 +102,7 @@ class PlayerControlsBar extends StatelessWidget {
       _RowButton(subtitlesFocusNode, subtitlesAvailable),
       _RowButton(bitrateFocusNode, true),
       _RowButton(chatFocusNode, chatAvailable),
+      _RowButton(menuFocusNode, true),
     ];
 
     KeyEventResult handleRowKey(int index, KeyEvent event) {
@@ -279,6 +284,18 @@ class PlayerControlsBar extends StatelessWidget {
                         tint: AppColors.inkOnArt.withValues(
                           alpha: chatAvailable ? 1 : 0.5,
                         ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  trapped(
+                    6,
+                    AppIconButton(
+                      onClick: onOpenMenu,
+                      focusNode: menuFocusNode,
+                      child: const AppIcon(
+                        PhosphorIconsRegular.gear,
+                        tint: AppColors.inkOnArt,
                       ),
                     ),
                   ),

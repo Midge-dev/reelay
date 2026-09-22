@@ -16,6 +16,7 @@ Future<void> _pump(
   VoidCallback? onCycleSubtitles,
   VoidCallback? onCycleBitrate,
   VoidCallback? onOpenChatQr,
+  VoidCallback? onOpenMenu,
 }) async {
   tester.view.physicalSize = const Size(1920, 1080);
   tester.view.devicePixelRatio = 1.0;
@@ -45,6 +46,8 @@ Future<void> _pump(
         onCycleSubtitles: onCycleSubtitles ?? () {},
         onCycleBitrate: onCycleBitrate ?? () {},
         onOpenChatQr: onOpenChatQr ?? () {},
+        menuFocusNode: FocusNode(),
+        onOpenMenu: onOpenMenu ?? () {},
       ),
     ),
   );
@@ -131,5 +134,15 @@ void main() {
     await tester.pump();
 
     expect(opened, isFalse);
+  });
+
+  testWidgets('menu button invokes onOpenMenu', (tester) async {
+    var opened = false;
+    await _pump(tester, onOpenMenu: () => opened = true);
+
+    await tester.tap(find.byIcon(PhosphorIconsRegular.gear));
+    await tester.pump();
+
+    expect(opened, isTrue);
   });
 }
