@@ -16,9 +16,12 @@ const _posterAspectRatio = 2 / 3;
 /// spine would cover the poster — and the caption steps ink3 -> ink on
 /// focus instead of the fill+hairline+spine signal. DESIGN.md non-
 /// negotiable #3.
-const _posterBorder = SurfaceBorder(
+final _posterBorder = SurfaceBorder(
   idle: SurfaceBorderSide.solid(AppColors.line),
-  focused: SurfaceBorderSide.solid(AppColors.accent, width: AppShape.artFrameWidth),
+  focused: SurfaceBorderSide.solid(
+    AppColors.accent,
+    width: AppShape.artFrameWidth,
+  ),
   noSpine: true,
 );
 
@@ -123,7 +126,10 @@ class _PosterCardState extends State<PosterCard> {
                 // win, undoing the more precise target.
                 ensureVisibleOnFocus: false,
                 child: SizedBox.expand(
-                  child: Artwork(imageUrl: widget.imageUrl, staggerDelayMs: widget.staggerDelayMs),
+                  child: Artwork(
+                    imageUrl: widget.imageUrl,
+                    staggerDelayMs: widget.staggerDelayMs,
+                  ),
                 ),
               ),
             ),
@@ -136,11 +142,19 @@ class _PosterCardState extends State<PosterCard> {
                   MarqueeText(
                     widget.title,
                     active: _focused,
-                    style: _focused ? AppTypography.label.copyWith(fontWeight: FontWeight.w500) : AppTypography.label,
+                    style: _focused
+                        ? AppTypography.label.copyWith(
+                            fontWeight: FontWeight.w500,
+                          )
+                        : AppTypography.label,
                     color: _focused ? AppColors.ink : AppColors.ink2,
                   ),
                   if (widget.subtitle != null)
-                    AppText(widget.subtitle!, style: AppTypography.caption, color: _focused ? AppColors.ink : AppColors.ink3),
+                    AppText(
+                      widget.subtitle!,
+                      style: AppTypography.caption,
+                      color: _focused ? AppColors.ink : AppColors.ink3,
+                    ),
                 ],
               ),
             ),

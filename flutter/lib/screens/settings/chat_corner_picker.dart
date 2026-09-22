@@ -6,9 +6,14 @@ import '../../kit/surface_style.dart';
 import '../../kit/text.dart';
 import '../../theme/tokens.dart';
 
-const _tileShape = RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(8)));
-final _tileColors = SurfaceColors(container: AppColors.background, content: AppColors.ink3);
-const _tileBorder = SurfaceBorder(
+const _tileShape = RoundedRectangleBorder(
+  borderRadius: BorderRadius.all(Radius.circular(8)),
+);
+final _tileColors = SurfaceColors(
+  container: AppColors.background,
+  content: AppColors.ink3,
+);
+final _tileBorder = SurfaceBorder(
   idle: SurfaceBorderSide.solid(AppColors.line),
   focused: SurfaceBorderSide.solid(AppColors.accent),
 );
@@ -20,7 +25,11 @@ class ChatCornerPicker extends StatelessWidget {
   final ChatOverlayCorner selected;
   final ValueChanged<ChatOverlayCorner> onSelect;
 
-  const ChatCornerPicker({super.key, required this.selected, required this.onSelect});
+  const ChatCornerPicker({
+    super.key,
+    required this.selected,
+    required this.onSelect,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -81,11 +90,18 @@ class _ChatCornerTile extends StatelessWidget {
   final bool selected;
   final VoidCallback onClick;
 
-  const _ChatCornerTile({required this.corner, required this.label, required this.selected, required this.onClick});
+  const _ChatCornerTile({
+    required this.corner,
+    required this.label,
+    required this.selected,
+    required this.onClick,
+  });
 
   @override
   Widget build(BuildContext context) {
-    final stacksDownward = corner == ChatOverlayCorner.topStart || corner == ChatOverlayCorner.topEnd;
+    final stacksDownward =
+        corner == ChatOverlayCorner.topStart ||
+        corner == ChatOverlayCorner.topEnd;
     final stackAlignment = switch (corner) {
       ChatOverlayCorner.topStart => AlignmentDirectional.topStart,
       ChatOverlayCorner.topEnd => AlignmentDirectional.topEnd,
@@ -103,8 +119,22 @@ class _ChatCornerTile extends StatelessWidget {
     final labelColor = selected ? AppColors.accent : AppColors.ink3;
 
     final bars = [
-      Container(width: 44, height: 8, decoration: BoxDecoration(color: brightBar, borderRadius: BorderRadius.circular(2))),
-      Container(width: 30, height: 8, decoration: BoxDecoration(color: dimBar, borderRadius: BorderRadius.circular(2))),
+      Container(
+        width: 44,
+        height: 8,
+        decoration: BoxDecoration(
+          color: brightBar,
+          borderRadius: BorderRadius.circular(2),
+        ),
+      ),
+      Container(
+        width: 30,
+        height: 8,
+        decoration: BoxDecoration(
+          color: dimBar,
+          borderRadius: BorderRadius.circular(2),
+        ),
+      ),
     ];
     final ordered = stacksDownward ? bars : bars.reversed.toList();
 
@@ -133,7 +163,11 @@ class _ChatCornerTile extends StatelessWidget {
                 child: AppText(
                   selected ? '$label ✓' : label,
                   color: labelColor,
-                  style: const TextStyle(fontFamily: 'Inter', fontSize: 11, height: 13 / 11),
+                  style: const TextStyle(
+                    fontFamily: 'Inter',
+                    fontSize: 11,
+                    height: 13 / 11,
+                  ),
                 ),
               ),
             ],

@@ -369,7 +369,7 @@ class _ShowHero extends StatelessWidget {
                             color: AppColors.accent,
                           ),
                           const SizedBox(width: AppSpacing.md),
-                          const AppText('SHOW', style: AppTypography.micro),
+                          AppText('SHOW', style: AppTypography.micro),
                         ],
                       ),
                       const SizedBox(height: AppSpacing.sm),
@@ -587,7 +587,7 @@ class _EpisodeRowState extends State<_EpisodeRow> {
                             alignment: Alignment.centerLeft,
                             child: FractionallySizedBox(
                               widthFactor: progress,
-                              child: const ColoredBox(color: AppColors.accent),
+                              child: ColoredBox(color: AppColors.accent),
                             ),
                           ),
                         ),

@@ -24,7 +24,8 @@ class WatchTogetherStartScreen extends StatefulWidget {
   final int maxSeats;
   final String? relayNickname;
   final Future<bool> Function()? checkRelayReachable;
-  final void Function({required bool restart, required bool showPhoneChat}) onConfirm;
+  final void Function({required bool restart, required bool showPhoneChat})
+  onConfirm;
   final VoidCallback onCancel;
 
   const WatchTogetherStartScreen({
@@ -39,7 +40,8 @@ class WatchTogetherStartScreen extends StatefulWidget {
   });
 
   @override
-  State<WatchTogetherStartScreen> createState() => _WatchTogetherStartScreenState();
+  State<WatchTogetherStartScreen> createState() =>
+      _WatchTogetherStartScreenState();
 }
 
 enum _RelayCheck { checking, reachable, unreachable, unknown }
@@ -57,10 +59,17 @@ class _WatchTogetherStartScreenState extends State<WatchTogetherStartScreen> {
     if (check != null) {
       setState(() => _relayCheck = _RelayCheck.checking);
       check().then((reachable) {
-        if (mounted) setState(() => _relayCheck = reachable ? _RelayCheck.reachable : _RelayCheck.unreachable);
+        if (mounted)
+          setState(
+            () => _relayCheck = reachable
+                ? _RelayCheck.reachable
+                : _RelayCheck.unreachable,
+          );
       });
     }
-    WidgetsBinding.instance.addPostFrameCallback((_) => _confirmFocus.requestFocus());
+    WidgetsBinding.instance.addPostFrameCallback(
+      (_) => _confirmFocus.requestFocus(),
+    );
   }
 
   @override
@@ -90,13 +99,24 @@ class _WatchTogetherStartScreenState extends State<WatchTogetherStartScreen> {
               Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const AppIcon(PhosphorIconsRegular.usersThree, size: 22, tint: AppColors.accent300),
+                  AppIcon(
+                    PhosphorIconsRegular.usersThree,
+                    size: 22,
+                    tint: AppColors.accent300,
+                  ),
                   const SizedBox(width: AppSpacing.md),
-                  const AppText('WATCH TOGETHER', style: AppTypography.micro, color: AppColors.accent300),
+                  AppText(
+                    'WATCH TOGETHER',
+                    style: AppTypography.micro,
+                    color: AppColors.accent300,
+                  ),
                 ],
               ),
               const SizedBox(height: AppSpacing.lg),
-              AppText('Start a room for ${widget.roomTitle}', style: AppTypography.title2),
+              AppText(
+                'Start a room for ${widget.roomTitle}',
+                style: AppTypography.title2,
+              ),
               const SizedBox(height: AppSpacing.xl),
               _ChoiceRow(
                 title: 'Resume',
@@ -115,35 +135,61 @@ class _WatchTogetherStartScreenState extends State<WatchTogetherStartScreen> {
               Row(
                 children: [
                   Expanded(
-                    child: _InfoRow(title: 'Seats', subtitle: 'Including you', trailing: AppText('${widget.maxSeats}', style: AppTypography.label)),
+                    child: _InfoRow(
+                      title: 'Seats',
+                      subtitle: 'Including you',
+                      trailing: AppText(
+                        '${widget.maxSeats}',
+                        style: AppTypography.label,
+                      ),
+                    ),
                   ),
                   const SizedBox(width: AppSpacing.md),
                   Expanded(
                     child: _InfoRow(
                       title: 'Phone chat',
                       subtitle: 'Show a QR to join',
-                      trailing: AppSwitch(checked: _phoneChatEnabled, onCheckedChange: (v) => setState(() => _phoneChatEnabled = v)),
+                      trailing: AppSwitch(
+                        checked: _phoneChatEnabled,
+                        onCheckedChange: (v) =>
+                            setState(() => _phoneChatEnabled = v),
+                      ),
                     ),
                   ),
                 ],
               ),
               const SizedBox(height: AppSpacing.lg),
-              _RelayStatusRow(check: _relayCheck, relayNickname: widget.relayNickname),
+              _RelayStatusRow(
+                check: _relayCheck,
+                relayNickname: widget.relayNickname,
+              ),
               const SizedBox(height: AppSpacing.xl),
               Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   AppButton(
-                    onClick: () => widget.onConfirm(restart: _restart, showPhoneChat: _phoneChatEnabled),
+                    onClick: () => widget.onConfirm(
+                      restart: _restart,
+                      showPhoneChat: _phoneChatEnabled,
+                    ),
                     focusNode: _confirmFocus,
-                    child: Row(mainAxisSize: MainAxisSize.min, children: [
-                      const AppIcon(PhosphorIconsRegular.usersThree, size: 22),
-                      const SizedBox(width: AppSpacing.sm),
-                      const AppText('Open the room'),
-                    ]),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const AppIcon(
+                          PhosphorIconsRegular.usersThree,
+                          size: 22,
+                        ),
+                        const SizedBox(width: AppSpacing.sm),
+                        const AppText('Open the room'),
+                      ],
+                    ),
                   ),
                   const SizedBox(width: AppSpacing.md),
-                  AppOutlinedButton(onClick: widget.onCancel, child: const AppText('Cancel')),
+                  AppOutlinedButton(
+                    onClick: widget.onCancel,
+                    child: const AppText('Cancel'),
+                  ),
                 ],
               ),
             ],
@@ -154,7 +200,9 @@ class _WatchTogetherStartScreenState extends State<WatchTogetherStartScreen> {
   }
 }
 
-final _choiceShape = RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppShape.radiusMd));
+final _choiceShape = RoundedRectangleBorder(
+  borderRadius: BorderRadius.circular(AppShape.radiusMd),
+);
 final _choiceColors = SurfaceColors(
   container: AppColors.surface,
   content: AppColors.ink2,
@@ -163,7 +211,9 @@ final _choiceColors = SurfaceColors(
   selectedContainer: AppColors.surfaceRaised,
   selectedContent: AppColors.ink,
 );
-const _choiceBorder = SurfaceBorder(focused: SurfaceBorderSide.solid(AppColors.accent));
+final _choiceBorder = SurfaceBorder(
+  focused: SurfaceBorderSide.solid(AppColors.accent),
+);
 
 class _ChoiceRow extends StatelessWidget {
   final String title;
@@ -171,7 +221,12 @@ class _ChoiceRow extends StatelessWidget {
   final bool selected;
   final VoidCallback onClick;
 
-  const _ChoiceRow({required this.title, required this.subtitle, required this.selected, required this.onClick});
+  const _ChoiceRow({
+    required this.title,
+    required this.subtitle,
+    required this.selected,
+    required this.onClick,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -194,7 +249,11 @@ class _ChoiceRow extends StatelessWidget {
                   children: [
                     AppText(title, style: AppTypography.label),
                     const SizedBox(height: 3),
-                    AppText(subtitle, style: AppTypography.caption, color: AppColors.ink3),
+                    AppText(
+                      subtitle,
+                      style: AppTypography.caption,
+                      color: AppColors.ink3,
+                    ),
                   ],
                 ),
               ),
@@ -213,7 +272,11 @@ class _InfoRow extends StatelessWidget {
   final String subtitle;
   final Widget trailing;
 
-  const _InfoRow({required this.title, required this.subtitle, required this.trailing});
+  const _InfoRow({
+    required this.title,
+    required this.subtitle,
+    required this.trailing,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -234,7 +297,11 @@ class _InfoRow extends StatelessWidget {
               children: [
                 AppText(title, color: AppColors.ink2),
                 const SizedBox(height: 3),
-                AppText(subtitle, style: AppTypography.caption, color: AppColors.ink3),
+                AppText(
+                  subtitle,
+                  style: AppTypography.caption,
+                  color: AppColors.ink3,
+                ),
               ],
             ),
           ),
@@ -255,20 +322,38 @@ class _RelayStatusRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final (color, label) = switch (check) {
       _RelayCheck.checking => (AppColors.ink4, 'Checking relay…'),
-      _RelayCheck.reachable => (AppColors.success, 'Relay reachable · guests will sync within a frame'),
-      _RelayCheck.unreachable => (AppColors.error, "Relay didn't answer — guests may have trouble joining"),
-      _RelayCheck.unknown => (AppColors.ink4, relayNickname != null ? 'Relay: $relayNickname' : 'No relay configured'),
+      _RelayCheck.reachable => (
+        AppColors.success,
+        'Relay reachable · guests will sync within a frame',
+      ),
+      _RelayCheck.unreachable => (
+        AppColors.error,
+        "Relay didn't answer — guests may have trouble joining",
+      ),
+      _RelayCheck.unknown => (
+        AppColors.ink4,
+        relayNickname != null ? 'Relay: $relayNickname' : 'No relay configured',
+      ),
     };
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg, vertical: AppSpacing.md),
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.lg,
+        vertical: AppSpacing.md,
+      ),
       decoration: BoxDecoration(
         color: AppColors.surfaceRaised,
-        border: Border(left: BorderSide(color: color, width: AppShape.spineWidth)),
+        border: Border(
+          left: BorderSide(color: color, width: AppShape.spineWidth),
+        ),
         borderRadius: BorderRadius.circular(AppShape.radiusSm),
       ),
       child: Row(
         children: [
-          Container(width: 8, height: 8, decoration: BoxDecoration(shape: BoxShape.circle, color: color)),
+          Container(
+            width: 8,
+            height: 8,
+            decoration: BoxDecoration(shape: BoxShape.circle, color: color),
+          ),
           const SizedBox(width: AppSpacing.md),
           Expanded(child: AppText(label, color: AppColors.ink2)),
         ],

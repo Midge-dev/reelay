@@ -114,12 +114,15 @@ class _WatchlistScreenState extends State<WatchlistScreen> {
               crossAxisAlignment: CrossAxisAlignment.baseline,
               textBaseline: TextBaseline.alphabetic,
               children: [
-                const AppText('Watchlist', style: AppTypography.title1),
+                AppText('Watchlist', style: AppTypography.title1),
                 const Spacer(),
                 if (_pendingRemoval != null)
                   _UndoChip(secondsLeft: _secondsLeft, onUndo: _undoRemoval)
                 else
-                  AppText('${_items.length} title${_items.length == 1 ? '' : 's'}', color: AppColors.ink3),
+                  AppText(
+                    '${_items.length} title${_items.length == 1 ? '' : 's'}',
+                    color: AppColors.ink3,
+                  ),
               ],
             ),
             const SizedBox(height: 22),
@@ -133,7 +136,9 @@ class _WatchlistScreenState extends State<WatchlistScreen> {
   Widget _buildEmptyState() {
     return const Padding(
       padding: EdgeInsets.only(top: 24),
-      child: AppText('Nothing saved yet — press + on anything to keep it here.'),
+      child: AppText(
+        'Nothing saved yet — press + on anything to keep it here.',
+      ),
     );
   }
 
@@ -143,7 +148,8 @@ class _WatchlistScreenState extends State<WatchlistScreen> {
         animation: _scrollController,
         builder: (context, child) => EdgeFadeRow(
           axis: Axis.vertical,
-          fadeStart: _scrollController.hasClients && _scrollController.offset > 0,
+          fadeStart:
+              _scrollController.hasClients && _scrollController.offset > 0,
           fadeWidth: posterRowPeekExtent,
           child: child!,
         ),
@@ -162,7 +168,9 @@ class _WatchlistScreenState extends State<WatchlistScreen> {
             final item = _items[index];
             return PosterCard(
               key: ValueKey(item.ratingKey),
-              imageUrl: (item.thumb?.startsWith('http') ?? false) ? item.thumb : null,
+              imageUrl: (item.thumb?.startsWith('http') ?? false)
+                  ? item.thumb
+                  : null,
               title: item.title,
               subtitle: item.year?.toString(),
               autofocus: index == 0,
@@ -188,7 +196,10 @@ class _UndoChip extends StatelessWidget {
     return GestureDetector(
       onTap: onUndo,
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg, vertical: AppSpacing.sm),
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.lg,
+          vertical: AppSpacing.sm,
+        ),
         decoration: BoxDecoration(
           color: AppColors.surface,
           border: Border.all(color: AppColors.lineStrong),
@@ -197,9 +208,16 @@ class _UndoChip extends StatelessWidget {
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const AppIcon(PhosphorIconsRegular.arrowCounterClockwise, size: 18, tint: AppColors.accent300),
+            AppIcon(
+              PhosphorIconsRegular.arrowCounterClockwise,
+              size: 18,
+              tint: AppColors.accent300,
+            ),
             const SizedBox(width: AppSpacing.sm),
-            AppText('Removed · Undo ($secondsLeft)', color: AppColors.accent300),
+            AppText(
+              'Removed · Undo ($secondsLeft)',
+              color: AppColors.accent300,
+            ),
           ],
         ),
       ),

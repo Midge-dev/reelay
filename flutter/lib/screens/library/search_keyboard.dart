@@ -15,7 +15,12 @@ class SearchKey {
   final SearchKeyAction action;
   final int span;
 
-  const SearchKey({required this.label, this.insert, this.action = SearchKeyAction.char, this.span = 1});
+  const SearchKey({
+    required this.label,
+    this.insert,
+    this.action = SearchKeyAction.char,
+    this.span = 1,
+  });
 }
 
 /// A-Z, 0-9 chunked 6 per row, then a final row of SPACE/DELETE/CLEAR
@@ -27,7 +32,9 @@ final List<List<SearchKey>> searchKeyRows = () {
   ];
   final rows = <List<SearchKey>>[];
   for (var i = 0; i < chars.length; i += 6) {
-    rows.add(chars.skip(i).take(6).map((c) => SearchKey(label: c, insert: c)).toList());
+    rows.add(
+      chars.skip(i).take(6).map((c) => SearchKey(label: c, insert: c)).toList(),
+    );
   }
   rows.add([
     const SearchKey(label: 'SPACE', insert: ' ', span: 2),
@@ -51,7 +58,9 @@ final List<List<SearchKey>> searchKeyGrid = searchKeyRows.map((row) {
 
 const _keyHeight = 52.0;
 const _keyGap = AppSpacing.xs;
-final _keyShape = RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppShape.radiusSm));
+final _keyShape = RoundedRectangleBorder(
+  borderRadius: BorderRadius.circular(AppShape.radiusSm),
+);
 final _keyColors = SurfaceColors(
   container: AppColors.surface,
   content: AppColors.ink2,
@@ -60,7 +69,7 @@ final _keyColors = SurfaceColors(
 );
 // noSpine — a key is a small, icon-like glyph target (DESIGN.md #3), not a
 // card; a leading spine would read as a sliver on something this square.
-const _keyBorder = SurfaceBorder(
+final _keyBorder = SurfaceBorder(
   idle: SurfaceBorderSide.solid(AppColors.line),
   focused: SurfaceBorderSide.solid(AppColors.accent),
   noSpine: true,
@@ -105,7 +114,8 @@ class _SearchKeyboardState extends State<SearchKeyboard> {
   late final Map<SearchKey, FocusNode> _focusNodes = {
     for (var r = 0; r < searchKeyRows.length; r++)
       for (var c = 0; c < searchKeyRows[r].length; c++)
-        searchKeyRows[r][c]: (r == 0 && c == 0 && widget.firstKeyFocusNode != null)
+        searchKeyRows[r][c]:
+            (r == 0 && c == 0 && widget.firstKeyFocusNode != null)
             ? widget.firstKeyFocusNode!
             : FocusNode(debugLabel: 'search-key-${searchKeyRows[r][c].label}'),
   };
@@ -153,10 +163,18 @@ class _SearchKeyboardState extends State<SearchKeyboard> {
       final colEnd = col + key.span - 1;
       col += key.span;
 
-      final up = rowIndex > 0 ? _focusNodes[searchKeyGrid[rowIndex - 1][colStart]] : null;
-      final down = rowIndex < searchKeyRows.length - 1 ? _focusNodes[searchKeyGrid[rowIndex + 1][colStart]] : null;
-      final left = colStart > 0 ? _focusNodes[searchKeyGrid[rowIndex][colStart - 1]] : null;
-      final right = colEnd < 5 ? _focusNodes[searchKeyGrid[rowIndex][colEnd + 1]] : null;
+      final up = rowIndex > 0
+          ? _focusNodes[searchKeyGrid[rowIndex - 1][colStart]]
+          : null;
+      final down = rowIndex < searchKeyRows.length - 1
+          ? _focusNodes[searchKeyGrid[rowIndex + 1][colStart]]
+          : null;
+      final left = colStart > 0
+          ? _focusNodes[searchKeyGrid[rowIndex][colStart - 1]]
+          : null;
+      final right = colEnd < 5
+          ? _focusNodes[searchKeyGrid[rowIndex][colEnd + 1]]
+          : null;
 
       children.add(
         Expanded(
@@ -172,7 +190,9 @@ class _SearchKeyboardState extends State<SearchKeyboard> {
             leftNeighbor: left,
             rightNeighbor: right,
             onClick: () => _handleClick(key),
-            onLongClick: key.action == SearchKeyAction.delete ? widget.onClear : null,
+            onLongClick: key.action == SearchKeyAction.delete
+                ? widget.onClear
+                : null,
           ),
         ),
       );

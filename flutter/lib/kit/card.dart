@@ -5,14 +5,16 @@ import 'focusable_surface.dart';
 import 'scroll_peek.dart';
 import 'surface_style.dart';
 
-final _cardShape = RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppShape.radiusMd));
+final _cardShape = RoundedRectangleBorder(
+  borderRadius: BorderRadius.circular(AppShape.radiusMd),
+);
 
 final _cardColors = SurfaceColors(
   container: AppColors.surface,
   content: AppColors.ink2,
   focusedContent: AppColors.ink,
 );
-const _cardBorder = SurfaceBorder(
+final _cardBorder = SurfaceBorder(
   idle: SurfaceBorderSide.solid(AppColors.line),
   focused: SurfaceBorderSide.solid(AppColors.accent),
 );
@@ -32,7 +34,11 @@ class AppCard extends StatelessWidget {
   final bool autofocus;
   final ShapeBorder? shape;
   final SurfaceColors? colors;
-  final SurfaceBorder border;
+  // Nullable rather than defaulting to _cardBorder directly: that default
+  // would need to be a compile-time constant, which it can no longer be
+  // now that AppColors is theme-swappable at runtime (see AppColors'
+  // own doc comment). Resolved to _cardBorder in build() when omitted.
+  final SurfaceBorder? border;
   final bool ensureVisibleOnFocus;
   final ValueChanged<bool>? onFocusChange;
   final Widget child;
@@ -47,7 +53,7 @@ class AppCard extends StatelessWidget {
     this.autofocus = false,
     this.shape,
     this.colors,
-    this.border = _cardBorder,
+    this.border,
     this.ensureVisibleOnFocus = true,
     this.onFocusChange,
     required this.child,
@@ -64,7 +70,9 @@ class AppCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final outlinedShape = shape is OutlinedBorder ? shape as OutlinedBorder : _cardShape;
+    final outlinedShape = shape is OutlinedBorder
+        ? shape as OutlinedBorder
+        : _cardShape;
 
     return FocusableSurface(
       onClick: onClick,
@@ -76,7 +84,7 @@ class AppCard extends StatelessWidget {
       onFocusChange: (focused) => _handleFocusChange(context, focused),
       shape: outlinedShape,
       colors: colors ?? _cardColors,
-      border: border,
+      border: border ?? _cardBorder,
       child: child,
     );
   }
@@ -88,7 +96,11 @@ class CardContainer extends StatelessWidget {
   final Widget imageCard;
   final Widget title;
 
-  const CardContainer({super.key, required this.imageCard, required this.title});
+  const CardContainer({
+    super.key,
+    required this.imageCard,
+    required this.title,
+  });
 
   @override
   Widget build(BuildContext context) {

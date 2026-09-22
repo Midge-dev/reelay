@@ -12,7 +12,8 @@ import '../common/neon_scrollbar.dart';
 
 final RegExp _missingSpaceAfterAmpersand = RegExp(r'&(?=\S)');
 
-String formatGenreLabel(String genre) => genre.replaceAllMapped(_missingSpaceAfterAmpersand, (_) => '& ');
+String formatGenreLabel(String genre) =>
+    genre.replaceAllMapped(_missingSpaceAfterAmpersand, (_) => '& ');
 
 /// The library filter row's applied-value chip (screen 18: "1990s ✕",
 /// accent900 fill/accent300 text) — distinct from a dropdown's own applied
@@ -21,7 +22,11 @@ class AppliedValueChip extends StatelessWidget {
   final String label;
   final VoidCallback onRemove;
 
-  const AppliedValueChip({super.key, required this.label, required this.onRemove});
+  const AppliedValueChip({
+    super.key,
+    required this.label,
+    required this.onRemove,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -29,7 +34,9 @@ class AppliedValueChip extends StatelessWidget {
       height: 58,
       child: FocusableSurface(
         onClick: onRemove,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppShape.radiusMd)),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppShape.radiusMd),
+        ),
         colors: SurfaceColors(
           container: AppColors.accent900,
           content: AppColors.accent300,
@@ -38,7 +45,9 @@ class AppliedValueChip extends StatelessWidget {
           selectedContainer: AppColors.accent900,
           selectedContent: AppColors.accent300,
         ),
-        border: const SurfaceBorder(focused: SurfaceBorderSide.solid(AppColors.accent)),
+        border: SurfaceBorder(
+          focused: SurfaceBorderSide.solid(AppColors.accent),
+        ),
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 18),
           child: Row(
@@ -55,7 +64,9 @@ class AppliedValueChip extends StatelessWidget {
   }
 }
 
-final _menuShape = RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppShape.radiusMd));
+final _menuShape = RoundedRectangleBorder(
+  borderRadius: BorderRadius.circular(AppShape.radiusMd),
+);
 final _menuRowColors = SurfaceColors(
   container: AppColors.transparent,
   content: AppColors.ink2,
@@ -64,7 +75,9 @@ final _menuRowColors = SurfaceColors(
   selectedContainer: AppColors.surface,
   selectedContent: AppColors.ink,
 );
-const _menuRowBorder = SurfaceBorder(focused: SurfaceBorderSide.solid(AppColors.accent));
+final _menuRowBorder = SurfaceBorder(
+  focused: SurfaceBorderSide.solid(AppColors.accent),
+);
 
 class MenuOptionRow extends StatelessWidget {
   final String label;
@@ -93,9 +106,13 @@ class MenuOptionRow extends StatelessWidget {
             container: _menuRowColors.container,
             content: _menuRowColors.content.withValues(alpha: 0.5),
             focusedContainer: _menuRowColors.focusedContainer,
-            focusedContent: _menuRowColors.focusedContent.withValues(alpha: 0.5),
+            focusedContent: _menuRowColors.focusedContent.withValues(
+              alpha: 0.5,
+            ),
             selectedContainer: _menuRowColors.selectedContainer,
-            selectedContent: _menuRowColors.selectedContent.withValues(alpha: 0.5),
+            selectedContent: _menuRowColors.selectedContent.withValues(
+              alpha: 0.5,
+            ),
           )
         : _menuRowColors;
 
@@ -114,12 +131,26 @@ class MenuOptionRow extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 18),
           child: Row(
             children: [
-              Expanded(child: AppText(label, maxLines: 1, overflow: TextOverflow.ellipsis)),
+              Expanded(
+                child: AppText(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
               if (countLabel != null) ...[
                 const SizedBox(width: 12),
-                AppText(countLabel!, color: dimmed ? AppColors.ink3.withValues(alpha: 0.5) : AppColors.ink3),
+                AppText(
+                  countLabel!,
+                  color: dimmed
+                      ? AppColors.ink3.withValues(alpha: 0.5)
+                      : AppColors.ink3,
+                ),
               ],
-              if (applied) ...[const SizedBox(width: 12), const AppIcon(PhosphorIconsFill.checkCircle, size: 22)],
+              if (applied) ...[
+                const SizedBox(width: 12),
+                const AppIcon(PhosphorIconsFill.checkCircle, size: 22),
+              ],
             ],
           ),
         ),
@@ -135,7 +166,12 @@ class FilterOption {
   final bool applied;
   final bool dimmed;
 
-  const FilterOption({required this.label, this.countLabel, required this.applied, this.dimmed = false});
+  const FilterOption({
+    required this.label,
+    this.countLabel,
+    required this.applied,
+    this.dimmed = false,
+  });
 }
 
 /// A single-topic floating filter dropdown (screen 18: "GENRE · 18 IN THIS
@@ -168,7 +204,10 @@ class FilterDropdown extends StatefulWidget {
 class _FilterDropdownState extends State<FilterDropdown> {
   final _scrollController = ScrollController();
   int _highlightedIndex = 0;
-  late List<FocusNode> _rowFocusNodes = List.generate(widget.options.length, (i) => FocusNode(debugLabel: 'filter-dropdown-row-$i'));
+  late List<FocusNode> _rowFocusNodes = List.generate(
+    widget.options.length,
+    (i) => FocusNode(debugLabel: 'filter-dropdown-row-$i'),
+  );
 
   @override
   void didUpdateWidget(covariant FilterDropdown oldWidget) {
@@ -177,9 +216,14 @@ class _FilterDropdownState extends State<FilterDropdown> {
       for (final node in _rowFocusNodes) {
         node.dispose();
       }
-      _rowFocusNodes = List.generate(widget.options.length, (i) => FocusNode(debugLabel: 'filter-dropdown-row-$i'));
+      _rowFocusNodes = List.generate(
+        widget.options.length,
+        (i) => FocusNode(debugLabel: 'filter-dropdown-row-$i'),
+      );
       if (_highlightedIndex >= widget.options.length) {
-        _highlightedIndex = widget.options.isEmpty ? 0 : widget.options.length - 1;
+        _highlightedIndex = widget.options.isEmpty
+            ? 0
+            : widget.options.length - 1;
       }
     }
   }
@@ -195,10 +239,12 @@ class _FilterDropdownState extends State<FilterDropdown> {
 
   KeyEventResult _handlePanelKeyEvent(FocusNode node, KeyEvent event) {
     if (event is! KeyDownEvent) return KeyEventResult.ignored;
-    if (event.logicalKey == LogicalKeyboardKey.arrowDown && _highlightedIndex == widget.options.length - 1) {
+    if (event.logicalKey == LogicalKeyboardKey.arrowDown &&
+        _highlightedIndex == widget.options.length - 1) {
       return KeyEventResult.handled;
     }
-    if (event.logicalKey == LogicalKeyboardKey.arrowUp && _highlightedIndex == 0) {
+    if (event.logicalKey == LogicalKeyboardKey.arrowUp &&
+        _highlightedIndex == 0) {
       widget.aboveFocusNode.requestFocus();
       return KeyEventResult.handled;
     }
@@ -224,7 +270,11 @@ class _FilterDropdownState extends State<FilterDropdown> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            AppText(widget.title, style: AppTypography.micro, color: AppColors.accent300),
+            AppText(
+              widget.title,
+              style: AppTypography.micro,
+              color: AppColors.accent300,
+            ),
             const SizedBox(height: 10),
             Flexible(
               child: Row(
@@ -239,7 +289,8 @@ class _FilterDropdownState extends State<FilterDropdown> {
                         mainAxisSize: MainAxisSize.min,
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          for (final (index, option) in widget.options.indexed) ...[
+                          for (final (index, option)
+                              in widget.options.indexed) ...[
                             MenuOptionRow(
                               label: option.label,
                               countLabel: option.countLabel,
@@ -248,7 +299,8 @@ class _FilterDropdownState extends State<FilterDropdown> {
                               onClick: () => widget.onSelect(index),
                               focusNode: _rowFocusNodes[index],
                               onFocusChange: (focused) {
-                                if (focused) setState(() => _highlightedIndex = index);
+                                if (focused)
+                                  setState(() => _highlightedIndex = index);
                               },
                             ),
                             const SizedBox(height: 2),
@@ -264,7 +316,9 @@ class _FilterDropdownState extends State<FilterDropdown> {
             ),
             const SizedBox(height: 16),
             DecoratedBox(
-              decoration: const BoxDecoration(border: Border(top: BorderSide(color: AppColors.lineStrong))),
+              decoration: BoxDecoration(
+                border: Border(top: BorderSide(color: AppColors.lineStrong)),
+              ),
               child: Padding(
                 padding: const EdgeInsets.only(top: 16),
                 child: AppText(widget.footerHint, color: AppColors.ink3),

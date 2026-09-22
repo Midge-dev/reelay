@@ -24,6 +24,7 @@ import '../common/loading_screen.dart';
 import '../common/neon_scrollbar.dart';
 import '../common/relay_status.dart';
 import '../profiles/add_profile_dialog.dart';
+import 'appearance_screen.dart';
 import 'chat_corner_picker.dart';
 import 'max_seats_menu.dart';
 import 'relay_settings_pane.dart';
@@ -65,6 +66,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   String? _sourcesError;
 
   bool _showingRelaySettings = false;
+  bool _showingAppearance = false;
   bool _maxSeatsMenuExpanded = false;
   bool _showingAddProfile = false;
 
@@ -84,6 +86,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     debugLabel: 'relay-settings-entry',
   );
   final _relaySettingsBackFocus = FocusNode(debugLabel: 'relay-settings-back');
+  final _appearanceEntryFocus = FocusNode(debugLabel: 'appearance-entry');
+  final _appearanceBackFocus = FocusNode(debugLabel: 'appearance-back');
   final _maxHostSeatsFocus = FocusNode(debugLabel: 'max-host-seats');
   final _addRelayFocus = FocusNode(debugLabel: 'add-relay');
   final _cancelPairingFocus = FocusNode(debugLabel: 'cancel-pairing');
@@ -161,6 +165,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     _firstSourceFocus.dispose();
     _relaySettingsEntryFocus.dispose();
     _relaySettingsBackFocus.dispose();
+    _appearanceEntryFocus.dispose();
+    _appearanceBackFocus.dispose();
     _maxHostSeatsFocus.dispose();
     _addRelayFocus.dispose();
     _cancelPairingFocus.dispose();
@@ -279,6 +285,15 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     });
   }
 
+  Future<void> _selectTheme(ThemeId id) async {
+    // Screen 22 — no Save button here; a pick is applied and persisted the
+    // moment it's made (the mockup's own "takes effect at once" copy).
+    setState(() => _settings = _settings.copyWith(themeId: id));
+    final store = ref.read(settingsStoreProvider);
+    final persisted = await store.observe().first;
+    await store.save(persisted.copyWith(themeId: id));
+  }
+
   void _cancelPairing() {
     _pairingServer?.stop();
     setState(() {
@@ -342,6 +357,20 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       );
     }
 
+    if (_showingAppearance) {
+      return AppearanceScreen(
+        current: _settings.themeId,
+        onSelect: _selectTheme,
+        backFocus: _appearanceBackFocus,
+        onBack: () {
+          setState(() => _showingAppearance = false);
+          WidgetsBinding.instance.addPostFrameCallback(
+            (_) => _appearanceEntryFocus.requestFocus(),
+          );
+        },
+      );
+    }
+
     return ColoredBox(
       color: AppColors.background,
       child: Stack(
@@ -362,12 +391,17 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const AppText('Settings', style: AppTypography.title1),
+                        AppText('Settings', style: AppTypography.title1),
                         const SizedBox(height: 32),
                         _SettingsGroup(
                           title: 'Libraries',
                           showRule: false,
                           child: _buildSourcesSection(),
+                        ),
+                        _SettingsGroup(
+                          title: 'Appearance',
+                          showRule: true,
+                          child: _buildAppearanceSection(),
                         ),
                         _SettingsGroup(
                           title: 'Profiles',
@@ -489,6 +523,45 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     );
   }
 
+  Widget _buildAppearanceSection() {
+    return SizedBox(
+      height: 64,
+      child: FocusableSurface(
+        onClick: () {
+          setState(() => _showingAppearance = true);
+          WidgetsBinding.instance.addPostFrameCallback(
+            (_) => _appearanceBackFocus.requestFocus(),
+          );
+        },
+        focusNode: _appearanceEntryFocus,
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.all(Radius.circular(8)),
+        ),
+        colors: SurfaceColors(
+          container: AppColors.background,
+          content: AppColors.ink3,
+          focusedContent: AppColors.inkOnArt,
+        ),
+        border: SurfaceBorder(
+          idle: SurfaceBorderSide.solid(AppColors.line),
+          focused: SurfaceBorderSide.solid(AppColors.accent),
+        ),
+        contentAlignment: AlignmentDirectional.centerStart,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const AppText('Theme'),
+              const Spacer(),
+              AppText(_settings.themeId.label, color: AppColors.ink3),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _buildProfilesSection() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -559,7 +632,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               content: AppColors.ink3,
               focusedContent: AppColors.inkOnArt,
             ),
-            border: const SurfaceBorder(
+            border: SurfaceBorder(
               idle: SurfaceBorderSide.solid(AppColors.line),
               focused: SurfaceBorderSide.solid(AppColors.accent),
             ),
@@ -583,7 +656,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     ],
                   ),
                   const Spacer(),
-                  const AppText('›', color: AppColors.ink3),
+                  AppText('›', color: AppColors.ink3),
                 ],
               ),
             ),
@@ -603,7 +676,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               content: AppColors.ink3,
               focusedContent: AppColors.inkOnArt,
             ),
-            border: const SurfaceBorder(
+            border: SurfaceBorder(
               idle: SurfaceBorderSide.solid(AppColors.line),
               focused: SurfaceBorderSide.solid(AppColors.accent),
             ),
@@ -693,10 +766,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         const SizedBox(height: 24),
         const AppText('Chat position'),
         const SizedBox(height: 4),
-        const AppText(
-          'Pick the corner messages appear in',
-          color: AppColors.ink3,
-        ),
+        AppText('Pick the corner messages appear in', color: AppColors.ink3),
         const SizedBox(height: 14),
         ChatCornerPicker(
           selected: _settings.chatOverlayCorner,

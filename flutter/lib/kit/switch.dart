@@ -12,7 +12,7 @@ const _thumbInset = 4.0;
 
 /// Too small for a leading spine, so focus is the border alone stepping to
 /// accent — the track's own fill already carries on/off state.
-const _switchBorder = SurfaceBorder(
+final _switchBorder = SurfaceBorder(
   idle: SurfaceBorderSide.solid(AppColors.line),
   focused: SurfaceBorderSide.solid(AppColors.accent),
   noSpine: true,
@@ -25,7 +25,12 @@ class AppSwitch extends StatefulWidget {
   final ValueChanged<bool> onCheckedChange;
   final FocusNode? focusNode;
 
-  const AppSwitch({super.key, required this.checked, required this.onCheckedChange, this.focusNode});
+  const AppSwitch({
+    super.key,
+    required this.checked,
+    required this.onCheckedChange,
+    this.focusNode,
+  });
 
   @override
   State<AppSwitch> createState() => _AppSwitchState();
@@ -39,10 +44,14 @@ class _AppSwitchState extends State<AppSwitch> {
     final colors = SurfaceColors(
       container: widget.checked ? AppColors.accent700 : AppColors.surface,
       content: AppColors.ink3,
-      focusedContainer: widget.checked ? AppColors.accent700 : AppColors.surfaceRaised,
+      focusedContainer: widget.checked
+          ? AppColors.accent700
+          : AppColors.surfaceRaised,
       focusedContent: AppColors.ink,
     );
-    final thumbOffset = widget.checked ? _trackWidth - _thumbSize - _thumbInset : _thumbInset;
+    final thumbOffset = widget.checked
+        ? _trackWidth - _thumbSize - _thumbInset
+        : _thumbInset;
     final thumbScale = _pressed ? 0.88 : 1.0;
 
     return SizedBox(
@@ -70,7 +79,10 @@ class _AppSwitchState extends State<AppSwitch> {
                   builder: (context) => Container(
                     width: _thumbSize,
                     height: _thumbSize,
-                    decoration: BoxDecoration(shape: BoxShape.circle, color: ContentColor.of(context)),
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: ContentColor.of(context),
+                    ),
                   ),
                 ),
               ),

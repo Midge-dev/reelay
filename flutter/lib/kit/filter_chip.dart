@@ -4,7 +4,9 @@ import '../theme/tokens.dart';
 import 'focusable_surface.dart';
 import 'surface_style.dart';
 
-final _chipShape = RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppShape.radiusSm));
+final _chipShape = RoundedRectangleBorder(
+  borderRadius: BorderRadius.circular(AppShape.radiusSm),
+);
 const _chipHeight = 48.0;
 const _chipContentPadding = EdgeInsets.symmetric(horizontal: 22);
 
@@ -18,7 +20,7 @@ final _chipColors = SurfaceColors(
   pressedContainer: AppColors.accent900,
   pressedContent: AppColors.ink2,
 );
-const _chipBorder = SurfaceBorder(
+final _chipBorder = SurfaceBorder(
   idle: SurfaceBorderSide.solid(AppColors.line),
   focused: SurfaceBorderSide.solid(AppColors.accent),
 );
@@ -54,7 +56,11 @@ class AppFilterChip extends StatelessWidget {
         height: _chipHeight,
         child: Padding(
           padding: _chipContentPadding,
-          child: Row(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.center, children: [child]),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [child],
+          ),
         ),
       ),
     );

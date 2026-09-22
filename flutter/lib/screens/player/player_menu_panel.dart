@@ -53,7 +53,9 @@ class _PlayerMenuPanelState extends State<PlayerMenuPanel> {
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) => _subtitlesTabFocus.requestFocus());
+    WidgetsBinding.instance.addPostFrameCallback(
+      (_) => _subtitlesTabFocus.requestFocus(),
+    );
   }
 
   @override
@@ -65,7 +67,8 @@ class _PlayerMenuPanelState extends State<PlayerMenuPanel> {
   }
 
   KeyEventResult _trapUpAboveTabs(FocusNode node, KeyEvent event) {
-    if (event is KeyDownEvent && event.logicalKey == LogicalKeyboardKey.arrowUp) {
+    if (event is KeyDownEvent &&
+        event.logicalKey == LogicalKeyboardKey.arrowUp) {
       return KeyEventResult.handled;
     }
     return KeyEventResult.ignored;
@@ -78,7 +81,11 @@ class _PlayerMenuPanelState extends State<PlayerMenuPanel> {
         onBack: widget.onClose,
         child: Stack(
           children: [
-            GestureDetector(behavior: HitTestBehavior.opaque, onTap: widget.onClose, child: const ColoredBox(color: AppColors.transparent)),
+            GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTap: widget.onClose,
+              child: const ColoredBox(color: AppColors.transparent),
+            ),
             Positioned(
               top: 0,
               bottom: 0,
@@ -87,7 +94,7 @@ class _PlayerMenuPanelState extends State<PlayerMenuPanel> {
               child: DecoratedBox(
                 decoration: BoxDecoration(
                   color: AppColors.canvas,
-                  border: const Border(left: BorderSide(color: AppColors.line)),
+                  border: Border(left: BorderSide(color: AppColors.line)),
                   boxShadow: AppElevation.overlay,
                 ),
                 child: Padding(
@@ -101,9 +108,21 @@ class _PlayerMenuPanelState extends State<PlayerMenuPanel> {
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            _TabButton(label: 'Subtitles', selected: _tab == _MenuTab.subtitles, focusNode: _subtitlesTabFocus, onClick: () => setState(() => _tab = _MenuTab.subtitles)),
+                            _TabButton(
+                              label: 'Subtitles',
+                              selected: _tab == _MenuTab.subtitles,
+                              focusNode: _subtitlesTabFocus,
+                              onClick: () =>
+                                  setState(() => _tab = _MenuTab.subtitles),
+                            ),
                             const SizedBox(width: AppSpacing.md),
-                            _TabButton(label: 'Quality', selected: _tab == _MenuTab.quality, focusNode: _qualityTabFocus, onClick: () => setState(() => _tab = _MenuTab.quality)),
+                            _TabButton(
+                              label: 'Quality',
+                              selected: _tab == _MenuTab.quality,
+                              focusNode: _qualityTabFocus,
+                              onClick: () =>
+                                  setState(() => _tab = _MenuTab.quality),
+                            ),
                           ],
                         ),
                       ),
@@ -114,7 +133,11 @@ class _PlayerMenuPanelState extends State<PlayerMenuPanel> {
                           _MenuTab.quality => _buildQualityList(),
                         },
                       ),
-                      const AppText('Back closes this panel and leaves playback untouched.', style: AppTypography.caption, color: AppColors.ink3),
+                      AppText(
+                        'Back closes this panel and leaves playback untouched.',
+                        style: AppTypography.caption,
+                        color: AppColors.ink3,
+                      ),
                     ],
                   ),
                 ),
@@ -158,7 +181,9 @@ class _PlayerMenuPanelState extends State<PlayerMenuPanel> {
   }
 }
 
-final _tabShape = RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppShape.radiusSm));
+final _tabShape = RoundedRectangleBorder(
+  borderRadius: BorderRadius.circular(AppShape.radiusSm),
+);
 final _tabColors = SurfaceColors(
   container: AppColors.surface,
   content: AppColors.ink3,
@@ -167,7 +192,9 @@ final _tabColors = SurfaceColors(
   selectedContainer: AppColors.surfaceRaised,
   selectedContent: AppColors.ink,
 );
-const _tabBorder = SurfaceBorder(focused: SurfaceBorderSide.solid(AppColors.accent));
+final _tabBorder = SurfaceBorder(
+  focused: SurfaceBorderSide.solid(AppColors.accent),
+);
 
 class _TabButton extends StatelessWidget {
   final String label;
@@ -175,7 +202,12 @@ class _TabButton extends StatelessWidget {
   final FocusNode focusNode;
   final VoidCallback onClick;
 
-  const _TabButton({required this.label, required this.selected, required this.focusNode, required this.onClick});
+  const _TabButton({
+    required this.label,
+    required this.selected,
+    required this.focusNode,
+    required this.onClick,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -197,7 +229,9 @@ class _TabButton extends StatelessWidget {
   }
 }
 
-final _rowShape = RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppShape.radiusMd));
+final _rowShape = RoundedRectangleBorder(
+  borderRadius: BorderRadius.circular(AppShape.radiusMd),
+);
 final _rowColors = SurfaceColors(
   container: AppColors.surface,
   content: AppColors.ink2,
@@ -206,7 +240,9 @@ final _rowColors = SurfaceColors(
   selectedContainer: AppColors.surfaceRaised,
   selectedContent: AppColors.ink,
 );
-const _rowBorder = SurfaceBorder(focused: SurfaceBorderSide.solid(AppColors.accent));
+final _rowBorder = SurfaceBorder(
+  focused: SurfaceBorderSide.solid(AppColors.accent),
+);
 
 class _MenuRow extends StatelessWidget {
   final String label;
@@ -214,7 +250,12 @@ class _MenuRow extends StatelessWidget {
   final FocusNode? focusNode;
   final VoidCallback onClick;
 
-  const _MenuRow({required this.label, required this.selected, this.focusNode, required this.onClick});
+  const _MenuRow({
+    required this.label,
+    required this.selected,
+    this.focusNode,
+    required this.onClick,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -232,7 +273,8 @@ class _MenuRow extends StatelessWidget {
           child: Row(
             children: [
               Expanded(child: AppText(label, style: AppTypography.label)),
-              if (selected) const AppIcon(PhosphorIconsFill.checkCircle, size: 24),
+              if (selected)
+                const AppIcon(PhosphorIconsFill.checkCircle, size: 24),
             ],
           ),
         ),

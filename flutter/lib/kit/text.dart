@@ -8,7 +8,11 @@ import 'content_color.dart';
 class AppText extends StatelessWidget {
   final String text;
   final Color? color;
-  final TextStyle style;
+  // Nullable rather than defaulting to AppTypography.body directly — see
+  // AppCard.border's matching comment (AppTypography's roles are also
+  // theme-derived now, via AppColors, so they're no longer compile-time
+  // constants either).
+  final TextStyle? style;
   final TextAlign? textAlign;
   final int? maxLines;
   final TextOverflow overflow;
@@ -17,7 +21,7 @@ class AppText extends StatelessWidget {
     this.text, {
     super.key,
     this.color,
-    this.style = AppTypography.body,
+    this.style,
     this.textAlign,
     this.maxLines,
     this.overflow = TextOverflow.clip,
@@ -28,7 +32,7 @@ class AppText extends StatelessWidget {
     final resolvedColor = color ?? ContentColor.of(context);
     return Text(
       text,
-      style: style.copyWith(color: resolvedColor),
+      style: (style ?? AppTypography.body).copyWith(color: resolvedColor),
       textAlign: textAlign,
       maxLines: maxLines,
       overflow: overflow,

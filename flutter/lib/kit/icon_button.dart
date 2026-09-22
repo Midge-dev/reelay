@@ -4,7 +4,9 @@ import '../theme/tokens.dart';
 import 'focusable_surface.dart';
 import 'surface_style.dart';
 
-final _iconButtonShape = RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppShape.radiusMd));
+final _iconButtonShape = RoundedRectangleBorder(
+  borderRadius: BorderRadius.circular(AppShape.radiusMd),
+);
 const _iconButtonSize = 62.0;
 
 final _iconButtonColors = SurfaceColors(
@@ -18,7 +20,7 @@ final _iconButtonColors = SurfaceColors(
 
 /// A spine would eat a quarter of a 62x62 square, so icon-only buttons take
 /// the hairline frame alone — DESIGN.md non-negotiable #3.
-const _defaultIconButtonBorder = SurfaceBorder(
+final _defaultIconButtonBorder = SurfaceBorder(
   idle: SurfaceBorderSide.solid(AppColors.lineStrong),
   focused: SurfaceBorderSide.solid(AppColors.accent),
   noSpine: true,
@@ -30,7 +32,9 @@ const _defaultIconButtonBorder = SurfaceBorder(
 class AppIconButton extends StatelessWidget {
   final VoidCallback onClick;
   final bool enabled;
-  final SurfaceBorder border;
+  // Nullable rather than defaulting to _defaultIconButtonBorder directly —
+  // see AppCard.border's matching comment.
+  final SurfaceBorder? border;
   final FocusNode? focusNode;
   final bool autofocus;
   final ValueChanged<bool>? onFocusChange;
@@ -40,7 +44,7 @@ class AppIconButton extends StatelessWidget {
     super.key,
     required this.onClick,
     this.enabled = true,
-    this.border = _defaultIconButtonBorder,
+    this.border,
     this.focusNode,
     this.autofocus = false,
     this.onFocusChange,
@@ -60,7 +64,7 @@ class AppIconButton extends StatelessWidget {
         onFocusChange: onFocusChange,
         shape: _iconButtonShape,
         colors: _iconButtonColors,
-        border: border,
+        border: border ?? _defaultIconButtonBorder,
         child: child,
       ),
     );

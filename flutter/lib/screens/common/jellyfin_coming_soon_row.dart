@@ -8,7 +8,7 @@ import '../../theme/tokens.dart';
 import '../../theme/typography.dart';
 
 const _rowMinHeight = 96.0;
-const _badgeBorder = Border.fromBorderSide(
+final _badgeBorder = Border.fromBorderSide(
   BorderSide(color: AppColors.warning),
 );
 
@@ -39,13 +39,13 @@ class JellyfinComingSoonRow extends StatelessWidget {
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                const AppIcon(
+                AppIcon(
                   PhosphorIconsRegular.hardDrives,
                   size: 26,
                   tint: AppColors.ink3,
                 ),
                 const SizedBox(width: AppSpacing.lg),
-                const Expanded(
+                Expanded(
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -74,7 +74,7 @@ class JellyfinComingSoonRow extends StatelessWidget {
                     border: _badgeBorder,
                     borderRadius: BorderRadius.circular(AppShape.radiusSm),
                   ),
-                  child: const AppText(
+                  child: AppText(
                     'COMING SOON',
                     style: AppTypography.caption,
                     color: AppColors.warning,

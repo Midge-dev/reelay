@@ -16,7 +16,11 @@ class ChatQrOverlay extends StatefulWidget {
   final String chatUrl;
   final VoidCallback onDismiss;
 
-  const ChatQrOverlay({super.key, required this.chatUrl, required this.onDismiss});
+  const ChatQrOverlay({
+    super.key,
+    required this.chatUrl,
+    required this.onDismiss,
+  });
 
   @override
   State<ChatQrOverlay> createState() => _ChatQrOverlayState();
@@ -28,7 +32,10 @@ class _ChatQrOverlayState extends State<ChatQrOverlay> {
   @override
   void initState() {
     super.initState();
-    _autoDismissTimer = Timer(const Duration(milliseconds: _chatQrDisplayMs), widget.onDismiss);
+    _autoDismissTimer = Timer(
+      const Duration(milliseconds: _chatQrDisplayMs),
+      widget.onDismiss,
+    );
   }
 
   @override
@@ -36,7 +43,10 @@ class _ChatQrOverlayState extends State<ChatQrOverlay> {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.chatUrl != widget.chatUrl) {
       _autoDismissTimer?.cancel();
-      _autoDismissTimer = Timer(const Duration(milliseconds: _chatQrDisplayMs), widget.onDismiss);
+      _autoDismissTimer = Timer(
+        const Duration(milliseconds: _chatQrDisplayMs),
+        widget.onDismiss,
+      );
     }
   }
 
@@ -53,14 +63,20 @@ class _ChatQrOverlayState extends State<ChatQrOverlay> {
       child: ClipRRect(
         borderRadius: BorderRadius.circular(16),
         child: DecoratedBox(
-          decoration: BoxDecoration(color: AppScrims.dialog.withValues(alpha: 0.9)),
+          decoration: BoxDecoration(
+            color: AppScrims.dialog.withValues(alpha: 0.9),
+          ),
           child: Padding(
             padding: const EdgeInsets.all(20),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                const AppText('Join the chat', style: AppTypography.label, color: AppColors.inkOnArt),
+                AppText(
+                  'Join the chat',
+                  style: AppTypography.label,
+                  color: AppColors.inkOnArt,
+                ),
                 const SizedBox(height: 12),
                 ClipRRect(
                   borderRadius: BorderRadius.circular(8),
@@ -69,7 +85,10 @@ class _ChatQrOverlayState extends State<ChatQrOverlay> {
                     height: 120,
                     color: AppColors.inkOnArt,
                     padding: const EdgeInsets.all(8),
-                    child: QrImageView(data: widget.chatUrl, backgroundColor: AppColors.inkOnArt),
+                    child: QrImageView(
+                      data: widget.chatUrl,
+                      backgroundColor: AppColors.inkOnArt,
+                    ),
                   ),
                 ),
               ],

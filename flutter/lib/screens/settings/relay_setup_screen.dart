@@ -66,7 +66,9 @@ class _RelaySetupScreenState extends ConsumerState<RelaySetupScreen> {
         : [
             RelayEntry(
               id: _uuid.v4(),
-              nickname: _relayNickname.trim().isEmpty ? 'My relay' : _relayNickname.trim(),
+              nickname: _relayNickname.trim().isEmpty
+                  ? 'My relay'
+                  : _relayNickname.trim(),
               url: url,
               isDefault: true,
             ),
@@ -88,7 +90,9 @@ class _RelaySetupScreenState extends ConsumerState<RelaySetupScreen> {
           _pairingServer = null;
           _pairingUrl = null;
         });
-        WidgetsBinding.instance.addPostFrameCallback((_) => _saveFocus.requestFocus());
+        WidgetsBinding.instance.addPostFrameCallback(
+          (_) => _saveFocus.requestFocus(),
+        );
       },
     );
     final url = await server.start();
@@ -98,9 +102,14 @@ class _RelaySetupScreenState extends ConsumerState<RelaySetupScreen> {
         _pairingServer = server;
         _pairingUrl = url;
       });
-      WidgetsBinding.instance.addPostFrameCallback((_) => _cancelPairingFocus.requestFocus());
+      WidgetsBinding.instance.addPostFrameCallback(
+        (_) => _cancelPairingFocus.requestFocus(),
+      );
     } else {
-      setState(() => _pairingError = "Couldn't find a Wi-Fi address — is the TV connected to a network?");
+      setState(
+        () => _pairingError =
+            "Couldn't find a Wi-Fi address — is the TV connected to a network?",
+      );
     }
   }
 
@@ -110,7 +119,9 @@ class _RelaySetupScreenState extends ConsumerState<RelaySetupScreen> {
       _pairingServer = null;
       _pairingUrl = null;
     });
-    WidgetsBinding.instance.addPostFrameCallback((_) => _pairButtonFocus.requestFocus());
+    WidgetsBinding.instance.addPostFrameCallback(
+      (_) => _pairButtonFocus.requestFocus(),
+    );
   }
 
   @override
@@ -131,7 +142,10 @@ class _RelaySetupScreenState extends ConsumerState<RelaySetupScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.center,
                       children: [
-                        const AppText('Set up watch-together', style: AppTypography.title2),
+                        AppText(
+                          'Set up watch-together',
+                          style: AppTypography.title2,
+                        ),
                         const Padding(
                           padding: EdgeInsets.only(top: 8, bottom: 32),
                           child: AppText(
@@ -180,19 +194,30 @@ class _RelaySetupScreenState extends ConsumerState<RelaySetupScreen> {
                                   height: 160,
                                   color: AppColors.inkOnArt,
                                   padding: const EdgeInsets.all(12),
-                                  child: QrImageView(data: _pairingUrl!, backgroundColor: AppColors.inkOnArt),
+                                  child: QrImageView(
+                                    data: _pairingUrl!,
+                                    backgroundColor: AppColors.inkOnArt,
+                                  ),
                                 ),
                                 const SizedBox(width: 24),
                                 Flexible(
                                   child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
                                     mainAxisSize: MainAxisSize.min,
                                     children: [
-                                      const AppText('Scan with your phone (same Wi-Fi as the TV), or visit:'),
+                                      const AppText(
+                                        'Scan with your phone (same Wi-Fi as the TV), or visit:',
+                                      ),
                                       const SizedBox(height: 12),
-                                      AppText(_pairingUrl!, style: AppTypography.body),
+                                      AppText(
+                                        _pairingUrl!,
+                                        style: AppTypography.body,
+                                      ),
                                       const SizedBox(height: 12),
-                                      const AppText("Paste the relay URL there and it'll appear here automatically."),
+                                      const AppText(
+                                        "Paste the relay URL there and it'll appear here automatically.",
+                                      ),
                                       const SizedBox(height: 12),
                                       AppOutlinedButton(
                                         onClick: _cancelPairing,
@@ -211,13 +236,18 @@ class _RelaySetupScreenState extends ConsumerState<RelaySetupScreen> {
                             mainAxisSize: MainAxisSize.min,
                             children: [
                               AppButton(
-                                onClick: _relayUrl.trim().isNotEmpty ? _saveAndContinue : () {},
+                                onClick: _relayUrl.trim().isNotEmpty
+                                    ? _saveAndContinue
+                                    : () {},
                                 enabled: _relayUrl.trim().isNotEmpty,
                                 focusNode: _saveFocus,
                                 child: const AppText('Save & continue'),
                               ),
                               const SizedBox(width: 24),
-                              AppOutlinedButton(onClick: widget.onDone, child: const AppText('Skip for now')),
+                              AppOutlinedButton(
+                                onClick: widget.onDone,
+                                child: const AppText('Skip for now'),
+                              ),
                             ],
                           ),
                         ),

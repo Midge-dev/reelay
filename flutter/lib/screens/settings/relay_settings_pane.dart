@@ -11,9 +11,15 @@ import '../../theme/typography.dart';
 import '../common/neon_scrollbar.dart';
 import '../common/relay_status.dart';
 
-const _rowShape = RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(8)));
-final _rowColors = SurfaceColors(container: AppColors.background, content: AppColors.ink3, focusedContent: AppColors.inkOnArt);
-const _rowBorder = SurfaceBorder(
+const _rowShape = RoundedRectangleBorder(
+  borderRadius: BorderRadius.all(Radius.circular(8)),
+);
+final _rowColors = SurfaceColors(
+  container: AppColors.background,
+  content: AppColors.ink3,
+  focusedContent: AppColors.inkOnArt,
+);
+final _rowBorder = SurfaceBorder(
   idle: SurfaceBorderSide.solid(AppColors.line),
   focused: SurfaceBorderSide.solid(AppColors.accent),
 );
@@ -95,12 +101,15 @@ class RelaySettingsPane extends StatelessWidget {
                       onClick: onBack,
                       focusNode: backFocus,
                       shape: const StadiumBorder(),
-                      colors: SurfaceColors(container: AppColors.transparent, content: AppColors.ink3),
-                      child: const AppText('‹ Settings', color: AppColors.ink3),
+                      colors: SurfaceColors(
+                        container: AppColors.transparent,
+                        content: AppColors.ink3,
+                      ),
+                      child: AppText('‹ Settings', color: AppColors.ink3),
                     ),
                   ),
-                  const AppText('Relay settings', style: AppTypography.title1),
-                  const Padding(
+                  AppText('Relay settings', style: AppTypography.title1),
+                  Padding(
                     padding: EdgeInsets.only(top: 8, bottom: 24),
                     child: AppText(
                       'Anyone who keeps a relay running can be added by address — a cloud host, a Pi in '
@@ -131,7 +140,10 @@ class RelaySettingsPane extends StatelessWidget {
                     ),
                   ),
                   if (pairingError != null)
-                    Padding(padding: const EdgeInsets.only(top: 16), child: AppText(pairingError!)),
+                    Padding(
+                      padding: const EdgeInsets.only(top: 16),
+                      child: AppText(pairingError!),
+                    ),
                   if (pairingUrl != null)
                     Container(
                       margin: const EdgeInsets.only(top: 12),
@@ -146,7 +158,10 @@ class RelaySettingsPane extends StatelessWidget {
                             height: 160,
                             color: AppColors.inkOnArt,
                             padding: const EdgeInsets.all(12),
-                            child: QrImageView(data: pairingUrl!, backgroundColor: AppColors.inkOnArt),
+                            child: QrImageView(
+                              data: pairingUrl!,
+                              backgroundColor: AppColors.inkOnArt,
+                            ),
                           ),
                           const SizedBox(width: 24),
                           Flexible(
@@ -154,7 +169,9 @@ class RelaySettingsPane extends StatelessWidget {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                const AppText('Scan with your phone (same Wi-Fi as the TV), or visit:'),
+                                const AppText(
+                                  'Scan with your phone (same Wi-Fi as the TV), or visit:',
+                                ),
                                 const SizedBox(height: 12),
                                 AppText(pairingUrl!, style: AppTypography.body),
                                 const SizedBox(height: 12),
@@ -178,7 +195,11 @@ class RelaySettingsPane extends StatelessWidget {
                   if (testingRelayName != null)
                     Padding(
                       padding: const EdgeInsets.only(top: 12),
-                      child: RelayStatusLine(status: testStatus, relayNickname: testingRelayName!, onRetry: () {}),
+                      child: RelayStatusLine(
+                        status: testStatus,
+                        relayNickname: testingRelayName!,
+                        onRetry: () {},
+                      ),
                     ),
                 ],
               ),
@@ -221,7 +242,11 @@ class RelayRow extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          RelayStatusDot(status: status?.reachable == true ? RelayStatus.dotOnly : RelayStatus.silent),
+          RelayStatusDot(
+            status: status?.reachable == true
+                ? RelayStatus.dotOnly
+                : RelayStatus.silent,
+          ),
           const SizedBox(width: 20),
           Expanded(
             child: Column(
@@ -235,12 +260,15 @@ class RelayRow extends StatelessWidget {
                     if (entry.isDefault) ...[
                       const SizedBox(width: 12),
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 5,
+                        ),
                         decoration: BoxDecoration(
                           color: AppColors.accent.withValues(alpha: 0.9),
                           borderRadius: BorderRadius.circular(50),
                         ),
-                        child: const AppText('Default', color: AppColors.inkOnArt),
+                        child: AppText('Default', color: AppColors.inkOnArt),
                       ),
                     ],
                   ],
@@ -254,12 +282,18 @@ class RelayRow extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             children: [
               if (!entry.isDefault) ...[
-                AppOutlinedButton(onClick: onMakeDefault, child: const AppText('Make default')),
+                AppOutlinedButton(
+                  onClick: onMakeDefault,
+                  child: const AppText('Make default'),
+                ),
                 const SizedBox(width: 16),
               ],
               AppOutlinedButton(onClick: onEdit, child: const AppText('Edit')),
               const SizedBox(width: 16),
-              AppOutlinedButton(onClick: onRemove, child: const AppText('Remove')),
+              AppOutlinedButton(
+                onClick: onRemove,
+                child: const AppText('Remove'),
+              ),
             ],
           ),
         ],

@@ -1,3 +1,5 @@
+import '../../theme/tokens.dart';
+
 enum ChatOverlayCorner { topStart, topEnd, bottomStart, bottomEnd }
 
 class RelayEntry {
@@ -6,23 +8,33 @@ class RelayEntry {
   final String url;
   final bool isDefault;
 
-  const RelayEntry({required this.id, required this.nickname, required this.url, this.isDefault = false});
+  const RelayEntry({
+    required this.id,
+    required this.nickname,
+    required this.url,
+    this.isDefault = false,
+  });
 
   RelayEntry copyWith({bool? isDefault}) => RelayEntry(
-        id: id,
-        nickname: nickname,
-        url: url,
-        isDefault: isDefault ?? this.isDefault,
-      );
+    id: id,
+    nickname: nickname,
+    url: url,
+    isDefault: isDefault ?? this.isDefault,
+  );
 
   factory RelayEntry.fromJson(Map<String, dynamic> json) => RelayEntry(
-        id: json['id'] as String,
-        nickname: json['nickname'] as String,
-        url: json['url'] as String,
-        isDefault: json['isDefault'] as bool? ?? false,
-      );
+    id: json['id'] as String,
+    nickname: json['nickname'] as String,
+    url: json['url'] as String,
+    isDefault: json['isDefault'] as bool? ?? false,
+  );
 
-  Map<String, dynamic> toJson() => {'id': id, 'nickname': nickname, 'url': url, 'isDefault': isDefault};
+  Map<String, dynamic> toJson() => {
+    'id': id,
+    'nickname': nickname,
+    'url': url,
+    'isDefault': isDefault,
+  };
 }
 
 /// A device-local identity, distinct from the Plex account it's bound to —
@@ -45,20 +57,20 @@ class Profile {
   });
 
   factory Profile.fromJson(Map<String, dynamic> json) => Profile(
-        id: json['id'] as String,
-        name: json['name'] as String,
-        watchTogetherName: json['watchTogetherName'] as String,
-        plexUsername: json['plexUsername'] as String,
-        thumb: json['thumb'] as String?,
-      );
+    id: json['id'] as String,
+    name: json['name'] as String,
+    watchTogetherName: json['watchTogetherName'] as String,
+    plexUsername: json['plexUsername'] as String,
+    thumb: json['thumb'] as String?,
+  );
 
   Map<String, dynamic> toJson() => {
-        'id': id,
-        'name': name,
-        'watchTogetherName': watchTogetherName,
-        'plexUsername': plexUsername,
-        'thumb': thumb,
-      };
+    'id': id,
+    'name': name,
+    'watchTogetherName': watchTogetherName,
+    'plexUsername': plexUsername,
+    'thumb': thumb,
+  };
 }
 
 class BitratePreset {
@@ -89,6 +101,7 @@ class AppSettings {
   final ChatOverlayCorner chatOverlayCorner;
   final String? selectedServerId;
   final List<Profile> profiles;
+  final ThemeId themeId;
 
   const AppSettings({
     this.relays = const [],
@@ -99,6 +112,7 @@ class AppSettings {
     this.chatOverlayCorner = ChatOverlayCorner.bottomEnd,
     this.selectedServerId,
     this.profiles = const [],
+    this.themeId = ThemeId.nocturne,
   });
 
   AppSettings copyWith({
@@ -110,6 +124,7 @@ class AppSettings {
     ChatOverlayCorner? chatOverlayCorner,
     String? selectedServerId,
     List<Profile>? profiles,
+    ThemeId? themeId,
   }) {
     return AppSettings(
       relays: relays ?? this.relays,
@@ -120,6 +135,7 @@ class AppSettings {
       chatOverlayCorner: chatOverlayCorner ?? this.chatOverlayCorner,
       selectedServerId: selectedServerId ?? this.selectedServerId,
       profiles: profiles ?? this.profiles,
+      themeId: themeId ?? this.themeId,
     );
   }
 

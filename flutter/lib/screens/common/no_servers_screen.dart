@@ -29,7 +29,12 @@ class NoServersScreen extends StatefulWidget {
   final VoidCallback onRetry;
   final VoidCallback onStartOver;
 
-  const NoServersScreen({super.key, required this.resources, required this.onRetry, required this.onStartOver});
+  const NoServersScreen({
+    super.key,
+    required this.resources,
+    required this.onRetry,
+    required this.onStartOver,
+  });
 
   @override
   State<NoServersScreen> createState() => _NoServersScreenState();
@@ -44,7 +49,9 @@ class _NoServersScreenState extends State<NoServersScreen> {
   void initState() {
     super.initState();
     _timer = Timer.periodic(const Duration(seconds: 1), _tick);
-    WidgetsBinding.instance.addPostFrameCallback((_) => _retryFocus.requestFocus());
+    WidgetsBinding.instance.addPostFrameCallback(
+      (_) => _retryFocus.requestFocus(),
+    );
   }
 
   void _tick(Timer timer) {
@@ -75,9 +82,17 @@ class _NoServersScreenState extends State<NoServersScreen> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const AppIcon(PhosphorIconsRegular.cloudSlash, size: 72, tint: AppColors.lineStrong),
+              AppIcon(
+                PhosphorIconsRegular.cloudSlash,
+                size: 72,
+                tint: AppColors.lineStrong,
+              ),
               const SizedBox(height: 18),
-              const AppText("Can't reach any of your servers", style: AppTypography.title1, textAlign: TextAlign.center),
+              AppText(
+                "Can't reach any of your servers",
+                style: AppTypography.title1,
+                textAlign: TextAlign.center,
+              ),
               const SizedBox(height: 12),
               AppText(
                 'Nothing is wrong with Reelay or your account. ${count == 1 ? 'One server is' : '$count servers are'} configured and none of them answered.',
@@ -102,11 +117,17 @@ class _NoServersScreenState extends State<NoServersScreen> {
                   AppButton(
                     onClick: widget.onRetry,
                     focusNode: _retryFocus,
-                    child: Row(mainAxisSize: MainAxisSize.min, children: [
-                      const AppIcon(PhosphorIconsRegular.arrowClockwise, size: 22),
-                      const SizedBox(width: AppSpacing.sm),
-                      const AppText('Try again now'),
-                    ]),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const AppIcon(
+                          PhosphorIconsRegular.arrowClockwise,
+                          size: 22,
+                        ),
+                        const SizedBox(width: AppSpacing.sm),
+                        const AppText('Try again now'),
+                      ],
+                    ),
                   ),
                   const SizedBox(width: AppSpacing.md),
                   AppOutlinedButton(
@@ -119,9 +140,16 @@ class _NoServersScreenState extends State<NoServersScreen> {
               Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const AppIcon(PhosphorIconsRegular.clock, size: 20, tint: AppColors.ink4),
+                  AppIcon(
+                    PhosphorIconsRegular.clock,
+                    size: 20,
+                    tint: AppColors.ink4,
+                  ),
                   const SizedBox(width: AppSpacing.sm),
-                  AppText('Trying again on its own in $_secondsRemaining second${_secondsRemaining == 1 ? '' : 's'}', color: AppColors.ink4),
+                  AppText(
+                    'Trying again on its own in $_secondsRemaining second${_secondsRemaining == 1 ? '' : 's'}',
+                    color: AppColors.ink4,
+                  ),
                 ],
               ),
             ],
@@ -150,7 +178,11 @@ class _ServerRow extends StatelessWidget {
         ),
         child: Row(
           children: [
-            const AppIcon(PhosphorIconsRegular.hardDrives, size: 24, tint: AppColors.ink3),
+            AppIcon(
+              PhosphorIconsRegular.hardDrives,
+              size: 24,
+              tint: AppColors.ink3,
+            ),
             const SizedBox(width: AppSpacing.lg),
             Expanded(
               child: Column(
@@ -159,16 +191,31 @@ class _ServerRow extends StatelessWidget {
                 children: [
                   AppText(resource.name, color: AppColors.ink2),
                   const SizedBox(height: 3),
-                  const AppText('Plex', style: AppTypography.caption, color: AppColors.ink3),
+                  AppText(
+                    'Plex',
+                    style: AppTypography.caption,
+                    color: AppColors.ink3,
+                  ),
                 ],
               ),
             ),
             Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Container(width: 9, height: 9, decoration: const BoxDecoration(shape: BoxShape.circle, color: AppColors.error)),
+                Container(
+                  width: 9,
+                  height: 9,
+                  decoration: const BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: AppColors.error,
+                  ),
+                ),
                 const SizedBox(width: AppSpacing.sm),
-                const AppText('Unreachable', style: AppTypography.caption, color: AppColors.error),
+                AppText(
+                  'Unreachable',
+                  style: AppTypography.caption,
+                  color: AppColors.error,
+                ),
               ],
             ),
           ],

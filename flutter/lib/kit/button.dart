@@ -8,9 +8,13 @@ const _buttonHeight = 62.0;
 const _buttonContentPadding = EdgeInsets.symmetric(horizontal: AppSpacing.xxl);
 
 const _buttonCompactHeight = 52.0;
-const _buttonCompactContentPadding = EdgeInsets.symmetric(horizontal: AppSpacing.lg);
+const _buttonCompactContentPadding = EdgeInsets.symmetric(
+  horizontal: AppSpacing.lg,
+);
 
-final _buttonShape = RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppShape.radiusMd));
+final _buttonShape = RoundedRectangleBorder(
+  borderRadius: BorderRadius.circular(AppShape.radiusMd),
+);
 
 final _filledColors = SurfaceColors(
   container: AppColors.surface,
@@ -19,7 +23,7 @@ final _filledColors = SurfaceColors(
   pressedContainer: AppColors.accent900,
   pressedContent: AppColors.ink2,
 );
-const _filledBorder = SurfaceBorder(
+final _filledBorder = SurfaceBorder(
   idle: SurfaceBorderSide.solid(AppColors.line),
   focused: SurfaceBorderSide.solid(AppColors.accent),
 );
@@ -60,8 +64,14 @@ class AppButton extends StatelessWidget {
       child: SizedBox(
         height: compact ? _buttonCompactHeight : _buttonHeight,
         child: Padding(
-          padding: compact ? _buttonCompactContentPadding : _buttonContentPadding,
-          child: Row(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.center, children: [child]),
+          padding: compact
+              ? _buttonCompactContentPadding
+              : _buttonContentPadding,
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [child],
+          ),
         ),
       ),
     );
@@ -76,7 +86,7 @@ final _outlinedColors = SurfaceColors(
   pressedContainer: AppColors.accent900,
   pressedContent: AppColors.ink2,
 );
-const _outlinedBorder = SurfaceBorder(
+final _outlinedBorder = SurfaceBorder(
   idle: SurfaceBorderSide.solid(AppColors.lineStrong),
   focused: SurfaceBorderSide.solid(AppColors.accent),
 );
@@ -116,8 +126,14 @@ class AppOutlinedButton extends StatelessWidget {
       child: SizedBox(
         height: compact ? _buttonCompactHeight : _buttonHeight,
         child: Padding(
-          padding: compact ? _buttonCompactContentPadding : _buttonContentPadding,
-          child: Row(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.center, children: [child]),
+          padding: compact
+              ? _buttonCompactContentPadding
+              : _buttonContentPadding,
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [child],
+          ),
         ),
       ),
     );

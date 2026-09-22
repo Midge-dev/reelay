@@ -13,10 +13,24 @@ class WatchTogetherIcon extends StatelessWidget {
       height: 14,
       child: Stack(
         children: [
-          Container(width: 14, height: 14, decoration: const BoxDecoration(shape: BoxShape.circle, color: AppColors.accent300)),
+          Container(
+            width: 14,
+            height: 14,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: AppColors.accent300,
+            ),
+          ),
           Positioned(
             left: 9,
-            child: Container(width: 14, height: 14, decoration: const BoxDecoration(shape: BoxShape.circle, color: AppColors.accent)),
+            child: Container(
+              width: 14,
+              height: 14,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: AppColors.accent,
+              ),
+            ),
           ),
         ],
       ),

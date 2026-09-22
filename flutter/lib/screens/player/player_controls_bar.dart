@@ -213,7 +213,7 @@ class PlayerControlsBar extends StatelessWidget {
                     AppIconButton(
                       onClick: onRewind,
                       focusNode: rewindFocusNode,
-                      child: const AppIcon(
+                      child: AppIcon(
                         PhosphorIconsRegular.rewind,
                         tint: AppColors.inkOnArt,
                       ),
@@ -239,7 +239,7 @@ class PlayerControlsBar extends StatelessWidget {
                     AppIconButton(
                       onClick: onForward,
                       focusNode: forwardFocusNode,
-                      child: const AppIcon(
+                      child: AppIcon(
                         PhosphorIconsRegular.fastForward,
                         tint: AppColors.inkOnArt,
                       ),
@@ -266,7 +266,7 @@ class PlayerControlsBar extends StatelessWidget {
                     AppIconButton(
                       onClick: onCycleBitrate,
                       focusNode: bitrateFocusNode,
-                      child: const AppIcon(
+                      child: AppIcon(
                         PhosphorIconsRegular.monitor,
                         tint: AppColors.inkOnArt,
                       ),
@@ -293,7 +293,7 @@ class PlayerControlsBar extends StatelessWidget {
                     AppIconButton(
                       onClick: onOpenMenu,
                       focusNode: menuFocusNode,
-                      child: const AppIcon(
+                      child: AppIcon(
                         PhosphorIconsRegular.gear,
                         tint: AppColors.inkOnArt,
                       ),
@@ -353,7 +353,7 @@ class _ProgressTrack extends StatelessWidget {
                         alignment: Alignment.centerLeft,
                         widthFactor: playedFraction,
                         // Flat fill, not a gradient — DESIGN.md #4/#8.
-                        child: const ColoredBox(color: AppColors.accent),
+                        child: ColoredBox(color: AppColors.accent),
                       ),
                     ],
                   ),

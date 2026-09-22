@@ -50,7 +50,9 @@ class ClickToTypeTextField extends StatefulWidget {
 }
 
 class _ClickToTypeTextFieldState extends State<ClickToTypeTextField> {
-  late final TextEditingController _controller = TextEditingController(text: widget.value);
+  late final TextEditingController _controller = TextEditingController(
+    text: widget.value,
+  );
   late FocusNode _displayFocusNode;
   bool _ownsFocusNode = false;
   final _editFocusNode = FocusNode(debugLabel: 'click-to-type-edit');
@@ -61,7 +63,8 @@ class _ClickToTypeTextFieldState extends State<ClickToTypeTextField> {
   void initState() {
     super.initState();
     _ownsFocusNode = widget.focusNode == null;
-    _displayFocusNode = widget.focusNode ?? FocusNode(debugLabel: 'click-to-type-display');
+    _displayFocusNode =
+        widget.focusNode ?? FocusNode(debugLabel: 'click-to-type-display');
     _displayFocusNode.addListener(_handleDisplayFocusChange);
     _editFocusNode.addListener(_handleEditFocusChange);
   }
@@ -70,7 +73,10 @@ class _ClickToTypeTextFieldState extends State<ClickToTypeTextField> {
   void didUpdateWidget(covariant ClickToTypeTextField oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (widget.value != oldWidget.value && widget.value != _controller.text) {
-      _controller.value = TextEditingValue(text: widget.value, selection: TextSelection.collapsed(offset: widget.value.length));
+      _controller.value = TextEditingValue(
+        text: widget.value,
+        selection: TextSelection.collapsed(offset: widget.value.length),
+      );
     }
   }
 
@@ -98,12 +104,16 @@ class _ClickToTypeTextFieldState extends State<ClickToTypeTextField> {
 
   KeyEventResult _handleDisplayKeyEvent(FocusNode node, KeyEvent event) {
     if (event is! KeyDownEvent) return KeyEventResult.ignored;
-    if (event.logicalKey == LogicalKeyboardKey.select || event.logicalKey == LogicalKeyboardKey.enter) {
+    if (event.logicalKey == LogicalKeyboardKey.select ||
+        event.logicalKey == LogicalKeyboardKey.enter) {
       setState(() => _editingEnabled = true);
-      WidgetsBinding.instance.addPostFrameCallback((_) => _editFocusNode.requestFocus());
+      WidgetsBinding.instance.addPostFrameCallback(
+        (_) => _editFocusNode.requestFocus(),
+      );
       return KeyEventResult.handled;
     }
-    if (event.logicalKey == LogicalKeyboardKey.arrowRight && widget.onNavigateRight != null) {
+    if (event.logicalKey == LogicalKeyboardKey.arrowRight &&
+        widget.onNavigateRight != null) {
       widget.onNavigateRight!();
       return KeyEventResult.handled;
     }
@@ -112,13 +122,19 @@ class _ClickToTypeTextFieldState extends State<ClickToTypeTextField> {
 
   void _stopEditing() {
     setState(() => _editingEnabled = false);
-    WidgetsBinding.instance.addPostFrameCallback((_) => _displayFocusNode.requestFocus());
+    WidgetsBinding.instance.addPostFrameCallback(
+      (_) => _displayFocusNode.requestFocus(),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
-    final style = widget.textStyle ?? const TextStyle(fontFamily: 'Inter', color: AppColors.ink);
-    final borderColor = _isFocused || _editingEnabled ? AppColors.accent : AppColors.line;
+    final style =
+        widget.textStyle ??
+        TextStyle(fontFamily: 'Inter', color: AppColors.ink);
+    final borderColor = _isFocused || _editingEnabled
+        ? AppColors.accent
+        : AppColors.line;
 
     return Container(
       decoration: BoxDecoration(
@@ -143,7 +159,10 @@ class _ClickToTypeTextFieldState extends State<ClickToTypeTextField> {
               focusNode: _displayFocusNode,
               onKeyEvent: _handleDisplayKeyEvent,
               child: widget.value.isEmpty && widget.hintText != null
-                  ? Text(widget.hintText!, style: style.copyWith(color: AppColors.ink3))
+                  ? Text(
+                      widget.hintText!,
+                      style: style.copyWith(color: AppColors.ink3),
+                    )
                   : Text(widget.value, style: style),
             ),
     );

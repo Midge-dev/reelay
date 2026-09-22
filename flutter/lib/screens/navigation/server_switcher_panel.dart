@@ -189,7 +189,7 @@ class _ServerSwitcherPanelState extends State<ServerSwitcherPanel> {
             child: DecoratedBox(
               decoration: BoxDecoration(
                 color: AppColors.background,
-                border: const Border(right: BorderSide(color: AppColors.line)),
+                border: Border(right: BorderSide(color: AppColors.line)),
                 boxShadow: AppElevation.overlay,
               ),
               child: Padding(
@@ -206,7 +206,7 @@ class _ServerSwitcherPanelState extends State<ServerSwitcherPanel> {
                           color: AppColors.accent,
                         ),
                         const SizedBox(width: AppSpacing.md),
-                        const AppText('SERVERS', style: AppTypography.micro),
+                        AppText('SERVERS', style: AppTypography.micro),
                       ],
                     ),
                     const SizedBox(height: AppSpacing.sm),
@@ -239,7 +239,7 @@ class _ServerSwitcherPanelState extends State<ServerSwitcherPanel> {
                               ],
                               const JellyfinComingSoonRow(),
                               const SizedBox(height: AppSpacing.xl),
-                              const DecoratedBox(
+                              DecoratedBox(
                                 decoration: BoxDecoration(
                                   border: Border(
                                     top: BorderSide(color: AppColors.line),
@@ -283,7 +283,7 @@ class _ServerSwitcherPanelState extends State<ServerSwitcherPanel> {
   }
 }
 
-const _rowBorder = SurfaceBorder(
+final _rowBorder = SurfaceBorder(
   idle: SurfaceBorderSide.solid(AppColors.line),
   focused: SurfaceBorderSide.solid(AppColors.accent),
 );
@@ -375,7 +375,7 @@ class _ReachabilityBadge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (loading) {
-      return const AppText('Connecting…', style: AppTypography.caption);
+      return AppText('Connecting…', style: AppTypography.caption);
     }
     final (color, label) = switch (reachability) {
       ServerReachability.local => (AppColors.success, 'Local'),

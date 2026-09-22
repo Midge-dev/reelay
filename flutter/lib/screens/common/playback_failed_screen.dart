@@ -18,7 +18,12 @@ class PlaybackFailedScreen extends StatefulWidget {
   final VoidCallback onRetry;
   final VoidCallback onBack;
 
-  const PlaybackFailedScreen({super.key, required this.reason, required this.onRetry, required this.onBack});
+  const PlaybackFailedScreen({
+    super.key,
+    required this.reason,
+    required this.onRetry,
+    required this.onBack,
+  });
 
   @override
   State<PlaybackFailedScreen> createState() => _PlaybackFailedScreenState();
@@ -30,7 +35,9 @@ class _PlaybackFailedScreenState extends State<PlaybackFailedScreen> {
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) => _retryFocus.requestFocus());
+    WidgetsBinding.instance.addPostFrameCallback(
+      (_) => _retryFocus.requestFocus(),
+    );
   }
 
   @override
@@ -60,9 +67,17 @@ class _PlaybackFailedScreenState extends State<PlaybackFailedScreen> {
               Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const AppIcon(PhosphorIconsRegular.warning, size: 28, tint: AppColors.warning),
+                  const AppIcon(
+                    PhosphorIconsRegular.warning,
+                    size: 28,
+                    tint: AppColors.warning,
+                  ),
                   const SizedBox(width: AppSpacing.md),
-                  const AppText("COULDN'T START", style: AppTypography.micro, color: AppColors.warning),
+                  AppText(
+                    "COULDN'T START",
+                    style: AppTypography.micro,
+                    color: AppColors.warning,
+                  ),
                 ],
               ),
               const SizedBox(height: AppSpacing.xl),
@@ -74,11 +89,17 @@ class _PlaybackFailedScreenState extends State<PlaybackFailedScreen> {
                   AppButton(
                     onClick: widget.onRetry,
                     focusNode: _retryFocus,
-                    child: Row(mainAxisSize: MainAxisSize.min, children: [
-                      const AppIcon(PhosphorIconsRegular.arrowClockwise, size: 22),
-                      const SizedBox(width: AppSpacing.sm),
-                      const AppText('Try again'),
-                    ]),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const AppIcon(
+                          PhosphorIconsRegular.arrowClockwise,
+                          size: 22,
+                        ),
+                        const SizedBox(width: AppSpacing.sm),
+                        const AppText('Try again'),
+                      ],
+                    ),
                   ),
                   const SizedBox(width: AppSpacing.md),
                   AppOutlinedButton(

@@ -2,17 +2,28 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'screens/app_root.dart';
+import 'state/data_providers.dart';
 import 'theme/scale.dart';
+import 'theme/tokens.dart';
 
 void main() {
   runApp(const ProviderScope(child: ReelayApp()));
 }
 
-class ReelayApp extends StatelessWidget {
+class ReelayApp extends ConsumerWidget {
   const ReelayApp({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    // Screen 22 — reapplied on every emission from settingsStreamProvider
+    // (seeded at app start, then again whenever the Appearance screen saves
+    // a new theme), so AppColors is always current before anything below
+    // reads it. A build-time mutation of a plain static field, not
+    // setState — the whole point is that nothing downstream needs its own
+    // subscription to notice.
+    AppColors.applyTheme(
+      ref.watch(settingsStreamProvider).value?.themeId ?? ThemeId.nocturne,
+    );
     return WidgetsApp(
       title: 'Reelay',
       color: const Color(0xFF9184D9),
@@ -29,7 +40,8 @@ class ReelayApp extends StatelessWidget {
       pageRouteBuilder: <T>(RouteSettings settings, WidgetBuilder builder) {
         return PageRouteBuilder<T>(
           settings: settings,
-          pageBuilder: (context, animation, secondaryAnimation) => builder(context),
+          pageBuilder: (context, animation, secondaryAnimation) =>
+              builder(context),
         );
       },
     );

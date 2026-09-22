@@ -54,7 +54,8 @@ class _WatchTogetherBarState extends State<WatchTogetherBar> {
   MergedRoom _selectRoom() {
     for (final merged in widget.rooms) {
       final id = merged.room.roomId;
-      if (id == widget.myRoomId || widget.hostedRoomIds.contains(id)) return merged;
+      if (id == widget.myRoomId || widget.hostedRoomIds.contains(id))
+        return merged;
     }
     return widget.rooms.first;
   }
@@ -71,7 +72,8 @@ class _WatchTogetherBarState extends State<WatchTogetherBar> {
     if (!ok) {
       setState(() => _endFailed = true);
       Future.delayed(const Duration(seconds: 4), () {
-        if (mounted && _endResetToken == token) setState(() => _endFailed = false);
+        if (mounted && _endResetToken == token)
+          setState(() => _endFailed = false);
       });
     }
   }
@@ -92,7 +94,9 @@ class _WatchTogetherBarState extends State<WatchTogetherBar> {
     String? subline;
     if (isHosting) {
       spineColor = nobodyJoined ? AppColors.warning : AppColors.accent;
-      headline = nobodyJoined ? 'Your room is open · nobody has joined' : 'Your room is open';
+      headline = nobodyJoined
+          ? 'Your room is open · nobody has joined'
+          : 'Your room is open';
       subline = '${room.occupants} of ${room.maxSeats} watching';
     } else if (isSeated) {
       spineColor = AppColors.accent;
@@ -114,19 +118,41 @@ class _WatchTogetherBarState extends State<WatchTogetherBar> {
           decoration: BoxDecoration(
             color: isSeated ? AppColors.surfaceRaised : AppColors.surface,
             borderRadius: BorderRadius.circular(AppShape.radiusMd),
-            border: Border.all(color: isSeated ? AppColors.accent : AppColors.line, width: isSeated ? AppShape.borderWidth : 1),
+            border: Border.all(
+              color: isSeated ? AppColors.accent : AppColors.line,
+              width: isSeated ? AppShape.borderWidth : 1,
+            ),
           ),
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              Container(width: AppShape.spineWidth, height: 32, decoration: BoxDecoration(color: spineColor, borderRadius: BorderRadius.circular(3))),
+              Container(
+                width: AppShape.spineWidth,
+                height: 32,
+                decoration: BoxDecoration(
+                  color: spineColor,
+                  borderRadius: BorderRadius.circular(3),
+                ),
+              ),
               const SizedBox(width: AppSpacing.lg),
-              AppText(headline, style: AppTypography.label.copyWith(fontWeight: FontWeight.w500)),
+              AppText(
+                headline,
+                style: AppTypography.label.copyWith(
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
               const SizedBox(width: AppSpacing.md),
-              Flexible(child: AppText(subline, color: AppColors.ink3, maxLines: 1, overflow: TextOverflow.ellipsis)),
+              Flexible(
+                child: AppText(
+                  subline,
+                  color: AppColors.ink3,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
               const SizedBox(width: AppSpacing.lg),
               if (isHosting && _endFailed)
-                const AppText("Can't reach relay", color: AppColors.ink3)
+                AppText("Can't reach relay", color: AppColors.ink3)
               else if (isHosting) ...[
                 AppOutlinedButton(
                   compact: true,
@@ -140,7 +166,11 @@ class _WatchTogetherBarState extends State<WatchTogetherBar> {
                 const SizedBox(width: AppSpacing.md),
                 // Never the first focus target — a D-pad slip must not be
                 // able to close a room full of people.
-                AppOutlinedButton(compact: true, onClick: _openEndConfirm, child: const AppText('End')),
+                AppOutlinedButton(
+                  compact: true,
+                  onClick: _openEndConfirm,
+                  child: const AppText('End'),
+                ),
               ] else
                 AppOutlinedButton(
                   compact: true,
@@ -148,18 +178,29 @@ class _WatchTogetherBarState extends State<WatchTogetherBar> {
                   onClick: () => widget.onSelectRoom(selected),
                   focusNode: widget.focusNode,
                   autofocus: widget.autofocus,
-                  child: AppText(isSeated ? 'Go back in' : (room.occupants >= room.maxSeats ? 'Full' : 'Join')),
+                  child: AppText(
+                    isSeated
+                        ? 'Go back in'
+                        : (room.occupants >= room.maxSeats ? 'Full' : 'Join'),
+                  ),
                 ),
               if (moreCount > 0) ...[
                 const SizedBox(width: AppSpacing.md),
                 Container(width: 1, height: 24, color: AppColors.lineStrong),
                 const SizedBox(width: AppSpacing.md),
-                AppText('$moreCount more room${moreCount == 1 ? '' : 's'}', color: AppColors.accent300),
+                AppText(
+                  '$moreCount more room${moreCount == 1 ? '' : 's'}',
+                  color: AppColors.accent300,
+                ),
               ],
             ],
           ),
         ),
-        if (_confirmingEnd) _EndSessionConfirm(onKeepOpen: _closeEndConfirm, onEndForEveryone: () => _endNow(selected)),
+        if (_confirmingEnd)
+          _EndSessionConfirm(
+            onKeepOpen: _closeEndConfirm,
+            onEndForEveryone: () => _endNow(selected),
+          ),
       ],
     );
   }
@@ -174,7 +215,10 @@ class _EndSessionConfirm extends StatelessWidget {
   final VoidCallback onKeepOpen;
   final VoidCallback onEndForEveryone;
 
-  const _EndSessionConfirm({required this.onKeepOpen, required this.onEndForEveryone});
+  const _EndSessionConfirm({
+    required this.onKeepOpen,
+    required this.onEndForEveryone,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -196,9 +240,9 @@ class _EndSessionConfirm extends StatelessWidget {
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const AppText('End the session?', style: AppTypography.title2),
+                  AppText('End the session?', style: AppTypography.title2),
                   const SizedBox(height: AppSpacing.md),
-                  const AppText(
+                  AppText(
                     'Everyone will be dropped back to their own home screens. Your place is kept, and you can keep watching on your own.',
                     color: AppColors.ink2,
                   ),
@@ -206,11 +250,18 @@ class _EndSessionConfirm extends StatelessWidget {
                   Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      AppButton(onClick: onKeepOpen, autofocus: true, child: const AppText('Keep it open')),
+                      AppButton(
+                        onClick: onKeepOpen,
+                        autofocus: true,
+                        child: const AppText('Keep it open'),
+                      ),
                       const SizedBox(width: AppSpacing.md),
                       AppOutlinedButton(
                         onClick: onEndForEveryone,
-                        child: const AppText('End for everyone', color: AppColors.error),
+                        child: const AppText(
+                          'End for everyone',
+                          color: AppColors.error,
+                        ),
                       ),
                     ],
                   ),

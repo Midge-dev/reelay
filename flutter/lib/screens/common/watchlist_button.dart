@@ -15,13 +15,20 @@ class WatchlistButton extends StatelessWidget {
   final VoidCallback onClick;
   final ValueChanged<bool>? onFocusChange;
 
-  const WatchlistButton({super.key, required this.isOnWatchlist, required this.onClick, this.onFocusChange});
+  const WatchlistButton({
+    super.key,
+    required this.isOnWatchlist,
+    required this.onClick,
+    this.onFocusChange,
+  });
 
   @override
   Widget build(BuildContext context) {
     final border = SurfaceBorder(
-      idle: SurfaceBorderSide.solid(isOnWatchlist ? AppColors.accent : AppColors.lineStrong),
-      focused: const SurfaceBorderSide.solid(AppColors.accent),
+      idle: SurfaceBorderSide.solid(
+        isOnWatchlist ? AppColors.accent : AppColors.lineStrong,
+      ),
+      focused: SurfaceBorderSide.solid(AppColors.accent),
       noSpine: true,
     );
 
@@ -29,7 +36,11 @@ class WatchlistButton extends StatelessWidget {
       onClick: onClick,
       onFocusChange: onFocusChange,
       border: border,
-      child: AppText(isOnWatchlist ? '✓' : '+', style: AppTypography.label, color: isOnWatchlist ? AppColors.accent : AppColors.ink2),
+      child: AppText(
+        isOnWatchlist ? '✓' : '+',
+        style: AppTypography.label,
+        color: isOnWatchlist ? AppColors.accent : AppColors.ink2,
+      ),
     );
   }
 }

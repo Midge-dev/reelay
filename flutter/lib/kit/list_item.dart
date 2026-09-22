@@ -4,7 +4,9 @@ import '../theme/tokens.dart';
 import 'focusable_surface.dart';
 import 'surface_style.dart';
 
-final _listItemShape = RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppShape.radiusMd));
+final _listItemShape = RoundedRectangleBorder(
+  borderRadius: BorderRadius.circular(AppShape.radiusMd),
+);
 const _listItemHeight = 96.0;
 const _listItemPadding = EdgeInsets.symmetric(horizontal: AppSpacing.xl);
 
@@ -15,7 +17,7 @@ final _listItemColors = SurfaceColors(
   focusedContent: AppColors.ink,
   selectedContent: AppColors.ink,
 );
-const _listItemBorder = SurfaceBorder(
+final _listItemBorder = SurfaceBorder(
   idle: SurfaceBorderSide.solid(AppColors.line),
   focused: SurfaceBorderSide.solid(AppColors.accent),
 );
@@ -60,7 +62,10 @@ class AppListItem extends StatelessWidget {
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                if (leading != null) ...[leading!, const SizedBox(width: AppSpacing.lg)],
+                if (leading != null) ...[
+                  leading!,
+                  const SizedBox(width: AppSpacing.lg),
+                ],
                 headline,
               ],
             ),

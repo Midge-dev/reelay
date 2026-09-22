@@ -76,9 +76,13 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   final _homeScrollController = ScrollController();
 
-  final _watchTogetherRowFocus = FocusNode(debugLabel: 'home-watch-together-row');
+  final _watchTogetherRowFocus = FocusNode(
+    debugLabel: 'home-watch-together-row',
+  );
   final _watchlistRowFocus = FocusNode(debugLabel: 'home-watchlist-row');
-  final _continueWatchingRowFocus = FocusNode(debugLabel: 'home-continue-watching-row');
+  final _continueWatchingRowFocus = FocusNode(
+    debugLabel: 'home-continue-watching-row',
+  );
 
   int _lastInputAtMs = 0;
   bool _hasScrolledToTopForWatchTogether = false;
@@ -99,9 +103,21 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void didUpdateWidget(covariant HomeScreen oldWidget) {
     super.didUpdateWidget(oldWidget);
-    _reclaimFocusOnRemoval(widget.liveRooms.length, _prevLiveRoomsCount, _watchTogetherRowFocus);
-    _reclaimFocusOnRemoval(widget.watchlist.length, _prevWatchlistCount, _watchlistRowFocus);
-    _reclaimFocusOnRemoval(widget.onDeck.length, _prevOnDeckCount, _continueWatchingRowFocus);
+    _reclaimFocusOnRemoval(
+      widget.liveRooms.length,
+      _prevLiveRoomsCount,
+      _watchTogetherRowFocus,
+    );
+    _reclaimFocusOnRemoval(
+      widget.watchlist.length,
+      _prevWatchlistCount,
+      _watchlistRowFocus,
+    );
+    _reclaimFocusOnRemoval(
+      widget.onDeck.length,
+      _prevOnDeckCount,
+      _continueWatchingRowFocus,
+    );
     _prevLiveRoomsCount = widget.liveRooms.length;
     _prevWatchlistCount = widget.watchlist.length;
     _prevOnDeckCount = widget.onDeck.length;
@@ -131,7 +147,11 @@ class _HomeScreenState extends State<HomeScreen> {
   /// item was removed) and still has items left, reclaim focus onto the
   /// row's anchor so it doesn't fall through to wherever the platform's
   /// default disposal search sends it (checklist item #2).
-  void _reclaimFocusOnRemoval(int newSize, int previousSize, FocusNode rowFocus) {
+  void _reclaimFocusOnRemoval(
+    int newSize,
+    int previousSize,
+    FocusNode rowFocus,
+  ) {
     final wasRemoved = newSize < previousSize;
     if (wasRemoved && newSize > 0) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -144,7 +164,9 @@ class _HomeScreenState extends State<HomeScreen> {
     while (true) {
       final elapsed = DateTime.now().millisecondsSinceEpoch - _lastInputAtMs;
       if (elapsed >= _watchTogetherFocusQuietMs) break;
-      await Future.delayed(Duration(milliseconds: _watchTogetherFocusQuietMs - elapsed));
+      await Future.delayed(
+        Duration(milliseconds: _watchTogetherFocusQuietMs - elapsed),
+      );
       if (!mounted) return;
     }
     if (!mounted || !_homeScrollController.hasClients) return;
@@ -158,16 +180,25 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     final watchTogetherGetsFocus = widget.liveRooms.isNotEmpty;
-    final watchlistGetsFocus = !watchTogetherGetsFocus && widget.watchlist.isNotEmpty;
-    final continueWatchingGetsFocus = !watchTogetherGetsFocus && !watchlistGetsFocus && widget.onDeck.isNotEmpty;
+    final watchlistGetsFocus =
+        !watchTogetherGetsFocus && widget.watchlist.isNotEmpty;
+    final continueWatchingGetsFocus =
+        !watchTogetherGetsFocus &&
+        !watchlistGetsFocus &&
+        widget.onDeck.isNotEmpty;
     final recentActivityGetsFocus =
-        !watchTogetherGetsFocus && !watchlistGetsFocus && !continueWatchingGetsFocus && widget.recentActivity.isNotEmpty;
-    final recentlyAddedGetsFocus = !watchTogetherGetsFocus &&
+        !watchTogetherGetsFocus &&
+        !watchlistGetsFocus &&
+        !continueWatchingGetsFocus &&
+        widget.recentActivity.isNotEmpty;
+    final recentlyAddedGetsFocus =
+        !watchTogetherGetsFocus &&
         !watchlistGetsFocus &&
         !continueWatchingGetsFocus &&
         !recentActivityGetsFocus &&
         widget.recentlyAdded.isNotEmpty;
-    final suggestionsGetsFocus = !watchTogetherGetsFocus &&
+    final suggestionsGetsFocus =
+        !watchTogetherGetsFocus &&
         !watchlistGetsFocus &&
         !continueWatchingGetsFocus &&
         !recentActivityGetsFocus &&
@@ -185,7 +216,12 @@ class _HomeScreenState extends State<HomeScreen> {
           _buildContinueWatchingSection(continueWatchingGetsFocus),
           if (widget.liveRooms.isNotEmpty)
             Padding(
-              padding: const EdgeInsets.fromLTRB(AppSpacing.xxxl, 0, AppSpacing.xxxl, AppSpacing.xl),
+              padding: const EdgeInsets.fromLTRB(
+                AppSpacing.xxxl,
+                0,
+                AppSpacing.xxxl,
+                AppSpacing.xl,
+              ),
               child: WatchTogetherBar(
                 rooms: widget.liveRooms,
                 myRoomId: widget.myRoomId,
@@ -259,8 +295,12 @@ class _HomeScreenState extends State<HomeScreen> {
   /// progress" row, per the Nocturne redesign's screen 01.
   Widget _buildContinueWatchingSection(bool continueWatchingGetsFocus) {
     if (widget.onDeck.isEmpty) {
-      return const Padding(
-        padding: EdgeInsets.only(left: AppSpacing.xxxl, top: AppSpacing.xxxl, bottom: AppSpacing.lg),
+      return Padding(
+        padding: EdgeInsets.only(
+          left: AppSpacing.xxxl,
+          top: AppSpacing.xxxl,
+          bottom: AppSpacing.lg,
+        ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisSize: MainAxisSize.min,
@@ -274,7 +314,9 @@ class _HomeScreenState extends State<HomeScreen> {
     }
 
     final hero = widget.onDeck.first;
-    final moreInProgress = widget.onDeck.length > 1 ? widget.onDeck.sublist(1) : const <PlexOnDeckItem>[];
+    final moreInProgress = widget.onDeck.length > 1
+        ? widget.onDeck.sublist(1)
+        : const <PlexOnDeckItem>[];
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -285,7 +327,9 @@ class _HomeScreenState extends State<HomeScreen> {
           item: hero,
           onResume: () => widget.onResume(hero),
           onWatchTogether: widget.onHeroWatchTogether,
-          resumeFocusNode: moreInProgress.isEmpty ? _continueWatchingRowFocus : null,
+          resumeFocusNode: moreInProgress.isEmpty
+              ? _continueWatchingRowFocus
+              : null,
           autofocus: continueWatchingGetsFocus,
         ),
         if (moreInProgress.isNotEmpty)
@@ -294,9 +338,16 @@ class _HomeScreenState extends State<HomeScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Padding(
-                  padding: EdgeInsets.only(left: AppSpacing.xxxl, top: AppSpacing.xl, bottom: AppSpacing.lg),
-                  child: AppText('More in progress', style: AppTypography.rowLabel),
+                Padding(
+                  padding: EdgeInsets.only(
+                    left: AppSpacing.xxxl,
+                    top: AppSpacing.xl,
+                    bottom: AppSpacing.lg,
+                  ),
+                  child: AppText(
+                    'More in progress',
+                    style: AppTypography.rowLabel,
+                  ),
                 ),
                 SizedBox(
                   // +24 over the card's own content height: EdgeFadeRow's
@@ -324,9 +375,13 @@ class _HomeScreenState extends State<HomeScreen> {
                       // headroom against the screen edge itself, not just
                       // the row's own bounds. Vertical 12 matches the +24
                       // SizedBox headroom above.
-                      padding: const EdgeInsets.symmetric(horizontal: 48, vertical: 12),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 48,
+                        vertical: 12,
+                      ),
                       itemCount: moreInProgress.length,
-                      separatorBuilder: (context, index) => const SizedBox(width: 24),
+                      separatorBuilder: (context, index) =>
+                          const SizedBox(width: 24),
                       itemBuilder: (context, index) {
                         final item = moreInProgress[index];
                         return ContinueWatchingPoster(
@@ -335,7 +390,9 @@ class _HomeScreenState extends State<HomeScreen> {
                           item: item,
                           onResume: () => widget.onResume(item),
                           onRemove: () => widget.onRemove(item),
-                          focusNode: index == 0 ? _continueWatchingRowFocus : null,
+                          focusNode: index == 0
+                              ? _continueWatchingRowFocus
+                              : null,
                           staggerDelayMs: (index % _rowStaggerPeriod) * 120,
                         );
                       },
@@ -358,7 +415,11 @@ class _HomeRow<T> extends StatelessWidget {
   final List<T> items;
   final Widget Function(T item, int index) itemBuilder;
 
-  const _HomeRow({required this.title, required this.items, required this.itemBuilder});
+  const _HomeRow({
+    required this.title,
+    required this.items,
+    required this.itemBuilder,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -369,7 +430,11 @@ class _HomeRow<T> extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           Padding(
-            padding: const EdgeInsets.only(left: AppSpacing.xxxl, top: AppSpacing.xxl, bottom: AppSpacing.xl),
+            padding: const EdgeInsets.only(
+              left: AppSpacing.xxxl,
+              top: AppSpacing.xxl,
+              bottom: AppSpacing.xl,
+            ),
             child: AppText(title, style: AppTypography.rowLabel),
           ),
           SizedBox(
@@ -378,15 +443,19 @@ class _HomeRow<T> extends StatelessWidget {
             // line at ~32) + 24 headroom.
             height: 316,
             child: EdgeFadeRow(
-            child: ListView.separated(
-              scrollDirection: Axis.horizontal,
-              // See the matching comment on Continue Watching's ListView above.
-              clipBehavior: Clip.none,
-              padding: const EdgeInsets.symmetric(horizontal: 48, vertical: 12),
-              itemCount: items.length,
-              separatorBuilder: (context, index) => const SizedBox(width: 24),
-              itemBuilder: (context, index) => itemBuilder(items[index], index),
-            ),
+              child: ListView.separated(
+                scrollDirection: Axis.horizontal,
+                // See the matching comment on Continue Watching's ListView above.
+                clipBehavior: Clip.none,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 48,
+                  vertical: 12,
+                ),
+                itemCount: items.length,
+                separatorBuilder: (context, index) => const SizedBox(width: 24),
+                itemBuilder: (context, index) =>
+                    itemBuilder(items[index], index),
+              ),
             ),
           ),
         ],
@@ -411,7 +480,11 @@ class _ScrollSectionIntoView extends StatelessWidget {
     return Focus(
       canRequestFocus: false,
       onFocusChange: (hasFocus) {
-        if (hasFocus) Scrollable.ensureVisible(context, duration: const Duration(milliseconds: 200));
+        if (hasFocus)
+          Scrollable.ensureVisible(
+            context,
+            duration: const Duration(milliseconds: 200),
+          );
       },
       child: child,
     );

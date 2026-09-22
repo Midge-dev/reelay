@@ -156,25 +156,42 @@ class _PlayerScreenState extends State<PlayerScreen> {
     _reporter = TimelineReporter(widget.server, widget.clientIdentifier);
     _captionClient = plexHttpClient();
 
-    final media = widget.detail.media.isNotEmpty ? widget.detail.media.first : null;
-    _resolvedPart = media != null && media.parts.isNotEmpty ? media.parts.first : null;
-    _subtitleOptions = _resolvedPart != null ? subtitleOptions(_resolvedPart!) : const [];
+    final media = widget.detail.media.isNotEmpty
+        ? widget.detail.media.first
+        : null;
+    _resolvedPart = media != null && media.parts.isNotEmpty
+        ? media.parts.first
+        : null;
+    _subtitleOptions = _resolvedPart != null
+        ? subtitleOptions(_resolvedPart!)
+        : const [];
 
     final defaultId = defaultSubtitleStreamId(widget.detail);
-    final defaultOption = _subtitleOptions.firstWhereOrNull((o) => o.streamId == defaultId);
+    final defaultOption = _subtitleOptions.firstWhereOrNull(
+      (o) => o.streamId == defaultId,
+    );
     // Only auto-select Plex's remembered subtitle if it doesn't force a
     // transcode: embedded tracks are offered in the CC menu (see
     // subtitleOptions) but a burn-required transcode should be something
     // the user opts into there, not something that silently kicks off on
     // first play just because Plex remembered a language preference.
-    _subtitleStreamId = (defaultOption != null && !defaultOption.requiresBurn) ? defaultId : null;
+    _subtitleStreamId = (defaultOption != null && !defaultOption.requiresBurn)
+        ? defaultId
+        : null;
 
     _maxVideoBitrateKbps = widget.settings.maxVideoBitrateKbps;
-    _decision = decidePlayback(widget.detail, _subtitleStreamId, forceBurn: widget.settings.forceBurnSubtitles);
+    _decision = decidePlayback(
+      widget.detail,
+      _subtitleStreamId,
+      forceBurn: widget.settings.forceBurnSubtitles,
+    );
     _playerIdentity = _identityFor(_decision, _maxVideoBitrateKbps);
 
     HardwareKeyboard.instance.addHandler(_recordInteraction);
-    _reportTimer = Timer.periodic(const Duration(milliseconds: _reportIntervalMs), (_) => _reportProgress());
+    _reportTimer = Timer.periodic(
+      const Duration(milliseconds: _reportIntervalMs),
+      (_) => _reportProgress(),
+    );
     _scheduleAutoHide();
     // Explicit, not autofocus: PlayerControlsBar stays mounted continuously
     // (see build() — its visibility is an AnimatedOpacity fade, not a
@@ -192,8 +209,12 @@ class _PlayerScreenState extends State<PlayerScreen> {
     unawaited(_initPlayer(startPositionMs: widget.detail.viewOffset ?? 0));
 
     if (widget.relay != null) {
-      _connectionSub = widget.relay!.connectionState.listen((state) => setState(() => _connectionState = state));
-      _roomIdSub = widget.relay!.roomId.listen((id) => setState(() => _roomId = id));
+      _connectionSub = widget.relay!.connectionState.listen(
+        (state) => setState(() => _connectionState = state),
+      );
+      _roomIdSub = widget.relay!.roomId.listen(
+        (id) => setState(() => _roomId = id),
+      );
     }
   }
 
@@ -230,7 +251,12 @@ class _PlayerScreenState extends State<PlayerScreen> {
 
   Future<void> _initPlayer({required int startPositionMs}) async {
     final generation = ++_playerGeneration;
-    final url = PlexPlayerFactory.mediaUrl(widget.server, _decision, _maxVideoBitrateKbps, offsetMs: startPositionMs);
+    final url = PlexPlayerFactory.mediaUrl(
+      widget.server,
+      _decision,
+      _maxVideoBitrateKbps,
+      offsetMs: startPositionMs,
+    );
     final controller = VideoPlayerController.networkUrl(Uri.parse(url));
     await controller.initialize();
     if (!mounted || generation != _playerGeneration) {
@@ -253,7 +279,9 @@ class _PlayerScreenState extends State<PlayerScreen> {
     _phaseSub?.cancel();
     _waitingOnSub?.cancel();
     _phaseSub = sync.phase.listen((phase) => setState(() => _phase = phase));
-    _waitingOnSub = sync.waitingOn.listen((waitingOn) => setState(() => _waitingOn = waitingOn));
+    _waitingOnSub = sync.waitingOn.listen(
+      (waitingOn) => setState(() => _waitingOn = waitingOn),
+    );
 
     setState(() {
       _controller = controller;
@@ -284,10 +312,16 @@ class _PlayerScreenState extends State<PlayerScreen> {
   }
 
   Future<ClosedCaptionFile> _fetchCaptionFile(ExternalSubtitle source) async {
-    final url = '${widget.server.baseUrl}${source.key}?X-Plex-Token=${widget.server.accessToken}';
-    final response = await _captionClient.get<String>(url, options: Options(responseType: ResponseType.plain));
+    final url =
+        '${widget.server.baseUrl}${source.key}?X-Plex-Token=${widget.server.accessToken}';
+    final response = await _captionClient.get<String>(
+      url,
+      options: Options(responseType: ResponseType.plain),
+    );
     final content = response.data ?? '';
-    return content.trimLeft().startsWith('WEBVTT') ? WebVTTCaptionFile(content) : SubRipCaptionFile(content);
+    return content.trimLeft().startsWith('WEBVTT')
+        ? WebVTTCaptionFile(content)
+        : SubRipCaptionFile(content);
   }
 
   void _handleControllerTick() {
@@ -296,13 +330,19 @@ class _PlayerScreenState extends State<PlayerScreen> {
     if (controller == null) return;
     final value = controller.value;
     final buffered = value.buffered;
-    final bufferedMs = buffered.isEmpty ? 0 : buffered.map((r) => r.end.inMilliseconds).reduce((a, b) => a > b ? a : b);
+    final bufferedMs = buffered.isEmpty
+        ? 0
+        : buffered
+              .map((r) => r.end.inMilliseconds)
+              .reduce((a, b) => a > b ? a : b);
     setState(() {
       _isPlaying = value.isPlaying;
       _isBuffering = value.isBuffering;
       _positionMs = value.position.inMilliseconds;
       _durationMs = value.duration.inMilliseconds;
-      _bufferedFraction = _durationMs > 0 ? (bufferedMs / _durationMs).clamp(0.0, 1.0) : 0.0;
+      _bufferedFraction = _durationMs > 0
+          ? (bufferedMs / _durationMs).clamp(0.0, 1.0)
+          : 0.0;
     });
     _maybeLoadUpNext();
   }
@@ -311,7 +351,8 @@ class _PlayerScreenState extends State<PlayerScreen> {
     if (_upNextDismissed || _upNextLoadAttempted) return;
     final loadNextEpisode = widget.loadNextEpisode;
     if (loadNextEpisode == null) return;
-    if (_durationMs <= 0 || _durationMs - _positionMs > _upNextTriggerMs) return;
+    if (_durationMs <= 0 || _durationMs - _positionMs > _upNextTriggerMs)
+      return;
     _upNextLoadAttempted = true;
     loadNextEpisode().then((item) {
       if (mounted && item != null) setState(() => _upNextItem = item);
@@ -319,9 +360,9 @@ class _PlayerScreenState extends State<PlayerScreen> {
   }
 
   void _dismissUpNext() => setState(() {
-        _upNextItem = null;
-        _upNextDismissed = true;
-      });
+    _upNextItem = null;
+    _upNextDismissed = true;
+  });
 
   void _playUpNext() {
     final item = _upNextItem;
@@ -333,8 +374,14 @@ class _PlayerScreenState extends State<PlayerScreen> {
     final controller = _controller;
     if (controller == null) return;
     final state = controller.value.isPlaying ? 'playing' : 'paused';
-    final duration = widget.detail.duration ?? controller.value.duration.inMilliseconds;
-    await _reporter.report(widget.detail.ratingKey, state, controller.value.position.inMilliseconds, duration);
+    final duration =
+        widget.detail.duration ?? controller.value.duration.inMilliseconds;
+    await _reporter.report(
+      widget.detail.ratingKey,
+      state,
+      controller.value.position.inMilliseconds,
+      duration,
+    );
   }
 
   void _togglePlayPause() {
@@ -350,17 +397,23 @@ class _PlayerScreenState extends State<PlayerScreen> {
   void _seekBy(int deltaMs) {
     final player = _player;
     if (player == null) return;
-    final target = (player.currentPosition + deltaMs).clamp(0, player.duration < 0 ? 0 : player.duration);
+    final target = (player.currentPosition + deltaMs).clamp(
+      0,
+      player.duration < 0 ? 0 : player.duration,
+    );
     player.seekTo(target);
   }
 
   void _scheduleAutoHide() {
     _controlsHideTimer?.cancel();
     if (_controlsVisible) {
-      _controlsHideTimer = Timer(const Duration(milliseconds: _controlsHideDelayMs), () {
-        if (mounted) setState(() => _controlsVisible = false);
-        _screenFocusNode.requestFocus();
-      });
+      _controlsHideTimer = Timer(
+        const Duration(milliseconds: _controlsHideDelayMs),
+        () {
+          if (mounted) setState(() => _controlsVisible = false);
+          _screenFocusNode.requestFocus();
+        },
+      );
     }
   }
 
@@ -395,7 +448,8 @@ class _PlayerScreenState extends State<PlayerScreen> {
   // KeyDownEvent as "key active" — the mistake here originally — silently
   // drops every repeat, so held-key repeat counts never advance past 0 and
   // hold-to-accelerate never actually accelerates.
-  bool _isKeyActive(KeyEvent event) => event is KeyDownEvent || event is KeyRepeatEvent;
+  bool _isKeyActive(KeyEvent event) =>
+      event is KeyDownEvent || event is KeyRepeatEvent;
 
   // Shared by the hidden-controls screen-level shortcut below and the
   // focused-progress-track handler ([_handleProgressSeekKey]) — a D-pad
@@ -425,7 +479,9 @@ class _PlayerScreenState extends State<PlayerScreen> {
   KeyEventResult _handleProgressSeekKey(KeyEvent event) {
     if (!_isKeyActive(event)) return KeyEventResult.ignored;
     final key = event.logicalKey;
-    if (key != LogicalKeyboardKey.arrowLeft && key != LogicalKeyboardKey.arrowRight) return KeyEventResult.ignored;
+    if (key != LogicalKeyboardKey.arrowLeft &&
+        key != LogicalKeyboardKey.arrowRight)
+      return KeyEventResult.ignored;
     final direction = key == LogicalKeyboardKey.arrowRight ? 1 : -1;
     _seekBy(direction * seekIncrementForHold(_trackHeldRepeat(key)));
     return KeyEventResult.handled;
@@ -444,7 +500,8 @@ class _PlayerScreenState extends State<PlayerScreen> {
 
     if (_controlsVisible) return KeyEventResult.ignored;
 
-    if (key == LogicalKeyboardKey.arrowLeft || key == LogicalKeyboardKey.arrowRight) {
+    if (key == LogicalKeyboardKey.arrowLeft ||
+        key == LogicalKeyboardKey.arrowRight) {
       final direction = key == LogicalKeyboardKey.arrowRight ? 1 : -1;
       _seekBy(direction * seekIncrementForHold(repeatCount));
       return KeyEventResult.handled;
@@ -457,7 +514,8 @@ class _PlayerScreenState extends State<PlayerScreen> {
       }
       return KeyEventResult.ignored;
     }
-    if (key == LogicalKeyboardKey.arrowUp || key == LogicalKeyboardKey.arrowDown) {
+    if (key == LogicalKeyboardKey.arrowUp ||
+        key == LogicalKeyboardKey.arrowDown) {
       if (isFresh) {
         _showControls();
         return KeyEventResult.handled;
@@ -469,16 +527,26 @@ class _PlayerScreenState extends State<PlayerScreen> {
 
   Future<void> _handleBack() async {
     final controller = _controller;
-    final duration = widget.detail.duration ?? controller?.value.duration.inMilliseconds ?? 0;
+    final duration =
+        widget.detail.duration ??
+        controller?.value.duration.inMilliseconds ??
+        0;
     final position = controller?.value.position.inMilliseconds ?? 0;
     _sync?.stop();
-    await _reporter.report(widget.detail.ratingKey, 'stopped', position, duration);
+    await _reporter.report(
+      widget.detail.ratingKey,
+      'stopped',
+      position,
+      duration,
+    );
     widget.onExit();
   }
 
   void _cycleSubtitle() {
     final options = _subtitleOptions;
-    final currentIndex = options.indexWhere((o) => o.streamId == _subtitleStreamId);
+    final currentIndex = options.indexWhere(
+      (o) => o.streamId == _subtitleStreamId,
+    );
     final next = options[(currentIndex + 1) % options.length];
     final restartPositionMs = _player?.currentPosition ?? 0;
     setState(() => _subtitleStreamId = next.streamId);
@@ -487,7 +555,9 @@ class _PlayerScreenState extends State<PlayerScreen> {
 
   void _cycleBitrate() {
     final presets = AppSettings.bitratePresets;
-    final currentIndex = presets.indexWhere((p) => p.kbps == _maxVideoBitrateKbps);
+    final currentIndex = presets.indexWhere(
+      (p) => p.kbps == _maxVideoBitrateKbps,
+    );
     final next = presets[(currentIndex + 1) % presets.length];
     final restartPositionMs = _player?.currentPosition ?? 0;
     setState(() => _maxVideoBitrateKbps = next.kbps);
@@ -516,17 +586,25 @@ class _PlayerScreenState extends State<PlayerScreen> {
 
   String get _currentSubtitleLabel {
     final options = _subtitleOptions;
-    final option = options.firstWhereOrNull((o) => o.streamId == _subtitleStreamId);
+    final option = options.firstWhereOrNull(
+      (o) => o.streamId == _subtitleStreamId,
+    );
     return 'CC: ${option?.label ?? 'Off'}';
   }
 
   String get _currentBitrateLabel {
-    final preset = AppSettings.bitratePresets.firstWhereOrNull((p) => p.kbps == _maxVideoBitrateKbps);
+    final preset = AppSettings.bitratePresets.firstWhereOrNull(
+      (p) => p.kbps == _maxVideoBitrateKbps,
+    );
     return preset?.label ?? '${_maxVideoBitrateKbps ~/ 1000} Mbps';
   }
 
   void _applyDecisionChange({required int restartPositionMs}) {
-    final newDecision = decidePlayback(widget.detail, _subtitleStreamId, forceBurn: widget.settings.forceBurnSubtitles);
+    final newDecision = decidePlayback(
+      widget.detail,
+      _subtitleStreamId,
+      forceBurn: widget.settings.forceBurnSubtitles,
+    );
     final newIdentity = _identityFor(newDecision, _maxVideoBitrateKbps);
     _decision = newDecision;
 
@@ -554,7 +632,8 @@ class _PlayerScreenState extends State<PlayerScreen> {
   @override
   Widget build(BuildContext context) {
     final controller = _controller;
-    final subtitlesAvailable = _subtitleOptions.length > 1; // more than just "Off"
+    final subtitlesAvailable =
+        _subtitleOptions.length > 1; // more than just "Off"
 
     return BackHandler(
       onBack: () => unawaited(_handleBack()),
@@ -576,19 +655,30 @@ class _PlayerScreenState extends State<PlayerScreen> {
                   ),
                 ),
               if (_isBuffering) const Center(child: AppLoadingIndicator()),
-              if (_phase == PlaybackPhase.waitingForPeers && _waitingOn.isNotEmpty)
+              if (_phase == PlaybackPhase.waitingForPeers &&
+                  _waitingOn.isNotEmpty)
                 Positioned(
                   top: 24,
                   left: 0,
                   right: 0,
-                  child: Center(child: _Chip(child: const AppText('Waiting for the room to catch up…', color: AppColors.inkOnArt))),
+                  child: Center(
+                    child: _Chip(
+                      child: AppText(
+                        'Waiting for the room to catch up…',
+                        color: AppColors.inkOnArt,
+                      ),
+                    ),
+                  ),
                 ),
               if (widget.settings.showChatOverlay && _sync != null)
                 Align(
                   alignment: _chatAlignment(),
                   child: Padding(
                     padding: const EdgeInsets.all(24),
-                    child: ChatOverlay(messages: _sync!.chatMessages, corner: widget.settings.chatOverlayCorner),
+                    child: ChatOverlay(
+                      messages: _sync!.chatMessages,
+                      corner: widget.settings.chatOverlayCorner,
+                    ),
                   ),
                 ),
               // Kept mounted continuously (unlike the menus/overlays above,
@@ -616,11 +706,17 @@ class _PlayerScreenState extends State<PlayerScreen> {
                               qualityLabel: _currentBitrateLabel,
                             ),
                           ),
-                          if (widget.relay != null && _connectionState != ConnectionState.connected)
+                          if (widget.relay != null &&
+                              _connectionState != ConnectionState.connected)
                             Positioned(
                               right: 24,
                               top: 24,
-                              child: _Chip(child: AppText(_syncStatusLabel(), color: AppColors.inkOnArt)),
+                              child: _Chip(
+                                child: AppText(
+                                  _syncStatusLabel(),
+                                  color: AppColors.inkOnArt,
+                                ),
+                              ),
                             ),
                           Positioned(
                             left: 0,
@@ -646,9 +742,11 @@ class _PlayerScreenState extends State<PlayerScreen> {
                               onCycleSubtitles: _cycleSubtitle,
                               onCycleBitrate: _cycleBitrate,
                               chatAvailable: _chatUrl != null,
-                              onOpenChatQr: () => setState(() => _chatQrOpen = true),
+                              onOpenChatQr: () =>
+                                  setState(() => _chatQrOpen = true),
                               menuFocusNode: _menuFocusNode,
-                              onOpenMenu: () => setState(() => _menuOpen = true),
+                              onOpenMenu: () =>
+                                  setState(() => _menuOpen = true),
                             ),
                           ),
                         ],
@@ -661,7 +759,10 @@ class _PlayerScreenState extends State<PlayerScreen> {
                 Positioned(
                   right: 24,
                   top: 24,
-                  child: ChatQrOverlay(chatUrl: _chatUrl!, onDismiss: () => setState(() => _chatQrOpen = false)),
+                  child: ChatQrOverlay(
+                    chatUrl: _chatUrl!,
+                    onDismiss: () => setState(() => _chatQrOpen = false),
+                  ),
                 ),
               if (_upNextItem != null && !_menuOpen)
                 Positioned(
@@ -699,18 +800,18 @@ class _PlayerScreenState extends State<PlayerScreen> {
   }
 
   Alignment _chatAlignment() => switch (widget.settings.chatOverlayCorner) {
-        ChatOverlayCorner.topStart => Alignment.topLeft,
-        ChatOverlayCorner.topEnd => Alignment.topRight,
-        ChatOverlayCorner.bottomStart => Alignment.bottomLeft,
-        ChatOverlayCorner.bottomEnd => Alignment.bottomRight,
-      };
+    ChatOverlayCorner.topStart => Alignment.topLeft,
+    ChatOverlayCorner.topEnd => Alignment.topRight,
+    ChatOverlayCorner.bottomStart => Alignment.bottomLeft,
+    ChatOverlayCorner.bottomEnd => Alignment.bottomRight,
+  };
 
   String _syncStatusLabel() => switch (_connectionState) {
-        ConnectionState.connecting => 'Sync: connecting…',
-        ConnectionState.reconnecting => 'Sync: reconnecting…',
-        ConnectionState.roomFull => 'Sync: room full',
-        _ => 'Sync: off',
-      };
+    ConnectionState.connecting => 'Sync: connecting…',
+    ConnectionState.reconnecting => 'Sync: reconnecting…',
+    ConnectionState.roomFull => 'Sync: room full',
+    _ => 'Sync: off',
+  };
 }
 
 class _Chip extends StatelessWidget {
@@ -722,7 +823,10 @@ class _Chip extends StatelessWidget {
   Widget build(BuildContext context) {
     return DecoratedBox(
       decoration: BoxDecoration(color: AppScrims.dialog.withValues(alpha: 0.6)),
-      child: Padding(padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6), child: child),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        child: child,
+      ),
     );
   }
 }
@@ -738,11 +842,17 @@ class _TitleBar extends StatelessWidget {
   final String subtitleLabel;
   final String qualityLabel;
 
-  const _TitleBar({required this.title, required this.subtitleLabel, required this.qualityLabel});
+  const _TitleBar({
+    required this.title,
+    required this.subtitleLabel,
+    required this.qualityLabel,
+  });
 
   @override
   Widget build(BuildContext context) {
-    final statusStyle = AppTypography.body.copyWith(color: AppColors.inkOnArt.withValues(alpha: 0.75));
+    final statusStyle = AppTypography.body.copyWith(
+      color: AppColors.inkOnArt.withValues(alpha: 0.75),
+    );
 
     return Container(
       width: double.infinity,
@@ -751,7 +861,10 @@ class _TitleBar extends StatelessWidget {
         gradient: LinearGradient(
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
-          colors: [AppScrims.dialog.withValues(alpha: 0.6), AppScrims.dialog.withValues(alpha: 0)],
+          colors: [
+            AppScrims.dialog.withValues(alpha: 0.6),
+            AppScrims.dialog.withValues(alpha: 0),
+          ],
         ),
       ),
       child: Row(

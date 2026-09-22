@@ -1,5 +1,205 @@
 import 'package:flutter/widgets.dart';
 
+/// Screen 22 — a theme sets exactly these seven values (ground, surface,
+/// raised, line, muted, accent, ink) and nothing else: spacing, radius,
+/// type and focus behaviour are the system, not the skin. Device-level, not
+/// per-profile (DESIGN.md), so this lives in AppSettings/SettingsStore
+/// alongside `relays`/`maxHostSeats`, not per-Profile.
+enum ThemeId {
+  nocturne('Nocturne', 'Muted periwinkle on blue-grey. The default.'),
+  projection('Projection', 'No colour at all. Light is the accent.'),
+  ember('Ember', 'Cool ground, one warm brass. Focus is warmth.'),
+  harbour('Harbour', 'Steel blue, barely there. The coolest of the set.'),
+  sage('Sage', 'Grey-green on near-black. Quiet and slightly organic.'),
+  clay('Clay', 'Warm ground, dusty terracotta. The only warm-on-warm.'),
+  quartz('Quartz', 'Dusty rose on a faint violet ground.');
+
+  final String label;
+  final String blurb;
+
+  const ThemeId(this.label, this.blurb);
+}
+
+/// The sixteen colors a theme actually touches once every screen's own
+/// spacing/motion/shape stays fixed. Six (background, surface, surfaceRaised,
+/// line, ink3, accent) are the mockup's own swatches, verbatim; the other ten
+/// don't appear in the handoff at all, so each is carried over from
+/// Nocturne's own hue/lightness offset (and, for the three accent tints,
+/// saturation *ratio* rather than a flat offset — Harbour/Sage/Quartz's base
+/// accents are already fairly desaturated, and a flat offset crushed
+/// accent700/900 to plain grey) between a base role and its derived token.
+class NocturnePalette {
+  final Color background;
+  final Color surface;
+  final Color surfaceRaised;
+  final Color line;
+  final Color ink3;
+  final Color accent;
+  final Color canvas;
+  final Color surfaceOverlay;
+  final Color lineStrong;
+  final Color ink;
+  final Color ink2;
+  final Color ink4;
+  final Color inkOnArt;
+  final Color accent900;
+  final Color accent700;
+  final Color accent300;
+
+  const NocturnePalette({
+    required this.background,
+    required this.surface,
+    required this.surfaceRaised,
+    required this.line,
+    required this.ink3,
+    required this.accent,
+    required this.canvas,
+    required this.surfaceOverlay,
+    required this.lineStrong,
+    required this.ink,
+    required this.ink2,
+    required this.ink4,
+    required this.inkOnArt,
+    required this.accent900,
+    required this.accent700,
+    required this.accent300,
+  });
+}
+
+const _nocturnePalettes = <ThemeId, NocturnePalette>{
+  ThemeId.nocturne: NocturnePalette(
+    background: Color(0xFF161826),
+    surface: Color(0xFF1D1F30),
+    surfaceRaised: Color(0xFF252840),
+    line: Color(0xFF2A2D40),
+    ink3: Color(0xFF9093A8),
+    accent: Color(0xFF9184D9),
+    canvas: Color(0xFF12141F),
+    surfaceOverlay: Color(0xFF2E3150),
+    lineStrong: Color(0xFF3A3D55),
+    ink: Color(0xFFE9E9ED),
+    ink2: Color(0xFFC8CAD8),
+    ink4: Color(0xFF6E7188),
+    inkOnArt: Color(0xFFF4F4F7),
+    accent900: Color(0xFF2A2745),
+    accent700: Color(0xFF5F55A0),
+    accent300: Color(0xFFB6ACEC),
+  ),
+  ThemeId.projection: NocturnePalette(
+    background: Color(0xFF0E0F14),
+    surface: Color(0xFF171922),
+    surfaceRaised: Color(0xFF1E202B),
+    line: Color(0xFF262936),
+    ink3: Color(0xFF878B9C),
+    accent: Color(0xFFEDEEF2),
+    canvas: Color(0xFF090A0E),
+    surfaceOverlay: Color(0xFF282A3A),
+    lineStrong: Color(0xFF363A4B),
+    ink: Color(0xFFDEDFE3),
+    ink2: Color(0xFFBDC2CE),
+    ink4: Color(0xFF676B7A),
+    inkOnArt: Color(0xFFE8E9EE),
+    accent900: Color(0xFF6D7281),
+    accent700: Color(0xFFB5B8C2),
+    accent300: Color(0xFFFFFFFF),
+  ),
+  ThemeId.ember: NocturnePalette(
+    background: Color(0xFF0F1014),
+    surface: Color(0xFF191A20),
+    surfaceRaised: Color(0xFF22242B),
+    line: Color(0xFF31333B),
+    ink3: Color(0xFF8B8880),
+    accent: Color(0xFFC89B5A),
+    canvas: Color(0xFF0A0B0E),
+    surfaceOverlay: Color(0xFF2D2F39),
+    lineStrong: Color(0xFF43454E),
+    ink: Color(0xFFD6D5D3),
+    ink2: Color(0xFFC1BAB2),
+    ink4: Color(0xFF676662),
+    inkOnArt: Color(0xFFE2E0DC),
+    accent900: Color(0xFF1F1912),
+    accent700: Color(0xFF786142),
+    accent300: Color(0xFFDEB87F),
+  ),
+  ThemeId.harbour: NocturnePalette(
+    background: Color(0xFF131619),
+    surface: Color(0xFF1A1E22),
+    surfaceRaised: Color(0xFF222830),
+    line: Color(0xFF2A313A),
+    ink3: Color(0xFF8A939E),
+    accent: Color(0xFF7C93A8),
+    canvas: Color(0xFF0E1113),
+    surfaceOverlay: Color(0xFF2C343F),
+    lineStrong: Color(0xFF3B434E),
+    ink: Color(0xFFE1E2E5),
+    ink2: Color(0xFFC0C6D0),
+    ink4: Color(0xFF6A727C),
+    inkOnArt: Color(0xFFEBECF0),
+    accent900: Color(0xFF171A1C),
+    accent700: Color(0xFF535F69),
+    accent300: Color(0xFF9CB0C3),
+  ),
+  ThemeId.sage: NocturnePalette(
+    background: Color(0xFF14181A),
+    surface: Color(0xFF1A2022),
+    surfaceRaised: Color(0xFF222A2C),
+    line: Color(0xFF2A3234),
+    ink3: Color(0xFF8B9A96),
+    accent: Color(0xFF7FA08C),
+    canvas: Color(0xFF0F1214),
+    surfaceOverlay: Color(0xFF2D373A),
+    lineStrong: Color(0xFF3C4547),
+    ink: Color(0xFFE0E3E3),
+    ink2: Color(0xFFC0CDCC),
+    ink4: Color(0xFF6B7874),
+    inkOnArt: Color(0xFFEAEEEE),
+    accent900: Color(0xFF151916),
+    accent700: Color(0xFF54635A),
+    accent300: Color(0xFF9FBBAA),
+  ),
+  ThemeId.clay: NocturnePalette(
+    background: Color(0xFF171412),
+    surface: Color(0xFF1E1A18),
+    surfaceRaised: Color(0xFF272220),
+    line: Color(0xFF322C29),
+    ink3: Color(0xFF9A9088),
+    accent: Color(0xFFB0826A),
+    canvas: Color(0xFF110F0D),
+    surfaceOverlay: Color(0xFF352E2B),
+    lineStrong: Color(0xFF453F3B),
+    ink: Color(0xFFE2E0DE),
+    ink2: Color(0xFFCDC3BD),
+    ink4: Color(0xFF776F69),
+    inkOnArt: Color(0xFFEDEAE8),
+    accent900: Color(0xFF181311),
+    accent700: Color(0xFF695349),
+    accent300: Color(0xFFC9A18C),
+  ),
+  ThemeId.quartz: NocturnePalette(
+    background: Color(0xFF171419),
+    surface: Color(0xFF1E1A20),
+    surfaceRaised: Color(0xFF272029),
+    line: Color(0xFF322B33),
+    ink3: Color(0xFF968E99),
+    accent: Color(0xFFAE8B9B),
+    canvas: Color(0xFF110F13),
+    surfaceOverlay: Color(0xFF352B37),
+    lineStrong: Color(0xFF453D46),
+    ink: Color(0xFFE3E2E3),
+    ink2: Color(0xFFCBC3CC),
+    ink4: Color(0xFF746E77),
+    inkOnArt: Color(0xFFEEECEE),
+    accent900: Color(0xFF272124),
+    accent700: Color(0xFF735E68),
+    accent300: Color(0xFFC9ABB9),
+  ),
+};
+
+/// The swatches a theme picker needs to preview every option without
+/// applying any of them — [AppColors.applyTheme] is the only thing allowed
+/// to touch the live static fields.
+NocturnePalette nocturnePalette(ThemeId id) => _nocturnePalettes[id]!;
+
 /// Reelay design system — Nocturne. Every value is stated at 1080p logical
 /// pixels; the app applies one scale factor for 4K rather than carrying a
 /// second token set (see `theme/scale.dart`). Nothing here requires
@@ -7,57 +207,86 @@ import 'package:flutter/widgets.dart';
 class AppColors {
   AppColors._();
 
+  static ThemeId currentTheme = ThemeId.nocturne;
+
+  /// Screen 22 — the only place these sixteen fields are ever reassigned.
+  /// Everything in the app reads them as plain static fields, so nothing
+  /// else needs to change when a new theme applies; the caller is
+  /// responsible for triggering a rebuild afterward (see
+  /// `settingsStreamProvider` in `state/data_providers.dart`, which reapplies
+  /// the persisted theme on every app-root build).
+  static void applyTheme(ThemeId id) {
+    final p = _nocturnePalettes[id]!;
+    currentTheme = id;
+    canvas = p.canvas;
+    background = p.background;
+    surface = p.surface;
+    surfaceRaised = p.surfaceRaised;
+    surfaceOverlay = p.surfaceOverlay;
+    line = p.line;
+    lineStrong = p.lineStrong;
+    ink = p.ink;
+    ink2 = p.ink2;
+    ink3 = p.ink3;
+    ink4 = p.ink4;
+    inkOnArt = p.inkOnArt;
+    accent900 = p.accent900;
+    accent700 = p.accent700;
+    accent = p.accent;
+    accent300 = p.accent300;
+  }
+
   // ---- Surfaces, by elevation -------------------------------------------
   /// Nav rail and player chrome. Deepest step.
-  static const canvas = Color(0xFF12141F);
+  static Color canvas = Color(0xFF12141F);
 
   /// Screen background.
-  static const background = Color(0xFF161826);
+  static Color background = Color(0xFF161826);
 
   /// Cards, list rows, panels.
-  static const surface = Color(0xFF1D1F30);
+  static Color surface = Color(0xFF1D1F30);
 
   /// Focused fills, menus over a surface.
-  static const surfaceRaised = Color(0xFF252840);
+  static Color surfaceRaised = Color(0xFF252840);
 
   /// Dialogs and popovers sitting over a scrim.
-  static const surfaceOverlay = Color(0xFF2E3150);
+  static Color surfaceOverlay = Color(0xFF2E3150);
 
   /// Idle borders and dividers.
-  static const line = Color(0xFF2A2D40);
+  static Color line = Color(0xFF2A2D40);
 
   /// Outlined controls and chip borders.
-  static const lineStrong = Color(0xFF3A3D55);
+  static Color lineStrong = Color(0xFF3A3D55);
 
   // ---- Ink ---------------------------------------------------------------
   /// Titles, focused labels, values. 14.8:1 on [background].
-  static const ink = Color(0xFFE9E9ED);
+  static Color ink = Color(0xFFE9E9ED);
 
   /// Body copy, synopsis, unfocused row labels. 10.5:1.
-  static const ink2 = Color(0xFFC8CAD8);
+  static Color ink2 = Color(0xFFC8CAD8);
 
   /// Metadata, captions, kickers. 5.4:1 — the floor for body-size text.
-  static const ink3 = Color(0xFF9093A8);
+  static Color ink3 = Color(0xFF9093A8);
 
   /// Idle rail icons and chrome only — never text. 3.1:1.
-  static const ink4 = Color(0xFF6E7188);
+  static Color ink4 = Color(0xFF6E7188);
 
   /// Any glyph over artwork or video. Always paired with a scrim.
-  static const inkOnArt = Color(0xFFF4F4F7);
+  static Color inkOnArt = Color(0xFFF4F4F7);
 
   // ---- Accent ------------------------------------------------------------
   /// Tint fills.
-  static const accent900 = Color(0xFF2A2745);
+  static Color accent900 = Color(0xFF2A2745);
 
   /// Pressed state, accent dividers.
-  static const accent700 = Color(0xFF5F55A0);
+  static Color accent700 = Color(0xFF5F55A0);
 
   /// Base. Focus hairline and spine. 4.9:1 on [background] — chrome, icons
   /// and large text, not body copy.
-  static const accent = Color(0xFF9184D9);
+  static Color accent = Color(0xFF9184D9);
 
   /// Accent-coloured text at body size.
-  static const accent300 = Color(0xFFB6ACEC);
+  static Color accent300 = Color(0xFFB6ACEC);
 
   // ---- Semantic ----------------------------------------------------------
   /// Relay connected, room in sync, complete.
@@ -75,7 +304,8 @@ class AppColors {
   /// also removed from the focus order, not merely dimmed — see
   /// `AppFocusTreatment` / `FocusableSurface`, which apply this as a whole-
   /// element opacity rather than a per-color alpha for anything focusable.
-  static Color disabled(Color contentColor) => contentColor.withValues(alpha: 0.45);
+  static Color disabled(Color contentColor) =>
+      contentColor.withValues(alpha: 0.45);
 }
 
 /// Scrims. The rule this encodes: no glyph ever touches raw artwork. Every
@@ -296,7 +526,8 @@ class AppMotion {
 
   static bool get scaleOnFocus => level == MotionLevel.full;
   static bool get staggerRows => level.index <= MotionLevel.noScale.index;
-  static bool get crossfadeArtwork => level.index <= MotionLevel.noStagger.index;
+  static bool get crossfadeArtwork =>
+      level.index <= MotionLevel.noStagger.index;
   static bool get animatePages => level.index <= MotionLevel.noCrossfade.index;
 }
 
@@ -308,29 +539,29 @@ class AppMotion {
 class AppFocusTreatment {
   AppFocusTreatment._();
 
-  static const idleBorderColor = AppColors.line;
+  static final idleBorderColor = AppColors.line;
   static const idleBorderWidth = AppShape.borderWidth;
-  static const idleContainer = AppColors.surface;
-  static const idleContent = AppColors.ink2;
+  static final idleContainer = AppColors.surface;
+  static final idleContent = AppColors.ink2;
 
-  static const focusedBorderColor = AppColors.accent;
+  static final focusedBorderColor = AppColors.accent;
   static const focusedBorderWidth = AppShape.borderWidth;
-  static const focusedSpineColor = AppColors.accent;
+  static final focusedSpineColor = AppColors.accent;
   static const focusedSpineWidth = AppShape.spineWidth;
-  static const focusedContainer = AppColors.surfaceRaised;
-  static const focusedContent = AppColors.ink;
+  static final focusedContainer = AppColors.surfaceRaised;
+  static final focusedContent = AppColors.ink;
 
   /// Selected but not focused: the spine goes ink, the fill stays put.
-  static const selectedSpineColor = AppColors.ink;
+  static final selectedSpineColor = AppColors.ink;
 
-  static const pressedContainer = AppColors.accent900;
-  static const pressedBorderColor = AppColors.accent700;
+  static final pressedContainer = AppColors.accent900;
+  static final pressedBorderColor = AppColors.accent700;
 
   /// Barely perceptible up close, and legible in aggregate across a row.
   /// Dropped entirely in low-power mode.
   static const focusScale = 1.03;
 
   /// Artwork cards: a frame all the way round instead of a spine.
-  static const artFrameColor = AppColors.accent;
+  static final artFrameColor = AppColors.accent;
   static const artFrameWidth = AppShape.artFrameWidth;
 }

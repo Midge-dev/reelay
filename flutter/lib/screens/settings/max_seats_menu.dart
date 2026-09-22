@@ -19,7 +19,11 @@ class MaxSeatsMenu extends StatefulWidget {
   final int selected;
   final ValueChanged<int> onSelect;
 
-  const MaxSeatsMenu({super.key, required this.selected, required this.onSelect});
+  const MaxSeatsMenu({
+    super.key,
+    required this.selected,
+    required this.onSelect,
+  });
 
   @override
   State<MaxSeatsMenu> createState() => _MaxSeatsMenuState();
@@ -30,7 +34,9 @@ const _rowSpacing = 2.0;
 const _maxMenuHeight = 320.0;
 
 class _MaxSeatsMenuState extends State<MaxSeatsMenu> {
-  late int _highlightedIndex = AppSettings.maxHostSeatsOptions.indexOf(widget.selected).clamp(0, AppSettings.maxHostSeatsOptions.length - 1);
+  late int _highlightedIndex = AppSettings.maxHostSeatsOptions
+      .indexOf(widget.selected)
+      .clamp(0, AppSettings.maxHostSeatsOptions.length - 1);
   final _scrollController = ScrollController();
   final _rowFocusNodes = <FocusNode>[];
 
@@ -41,7 +47,8 @@ class _MaxSeatsMenuState extends State<MaxSeatsMenu> {
       _rowFocusNodes.add(FocusNode(debugLabel: 'max-seats-$i'));
     }
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (_highlightedIndex < _rowFocusNodes.length) _rowFocusNodes[_highlightedIndex].requestFocus();
+      if (_highlightedIndex < _rowFocusNodes.length)
+        _rowFocusNodes[_highlightedIndex].requestFocus();
     });
   }
 
@@ -57,13 +64,16 @@ class _MaxSeatsMenuState extends State<MaxSeatsMenu> {
   KeyEventResult _handleMenuKeyEvent(FocusNode node, KeyEvent event) {
     if (event is! KeyDownEvent) return KeyEventResult.ignored;
     final options = AppSettings.maxHostSeatsOptions;
-    if (event.logicalKey == LogicalKeyboardKey.arrowLeft || event.logicalKey == LogicalKeyboardKey.arrowRight) {
+    if (event.logicalKey == LogicalKeyboardKey.arrowLeft ||
+        event.logicalKey == LogicalKeyboardKey.arrowRight) {
       return KeyEventResult.handled;
     }
-    if (event.logicalKey == LogicalKeyboardKey.arrowUp && _highlightedIndex == 0) {
+    if (event.logicalKey == LogicalKeyboardKey.arrowUp &&
+        _highlightedIndex == 0) {
       return KeyEventResult.handled;
     }
-    if (event.logicalKey == LogicalKeyboardKey.arrowDown && _highlightedIndex == options.length - 1) {
+    if (event.logicalKey == LogicalKeyboardKey.arrowDown &&
+        _highlightedIndex == options.length - 1) {
       return KeyEventResult.handled;
     }
     return KeyEventResult.ignored;
@@ -83,12 +93,16 @@ class _MaxSeatsMenuState extends State<MaxSeatsMenu> {
     // explicitly don't support intrinsic-dimension queries and throw their
     // own layout error when asked, the exact same invisible-menu failure
     // this whole computation exists to avoid.
-    final naturalHeight = options.length * _rowHeight + (options.length - 1) * _rowSpacing;
+    final naturalHeight =
+        options.length * _rowHeight + (options.length - 1) * _rowSpacing;
     final menuHeight = naturalHeight.clamp(0.0, _maxMenuHeight);
     return Container(
       width: 300,
       padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(color: AppColors.background, borderRadius: BorderRadius.circular(8)),
+      decoration: BoxDecoration(
+        color: AppColors.background,
+        borderRadius: BorderRadius.circular(8),
+      ),
       child: Focus(
         canRequestFocus: false,
         onKeyEvent: _handleMenuKeyEvent,
@@ -101,7 +115,8 @@ class _MaxSeatsMenuState extends State<MaxSeatsMenu> {
                 child: ListView.separated(
                   controller: _scrollController,
                   itemCount: options.length,
-                  separatorBuilder: (context, index) => const SizedBox(height: _rowSpacing),
+                  separatorBuilder: (context, index) =>
+                      const SizedBox(height: _rowSpacing),
                   itemBuilder: (context, index) {
                     final value = options[index];
                     final applied = value == widget.selected;
@@ -127,14 +142,18 @@ class _MaxSeatsMenuState extends State<MaxSeatsMenu> {
   }
 }
 
-const _rowShape = RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(8)));
+const _rowShape = RoundedRectangleBorder(
+  borderRadius: BorderRadius.all(Radius.circular(8)),
+);
 final _rowColors = SurfaceColors(
   container: AppColors.transparent,
   content: AppColors.inkOnArt,
   focusedContainer: AppColors.accent,
   selectedContainer: AppColors.accent.withValues(alpha: 0.35),
 );
-const _rowBorder = SurfaceBorder(focused: SurfaceBorderSide.solid(AppColors.accent));
+final _rowBorder = SurfaceBorder(
+  focused: SurfaceBorderSide.solid(AppColors.accent),
+);
 
 class _MaxSeatsRow extends StatelessWidget {
   final int value;

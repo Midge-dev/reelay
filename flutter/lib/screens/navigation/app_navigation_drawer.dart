@@ -466,7 +466,7 @@ final _railItemColors = SurfaceColors(
   selectedContainer: AppColors.surfaceRaised,
   selectedContent: AppColors.ink,
 );
-const _railItemBorder = SurfaceBorder(
+final _railItemBorder = SurfaceBorder(
   focused: SurfaceBorderSide.solid(AppColors.accent),
 );
 
@@ -576,7 +576,7 @@ class _UserAvatarItem extends StatelessWidget {
               Container(
                 width: 40,
                 height: 40,
-                decoration: const BoxDecoration(
+                decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   color: AppColors.surfaceOverlay,
                 ),

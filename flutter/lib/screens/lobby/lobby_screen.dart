@@ -347,7 +347,7 @@ class _LobbyScreenState extends State<LobbyScreen> {
                             );
                             widget.onStart(true);
                           },
-                          child: const AppIcon(
+                          child: AppIcon(
                             PhosphorIconsRegular.arrowCounterClockwise,
                             tint: AppColors.inkOnArt,
                             size: 22,
@@ -440,7 +440,7 @@ class _ChatQrModal extends StatelessWidget {
             child: Padding(
               padding: const EdgeInsets.symmetric(vertical: 24),
               child: DecoratedBox(
-                decoration: const BoxDecoration(color: AppColors.surface),
+                decoration: BoxDecoration(color: AppColors.surface),
                 child: SingleChildScrollView(
                   padding: const EdgeInsets.all(28),
                   child: Column(
@@ -453,7 +453,7 @@ class _ChatQrModal extends StatelessWidget {
                         color: AppColors.inkOnArt,
                       ),
                       if (chatUrl == null)
-                        const Padding(
+                        Padding(
                           padding: EdgeInsets.only(top: 20),
                           child: AppText(
                             'Still connecting to the room — try again in a moment.',
@@ -474,7 +474,7 @@ class _ChatQrModal extends StatelessWidget {
                             ),
                           ),
                         ),
-                        const Padding(
+                        Padding(
                           padding: EdgeInsets.only(top: 20),
                           child: AppText(
                             'Scan with your phone, or visit:',

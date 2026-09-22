@@ -20,11 +20,22 @@ class AppRadioButton extends StatelessWidget {
       height: _radioSize,
       decoration: BoxDecoration(
         shape: BoxShape.circle,
-        border: Border.fromBorderSide(BorderSide(color: selected ? AppColors.accent : AppColors.lineStrong, width: AppShape.borderWidth)),
+        border: Border.fromBorderSide(
+          BorderSide(
+            color: selected ? AppColors.accent : AppColors.lineStrong,
+            width: AppShape.borderWidth,
+          ),
+        ),
       ),
       alignment: Alignment.center,
       child: selected
-          ? const DecoratedBox(decoration: BoxDecoration(shape: BoxShape.circle, color: AppColors.accent), child: SizedBox(width: _radioDotSize, height: _radioDotSize))
+          ? DecoratedBox(
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: AppColors.accent,
+              ),
+              child: SizedBox(width: _radioDotSize, height: _radioDotSize),
+            )
           : null,
     );
   }

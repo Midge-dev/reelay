@@ -98,7 +98,7 @@ class HomeHero extends StatelessWidget {
                   children: [
                     Container(width: 20, height: 2, color: AppColors.accent),
                     const SizedBox(width: AppSpacing.md),
-                    const AppText('RESUME', style: AppTypography.micro),
+                    AppText('RESUME', style: AppTypography.micro),
                   ],
                 ),
                 const SizedBox(height: AppSpacing.md),
@@ -141,7 +141,7 @@ class HomeHero extends StatelessWidget {
                               child: FractionallySizedBox(
                                 alignment: Alignment.centerLeft,
                                 widthFactor: progress,
-                                child: const DecoratedBox(
+                                child: DecoratedBox(
                                   decoration: BoxDecoration(
                                     color: AppColors.accent,
                                   ),

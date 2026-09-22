@@ -79,7 +79,9 @@ class _FocusableSurfaceState extends State<FocusableSurface> {
     super.didUpdateWidget(oldWidget);
     if (widget.onLongClick != oldWidget.onLongClick) {
       _longPress?.dispose();
-      _longPress = widget.onLongClick != null ? DpadLongPressDetector(onLongPress: widget.onLongClick!) : null;
+      _longPress = widget.onLongClick != null
+          ? DpadLongPressDetector(onLongPress: widget.onLongClick!)
+          : null;
     }
     // A caller that reuses this Element for a different logical item across
     // rebuilds (e.g. a list whose row composition shifts, changing which
@@ -118,12 +120,17 @@ class _FocusableSurfaceState extends State<FocusableSurface> {
   }
 
   KeyEventResult _handleKeyEvent(FocusNode node, KeyEvent event) {
-    if (!DpadLongPressDetector.selectKeys.contains(event.logicalKey)) return KeyEventResult.ignored;
+    if (!DpadLongPressDetector.selectKeys.contains(event.logicalKey))
+      return KeyEventResult.ignored;
     if (event is KeyDownEvent) _setPressed(true);
     if (event is KeyUpEvent) _setPressed(false);
-    return handleDpadSelect(event, longPress: _longPress, onClick: () {
-      if (widget.enabled) widget.onClick();
-    });
+    return handleDpadSelect(
+      event,
+      longPress: _longPress,
+      onClick: () {
+        if (widget.enabled) widget.onClick();
+      },
+    );
   }
 
   @override
@@ -155,7 +162,10 @@ class _FocusableSurfaceState extends State<FocusableSurface> {
       // Colour only, no scale change, no spine — DESIGN.md's motion section.
       containerColor = colors.pressedContainer;
       contentColor = colors.pressedContent;
-      activeBorderSide = SurfaceBorderSide.solid(AppFocusTreatment.pressedBorderColor, width: border.idle?.width ?? AppShape.borderWidth);
+      activeBorderSide = SurfaceBorderSide.solid(
+        AppFocusTreatment.pressedBorderColor,
+        width: border.idle?.width ?? AppShape.borderWidth,
+      );
       showSpine = false;
       spineColor = AppColors.transparent;
       targetScale = 1.0;
@@ -163,7 +173,9 @@ class _FocusableSurfaceState extends State<FocusableSurface> {
     } else if (_focused) {
       containerColor = colors.focusedContainer;
       contentColor = colors.focusedContent;
-      activeBorderSide = border.focused ?? SurfaceBorderSide.solid(AppFocusTreatment.focusedBorderColor);
+      activeBorderSide =
+          border.focused ??
+          SurfaceBorderSide.solid(AppFocusTreatment.focusedBorderColor);
       showSpine = !border.noSpine;
       spineColor = AppFocusTreatment.focusedSpineColor;
       targetScale = motionFull ? AppFocusTreatment.focusScale : 1.0;
@@ -195,7 +207,12 @@ class _FocusableSurfaceState extends State<FocusableSurface> {
       decoration: ShapeDecoration(
         color: containerColor,
         shape: activeBorderSide != null
-            ? widget.shape.copyWith(side: BorderSide(color: activeBorderSide.color, width: activeBorderSide.width))
+            ? widget.shape.copyWith(
+                side: BorderSide(
+                  color: activeBorderSide.color,
+                  width: activeBorderSide.width,
+                ),
+              )
             : widget.shape,
         shadows: shadows,
       ),
@@ -214,7 +231,11 @@ class _FocusableSurfaceState extends State<FocusableSurface> {
         duration: AppMotion.focusSpineWipe,
         curve: AppMotion.enter,
         builder: (context, width, child) => CustomPaint(
-          foregroundPainter: LeadingSpinePainter(shape: widget.shape, color: spineColor, width: width),
+          foregroundPainter: LeadingSpinePainter(
+            shape: widget.shape,
+            color: spineColor,
+            width: width,
+          ),
           child: child,
         ),
         child: surface,
@@ -232,7 +253,10 @@ class _FocusableSurfaceState extends State<FocusableSurface> {
             child: Container(
               width: AppSpacing.md,
               height: AppSpacing.md,
-              decoration: const BoxDecoration(shape: BoxShape.circle, color: AppColors.ink),
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: AppColors.ink,
+              ),
             ),
           ),
         ],
@@ -256,7 +280,9 @@ class _FocusableSurfaceState extends State<FocusableSurface> {
       autofocus: widget.autofocus,
       onKeyEvent: _handleKeyEvent,
       child: MouseRegion(
-        cursor: widget.enabled ? SystemMouseCursors.click : SystemMouseCursors.basic,
+        cursor: widget.enabled
+            ? SystemMouseCursors.click
+            : SystemMouseCursors.basic,
         child: GestureDetector(
           behavior: HitTestBehavior.opaque,
           onTap: widget.enabled
@@ -284,7 +310,11 @@ class LeadingSpinePainter extends CustomPainter {
   final Color color;
   final double width;
 
-  LeadingSpinePainter({required this.shape, required this.color, required this.width});
+  LeadingSpinePainter({
+    required this.shape,
+    required this.color,
+    required this.width,
+  });
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -293,11 +323,16 @@ class LeadingSpinePainter extends CustomPainter {
     final clipPath = shape.getOuterPath(rect);
     canvas.save();
     canvas.clipPath(clipPath);
-    canvas.drawRect(Rect.fromLTWH(0, 0, width, size.height), Paint()..color = color);
+    canvas.drawRect(
+      Rect.fromLTWH(0, 0, width, size.height),
+      Paint()..color = color,
+    );
     canvas.restore();
   }
 
   @override
   bool shouldRepaint(covariant LeadingSpinePainter oldDelegate) =>
-      oldDelegate.shape != shape || oldDelegate.color != color || oldDelegate.width != width;
+      oldDelegate.shape != shape ||
+      oldDelegate.color != color ||
+      oldDelegate.width != width;
 }

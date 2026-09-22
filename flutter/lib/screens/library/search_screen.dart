@@ -170,7 +170,7 @@ class _QueryField extends StatelessWidget {
       ),
       child: Row(
         children: [
-          const AppIcon(
+          AppIcon(
             PhosphorIconsRegular.magnifyingGlass,
             size: 24,
             tint: AppColors.ink3,

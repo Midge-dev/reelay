@@ -91,10 +91,7 @@ class _ProfilePickerScreenState extends State<ProfilePickerScreen> {
                       color: AppColors.ink3,
                     ),
                     const SizedBox(height: AppSpacing.md),
-                    const AppText(
-                      "Who's watching?",
-                      style: AppTypography.title1,
-                    ),
+                    AppText("Who's watching?", style: AppTypography.title1),
                   ],
                 ),
                 const SizedBox(height: 72),
@@ -115,7 +112,7 @@ class _ProfilePickerScreenState extends State<ProfilePickerScreen> {
                   ],
                 ),
                 const SizedBox(height: 40),
-                const AppText(
+                AppText(
                   'Each profile sees only what its own accounts can reach',
                   color: AppColors.ink3,
                 ),
@@ -238,7 +235,7 @@ class _AddProfileItem extends StatelessWidget {
             ),
           ),
           const SizedBox(height: AppSpacing.lg),
-          const AppText('Add', color: AppColors.ink3),
+          AppText('Add', color: AppColors.ink3),
         ],
       ),
     );

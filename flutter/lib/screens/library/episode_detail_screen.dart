@@ -19,7 +19,7 @@ import '../common/watch_together_icon.dart';
 import '../common/watchlist_button.dart';
 
 const _heroHeight = 710.0;
-const _restartButtonBorder = SurfaceBorder(
+final _restartButtonBorder = SurfaceBorder(
   idle: SurfaceBorderSide.solid(AppColors.line),
   focused: SurfaceBorderSide.solid(AppColors.accent),
 );
@@ -210,7 +210,7 @@ class _EpisodeDetailScreenState extends State<EpisodeDetailScreen> {
                                   child: FractionallySizedBox(
                                     alignment: Alignment.centerLeft,
                                     widthFactor: progress,
-                                    child: const DecoratedBox(
+                                    child: DecoratedBox(
                                       decoration: BoxDecoration(
                                         color: AppColors.accent,
                                       ),

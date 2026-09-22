@@ -116,20 +116,17 @@ class _AddProfileDialogState extends State<AddProfileDialog> {
                       Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          const AppIcon(
+                          AppIcon(
                             PhosphorIconsRegular.userPlus,
                             size: 22,
                             tint: AppColors.accent300,
                           ),
                           const SizedBox(width: AppSpacing.md),
-                          const AppText(
-                            'NEW PROFILE',
-                            style: AppTypography.micro,
-                          ),
+                          AppText('NEW PROFILE', style: AppTypography.micro),
                         ],
                       ),
                       const SizedBox(height: AppSpacing.lg),
-                      const AppText(
+                      AppText(
                         'Who\'s joining this device?',
                         style: AppTypography.title2,
                       ),
@@ -314,7 +311,7 @@ class _PlexAccountRow extends StatelessWidget {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const AppText('Plex', style: AppTypography.label),
+                AppText('Plex', style: AppTypography.label),
                 const SizedBox(height: 3),
                 AppText(
                   linked

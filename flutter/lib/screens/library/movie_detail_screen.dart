@@ -22,7 +22,7 @@ import 'movie_detail_sections.dart';
 const _heroHeight = 680.0;
 const _posterWidth = 280.0;
 const _posterHeight = 420.0;
-const _restartButtonBorder = SurfaceBorder(
+final _restartButtonBorder = SurfaceBorder(
   idle: SurfaceBorderSide.solid(AppColors.line),
   focused: SurfaceBorderSide.solid(AppColors.accent),
 );
@@ -400,7 +400,7 @@ class _MovieHero extends StatelessWidget {
                             color: AppColors.accent,
                           ),
                           const SizedBox(width: AppSpacing.md),
-                          const AppText('MOVIE', style: AppTypography.micro),
+                          AppText('MOVIE', style: AppTypography.micro),
                         ],
                       ),
                       const SizedBox(height: AppSpacing.sm),
@@ -438,7 +438,7 @@ class _MovieHero extends StatelessWidget {
                                     child: FractionallySizedBox(
                                       alignment: Alignment.centerLeft,
                                       widthFactor: progress,
-                                      child: const DecoratedBox(
+                                      child: DecoratedBox(
                                         decoration: BoxDecoration(
                                           color: AppColors.accent,
                                         ),

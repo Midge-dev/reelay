@@ -5,6 +5,7 @@ import 'dart:math';
 import 'package:rxdart/rxdart.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../theme/tokens.dart';
 import 'app_settings.dart';
 
 const _relayUrlKey = 'relay_url'; // legacy, pre-multi-relay
@@ -16,6 +17,7 @@ const _showChatOverlayKey = 'show_chat_overlay';
 const _chatOverlayCornerKey = 'chat_overlay_corner';
 const _selectedServerIdKey = 'selected_server_id';
 const _profilesKey = 'profiles';
+const _themeIdKey = 'theme_id';
 
 /// Ports SettingsStore.kt. Kotlin's `ObservableSettings` gives a reactive
 /// `Flow` for free because it observes the underlying platform store
@@ -42,13 +44,20 @@ class SettingsStore {
     final profilesJson = await _prefs.getString(_profilesKey);
     final settings = AppSettings(
       relays: _decodeRelays(relaysJson),
-      maxHostSeats: await _prefs.getInt(_maxHostSeatsKey) ?? AppSettings.defaultMaxHostSeats,
-      maxVideoBitrateKbps: await _prefs.getInt(_maxBitrateKey) ?? AppSettings.defaultMaxBitrateKbps,
+      maxHostSeats:
+          await _prefs.getInt(_maxHostSeatsKey) ??
+          AppSettings.defaultMaxHostSeats,
+      maxVideoBitrateKbps:
+          await _prefs.getInt(_maxBitrateKey) ??
+          AppSettings.defaultMaxBitrateKbps,
       forceBurnSubtitles: await _prefs.getBool(_forceBurnKey) ?? false,
       showChatOverlay: await _prefs.getBool(_showChatOverlayKey) ?? true,
-      chatOverlayCorner: _decodeCorner(await _prefs.getString(_chatOverlayCornerKey)),
+      chatOverlayCorner: _decodeCorner(
+        await _prefs.getString(_chatOverlayCornerKey),
+      ),
       selectedServerId: await _prefs.getString(_selectedServerIdKey),
       profiles: _decodeProfiles(profilesJson),
+      themeId: _decodeThemeId(await _prefs.getString(_themeIdKey)),
     );
     _subject.add(await _migrateLegacyRelayUrlIfNeeded(settings));
   }
@@ -57,7 +66,9 @@ class SettingsStore {
     if (json == null || json.trim().isEmpty) return const [];
     try {
       final list = jsonDecode(json) as List<dynamic>;
-      return list.map((e) => RelayEntry.fromJson(e as Map<String, dynamic>)).toList();
+      return list
+          .map((e) => RelayEntry.fromJson(e as Map<String, dynamic>))
+          .toList();
     } catch (_) {
       return const [];
     }
@@ -67,7 +78,9 @@ class SettingsStore {
     if (json == null || json.trim().isEmpty) return const [];
     try {
       final list = jsonDecode(json) as List<dynamic>;
-      return list.map((e) => Profile.fromJson(e as Map<String, dynamic>)).toList();
+      return list
+          .map((e) => Profile.fromJson(e as Map<String, dynamic>))
+          .toList();
     } catch (_) {
       return const [];
     }
@@ -80,14 +93,29 @@ class SettingsStore {
     return ChatOverlayCorner.bottomEnd;
   }
 
-  Future<AppSettings> _migrateLegacyRelayUrlIfNeeded(AppSettings current) => _migrationLock.run(() async {
+  ThemeId _decodeThemeId(String? name) {
+    for (final id in ThemeId.values) {
+      if (id.name == name) return id;
+    }
+    return ThemeId.nocturne;
+  }
+
+  Future<AppSettings> _migrateLegacyRelayUrlIfNeeded(AppSettings current) =>
+      _migrationLock.run(() async {
         if (current.relays.isNotEmpty) return current;
         if (await _prefs.getString(_relayEntriesKey) != null) return current;
         final legacyUrl = await _prefs.getString(_relayUrlKey);
         if (legacyUrl == null || legacyUrl.isEmpty) return current;
 
         final migrated = current.copyWith(
-          relays: [RelayEntry(id: _randomRelayId(), nickname: 'My relay', url: legacyUrl, isDefault: true)],
+          relays: [
+            RelayEntry(
+              id: _randomRelayId(),
+              nickname: 'My relay',
+              url: legacyUrl,
+              isDefault: true,
+            ),
+          ],
         );
         await save(migrated);
         await _prefs.remove(_relayUrlKey);
@@ -95,13 +123,19 @@ class SettingsStore {
       });
 
   Future<void> save(AppSettings appSettings) async {
-    final defaultId = appSettings.relays.where((r) => r.isDefault).firstOrNull?.id ??
+    final defaultId =
+        appSettings.relays.where((r) => r.isDefault).firstOrNull?.id ??
         appSettings.relays.firstOrNull?.id;
-    final normalizedRelays = appSettings.relays.map((r) => r.copyWith(isDefault: r.id == defaultId)).toList();
+    final normalizedRelays = appSettings.relays
+        .map((r) => r.copyWith(isDefault: r.id == defaultId))
+        .toList();
     final normalized = appSettings.copyWith(relays: normalizedRelays);
 
     if (normalizedRelays.isNotEmpty) {
-      await _prefs.setString(_relayEntriesKey, jsonEncode(normalizedRelays.map((r) => r.toJson()).toList()));
+      await _prefs.setString(
+        _relayEntriesKey,
+        jsonEncode(normalizedRelays.map((r) => r.toJson()).toList()),
+      );
     } else {
       await _prefs.remove(_relayEntriesKey);
     }
@@ -109,17 +143,27 @@ class SettingsStore {
     await _prefs.setInt(_maxBitrateKey, normalized.maxVideoBitrateKbps);
     await _prefs.setBool(_forceBurnKey, normalized.forceBurnSubtitles);
     await _prefs.setBool(_showChatOverlayKey, normalized.showChatOverlay);
-    await _prefs.setString(_chatOverlayCornerKey, normalized.chatOverlayCorner.name);
+    await _prefs.setString(
+      _chatOverlayCornerKey,
+      normalized.chatOverlayCorner.name,
+    );
     if (normalized.selectedServerId != null) {
-      await _prefs.setString(_selectedServerIdKey, normalized.selectedServerId!);
+      await _prefs.setString(
+        _selectedServerIdKey,
+        normalized.selectedServerId!,
+      );
     } else {
       await _prefs.remove(_selectedServerIdKey);
     }
     if (normalized.profiles.isNotEmpty) {
-      await _prefs.setString(_profilesKey, jsonEncode(normalized.profiles.map((p) => p.toJson()).toList()));
+      await _prefs.setString(
+        _profilesKey,
+        jsonEncode(normalized.profiles.map((p) => p.toJson()).toList()),
+      );
     } else {
       await _prefs.remove(_profilesKey);
     }
+    await _prefs.setString(_themeIdKey, normalized.themeId.name);
 
     _subject.add(normalized);
   }
