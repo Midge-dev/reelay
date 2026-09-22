@@ -2,6 +2,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 
 import '../focus/dpad_long_press.dart';
+import '../theme/scale.dart';
 import '../theme/tokens.dart';
 import 'content_color.dart';
 import 'surface_style.dart';
@@ -210,7 +211,7 @@ class _FocusableSurfaceState extends State<FocusableSurface> {
             ? widget.shape.copyWith(
                 side: BorderSide(
                   color: activeBorderSide.color,
-                  width: activeBorderSide.width,
+                  width: activeBorderSide.width.du(context),
                 ),
               )
             : widget.shape,
@@ -227,7 +228,7 @@ class _FocusableSurfaceState extends State<FocusableSurface> {
 
     if (showSpine) {
       surface = TweenAnimationBuilder<double>(
-        tween: Tween(begin: 0, end: AppShape.spineWidth),
+        tween: Tween(begin: 0, end: AppShape.spineWidth.du(context)),
         duration: AppMotion.focusSpineWipe,
         curve: AppMotion.enter,
         builder: (context, width, child) => CustomPaint(
@@ -248,11 +249,11 @@ class _FocusableSurfaceState extends State<FocusableSurface> {
         children: [
           surface,
           Positioned(
-            top: AppSpacing.sm,
-            right: AppSpacing.sm,
+            top: AppSpacing.sm.du(context),
+            right: AppSpacing.sm.du(context),
             child: Container(
-              width: AppSpacing.md,
-              height: AppSpacing.md,
+              width: AppSpacing.md.du(context),
+              height: AppSpacing.md.du(context),
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 color: AppColors.ink,

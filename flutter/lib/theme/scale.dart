@@ -15,9 +15,12 @@ class AppScale extends InheritedWidget {
 
   const AppScale({super.key, required this.factor, required super.child});
 
+  // No assert on a missing ancestor — matches ContentColor.of's fallback
+  // convention. main.dart always wraps the real app in one; widget tests
+  // that render a kit component in isolation (no app root) get an
+  // unscaled 1:1 factor instead of a hard crash.
   static double of(BuildContext context) {
     final scale = context.dependOnInheritedWidgetOfExactType<AppScale>();
-    assert(scale != null, 'No AppScale found in context — wrap the app root with one.');
     return scale?.factor ?? 1.0;
   }
 

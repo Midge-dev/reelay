@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/widgets.dart';
 
+import '../theme/scale.dart';
 import '../theme/typography.dart';
 import 'content_color.dart';
 
@@ -74,7 +75,8 @@ class _MarqueeTextState extends State<MarqueeText> {
       await _scrollController.animateTo(
         distance,
         duration: Duration(
-          milliseconds: (distance / _pixelsPerSecond * 1000).round(),
+          milliseconds:
+              (distance / _pixelsPerSecond.du(context) * 1000).round(),
         ),
         curve: Curves.linear,
       );
@@ -89,7 +91,8 @@ class _MarqueeTextState extends State<MarqueeText> {
       await _scrollController.animateTo(
         0,
         duration: Duration(
-          milliseconds: (distance / _pixelsPerSecond * 1000).round(),
+          milliseconds:
+              (distance / _pixelsPerSecond.du(context) * 1000).round(),
         ),
         curve: Curves.linear,
       );
@@ -99,8 +102,11 @@ class _MarqueeTextState extends State<MarqueeText> {
 
   @override
   Widget build(BuildContext context) {
-    final resolvedStyle = (widget.style ?? AppTypography.body).copyWith(
+    final baseStyle = widget.style ?? AppTypography.body;
+    final resolvedStyle = baseStyle.copyWith(
       color: widget.color ?? ContentColor.of(context),
+      fontSize: baseStyle.fontSize?.du(context),
+      letterSpacing: baseStyle.letterSpacing?.du(context),
     );
     // Inactive: plain ellipsized text (the normal static look — matches
     // every other truncated label in the app) rather than the scrolling

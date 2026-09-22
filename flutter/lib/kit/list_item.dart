@@ -1,14 +1,16 @@
 import 'package:flutter/widgets.dart';
 
+import '../theme/scale.dart';
 import '../theme/tokens.dart';
 import 'focusable_surface.dart';
 import 'surface_style.dart';
 
-final _listItemShape = RoundedRectangleBorder(
-  borderRadius: BorderRadius.circular(AppShape.radiusMd),
-);
+RoundedRectangleBorder _listItemShape(BuildContext context) =>
+    RoundedRectangleBorder(
+      borderRadius: BorderRadius.circular(AppShape.radiusMd.du(context)),
+    );
 const _listItemHeight = 96.0;
-const _listItemPadding = EdgeInsets.symmetric(horizontal: AppSpacing.xl);
+const _listItemPaddingHorizontal = AppSpacing.xl;
 
 final _listItemColors = SurfaceColors(
   container: AppColors.surface,
@@ -51,20 +53,22 @@ class AppListItem extends StatelessWidget {
         selected: selected,
         focusNode: focusNode,
         autofocus: autofocus,
-        shape: _listItemShape,
+        shape: _listItemShape(context),
         colors: _listItemColors,
         border: _listItemBorder,
         contentAlignment: AlignmentDirectional.centerStart,
         child: SizedBox(
-          height: _listItemHeight,
+          height: _listItemHeight.du(context),
           child: Padding(
-            padding: _listItemPadding,
+            padding: EdgeInsets.symmetric(
+              horizontal: _listItemPaddingHorizontal.du(context),
+            ),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
                 if (leading != null) ...[
                   leading!,
-                  const SizedBox(width: AppSpacing.lg),
+                  SizedBox(width: AppSpacing.lg.du(context)),
                 ],
                 headline,
               ],

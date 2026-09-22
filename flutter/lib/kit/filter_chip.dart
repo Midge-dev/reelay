@@ -1,14 +1,16 @@
 import 'package:flutter/widgets.dart';
 
+import '../theme/scale.dart';
 import '../theme/tokens.dart';
 import 'focusable_surface.dart';
 import 'surface_style.dart';
 
-final _chipShape = RoundedRectangleBorder(
-  borderRadius: BorderRadius.circular(AppShape.radiusSm),
-);
+RoundedRectangleBorder _chipShape(BuildContext context) =>
+    RoundedRectangleBorder(
+      borderRadius: BorderRadius.circular(AppShape.radiusSm.du(context)),
+    );
 const _chipHeight = 48.0;
-const _chipContentPadding = EdgeInsets.symmetric(horizontal: 22);
+const _chipContentPaddingHorizontal = 22.0;
 
 final _chipColors = SurfaceColors(
   container: AppColors.transparent,
@@ -49,13 +51,15 @@ class AppFilterChip extends StatelessWidget {
       enabled: enabled,
       selected: selected,
       focusNode: focusNode,
-      shape: _chipShape,
+      shape: _chipShape(context),
       colors: _chipColors,
       border: _chipBorder,
       child: SizedBox(
-        height: _chipHeight,
+        height: _chipHeight.du(context),
         child: Padding(
-          padding: _chipContentPadding,
+          padding: EdgeInsets.symmetric(
+            horizontal: _chipContentPaddingHorizontal.du(context),
+          ),
           child: Row(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.center,

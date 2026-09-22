@@ -1,20 +1,20 @@
 import 'package:flutter/widgets.dart';
 
+import '../theme/scale.dart';
 import '../theme/tokens.dart';
 import 'focusable_surface.dart';
 import 'surface_style.dart';
 
 const _buttonHeight = 62.0;
-const _buttonContentPadding = EdgeInsets.symmetric(horizontal: AppSpacing.xxl);
+const _buttonContentPaddingHorizontal = AppSpacing.xxl;
 
 const _buttonCompactHeight = 52.0;
-const _buttonCompactContentPadding = EdgeInsets.symmetric(
-  horizontal: AppSpacing.lg,
-);
+const _buttonCompactContentPaddingHorizontal = AppSpacing.lg;
 
-final _buttonShape = RoundedRectangleBorder(
-  borderRadius: BorderRadius.circular(AppShape.radiusMd),
-);
+RoundedRectangleBorder _buttonShape(BuildContext context) =>
+    RoundedRectangleBorder(
+      borderRadius: BorderRadius.circular(AppShape.radiusMd.du(context)),
+    );
 
 final _filledColors = SurfaceColors(
   container: AppColors.surface,
@@ -58,15 +58,18 @@ class AppButton extends StatelessWidget {
       focusNode: focusNode,
       autofocus: autofocus,
       onFocusChange: onFocusChange,
-      shape: _buttonShape,
+      shape: _buttonShape(context),
       colors: _filledColors,
       border: _filledBorder,
       child: SizedBox(
-        height: compact ? _buttonCompactHeight : _buttonHeight,
+        height: (compact ? _buttonCompactHeight : _buttonHeight).du(context),
         child: Padding(
-          padding: compact
-              ? _buttonCompactContentPadding
-              : _buttonContentPadding,
+          padding: EdgeInsets.symmetric(
+            horizontal: (compact
+                    ? _buttonCompactContentPaddingHorizontal
+                    : _buttonContentPaddingHorizontal)
+                .du(context),
+          ),
           child: Row(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.center,
@@ -120,15 +123,18 @@ class AppOutlinedButton extends StatelessWidget {
       focusNode: focusNode,
       autofocus: autofocus,
       onFocusChange: onFocusChange,
-      shape: _buttonShape,
+      shape: _buttonShape(context),
       colors: _outlinedColors,
       border: _outlinedBorder,
       child: SizedBox(
-        height: compact ? _buttonCompactHeight : _buttonHeight,
+        height: (compact ? _buttonCompactHeight : _buttonHeight).du(context),
         child: Padding(
-          padding: compact
-              ? _buttonCompactContentPadding
-              : _buttonContentPadding,
+          padding: EdgeInsets.symmetric(
+            horizontal: (compact
+                    ? _buttonCompactContentPaddingHorizontal
+                    : _buttonContentPaddingHorizontal)
+                .du(context),
+          ),
           child: Row(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.center,

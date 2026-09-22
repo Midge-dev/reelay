@@ -1,5 +1,6 @@
 import 'package:flutter/widgets.dart';
 
+import '../theme/scale.dart';
 import '../theme/tokens.dart';
 
 const _radioSize = 32.0;
@@ -16,14 +17,14 @@ class AppRadioButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: _radioSize,
-      height: _radioSize,
+      width: _radioSize.du(context),
+      height: _radioSize.du(context),
       decoration: BoxDecoration(
         shape: BoxShape.circle,
         border: Border.fromBorderSide(
           BorderSide(
             color: selected ? AppColors.accent : AppColors.lineStrong,
-            width: AppShape.borderWidth,
+            width: AppShape.borderWidth.du(context),
           ),
         ),
       ),
@@ -34,7 +35,10 @@ class AppRadioButton extends StatelessWidget {
                 shape: BoxShape.circle,
                 color: AppColors.accent,
               ),
-              child: SizedBox(width: _radioDotSize, height: _radioDotSize),
+              child: SizedBox(
+                width: _radioDotSize.du(context),
+                height: _radioDotSize.du(context),
+              ),
             )
           : null,
     );

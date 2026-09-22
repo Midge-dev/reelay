@@ -1,5 +1,6 @@
 import 'package:flutter/widgets.dart';
 
+import '../theme/scale.dart';
 import '../theme/tokens.dart';
 import 'content_color.dart';
 import 'focusable_surface.dart';
@@ -49,14 +50,17 @@ class _AppSwitchState extends State<AppSwitch> {
           : AppColors.surfaceRaised,
       focusedContent: AppColors.ink,
     );
+    final trackWidth = _trackWidth.du(context);
+    final thumbSize = _thumbSize.du(context);
+    final thumbInset = _thumbInset.du(context);
     final thumbOffset = widget.checked
-        ? _trackWidth - _thumbSize - _thumbInset
-        : _thumbInset;
+        ? trackWidth - thumbSize - thumbInset
+        : thumbInset;
     final thumbScale = _pressed ? 0.88 : 1.0;
 
     return SizedBox(
-      width: _trackWidth,
-      height: _trackHeight,
+      width: trackWidth,
+      height: _trackHeight.du(context),
       child: FocusableSurface(
         onClick: () => widget.onCheckedChange(!widget.checked),
         focusNode: widget.focusNode,
@@ -71,14 +75,14 @@ class _AppSwitchState extends State<AppSwitch> {
               duration: const Duration(milliseconds: 150),
               curve: Curves.easeOut,
               left: thumbOffset,
-              top: _thumbInset,
+              top: thumbInset,
               child: AnimatedScale(
                 scale: thumbScale,
                 duration: const Duration(milliseconds: 100),
                 child: Builder(
                   builder: (context) => Container(
-                    width: _thumbSize,
-                    height: _thumbSize,
+                    width: thumbSize,
+                    height: thumbSize,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
                       color: ContentColor.of(context),

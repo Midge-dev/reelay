@@ -1,5 +1,6 @@
 import 'package:flutter/widgets.dart';
 
+import '../theme/scale.dart';
 import '../theme/tokens.dart';
 
 const _defaultFadeWidth = 48.0;
@@ -37,7 +38,8 @@ class EdgeFadeRow extends StatelessWidget {
       blendMode: BlendMode.dstIn,
       shaderCallback: (bounds) {
         final extent = axis == Axis.horizontal ? bounds.width : bounds.height;
-        final fraction = extent > 0 ? (fadeWidth / extent).clamp(0.0, 0.5) : 0.0;
+        final scaledFadeWidth = fadeWidth.du(context);
+        final fraction = extent > 0 ? (scaledFadeWidth / extent).clamp(0.0, 0.5) : 0.0;
         final startColor = fadeStart ? AppColors.transparent : AppColors.ink;
         final endColor = fadeEnd ? AppColors.transparent : AppColors.ink;
         return LinearGradient(

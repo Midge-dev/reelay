@@ -1,5 +1,6 @@
 import 'package:flutter/widgets.dart';
 
+import '../theme/scale.dart';
 import 'content_color.dart';
 
 /// Ports ui/kit/Icon.kt — tints a glyph with the ambient ContentColor
@@ -17,6 +18,10 @@ class AppIcon extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Icon(icon, size: size, color: tint ?? ContentColor.of(context));
+    return Icon(
+      icon,
+      size: size.du(context),
+      color: tint ?? ContentColor.of(context),
+    );
   }
 }

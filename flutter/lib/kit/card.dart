@@ -1,12 +1,13 @@
 import 'package:flutter/widgets.dart';
 
+import '../theme/scale.dart';
 import '../theme/tokens.dart';
 import 'focusable_surface.dart';
 import 'scroll_peek.dart';
 import 'surface_style.dart';
 
-final _cardShape = RoundedRectangleBorder(
-  borderRadius: BorderRadius.circular(AppShape.radiusMd),
+RoundedRectangleBorder _cardShape(BuildContext context) => RoundedRectangleBorder(
+  borderRadius: BorderRadius.circular(AppShape.radiusMd.du(context)),
 );
 
 final _cardColors = SurfaceColors(
@@ -72,7 +73,7 @@ class AppCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final outlinedShape = shape is OutlinedBorder
         ? shape as OutlinedBorder
-        : _cardShape;
+        : _cardShape(context);
 
     return FocusableSurface(
       onClick: onClick,

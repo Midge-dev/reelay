@@ -1,5 +1,6 @@
 import 'package:flutter/widgets.dart';
 
+import '../theme/scale.dart';
 import '../theme/typography.dart';
 import 'content_color.dart';
 
@@ -30,9 +31,14 @@ class AppText extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final resolvedColor = color ?? ContentColor.of(context);
+    final base = style ?? AppTypography.body;
     return Text(
       text,
-      style: (style ?? AppTypography.body).copyWith(color: resolvedColor),
+      style: base.copyWith(
+        color: resolvedColor,
+        fontSize: base.fontSize?.du(context),
+        letterSpacing: base.letterSpacing?.du(context),
+      ),
       textAlign: textAlign,
       maxLines: maxLines,
       overflow: overflow,

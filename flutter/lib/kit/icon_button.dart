@@ -1,12 +1,14 @@
 import 'package:flutter/widgets.dart';
 
+import '../theme/scale.dart';
 import '../theme/tokens.dart';
 import 'focusable_surface.dart';
 import 'surface_style.dart';
 
-final _iconButtonShape = RoundedRectangleBorder(
-  borderRadius: BorderRadius.circular(AppShape.radiusMd),
-);
+RoundedRectangleBorder _iconButtonShape(BuildContext context) =>
+    RoundedRectangleBorder(
+      borderRadius: BorderRadius.circular(AppShape.radiusMd.du(context)),
+    );
 const _iconButtonSize = 62.0;
 
 final _iconButtonColors = SurfaceColors(
@@ -54,15 +56,15 @@ class AppIconButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      width: _iconButtonSize,
-      height: _iconButtonSize,
+      width: _iconButtonSize.du(context),
+      height: _iconButtonSize.du(context),
       child: FocusableSurface(
         onClick: onClick,
         enabled: enabled,
         focusNode: focusNode,
         autofocus: autofocus,
         onFocusChange: onFocusChange,
-        shape: _iconButtonShape,
+        shape: _iconButtonShape(context),
         colors: _iconButtonColors,
         border: border ?? _defaultIconButtonBorder,
         child: child,
