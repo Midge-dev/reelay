@@ -80,7 +80,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   Map<String, RelayReachability?> _relayStatuses = {};
 
   final _firstSourceFocus = FocusNode(debugLabel: 'settings-first-source');
-  final _relaySettingsEntryFocus = FocusNode(debugLabel: 'relay-settings-entry');
+  final _relaySettingsEntryFocus = FocusNode(
+    debugLabel: 'relay-settings-entry',
+  );
   final _relaySettingsBackFocus = FocusNode(debugLabel: 'relay-settings-back');
   final _maxHostSeatsFocus = FocusNode(debugLabel: 'max-host-seats');
   final _addRelayFocus = FocusNode(debugLabel: 'add-relay');
@@ -122,7 +124,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
 
   Future<void> _loadSources() async {
     try {
-      final sources = await PlexResourcesApi(widget.clientIdentifier).listServers(widget.accountToken);
+      final sources = await PlexResourcesApi(widget.clientIdentifier)
+          .listServers(widget.accountToken);
       if (!mounted) return;
       setState(() => _sources = sources);
     } catch (e) {
@@ -138,9 +141,16 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     setState(() => _relayStatuses = {for (final r in relays) r.id: null});
     for (final entry in relays) {
       final reachable = await _relayDirectoryApi.testReachable(entry.url);
-      final count = reachable ? (await _relayDirectoryApi.listRooms(entry.url)).length : 0;
+      final count = reachable
+          ? (await _relayDirectoryApi.listRooms(entry.url)).length
+          : 0;
       if (!mounted) return;
-      setState(() => _relayStatuses = {..._relayStatuses, entry.id: RelayReachability(reachable, count)});
+      setState(
+        () => _relayStatuses = {
+          ..._relayStatuses,
+          entry.id: RelayReachability(reachable, count),
+        },
+      );
     }
   }
 
@@ -166,7 +176,11 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     await store.save(persisted.copyWith(relays: newRelays));
   }
 
-  void _startPairing({String? editingId, String prefillNickname = '', String prefillUrl = ''}) async {
+  void _startPairing({
+    String? editingId,
+    String prefillNickname = '',
+    String prefillUrl = '',
+  }) async {
     setState(() {
       _pairingError = null;
       _editingRelayId = editingId;
@@ -174,7 +188,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     final server = PairingServer(
       prefillNickname: prefillNickname,
       prefillUrl: prefillUrl,
-      onSubmitted: (nickname, url) => _onPairingSubmitted(editingId, nickname, url),
+      onSubmitted: (nickname, url) =>
+          _onPairingSubmitted(editingId, nickname, url),
     );
     final url = await server.start();
     if (!mounted) return;
@@ -183,16 +198,23 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         _pairingServer = server;
         _pairingUrl = url;
       });
-      WidgetsBinding.instance.addPostFrameCallback((_) => _cancelPairingFocus.requestFocus());
+      WidgetsBinding.instance.addPostFrameCallback(
+        (_) => _cancelPairingFocus.requestFocus(),
+      );
     } else {
       setState(() {
-        _pairingError = "Couldn't find a Wi-Fi address — is the TV connected to a network?";
+        _pairingError =
+            "Couldn't find a Wi-Fi address — is the TV connected to a network?";
         _editingRelayId = null;
       });
     }
   }
 
-  Future<void> _onPairingSubmitted(String? editingId, String nickname, String url) async {
+  Future<void> _onPairingSubmitted(
+    String? editingId,
+    String nickname,
+    String url,
+  ) async {
     if (!mounted) return;
     _pairingServer?.stop();
     setState(() {
@@ -200,7 +222,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       _pairingUrl = null;
       _editingRelayId = null;
     });
-    WidgetsBinding.instance.addPostFrameCallback((_) => _addRelayFocus.requestFocus());
+    WidgetsBinding.instance.addPostFrameCallback(
+      (_) => _addRelayFocus.requestFocus(),
+    );
 
     setState(() {
       _testingRelayName = nickname;
@@ -208,7 +232,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     });
     _silentTimer?.cancel();
     _silentTimer = Timer(const Duration(seconds: 2), () {
-      if (mounted && _testStatus == RelayStatus.silent) setState(() => _testStatus = RelayStatus.waking);
+      if (mounted && _testStatus == RelayStatus.silent)
+        setState(() => _testStatus = RelayStatus.waking);
     });
 
     final reachable = await _relayDirectoryApi.testReachableTolerant(url);
@@ -216,19 +241,40 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     if (!mounted) return;
 
     final updatedRelays = editingId != null
-        ? _settings.relays.map((r) => r.id == editingId ? RelayEntry(id: r.id, nickname: nickname, url: url, isDefault: r.isDefault) : r).toList()
+        ? _settings.relays
+              .map(
+                (r) => r.id == editingId
+                    ? RelayEntry(
+                        id: r.id,
+                        nickname: nickname,
+                        url: url,
+                        isDefault: r.isDefault,
+                      )
+                    : r,
+              )
+              .toList()
         : [
             ..._settings.relays,
-            RelayEntry(id: _uuid.v4(), nickname: nickname, url: url, isDefault: _settings.relays.isEmpty),
+            RelayEntry(
+              id: _uuid.v4(),
+              nickname: nickname,
+              url: url,
+              isDefault: _settings.relays.isEmpty,
+            ),
           ];
     await _persistRelays(updatedRelays);
     if (!mounted) return;
 
     final statusId = editingId ?? updatedRelays.last.id;
-    final count = reachable ? (await _relayDirectoryApi.listRooms(url)).length : 0;
+    final count = reachable
+        ? (await _relayDirectoryApi.listRooms(url)).length
+        : 0;
     if (!mounted) return;
     setState(() {
-      _relayStatuses = {..._relayStatuses, statusId: RelayReachability(reachable, count)};
+      _relayStatuses = {
+        ..._relayStatuses,
+        statusId: RelayReachability(reachable, count),
+      };
       _testingRelayName = null;
     });
   }
@@ -240,7 +286,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       _pairingUrl = null;
       _editingRelayId = null;
     });
-    WidgetsBinding.instance.addPostFrameCallback((_) => _addRelayFocus.requestFocus());
+    WidgetsBinding.instance.addPostFrameCallback(
+      (_) => _addRelayFocus.requestFocus(),
+    );
   }
 
   @override
@@ -263,14 +311,29 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         backFocus: _relaySettingsBackFocus,
         onBack: () {
           setState(() => _showingRelaySettings = false);
-          WidgetsBinding.instance.addPostFrameCallback((_) => _relaySettingsEntryFocus.requestFocus());
+          WidgetsBinding.instance.addPostFrameCallback(
+            (_) => _relaySettingsEntryFocus.requestFocus(),
+          );
         },
-        onMakeDefault: (entry) => _persistRelays(_settings.relays.map((r) => r.copyWith(isDefault: r.id == entry.id)).toList()),
-        onEdit: (entry) => _startPairing(editingId: entry.id, prefillNickname: entry.nickname, prefillUrl: entry.url),
+        onMakeDefault: (entry) => _persistRelays(
+          _settings.relays
+              .map((r) => r.copyWith(isDefault: r.id == entry.id))
+              .toList(),
+        ),
+        onEdit: (entry) => _startPairing(
+          editingId: entry.id,
+          prefillNickname: entry.nickname,
+          prefillUrl: entry.url,
+        ),
         onRemove: (entry) {
-          final remaining = _settings.relays.where((r) => r.id != entry.id).toList();
+          final remaining = _settings.relays
+              .where((r) => r.id != entry.id)
+              .toList();
           final normalized = entry.isDefault && remaining.isNotEmpty
-              ? [for (var i = 0; i < remaining.length; i++) remaining[i].copyWith(isDefault: i == 0)]
+              ? [
+                  for (var i = 0; i < remaining.length; i++)
+                    remaining[i].copyWith(isDefault: i == 0),
+                ]
               : remaining;
           _persistRelays(normalized);
         },
@@ -283,64 +346,78 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       color: AppColors.background,
       child: Stack(
         children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Expanded(
-                child: SingleChildScrollView(
-                  controller: _scrollController,
-                  padding: const EdgeInsets.all(48),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const AppText('Settings', style: AppTypography.title1),
-                      const SizedBox(height: 32),
-                      _SettingsGroup(
-                        title: 'Libraries',
-                        showRule: false,
-                        child: _buildSourcesSection(),
-                      ),
-                      _SettingsGroup(
-                        title: 'Profiles',
-                        showRule: true,
-                        child: _buildProfilesSection(),
-                      ),
-                      _SettingsGroup(
-                        title: 'Watch Together',
-                        showRule: true,
-                        child: _buildWatchTogetherSection(),
-                      ),
-                      _SettingsGroup(
-                        title: 'Playback',
-                        showRule: true,
-                        child: _buildPlaybackSection(),
-                      ),
-                      _SettingsGroup(
-                        title: 'Chat',
-                        showRule: true,
-                        child: _buildChatSection(),
-                      ),
-                      const SizedBox(height: 32),
-                      AppButton(
-                        onClick: () async {
-                          await ref.read(settingsStoreProvider).save(_settings);
-                          if (mounted) widget.onSaved();
-                        },
-                        focusNode: _saveFocus,
-                        child: const AppText('Save'),
-                      ),
-                    ],
+          // Excluded from focus whenever an overlay is open — otherwise
+          // D-pad navigation inside the overlay can escape into this row's
+          // still-mounted content, since Flutter's directional focus
+          // traversal doesn't account for what's actually painted on top.
+          ExcludeFocus(
+            excluding: _maxSeatsMenuExpanded || _showingAddProfile,
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Expanded(
+                  child: SingleChildScrollView(
+                    controller: _scrollController,
+                    padding: const EdgeInsets.all(48),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const AppText('Settings', style: AppTypography.title1),
+                        const SizedBox(height: 32),
+                        _SettingsGroup(
+                          title: 'Libraries',
+                          showRule: false,
+                          child: _buildSourcesSection(),
+                        ),
+                        _SettingsGroup(
+                          title: 'Profiles',
+                          showRule: true,
+                          child: _buildProfilesSection(),
+                        ),
+                        _SettingsGroup(
+                          title: 'Watch Together',
+                          showRule: true,
+                          child: _buildWatchTogetherSection(),
+                        ),
+                        _SettingsGroup(
+                          title: 'Playback',
+                          showRule: true,
+                          child: _buildPlaybackSection(),
+                        ),
+                        _SettingsGroup(
+                          title: 'Chat',
+                          showRule: true,
+                          child: _buildChatSection(),
+                        ),
+                        const SizedBox(height: 32),
+                        AppButton(
+                          onClick: () async {
+                            await ref
+                                .read(settingsStoreProvider)
+                                .save(_settings);
+                            if (mounted) widget.onSaved();
+                          },
+                          focusNode: _saveFocus,
+                          child: const AppText('Save'),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
-              ),
-              Padding(
-                padding: const EdgeInsets.symmetric(vertical: 48, horizontal: 12),
-                child: NeonScrollbar(controller: _scrollController),
-              ),
-            ],
+                Padding(
+                  padding: const EdgeInsets.symmetric(
+                    vertical: 48,
+                    horizontal: 12,
+                  ),
+                  child: NeonScrollbar(controller: _scrollController),
+                ),
+              ],
+            ),
           ),
           if (_maxSeatsMenuExpanded) ...[
-            Positioned.fill(child: ColoredBox(color: AppScrims.dialog.withValues(alpha: 0.4))),
+            Positioned.fill(
+              child: ColoredBox(color: AppScrims.dialog.withValues(alpha: 0.4)),
+            ),
             Positioned(
               left: 220,
               top: 220,
@@ -351,7 +428,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     _settings = _settings.copyWith(maxHostSeats: value);
                     _maxSeatsMenuExpanded = false;
                   });
-                  WidgetsBinding.instance.addPostFrameCallback((_) => _maxHostSeatsFocus.requestFocus());
+                  WidgetsBinding.instance.addPostFrameCallback(
+                    (_) => _maxHostSeatsFocus.requestFocus(),
+                  );
                 },
               ),
             ),
@@ -386,11 +465,22 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 Padding(
                   padding: const EdgeInsets.only(bottom: 8),
                   child: AppListItem(
-                    selected: _settings.selectedServerId == source.machineIdentifier,
-                    onClick: () => setState(() => _settings = _settings.copyWith(selectedServerId: source.machineIdentifier)),
+                    selected:
+                        _settings.selectedServerId == source.machineIdentifier,
+                    onClick: () => setState(
+                      () => _settings = _settings.copyWith(
+                        selectedServerId: source.machineIdentifier,
+                      ),
+                    ),
                     focusNode: index == 0 ? _firstSourceFocus : null,
-                    leading: AppRadioButton(selected: _settings.selectedServerId == source.machineIdentifier),
-                    headline: AppText('${source.name}${source.owned ? ' (owned)' : ''}'),
+                    leading: AppRadioButton(
+                      selected:
+                          _settings.selectedServerId ==
+                          source.machineIdentifier,
+                    ),
+                    headline: AppText(
+                      '${source.name}${source.owned ? ' (owned)' : ''}',
+                    ),
                   ),
                 ),
             ],
@@ -408,15 +498,32 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             padding: const EdgeInsets.only(bottom: 8),
             child: AppText('${profile.name} · Plex · ${profile.plexUsername}'),
           ),
-        if (_settings.profiles.isEmpty) const Padding(padding: EdgeInsets.only(bottom: 8), child: AppText('No profiles yet')),
+        if (_settings.profiles.isEmpty)
+          const Padding(
+            padding: EdgeInsets.only(bottom: 8),
+            child: AppText('No profiles yet'),
+          ),
         const SizedBox(height: 8),
-        AppButton(onClick: () => setState(() => _showingAddProfile = true), child: const AppText('Add profile')),
+        AppButton(
+          onClick: () => setState(() => _showingAddProfile = true),
+          child: const AppText('Add profile'),
+        ),
       ],
     );
   }
 
-  Future<void> _addProfile({required String name, required String watchTogetherName, required String token}) async {
-    await ref.read(appRootControllerProvider).addProfile(name: name, watchTogetherName: watchTogetherName, token: token);
+  Future<void> _addProfile({
+    required String name,
+    required String watchTogetherName,
+    required String token,
+  }) async {
+    await ref
+        .read(appRootControllerProvider)
+        .addProfile(
+          name: name,
+          watchTogetherName: watchTogetherName,
+          token: token,
+        );
     final settings = await ref.read(settingsStoreProvider).observe().first;
     if (!mounted) return;
     setState(() {
@@ -439,12 +546,23 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           child: FocusableSurface(
             onClick: () {
               setState(() => _showingRelaySettings = true);
-              WidgetsBinding.instance.addPostFrameCallback((_) => _relaySettingsBackFocus.requestFocus());
+              WidgetsBinding.instance.addPostFrameCallback(
+                (_) => _relaySettingsBackFocus.requestFocus(),
+              );
             },
             focusNode: _relaySettingsEntryFocus,
-            shape: const RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(8))),
-            colors: SurfaceColors(container: AppColors.background, content: AppColors.ink3, focusedContent: AppColors.inkOnArt),
-            border: const SurfaceBorder(idle: SurfaceBorderSide.solid(AppColors.line), focused: SurfaceBorderSide.solid(AppColors.accent)),
+            shape: const RoundedRectangleBorder(
+              borderRadius: BorderRadius.all(Radius.circular(8)),
+            ),
+            colors: SurfaceColors(
+              container: AppColors.background,
+              content: AppColors.ink3,
+              focusedContent: AppColors.inkOnArt,
+            ),
+            border: const SurfaceBorder(
+              idle: SurfaceBorderSide.solid(AppColors.line),
+              focused: SurfaceBorderSide.solid(AppColors.accent),
+            ),
             contentAlignment: AlignmentDirectional.centerStart,
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -457,7 +575,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     children: [
                       const AppText('Relay settings'),
                       AppText(
-                        defaultRelay != null ? '${defaultRelay.nickname} · Default' : 'None configured',
+                        defaultRelay != null
+                            ? '${defaultRelay.nickname} · Default'
+                            : 'None configured',
                         color: AppColors.ink3,
                       ),
                     ],
@@ -475,9 +595,18 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           child: FocusableSurface(
             onClick: () => setState(() => _maxSeatsMenuExpanded = true),
             focusNode: _maxHostSeatsFocus,
-            shape: const RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(8))),
-            colors: SurfaceColors(container: AppColors.background, content: AppColors.ink3, focusedContent: AppColors.inkOnArt),
-            border: const SurfaceBorder(idle: SurfaceBorderSide.solid(AppColors.line), focused: SurfaceBorderSide.solid(AppColors.accent)),
+            shape: const RoundedRectangleBorder(
+              borderRadius: BorderRadius.all(Radius.circular(8)),
+            ),
+            colors: SurfaceColors(
+              container: AppColors.background,
+              content: AppColors.ink3,
+              focusedContent: AppColors.inkOnArt,
+            ),
+            border: const SurfaceBorder(
+              idle: SurfaceBorderSide.solid(AppColors.line),
+              focused: SurfaceBorderSide.solid(AppColors.accent),
+            ),
             contentAlignment: AlignmentDirectional.centerStart,
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -506,20 +635,30 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           mainAxisSize: MainAxisSize.min,
           children: [
             for (final preset in AppSettings.bitratePresets) ...[
-              Builder(builder: (context) {
-                final selected = _settings.maxVideoBitrateKbps == preset.kbps;
-                return AppFilterChip(
-                  selected: selected,
-                  onClick: () => setState(() => _settings = _settings.copyWith(maxVideoBitrateKbps: preset.kbps)),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      if (selected) const Padding(padding: EdgeInsets.only(right: 8), child: AppText('✓')),
-                      AppText(preset.label),
-                    ],
-                  ),
-                );
-              }),
+              Builder(
+                builder: (context) {
+                  final selected = _settings.maxVideoBitrateKbps == preset.kbps;
+                  return AppFilterChip(
+                    selected: selected,
+                    onClick: () => setState(
+                      () => _settings = _settings.copyWith(
+                        maxVideoBitrateKbps: preset.kbps,
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        if (selected)
+                          const Padding(
+                            padding: EdgeInsets.only(right: 8),
+                            child: AppText('✓'),
+                          ),
+                        AppText(preset.label),
+                      ],
+                    ),
+                  );
+                },
+              ),
               const SizedBox(width: 16),
             ],
           ],
@@ -529,7 +668,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         const SizedBox(height: 8),
         AppSwitch(
           checked: _settings.forceBurnSubtitles,
-          onCheckedChange: (v) => setState(() => _settings = _settings.copyWith(forceBurnSubtitles: v)),
+          onCheckedChange: (v) => setState(
+            () => _settings = _settings.copyWith(forceBurnSubtitles: v),
+          ),
         ),
       ],
     );
@@ -539,20 +680,29 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const AppText('Show watch-together chat messages on screen during playback'),
+        const AppText(
+          'Show watch-together chat messages on screen during playback',
+        ),
         const SizedBox(height: 8),
         AppSwitch(
           checked: _settings.showChatOverlay,
-          onCheckedChange: (v) => setState(() => _settings = _settings.copyWith(showChatOverlay: v)),
+          onCheckedChange: (v) => setState(
+            () => _settings = _settings.copyWith(showChatOverlay: v),
+          ),
         ),
         const SizedBox(height: 24),
         const AppText('Chat position'),
         const SizedBox(height: 4),
-        const AppText('Pick the corner messages appear in', color: AppColors.ink3),
+        const AppText(
+          'Pick the corner messages appear in',
+          color: AppColors.ink3,
+        ),
         const SizedBox(height: 14),
         ChatCornerPicker(
           selected: _settings.chatOverlayCorner,
-          onSelect: (corner) => setState(() => _settings = _settings.copyWith(chatOverlayCorner: corner)),
+          onSelect: (corner) => setState(
+            () => _settings = _settings.copyWith(chatOverlayCorner: corner),
+          ),
         ),
       ],
     );
@@ -564,7 +714,11 @@ class _SettingsGroup extends StatelessWidget {
   final bool showRule;
   final Widget child;
 
-  const _SettingsGroup({required this.title, required this.showRule, required this.child});
+  const _SettingsGroup({
+    required this.title,
+    required this.showRule,
+    required this.child,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -576,7 +730,16 @@ class _SettingsGroup extends StatelessWidget {
           Container(height: 1, color: AppColors.surface),
           const SizedBox(height: 14),
         ],
-        AppText(title.toUpperCase(), style: const TextStyle(fontFamily: 'Inter', fontSize: 12, letterSpacing: 1.2, fontWeight: FontWeight.w500), color: AppColors.ink3),
+        AppText(
+          title.toUpperCase(),
+          style: const TextStyle(
+            fontFamily: 'Inter',
+            fontSize: 12,
+            letterSpacing: 1.2,
+            fontWeight: FontWeight.w500,
+          ),
+          color: AppColors.ink3,
+        ),
         const SizedBox(height: 6),
         child,
       ],

@@ -1,8 +1,8 @@
-import 'package:flutter/material.dart' show Icons;
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:reelay/data/plex/plex_models.dart';
 import 'package:reelay/screens/navigation/app_navigation_drawer.dart';
+import 'package:reelay/theme/phosphor_icons.dart';
 
 const _server = PlexServer(name: 'Home', baseUrl: 'http://192.168.1.5:32400', accessToken: 'tok');
 
@@ -41,10 +41,12 @@ void main() {
       ),
     );
 
-    expect(find.byIcon(Icons.home), findsOneWidget);
-    expect(find.byIcon(Icons.settings), findsOneWidget);
-    expect(find.byIcon(Icons.movie), findsOneWidget);
-    expect(find.byIcon(Icons.tv), findsOneWidget);
+    expect(find.byIcon(PhosphorIconsFill.house), findsOneWidget, reason: 'Home is the selected item, so it shows the Fill weight');
+    expect(find.byIcon(PhosphorIconsRegular.gear), findsOneWidget);
+    expect(find.byIcon(PhosphorIconsRegular.filmSlate), findsOneWidget);
+    expect(find.byIcon(PhosphorIconsRegular.televisionSimple), findsOneWidget);
+    expect(find.byIcon(PhosphorIconsRegular.bookmarkSimple), findsOneWidget);
+    expect(find.byIcon(PhosphorIconsRegular.usersThree), findsOneWidget);
     expect(find.text('Home'), findsNothing, reason: 'labels are hidden until the rail is focused/expanded');
     expect(tester.takeException(), isNull);
   });
@@ -69,7 +71,7 @@ void main() {
       ),
     );
 
-    await tester.tap(find.byIcon(Icons.settings));
+    await tester.tap(find.byIcon(PhosphorIconsRegular.gear));
     await tester.pump();
     await tester.pump();
     await tester.pump(_railAnimDurationForTest);
@@ -99,7 +101,7 @@ void main() {
       ),
     );
 
-    await tester.tap(find.byIcon(Icons.tv));
+    await tester.tap(find.byIcon(PhosphorIconsRegular.televisionSimple));
     await tester.pump();
 
     expect(selected?.key, 's2');
@@ -126,7 +128,7 @@ void main() {
       ),
     );
 
-    await tester.tap(find.byIcon(Icons.settings));
+    await tester.tap(find.byIcon(PhosphorIconsRegular.gear));
     await tester.pump();
 
     expect(opened, isTrue);

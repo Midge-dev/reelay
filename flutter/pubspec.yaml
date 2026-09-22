@@ -46,6 +46,7 @@ dependencies:
   uuid: ^4.6.0
   video_player: ^2.10.0
   collection: ^1.19.0
+  phosphor_flutter: ^2.1.0
 
 dev_dependencies:
   flutter_test:

@@ -1,6 +1,7 @@
-import 'package:flutter/material.dart' show Icons;
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
+
+import '../../theme/phosphor_icons.dart';
 
 import '../../kit/icon.dart';
 import '../../kit/icon_button.dart';
@@ -86,7 +87,9 @@ class PlayerControlsBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final playedFraction = durationMs > 0 ? (positionMs / durationMs).clamp(0.0, 1.0) : 0.0;
+    final playedFraction = durationMs > 0
+        ? (positionMs / durationMs).clamp(0.0, 1.0)
+        : 0.0;
 
     final row = [
       _RowButton(rewindFocusNode, true),
@@ -133,21 +136,27 @@ class PlayerControlsBar extends StatelessWidget {
       // must reach onSeekKeyEvent for hold-to-accelerate to work. KeyUpEvent
       // falls through ignored so it bubbles to the screen level, which
       // resets the hold-repeat bookkeeping there.
-      if (event is! KeyDownEvent && event is! KeyRepeatEvent) return KeyEventResult.ignored;
+      if (event is! KeyDownEvent && event is! KeyRepeatEvent)
+        return KeyEventResult.ignored;
       final key = event.logicalKey;
       if (key == LogicalKeyboardKey.arrowUp) return KeyEventResult.handled;
       if (key == LogicalKeyboardKey.arrowDown) {
         playPauseFocusNode.requestFocus();
         return KeyEventResult.handled;
       }
-      if (key == LogicalKeyboardKey.arrowLeft || key == LogicalKeyboardKey.arrowRight) {
+      if (key == LogicalKeyboardKey.arrowLeft ||
+          key == LogicalKeyboardKey.arrowRight) {
         return onSeekKeyEvent(event);
       }
       return KeyEventResult.ignored;
     }
 
     Widget trapped(int index, Widget child) {
-      return Focus(canRequestFocus: false, onKeyEvent: (node, event) => handleRowKey(index, event), child: child);
+      return Focus(
+        canRequestFocus: false,
+        onKeyEvent: (node, event) => handleRowKey(index, event),
+        child: child,
+      );
     }
 
     return DecoratedBox(
@@ -155,7 +164,10 @@ class PlayerControlsBar extends StatelessWidget {
         gradient: LinearGradient(
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
-          colors: [AppScrims.dialog.withValues(alpha: 0), AppScrims.dialog.withValues(alpha: 0.6)],
+          colors: [
+            AppScrims.dialog.withValues(alpha: 0),
+            AppScrims.dialog.withValues(alpha: 0.6),
+          ],
         ),
       ),
       child: Padding(
@@ -177,7 +189,10 @@ class PlayerControlsBar extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 12),
-            AppText('${formatTimecode(positionMs)} / ${formatTimecode(durationMs)}', color: AppColors.inkOnArt),
+            AppText(
+              '${formatTimecode(positionMs)} / ${formatTimecode(durationMs)}',
+              color: AppColors.inkOnArt,
+            ),
             const SizedBox(height: 12),
             // mainAxisAlignment.center on a mainAxisSize.min Row is a no-op
             // (nothing to center within), and the Column above pins it to
@@ -188,18 +203,43 @@ class PlayerControlsBar extends StatelessWidget {
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  trapped(0, AppIconButton(onClick: onRewind, focusNode: rewindFocusNode, child: const AppIcon(Icons.replay_10, tint: AppColors.inkOnArt))),
+                  trapped(
+                    0,
+                    AppIconButton(
+                      onClick: onRewind,
+                      focusNode: rewindFocusNode,
+                      child: const AppIcon(
+                        PhosphorIconsRegular.rewind,
+                        tint: AppColors.inkOnArt,
+                      ),
+                    ),
+                  ),
                   const SizedBox(width: 16),
                   trapped(
                     1,
                     AppIconButton(
                       onClick: onPlayPause,
                       focusNode: playPauseFocusNode,
-                      child: AppIcon(isPlaying ? Icons.pause : Icons.play_arrow, tint: AppColors.inkOnArt),
+                      child: AppIcon(
+                        isPlaying
+                            ? PhosphorIconsFill.pause
+                            : PhosphorIconsFill.play,
+                        tint: AppColors.inkOnArt,
+                      ),
                     ),
                   ),
                   const SizedBox(width: 16),
-                  trapped(2, AppIconButton(onClick: onForward, focusNode: forwardFocusNode, child: const AppIcon(Icons.forward_10, tint: AppColors.inkOnArt))),
+                  trapped(
+                    2,
+                    AppIconButton(
+                      onClick: onForward,
+                      focusNode: forwardFocusNode,
+                      child: const AppIcon(
+                        PhosphorIconsRegular.fastForward,
+                        tint: AppColors.inkOnArt,
+                      ),
+                    ),
+                  ),
                   const SizedBox(width: 16),
                   trapped(
                     3,
@@ -207,11 +247,26 @@ class PlayerControlsBar extends StatelessWidget {
                       onClick: onCycleSubtitles,
                       enabled: subtitlesAvailable,
                       focusNode: subtitlesFocusNode,
-                      child: AppIcon(Icons.closed_caption, tint: AppColors.inkOnArt.withValues(alpha: subtitlesAvailable ? 1 : 0.5)),
+                      child: AppIcon(
+                        PhosphorIconsRegular.closedCaptioning,
+                        tint: AppColors.inkOnArt.withValues(
+                          alpha: subtitlesAvailable ? 1 : 0.5,
+                        ),
+                      ),
                     ),
                   ),
                   const SizedBox(width: 16),
-                  trapped(4, AppIconButton(onClick: onCycleBitrate, focusNode: bitrateFocusNode, child: const AppIcon(Icons.high_quality, tint: AppColors.inkOnArt))),
+                  trapped(
+                    4,
+                    AppIconButton(
+                      onClick: onCycleBitrate,
+                      focusNode: bitrateFocusNode,
+                      child: const AppIcon(
+                        PhosphorIconsRegular.monitor,
+                        tint: AppColors.inkOnArt,
+                      ),
+                    ),
+                  ),
                   const SizedBox(width: 16),
                   trapped(
                     5,
@@ -219,7 +274,12 @@ class PlayerControlsBar extends StatelessWidget {
                       onClick: onOpenChatQr,
                       enabled: chatAvailable,
                       focusNode: chatFocusNode,
-                      child: AppIcon(Icons.chat_bubble_outline, tint: AppColors.inkOnArt.withValues(alpha: chatAvailable ? 1 : 0.5)),
+                      child: AppIcon(
+                        PhosphorIconsRegular.chatCircleText,
+                        tint: AppColors.inkOnArt.withValues(
+                          alpha: chatAvailable ? 1 : 0.5,
+                        ),
+                      ),
                     ),
                   ),
                 ],
@@ -239,7 +299,11 @@ class _ProgressTrack extends StatelessWidget {
   final double bufferedFraction;
   final bool focused;
 
-  const _ProgressTrack({required this.playedFraction, required this.bufferedFraction, this.focused = false});
+  const _ProgressTrack({
+    required this.playedFraction,
+    required this.bufferedFraction,
+    this.focused = false,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -248,7 +312,8 @@ class _ProgressTrack extends StatelessWidget {
       child: LayoutBuilder(
         builder: (context, constraints) {
           final trackWidth = constraints.maxWidth;
-          final thumbLeft = (trackWidth * playedFraction - _thumbSize / 2).clamp(0.0, trackWidth - _thumbSize);
+          final thumbLeft = (trackWidth * playedFraction - _thumbSize / 2)
+              .clamp(0.0, trackWidth - _thumbSize);
           return Stack(
             alignment: Alignment.centerLeft,
             children: [
@@ -263,7 +328,9 @@ class _ProgressTrack extends StatelessWidget {
                       FractionallySizedBox(
                         alignment: Alignment.centerLeft,
                         widthFactor: bufferedFraction.clamp(0.0, 1.0),
-                        child: ColoredBox(color: AppColors.ink.withValues(alpha: 0.4)),
+                        child: ColoredBox(
+                          color: AppColors.ink.withValues(alpha: 0.4),
+                        ),
                       ),
                       FractionallySizedBox(
                         alignment: Alignment.centerLeft,
@@ -283,7 +350,10 @@ class _ProgressTrack extends StatelessWidget {
                 child: Container(
                   width: _thumbSize,
                   height: _thumbSize,
-                  decoration: BoxDecoration(color: focused ? AppColors.accent : AppColors.transparent, shape: BoxShape.circle),
+                  decoration: BoxDecoration(
+                    color: focused ? AppColors.accent : AppColors.transparent,
+                    shape: BoxShape.circle,
+                  ),
                 ),
               ),
             ],

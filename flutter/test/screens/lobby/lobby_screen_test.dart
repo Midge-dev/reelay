@@ -1,10 +1,10 @@
-import 'package:flutter/material.dart' show Icons;
 import 'package:flutter/widgets.dart' hide ConnectionState;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:reelay/data/plex/plex_models.dart';
 import 'package:reelay/data/settings/relay_identity_store.dart';
 import 'package:reelay/screens/lobby/lobby_screen.dart';
 import 'package:reelay/sync/relay_client.dart';
+import 'package:reelay/theme/phosphor_icons.dart';
 
 const _server = PlexServer(name: 'Home', baseUrl: 'http://192.168.1.5:32400', accessToken: 'tok');
 const _detail = PlexMovieDetail(ratingKey: '1', title: 'Arrival');
@@ -83,7 +83,7 @@ void main() {
   testWidgets('no restart-from-beginning button when not host', (tester) async {
     await _pump(tester, detail: _detailWithProgress);
 
-    expect(find.byIcon(Icons.replay), findsNothing);
+    expect(find.byIcon(PhosphorIconsRegular.arrowCounterClockwise), findsNothing);
   });
 
   testWidgets('tapping "Chat QR code" opens the modal', (tester) async {

@@ -1,6 +1,7 @@
-import 'package:flutter/material.dart' show Icons;
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
+
+import '../../theme/phosphor_icons.dart';
 
 import '../../data/plex/plex_auth_api.dart';
 import '../../data/plex/plex_models.dart';
@@ -39,6 +40,12 @@ class AppNavigationDrawer extends StatefulWidget {
   final VoidCallback onOpenSettings;
   final VoidCallback onOpenHome;
   final VoidCallback onOpenSearch;
+  // Nullable — screens 20 (Watchlist) and 12 (Rooms panel) don't exist yet.
+  // The rail item still renders (spec order: Home, Search, Watchlist,
+  // sections, Watch Together, Settings) so the rail itself is complete;
+  // wire these up when their destination screens land.
+  final VoidCallback? onOpenWatchlist;
+  final VoidCallback? onOpenRooms;
   final PlexAccount? account;
   final String? versionName;
   final PlexServer currentServer;
@@ -59,6 +66,8 @@ class AppNavigationDrawer extends StatefulWidget {
     required this.onOpenSettings,
     required this.onOpenHome,
     required this.onOpenSearch,
+    this.onOpenWatchlist,
+    this.onOpenRooms,
     this.account,
     this.versionName,
     required this.currentServer,
@@ -88,9 +97,12 @@ class _AppNavigationDrawerState extends State<AppNavigationDrawer> {
   final _railFocusNode = FocusNode(debugLabel: 'nav-rail');
   final _homeItemFocusNode = FocusNode(debugLabel: 'nav-rail-home');
   final _searchItemFocusNode = FocusNode(debugLabel: 'nav-rail-search');
+  final _watchlistItemFocusNode = FocusNode(debugLabel: 'nav-rail-watchlist');
+  final _roomsItemFocusNode = FocusNode(debugLabel: 'nav-rail-rooms');
   final _settingsItemFocusNode = FocusNode(debugLabel: 'nav-rail-settings');
   late final Map<String, FocusNode> _sectionFocusNodes = {
-    for (final section in widget.sections) section.key: FocusNode(debugLabel: 'nav-rail-section-${section.key}'),
+    for (final section in widget.sections)
+      section.key: FocusNode(debugLabel: 'nav-rail-section-${section.key}'),
   };
 
   @override
@@ -103,17 +115,22 @@ class _AppNavigationDrawerState extends State<AppNavigationDrawer> {
     if (widget.isSettingsSelected) return _settingsItemFocusNode;
     if (widget.isSearchSelected) return _searchItemFocusNode;
     final key = widget.selectedSectionKey;
-    if (!widget.isHomeSelected && key != null && _sectionFocusNodes.containsKey(key)) return _sectionFocusNodes[key]!;
+    if (!widget.isHomeSelected &&
+        key != null &&
+        _sectionFocusNodes.containsKey(key))
+      return _sectionFocusNodes[key]!;
     return _homeItemFocusNode;
   }
 
   List<FocusNode> get _orderedRailFocusNodes => [
-        _avatarFocusNode,
-        _homeItemFocusNode,
-        _searchItemFocusNode,
-        for (final section in widget.sections) _sectionFocusNodes[section.key]!,
-        _settingsItemFocusNode,
-      ];
+    _avatarFocusNode,
+    _homeItemFocusNode,
+    _searchItemFocusNode,
+    _watchlistItemFocusNode,
+    for (final section in widget.sections) _sectionFocusNodes[section.key]!,
+    _roomsItemFocusNode,
+    _settingsItemFocusNode,
+  ];
 
   // Home sits at the top of the rail and Settings at the bottom, separated
   // from their nearest section neighbor by a Spacer — a real geometric gap
@@ -130,13 +147,16 @@ class _AppNavigationDrawerState extends State<AppNavigationDrawer> {
   KeyEventResult _handleRailKeyEvent(FocusNode node, KeyEvent event) {
     if (event is! KeyDownEvent) return KeyEventResult.ignored;
     final key = event.logicalKey;
-    if (key != LogicalKeyboardKey.arrowUp && key != LogicalKeyboardKey.arrowDown) return KeyEventResult.ignored;
+    if (key != LogicalKeyboardKey.arrowUp &&
+        key != LogicalKeyboardKey.arrowDown)
+      return KeyEventResult.ignored;
 
     final ordered = _orderedRailFocusNodes;
     final currentIndex = ordered.indexWhere((n) => n.hasFocus);
     if (currentIndex == -1) return KeyEventResult.ignored;
 
-    final nextIndex = currentIndex + (key == LogicalKeyboardKey.arrowUp ? -1 : 1);
+    final nextIndex =
+        currentIndex + (key == LogicalKeyboardKey.arrowUp ? -1 : 1);
     if (nextIndex >= 0 && nextIndex < ordered.length) {
       final target = ordered[nextIndex];
       target.requestFocus();
@@ -146,7 +166,11 @@ class _AppNavigationDrawerState extends State<AppNavigationDrawer> {
       final targetContext = target.context;
       if (targetContext != null) {
         WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (targetContext.mounted) Scrollable.ensureVisible(targetContext, duration: _railAnimDuration);
+          if (targetContext.mounted)
+            Scrollable.ensureVisible(
+              targetContext,
+              duration: _railAnimDuration,
+            );
         });
       }
     }
@@ -174,7 +198,11 @@ class _AppNavigationDrawerState extends State<AppNavigationDrawer> {
       final targetContext = target.context;
       if (targetContext != null) {
         WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (targetContext.mounted) Scrollable.ensureVisible(targetContext, duration: _railAnimDuration);
+          if (targetContext.mounted)
+            Scrollable.ensureVisible(
+              targetContext,
+              duration: _railAnimDuration,
+            );
         });
       }
     }
@@ -212,6 +240,8 @@ class _AppNavigationDrawerState extends State<AppNavigationDrawer> {
     _avatarFocusNode.dispose();
     _homeItemFocusNode.dispose();
     _searchItemFocusNode.dispose();
+    _watchlistItemFocusNode.dispose();
+    _roomsItemFocusNode.dispose();
     _settingsItemFocusNode.dispose();
     for (final node in _sectionFocusNodes.values) {
       node.dispose();
@@ -245,7 +275,13 @@ class _AppNavigationDrawerState extends State<AppNavigationDrawer> {
             decoration: BoxDecoration(
               color: AppColors.surface,
               boxShadow: effectiveExpanded
-                  ? [BoxShadow(color: AppScrims.dialog.withValues(alpha: 0.5), blurRadius: 24, offset: const Offset(8, 0))]
+                  ? [
+                      BoxShadow(
+                        color: AppScrims.dialog.withValues(alpha: 0.5),
+                        blurRadius: 24,
+                        offset: const Offset(8, 0),
+                      ),
+                    ]
                   : const [],
             ),
             child: Stack(
@@ -256,7 +292,10 @@ class _AppNavigationDrawerState extends State<AppNavigationDrawer> {
                   canRequestFocus: false,
                   onKeyEvent: _handleRailKeyEvent,
                   child: Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 12),
+                    padding: const EdgeInsets.symmetric(
+                      vertical: 24,
+                      horizontal: 12,
+                    ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
@@ -280,40 +319,84 @@ class _AppNavigationDrawerState extends State<AppNavigationDrawer> {
                                 ),
                                 const SizedBox(height: 8),
                                 _SidebarItem(
-                                  icon: Icons.home,
+                                  icon: PhosphorIconsRegular.house,
+                                  selectedIcon: PhosphorIconsFill.house,
                                   label: 'Home',
                                   selected: widget.isHomeSelected,
                                   expanded: effectiveExpanded,
-                                  onClick: () => _handleSelect(widget.onOpenHome),
+                                  onClick: () =>
+                                      _handleSelect(widget.onOpenHome),
                                   focusNode: _homeItemFocusNode,
                                 ),
                                 const SizedBox(height: 4),
                                 _SidebarItem(
-                                  icon: Icons.search,
+                                  icon: PhosphorIconsRegular.magnifyingGlass,
+                                  selectedIcon:
+                                      PhosphorIconsFill.magnifyingGlass,
                                   label: 'Search',
                                   selected: widget.isSearchSelected,
                                   expanded: effectiveExpanded,
-                                  onClick: () => _handleSelect(widget.onOpenSearch),
+                                  onClick: () =>
+                                      _handleSelect(widget.onOpenSearch),
                                   focusNode: _searchItemFocusNode,
+                                ),
+                                const SizedBox(height: 4),
+                                _SidebarItem(
+                                  icon: PhosphorIconsRegular.bookmarkSimple,
+                                  selectedIcon:
+                                      PhosphorIconsFill.bookmarkSimple,
+                                  label: 'Watchlist',
+                                  selected: false,
+                                  expanded: effectiveExpanded,
+                                  onClick: () {
+                                    if (widget.onOpenWatchlist != null)
+                                      _handleSelect(widget.onOpenWatchlist!);
+                                  },
+                                  focusNode: _watchlistItemFocusNode,
                                 ),
                                 const SizedBox(height: 4),
                                 for (final section in widget.sections) ...[
                                   _SidebarItem(
-                                    icon: section.type == _sectionTypeShow ? Icons.tv : Icons.movie,
+                                    icon: section.type == _sectionTypeShow
+                                        ? PhosphorIconsRegular.televisionSimple
+                                        : PhosphorIconsRegular.filmSlate,
+                                    selectedIcon:
+                                        section.type == _sectionTypeShow
+                                        ? PhosphorIconsFill.televisionSimple
+                                        : PhosphorIconsFill.filmSlate,
                                     label: section.title,
-                                    selected: !widget.isSettingsSelected && !widget.isHomeSelected && section.key == widget.selectedSectionKey,
+                                    selected:
+                                        !widget.isSettingsSelected &&
+                                        !widget.isHomeSelected &&
+                                        section.key ==
+                                            widget.selectedSectionKey,
                                     expanded: effectiveExpanded,
-                                    onClick: () => _handleSelect(() => widget.onSelectSection(section)),
+                                    onClick: () => _handleSelect(
+                                      () => widget.onSelectSection(section),
+                                    ),
                                     focusNode: _sectionFocusNodes[section.key],
                                   ),
                                   const SizedBox(height: 4),
                                 ],
+                                _SidebarItem(
+                                  icon: PhosphorIconsRegular.usersThree,
+                                  selectedIcon: PhosphorIconsFill.usersThree,
+                                  label: 'Watch Together',
+                                  selected: false,
+                                  expanded: effectiveExpanded,
+                                  onClick: () {
+                                    if (widget.onOpenRooms != null)
+                                      _handleSelect(widget.onOpenRooms!);
+                                  },
+                                  focusNode: _roomsItemFocusNode,
+                                ),
                               ],
                             ),
                           ),
                         ),
                         _SidebarItem(
-                          icon: Icons.settings,
+                          icon: PhosphorIconsRegular.gear,
+                          selectedIcon: PhosphorIconsFill.gear,
                           label: 'Settings',
                           selected: widget.isSettingsSelected,
                           expanded: effectiveExpanded,
@@ -326,8 +409,15 @@ class _AppNavigationDrawerState extends State<AppNavigationDrawer> {
                               duration: _railAnimDuration,
                               child: effectiveExpanded
                                   ? Padding(
-                                      padding: const EdgeInsets.only(left: 16, top: 8),
-                                      child: AppText('v${widget.versionName}', style: AppTypography.caption, color: AppColors.ink3),
+                                      padding: const EdgeInsets.only(
+                                        left: 16,
+                                        top: 8,
+                                      ),
+                                      child: AppText(
+                                        'v${widget.versionName}',
+                                        style: AppTypography.caption,
+                                        color: AppColors.ink3,
+                                      ),
                                     )
                                   : const SizedBox.shrink(),
                             ),
@@ -336,7 +426,12 @@ class _AppNavigationDrawerState extends State<AppNavigationDrawer> {
                     ),
                   ),
                 ),
-                Positioned(top: 0, bottom: 0, right: 0, child: Container(width: 1, color: AppColors.surface)),
+                Positioned(
+                  top: 0,
+                  bottom: 0,
+                  right: 0,
+                  child: Container(width: 1, color: AppColors.surface),
+                ),
               ],
             ),
           ),
@@ -350,7 +445,8 @@ class _AppNavigationDrawerState extends State<AppNavigationDrawer> {
             loadServers: widget.loadServers,
             probeServer: widget.probeServer,
             loadLibraryCount: widget.loadLibraryCount,
-            onSelectSection: (section) => _handleSelect(() => widget.onSelectSection(section)),
+            onSelectSection: (section) =>
+                _handleSelect(() => widget.onSelectSection(section)),
             onSwitchServer: _switchServer,
             onClose: _closeServerSwitcher,
           ),
@@ -359,7 +455,9 @@ class _AppNavigationDrawerState extends State<AppNavigationDrawer> {
   }
 }
 
-final _railItemShape = RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppShape.radiusMd));
+final _railItemShape = RoundedRectangleBorder(
+  borderRadius: BorderRadius.circular(AppShape.radiusMd),
+);
 final _railItemColors = SurfaceColors(
   container: AppColors.transparent,
   content: AppColors.ink4,
@@ -368,10 +466,13 @@ final _railItemColors = SurfaceColors(
   selectedContainer: AppColors.surfaceRaised,
   selectedContent: AppColors.ink,
 );
-const _railItemBorder = SurfaceBorder(focused: SurfaceBorderSide.solid(AppColors.accent));
+const _railItemBorder = SurfaceBorder(
+  focused: SurfaceBorderSide.solid(AppColors.accent),
+);
 
 class _SidebarItem extends StatelessWidget {
   final IconData icon;
+  final IconData selectedIcon;
   final String label;
   final bool selected;
   final bool expanded;
@@ -380,6 +481,7 @@ class _SidebarItem extends StatelessWidget {
 
   const _SidebarItem({
     required this.icon,
+    required this.selectedIcon,
     required this.label,
     required this.selected,
     required this.expanded,
@@ -405,7 +507,7 @@ class _SidebarItem extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              AppIcon(icon, size: 26),
+              AppIcon(selected ? selectedIcon : icon, size: 26),
               // Flexible, not a bare child — the rail's own width and this
               // label's reveal are two independently-animated widths (the
               // AnimatedContainer above and this AnimatedSize), so a frame
@@ -419,7 +521,11 @@ class _SidebarItem extends StatelessWidget {
                     child: expanded
                         ? Padding(
                             padding: const EdgeInsets.only(left: 14),
-                            child: AppText(label, maxLines: 1, overflow: TextOverflow.ellipsis),
+                            child: AppText(
+                              label,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
                           )
                         : const SizedBox.shrink(),
                   ),
@@ -440,7 +546,13 @@ class _UserAvatarItem extends StatelessWidget {
   final FocusNode? focusNode;
   final VoidCallback onClick;
 
-  const _UserAvatarItem({this.account, required this.expanded, required this.selected, this.focusNode, required this.onClick});
+  const _UserAvatarItem({
+    this.account,
+    required this.expanded,
+    required this.selected,
+    this.focusNode,
+    required this.onClick,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -464,11 +576,28 @@ class _UserAvatarItem extends StatelessWidget {
               Container(
                 width: 40,
                 height: 40,
-                decoration: BoxDecoration(shape: BoxShape.circle, color: AppColors.accent.withValues(alpha: 0.35)),
+                decoration: const BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: AppColors.surfaceOverlay,
+                ),
                 alignment: Alignment.center,
                 child: thumb != null
-                    ? ClipOval(child: Image.network(thumb, width: 40, height: 40, fit: BoxFit.cover))
-                    : AppText((account?.username.isNotEmpty == true ? account!.username[0] : '?').toUpperCase(), style: AppTypography.body, color: AppColors.inkOnArt),
+                    ? ClipOval(
+                        child: Image.network(
+                          thumb,
+                          width: 40,
+                          height: 40,
+                          fit: BoxFit.cover,
+                        ),
+                      )
+                    : AppText(
+                        (account?.username.isNotEmpty == true
+                                ? account!.username[0]
+                                : '?')
+                            .toUpperCase(),
+                        style: AppTypography.body,
+                        color: AppColors.inkOnArt,
+                      ),
               ),
               ClipRect(
                 child: AnimatedSize(

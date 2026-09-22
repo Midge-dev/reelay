@@ -1,5 +1,6 @@
-import 'package:flutter/material.dart' show Icons;
 import 'package:flutter/widgets.dart';
+
+import '../../theme/phosphor_icons.dart';
 
 import '../../data/plex/plex_image_url.dart';
 import '../../data/plex/plex_models.dart';
@@ -63,15 +64,31 @@ class HomeHero extends StatelessWidget {
             child: FractionallySizedBox(
               widthFactor: _heroBackdropWidthFraction,
               heightFactor: 1,
-              child: Artwork(imageUrl: PlexImageUrl.of(server, item.art ?? item.thumb), noiseOpacity: 0.3),
+              child: Artwork(
+                imageUrl: PlexImageUrl.of(server, item.art ?? item.thumb),
+                noiseOpacity: 0.3,
+              ),
             ),
           ),
           // scrim.edge — the ground colour holds solid under the text
           // column and fades away toward the artwork. DESIGN.md #2.
-          const Positioned.fill(child: DecoratedBox(decoration: BoxDecoration(gradient: AppScrims.edge))),
-          const Positioned.fill(child: DecoratedBox(decoration: BoxDecoration(gradient: AppScrims.bottom))),
+          const Positioned.fill(
+            child: DecoratedBox(
+              decoration: BoxDecoration(gradient: AppScrims.edge),
+            ),
+          ),
+          const Positioned.fill(
+            child: DecoratedBox(
+              decoration: BoxDecoration(gradient: AppScrims.bottom),
+            ),
+          ),
           Padding(
-            padding: const EdgeInsets.fromLTRB(AppSpacing.xxxl, AppSpacing.xxxl, AppSpacing.xxxl, AppSpacing.xl),
+            padding: const EdgeInsets.fromLTRB(
+              AppSpacing.xxxl,
+              AppSpacing.xxxl,
+              AppSpacing.xxxl,
+              AppSpacing.xl,
+            ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisAlignment: MainAxisAlignment.end,
@@ -111,15 +128,24 @@ class HomeHero extends StatelessWidget {
                     children: [
                       Flexible(
                         child: ConstrainedBox(
-                          constraints: const BoxConstraints(maxWidth: _progressBarWidth),
+                          constraints: const BoxConstraints(
+                            maxWidth: _progressBarWidth,
+                          ),
                           child: SizedBox(
                             height: 4,
                             child: DecoratedBox(
-                              decoration: BoxDecoration(color: AppColors.ink.withValues(alpha: 0.22), borderRadius: BorderRadius.circular(2)),
+                              decoration: BoxDecoration(
+                                color: AppColors.ink.withValues(alpha: 0.22),
+                                borderRadius: BorderRadius.circular(2),
+                              ),
                               child: FractionallySizedBox(
                                 alignment: Alignment.centerLeft,
                                 widthFactor: progress,
-                                child: const DecoratedBox(decoration: BoxDecoration(color: AppColors.accent)),
+                                child: const DecoratedBox(
+                                  decoration: BoxDecoration(
+                                    color: AppColors.accent,
+                                  ),
+                                ),
                               ),
                             ),
                           ),
@@ -130,7 +156,12 @@ class HomeHero extends StatelessWidget {
                       // bar only visualizes, so it keeps its natural width
                       // (never truncates) and the decorative bar is what
                       // yields if the row is ever tighter than bar+label.
-                      AppText(formatMinutesLeft(remainingMs), color: AppColors.ink2, maxLines: 1, overflow: TextOverflow.ellipsis),
+                      AppText(
+                        formatMinutesLeft(remainingMs),
+                        color: AppColors.ink2,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
                     ],
                   ),
                 ],
@@ -142,21 +173,27 @@ class HomeHero extends StatelessWidget {
                       onClick: onResume,
                       focusNode: resumeFocusNode,
                       autofocus: autofocus,
-                      child: const Row(mainAxisSize: MainAxisSize.min, children: [
-                        AppIcon(Icons.play_arrow, size: 22),
-                        SizedBox(width: AppSpacing.sm),
-                        AppText('Resume'),
-                      ]),
+                      child: const Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          AppIcon(PhosphorIconsFill.play, size: 22),
+                          SizedBox(width: AppSpacing.sm),
+                          AppText('Resume'),
+                        ],
+                      ),
                     ),
                     if (onWatchTogether != null) ...[
                       const SizedBox(width: AppSpacing.md),
                       AppOutlinedButton(
                         onClick: () => onWatchTogether!(item),
-                        child: const Row(mainAxisSize: MainAxisSize.min, children: [
-                          AppIcon(Icons.groups, size: 22),
-                          SizedBox(width: AppSpacing.sm),
-                          AppText('Watch Together'),
-                        ]),
+                        child: const Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            AppIcon(PhosphorIconsRegular.usersThree, size: 22),
+                            SizedBox(width: AppSpacing.sm),
+                            AppText('Watch Together'),
+                          ],
+                        ),
                       ),
                     ],
                   ],

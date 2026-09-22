@@ -1,5 +1,6 @@
-import 'package:flutter/material.dart' show Icons;
 import 'package:flutter/widgets.dart';
+
+import '../../theme/phosphor_icons.dart';
 
 import '../../focus/back_handler.dart';
 import '../../kit/button.dart';
@@ -116,7 +117,7 @@ class _AddProfileDialogState extends State<AddProfileDialog> {
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           const AppIcon(
-                            Icons.person_add,
+                            PhosphorIconsRegular.userPlus,
                             size: 22,
                             tint: AppColors.accent300,
                           ),
@@ -301,7 +302,9 @@ class _PlexAccountRow extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           AppIcon(
-            linked ? Icons.check_circle : Icons.dns,
+            linked
+                ? PhosphorIconsFill.checkCircle
+                : PhosphorIconsRegular.hardDrives,
             size: 26,
             tint: linked ? AppColors.success : AppColors.ink2,
           ),

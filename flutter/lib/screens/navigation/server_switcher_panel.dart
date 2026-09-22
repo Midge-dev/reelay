@@ -1,6 +1,7 @@
-import 'package:flutter/material.dart' show Icons;
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
+
+import '../../theme/phosphor_icons.dart';
 
 import '../../data/plex/plex_auth_api.dart' show PlexAccount;
 import '../../data/plex/plex_models.dart';
@@ -157,7 +158,9 @@ class _ServerSwitcherPanelState extends State<ServerSwitcherPanel> {
   // not just the first, so an unconditional trap here would also swallow
   // ordinary up-navigation between rows further down the list.
   KeyEventResult _trapUp(FocusNode node, KeyEvent event) {
-    if (event is KeyDownEvent && event.logicalKey == LogicalKeyboardKey.arrowUp && _firstFocus.hasFocus) {
+    if (event is KeyDownEvent &&
+        event.logicalKey == LogicalKeyboardKey.arrowUp &&
+        _firstFocus.hasFocus) {
       return KeyEventResult.handled;
     }
     return KeyEventResult.ignored;
@@ -326,7 +329,7 @@ class _ServerResultRow extends StatelessWidget {
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                const AppIcon(Icons.dns, size: 26),
+                const AppIcon(PhosphorIconsRegular.hardDrives, size: 26),
                 const SizedBox(width: AppSpacing.lg),
                 Expanded(
                   child: Column(
@@ -394,4 +397,3 @@ class _ReachabilityBadge extends StatelessWidget {
     );
   }
 }
-

@@ -1,7 +1,7 @@
-import 'package:flutter/material.dart' show Icons;
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:reelay/screens/player/player_controls_bar.dart';
+import 'package:reelay/theme/phosphor_icons.dart';
 
 Future<void> _pump(
   WidgetTester tester, {
@@ -59,15 +59,15 @@ void main() {
 
   testWidgets('shows a pause icon while playing, play icon while paused', (tester) async {
     await _pump(tester, isPlaying: true);
-    expect(find.byIcon(Icons.pause), findsOneWidget);
-    expect(find.byIcon(Icons.play_arrow), findsNothing);
+    expect(find.byIcon(PhosphorIconsFill.pause), findsOneWidget);
+    expect(find.byIcon(PhosphorIconsFill.play), findsNothing);
   });
 
   testWidgets('tapping play/pause invokes onPlayPause', (tester) async {
     var tapped = false;
     await _pump(tester, onPlayPause: () => tapped = true);
 
-    await tester.tap(find.byIcon(Icons.play_arrow));
+    await tester.tap(find.byIcon(PhosphorIconsFill.play));
     await tester.pump();
 
     expect(tapped, isTrue);
@@ -77,7 +77,7 @@ void main() {
     var rewound = false;
     await _pump(tester, onRewind: () => rewound = true);
 
-    await tester.tap(find.byIcon(Icons.replay_10));
+    await tester.tap(find.byIcon(PhosphorIconsRegular.rewind));
     await tester.pump();
 
     expect(rewound, isTrue);
@@ -87,7 +87,7 @@ void main() {
     var forwarded = false;
     await _pump(tester, onForward: () => forwarded = true);
 
-    await tester.tap(find.byIcon(Icons.forward_10));
+    await tester.tap(find.byIcon(PhosphorIconsRegular.fastForward));
     await tester.pump();
 
     expect(forwarded, isTrue);
@@ -97,7 +97,7 @@ void main() {
     var opened = false;
     await _pump(tester, subtitlesAvailable: false, onCycleSubtitles: () => opened = true);
 
-    await tester.tap(find.byIcon(Icons.closed_caption));
+    await tester.tap(find.byIcon(PhosphorIconsRegular.closedCaptioning));
     await tester.pump();
 
     expect(opened, isFalse);
@@ -107,7 +107,7 @@ void main() {
     var opened = false;
     await _pump(tester, onCycleSubtitles: () => opened = true);
 
-    await tester.tap(find.byIcon(Icons.closed_caption));
+    await tester.tap(find.byIcon(PhosphorIconsRegular.closedCaptioning));
     await tester.pump();
 
     expect(opened, isTrue);
@@ -117,7 +117,7 @@ void main() {
     var opened = false;
     await _pump(tester, onCycleBitrate: () => opened = true);
 
-    await tester.tap(find.byIcon(Icons.high_quality));
+    await tester.tap(find.byIcon(PhosphorIconsRegular.monitor));
     await tester.pump();
 
     expect(opened, isTrue);
@@ -127,7 +127,7 @@ void main() {
     var opened = false;
     await _pump(tester, chatAvailable: false, onOpenChatQr: () => opened = true);
 
-    await tester.tap(find.byIcon(Icons.chat_bubble_outline));
+    await tester.tap(find.byIcon(PhosphorIconsRegular.chatCircleText));
     await tester.pump();
 
     expect(opened, isFalse);

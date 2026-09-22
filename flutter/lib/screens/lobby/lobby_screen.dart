@@ -1,8 +1,10 @@
 import 'dart:async';
 import 'dart:math' as math;
 
-import 'package:flutter/material.dart' show Icons;
 import 'package:flutter/widgets.dart' hide ConnectionState;
+
+import '../../theme/phosphor_icons.dart';
+
 import 'package:qr_flutter/qr_flutter.dart';
 
 import '../../data/plex/plex_image_url.dart';
@@ -98,24 +100,36 @@ class _LobbyScreenState extends State<LobbyScreen> {
     // (still focused from whatever screen led into the lobby) keeps focus
     // forever, same root cause as the Settings/Relay-settings/Seasons
     // "opens the nav drawer" bugs fixed elsewhere this session.
-    WidgetsBinding.instance.addPostFrameCallback((_) => _startFocus.requestFocus());
+    WidgetsBinding.instance.addPostFrameCallback(
+      (_) => _startFocus.requestFocus(),
+    );
     _connectionState = widget.relay.connectionStateValue;
     _seatIndex = widget.relay.seatIndexValue;
-    _statusTracker = RelayStatusTracker(widget.relay.connectionState, initial: _connectionState);
+    _statusTracker = RelayStatusTracker(
+      widget.relay.connectionState,
+      initial: _connectionState,
+    );
 
     _connectionSub = widget.relay.connectionState.listen((state) {
       setState(() => _connectionState = state);
-      if (state == ConnectionState.roomClosed || state == ConnectionState.roomNotFound) widget.onBack();
+      if (state == ConnectionState.roomClosed ||
+          state == ConnectionState.roomNotFound)
+        widget.onBack();
       _restartPresenceLoop();
     });
     _seatSub = widget.relay.seatIndex.listen((seat) {
       setState(() => _seatIndex = seat);
       _restartPresenceLoop();
     });
-    _roomIdSub = widget.relay.roomId.listen((id) => setState(() => _roomId = id));
+    _roomIdSub = widget.relay.roomId.listen(
+      (id) => setState(() => _roomId = id),
+    );
     _eventsSub = widget.relay.events.listen(_handleEvent);
 
-    _rosterPruneTimer = Timer.periodic(const Duration(milliseconds: _presenceIntervalMs), (_) => _pruneRoster());
+    _rosterPruneTimer = Timer.periodic(
+      const Duration(milliseconds: _presenceIntervalMs),
+      (_) => _pruneRoster(),
+    );
     _restartPresenceLoop();
   }
 
@@ -138,21 +152,31 @@ class _LobbyScreenState extends State<LobbyScreen> {
     _presenceTimer = null;
     if (_isHost || _connectionState != ConnectionState.connected) return;
     _sendPresence();
-    _presenceTimer = Timer.periodic(const Duration(milliseconds: _presenceIntervalMs), (_) => _sendPresence());
+    _presenceTimer = Timer.periodic(
+      const Duration(milliseconds: _presenceIntervalMs),
+      (_) => _sendPresence(),
+    );
   }
 
   void _sendPresence() {
-    widget.relay.send(RelayEvent(
-      kind: 'presence',
-      fromPeerId: widget.relay.myPeerId,
-      username: widget.localUsername,
-      avatarUrl: widget.localAvatarUrl,
-    ));
+    widget.relay.send(
+      RelayEvent(
+        kind: 'presence',
+        fromPeerId: widget.relay.myPeerId,
+        username: widget.localUsername,
+        avatarUrl: widget.localAvatarUrl,
+      ),
+    );
   }
 
   void _pruneRoster() {
     final cutoff = nowMs() - _rosterStaleMs;
-    setState(() => _roster = {for (final e in _roster.entries) if (e.value.lastSeenMs >= cutoff) e.key: e.value});
+    setState(
+      () => _roster = {
+        for (final e in _roster.entries)
+          if (e.value.lastSeenMs >= cutoff) e.key: e.value,
+      },
+    );
   }
 
   void _handleEvent(RelayEvent event) {
@@ -160,7 +184,16 @@ class _LobbyScreenState extends State<LobbyScreen> {
       case 'presence':
         final fromPeerId = event.fromPeerId;
         if (fromPeerId == null || fromPeerId == widget.relay.myPeerId) return;
-        setState(() => _roster = {..._roster, fromPeerId: _RosterEntry(event.username ?? 'Guest', event.avatarUrl, nowMs())});
+        setState(
+          () => _roster = {
+            ..._roster,
+            fromPeerId: _RosterEntry(
+              event.username ?? 'Guest',
+              event.avatarUrl,
+              nowMs(),
+            ),
+          },
+        );
       case 'start':
         widget.onStart(false);
       case 'chat':
@@ -177,17 +210,23 @@ class _LobbyScreenState extends State<LobbyScreen> {
   }
 
   Alignment _cornerAlignment(ChatOverlayCorner corner) => switch (corner) {
-        ChatOverlayCorner.topStart => Alignment.topLeft,
-        ChatOverlayCorner.topEnd => Alignment.topRight,
-        ChatOverlayCorner.bottomStart => Alignment.bottomLeft,
-        ChatOverlayCorner.bottomEnd => Alignment.bottomRight,
-      };
+    ChatOverlayCorner.topStart => Alignment.topLeft,
+    ChatOverlayCorner.topEnd => Alignment.topRight,
+    ChatOverlayCorner.bottomStart => Alignment.bottomLeft,
+    ChatOverlayCorner.bottomEnd => Alignment.bottomRight,
+  };
 
   @override
   Widget build(BuildContext context) {
     final others = <_RosterEntry>[
-      if (!_isHost) _RosterEntry(widget.localUsername, widget.localAvatarUrl, _pinnedLastSeenMs),
-      ...(_roster.values.toList()..sort((a, b) => a.lastSeenMs.compareTo(b.lastSeenMs))),
+      if (!_isHost)
+        _RosterEntry(
+          widget.localUsername,
+          widget.localAvatarUrl,
+          _pinnedLastSeenMs,
+        ),
+      ...(_roster.values.toList()
+        ..sort((a, b) => a.lastSeenMs.compareTo(b.lastSeenMs))),
     ];
     final canRestart = _isHost && (widget.detail.viewOffset ?? 0) > 0;
 
@@ -196,13 +235,21 @@ class _LobbyScreenState extends State<LobbyScreen> {
       child: Stack(
         fit: StackFit.expand,
         children: [
-          Artwork(imageUrl: PlexImageUrl.of(widget.server, widget.detail.art ?? widget.detail.thumb)),
+          Artwork(
+            imageUrl: PlexImageUrl.of(
+              widget.server,
+              widget.detail.art ?? widget.detail.thumb,
+            ),
+          ),
           DecoratedBox(
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
-                colors: [AppColors.background.withValues(alpha: 0.62), AppColors.background.withValues(alpha: 0.92)],
+                colors: [
+                  AppColors.background.withValues(alpha: 0.62),
+                  AppColors.background.withValues(alpha: 0.92),
+                ],
               ),
             ),
           ),
@@ -218,7 +265,11 @@ class _LobbyScreenState extends State<LobbyScreen> {
                   children: [
                     const WatchTogetherIcon(),
                     const SizedBox(width: 16),
-                    AppText(widget.detail.title, style: AppTypography.title1, color: AppColors.inkOnArt),
+                    AppText(
+                      widget.detail.title,
+                      style: AppTypography.title1,
+                      color: AppColors.inkOnArt,
+                    ),
                   ],
                 ),
                 Padding(
@@ -229,10 +280,14 @@ class _LobbyScreenState extends State<LobbyScreen> {
                     children: [
                       ValueListenableBuilder<RelayStatus>(
                         valueListenable: _statusTracker.status,
-                        builder: (context, status, _) => RelayStatusDot(status: status),
+                        builder: (context, status, _) =>
+                            RelayStatusDot(status: status),
                       ),
                       const SizedBox(width: 10),
-                      AppText(widget.relayNickname, color: AppColors.inkOnArt.withValues(alpha: 0.7)),
+                      AppText(
+                        widget.relayNickname,
+                        color: AppColors.inkOnArt.withValues(alpha: 0.7),
+                      ),
                     ],
                   ),
                 ),
@@ -248,9 +303,15 @@ class _LobbyScreenState extends State<LobbyScreen> {
                       ),
                       for (final entry in others) ...[
                         const SizedBox(width: 64),
-                        _LobbyPersonCard(name: entry.username, avatarUrl: entry.avatarUrl),
+                        _LobbyPersonCard(
+                          name: entry.username,
+                          avatarUrl: entry.avatarUrl,
+                        ),
                       ],
-                      if (others.length + 1 < _roomSeatCap) ...[const SizedBox(width: 64), const _EmptySeat()],
+                      if (others.length + 1 < _roomSeatCap) ...[
+                        const SizedBox(width: 64),
+                        const _EmptySeat(),
+                      ],
                     ],
                   ),
                 ),
@@ -261,7 +322,13 @@ class _LobbyScreenState extends State<LobbyScreen> {
                     children: [
                       AppButton(
                         onClick: () {
-                          widget.relay.send(RelayEvent(kind: 'start', fromPeerId: widget.relay.myPeerId, username: widget.localUsername));
+                          widget.relay.send(
+                            RelayEvent(
+                              kind: 'start',
+                              fromPeerId: widget.relay.myPeerId,
+                              username: widget.localUsername,
+                            ),
+                          );
                           widget.onStart(false);
                         },
                         focusNode: _startFocus,
@@ -271,14 +338,27 @@ class _LobbyScreenState extends State<LobbyScreen> {
                         const SizedBox(width: 24),
                         AppButton(
                           onClick: () {
-                            widget.relay.send(RelayEvent(kind: 'start', fromPeerId: widget.relay.myPeerId, username: widget.localUsername));
+                            widget.relay.send(
+                              RelayEvent(
+                                kind: 'start',
+                                fromPeerId: widget.relay.myPeerId,
+                                username: widget.localUsername,
+                              ),
+                            );
                             widget.onStart(true);
                           },
-                          child: const AppIcon(Icons.replay, tint: AppColors.inkOnArt, size: 22),
+                          child: const AppIcon(
+                            PhosphorIconsRegular.arrowCounterClockwise,
+                            tint: AppColors.inkOnArt,
+                            size: 22,
+                          ),
                         ),
                       ],
                       const SizedBox(width: 24),
-                      AppButton(onClick: () => setState(() => _showChatModal = true), child: const AppText('Chat QR code')),
+                      AppButton(
+                        onClick: () => setState(() => _showChatModal = true),
+                        child: const AppText('Chat QR code'),
+                      ),
                     ],
                   ),
                 ),
@@ -292,7 +372,10 @@ class _LobbyScreenState extends State<LobbyScreen> {
               child: FractionallySizedBox(
                 widthFactor: 0.5,
                 alignment: _cornerAlignment(widget.chatOverlayCorner),
-                child: ChatOverlay(messages: _chatMessages.stream, corner: widget.chatOverlayCorner),
+                child: ChatOverlay(
+                  messages: _chatMessages.stream,
+                  corner: widget.chatOverlayCorner,
+                ),
               ),
             ),
           ),
@@ -334,12 +417,19 @@ class _ChatQrModal extends StatelessWidget {
   final String defaultName;
   final VoidCallback onDismiss;
 
-  const _ChatQrModal({required this.relayUrl, this.roomId, required this.defaultName, required this.onDismiss});
+  const _ChatQrModal({
+    required this.relayUrl,
+    this.roomId,
+    required this.defaultName,
+    required this.onDismiss,
+  });
 
   @override
   Widget build(BuildContext context) {
     final id = roomId;
-    final chatUrl = id != null ? relayUrlToChatUrl(relayUrl, id, defaultName) : null;
+    final chatUrl = id != null
+        ? relayUrlToChatUrl(relayUrl, id, defaultName)
+        : null;
 
     return Positioned.fill(
       child: ColoredBox(
@@ -357,11 +447,18 @@ class _ChatQrModal extends StatelessWidget {
                     mainAxisSize: MainAxisSize.min,
                     crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
-                      AppText('Join the chat', style: AppTypography.title2, color: AppColors.inkOnArt),
+                      AppText(
+                        'Join the chat',
+                        style: AppTypography.title2,
+                        color: AppColors.inkOnArt,
+                      ),
                       if (chatUrl == null)
                         const Padding(
                           padding: EdgeInsets.only(top: 20),
-                          child: AppText('Still connecting to the room — try again in a moment.', color: AppColors.inkOnArt),
+                          child: AppText(
+                            'Still connecting to the room — try again in a moment.',
+                            color: AppColors.inkOnArt,
+                          ),
                         )
                       else ...[
                         Padding(
@@ -371,21 +468,35 @@ class _ChatQrModal extends StatelessWidget {
                             height: 220,
                             color: AppColors.inkOnArt,
                             padding: const EdgeInsets.all(12),
-                            child: QrImageView(data: chatUrl, backgroundColor: AppColors.inkOnArt),
+                            child: QrImageView(
+                              data: chatUrl,
+                              backgroundColor: AppColors.inkOnArt,
+                            ),
                           ),
                         ),
                         const Padding(
                           padding: EdgeInsets.only(top: 20),
-                          child: AppText('Scan with your phone, or visit:', color: AppColors.inkOnArt),
+                          child: AppText(
+                            'Scan with your phone, or visit:',
+                            color: AppColors.inkOnArt,
+                          ),
                         ),
                         Padding(
                           padding: const EdgeInsets.only(top: 8),
-                          child: AppText(chatUrl, color: AppColors.inkOnArt, style: AppTypography.body),
+                          child: AppText(
+                            chatUrl,
+                            color: AppColors.inkOnArt,
+                            style: AppTypography.body,
+                          ),
                         ),
                       ],
                       Padding(
                         padding: const EdgeInsets.only(top: 28),
-                        child: AppOutlinedButton(onClick: onDismiss, autofocus: true, child: const AppText('Close')),
+                        child: AppOutlinedButton(
+                          onClick: onDismiss,
+                          autofocus: true,
+                          child: const AppText('Close'),
+                        ),
                       ),
                     ],
                   ),
@@ -416,14 +527,32 @@ class _LobbyPersonCard extends StatelessWidget {
         Container(
           width: 96,
           height: 96,
-          decoration: BoxDecoration(shape: BoxShape.circle, color: AppColors.accent.withValues(alpha: 0.35)),
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: AppColors.accent.withValues(alpha: 0.35),
+          ),
           alignment: Alignment.center,
           child: avatar != null
-              ? ClipOval(child: Image.network(avatar, width: 96, height: 96, fit: BoxFit.cover))
-              : AppText(name.isNotEmpty ? name[0].toUpperCase() : '?', style: AppTypography.title2, color: AppColors.inkOnArt),
+              ? ClipOval(
+                  child: Image.network(
+                    avatar,
+                    width: 96,
+                    height: 96,
+                    fit: BoxFit.cover,
+                  ),
+                )
+              : AppText(
+                  name.isNotEmpty ? name[0].toUpperCase() : '?',
+                  style: AppTypography.title2,
+                  color: AppColors.inkOnArt,
+                ),
         ),
-        Padding(padding: const EdgeInsets.only(top: 12), child: AppText(name, color: AppColors.inkOnArt)),
-        if (subtitle != null) AppText(subtitle!, color: AppColors.inkOnArt.withValues(alpha: 0.6)),
+        Padding(
+          padding: const EdgeInsets.only(top: 12),
+          child: AppText(name, color: AppColors.inkOnArt),
+        ),
+        if (subtitle != null)
+          AppText(subtitle!, color: AppColors.inkOnArt.withValues(alpha: 0.6)),
       ],
     );
   }
@@ -434,7 +563,11 @@ class _EmptySeat extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const SizedBox(width: 96, height: 96, child: CustomPaint(painter: _EmptySeatPainter()));
+    return const SizedBox(
+      width: 96,
+      height: 96,
+      child: CustomPaint(painter: _EmptySeatPainter()),
+    );
   }
 }
 
@@ -446,12 +579,19 @@ class _EmptySeatPainter extends CustomPainter {
     final center = size.center(Offset.zero);
     final radius = size.width / 2;
 
-    canvas.drawCircle(center, radius, Paint()..color = AppColors.inkOnArt.withValues(alpha: 0.06));
+    canvas.drawCircle(
+      center,
+      radius,
+      Paint()..color = AppColors.inkOnArt.withValues(alpha: 0.06),
+    );
 
     const dashLength = 8.0;
     const gapLength = 6.0;
     final circumference = 2 * math.pi * radius;
-    final dashCount = math.max(1, (circumference / (dashLength + gapLength)).floor());
+    final dashCount = math.max(
+      1,
+      (circumference / (dashLength + gapLength)).floor(),
+    );
     final anglePerDash = 2 * math.pi / dashCount;
     final dashSweep = anglePerDash * (dashLength / (dashLength + gapLength));
     final dashPaint = Paint()

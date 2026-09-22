@@ -1,7 +1,8 @@
 import 'dart:async';
 
-import 'package:flutter/material.dart' show Icons;
 import 'package:flutter/widgets.dart';
+
+import '../../theme/phosphor_icons.dart';
 
 import '../../data/plex/plex_models.dart';
 import '../../focus/back_handler.dart';
@@ -49,7 +50,9 @@ class _SearchScreenState extends State<SearchScreen> {
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) => _firstKeyFocus.requestFocus());
+    WidgetsBinding.instance.addPostFrameCallback(
+      (_) => _firstKeyFocus.requestFocus(),
+    );
   }
 
   @override
@@ -89,7 +92,9 @@ class _SearchScreenState extends State<SearchScreen> {
   }
 
   void _onChar(String c) => _onQueryChanged(_query + c);
-  void _onBackspace() => _onQueryChanged(_query.isEmpty ? '' : _query.substring(0, _query.length - 1));
+  void _onBackspace() => _onQueryChanged(
+    _query.isEmpty ? '' : _query.substring(0, _query.length - 1),
+  );
   void _onClear() => _onQueryChanged('');
 
   @override
@@ -103,7 +108,12 @@ class _SearchScreenState extends State<SearchScreen> {
       child: ColoredBox(
         color: AppColors.background,
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(AppSpacing.xxxl, AppSpacing.xxl, AppSpacing.xxxl, AppSpacing.xl),
+          padding: const EdgeInsets.fromLTRB(
+            AppSpacing.xxxl,
+            AppSpacing.xxl,
+            AppSpacing.xxxl,
+            AppSpacing.xl,
+          ),
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -115,7 +125,12 @@ class _SearchScreenState extends State<SearchScreen> {
                   children: [
                     _QueryField(query: _query),
                     const SizedBox(height: AppSpacing.md),
-                    SearchKeyboard(onChar: _onChar, onBackspace: _onBackspace, onClear: _onClear, firstKeyFocusNode: _firstKeyFocus),
+                    SearchKeyboard(
+                      onChar: _onChar,
+                      onBackspace: _onBackspace,
+                      onClear: _onClear,
+                      firstKeyFocusNode: _firstKeyFocus,
+                    ),
                   ],
                 ),
               ),
@@ -155,7 +170,11 @@ class _QueryField extends StatelessWidget {
       ),
       child: Row(
         children: [
-          const AppIcon(Icons.search, size: 24, tint: AppColors.ink3),
+          const AppIcon(
+            PhosphorIconsRegular.magnifyingGlass,
+            size: 24,
+            tint: AppColors.ink3,
+          ),
           const SizedBox(width: AppSpacing.md),
           Expanded(
             child: AppText(
@@ -165,7 +184,8 @@ class _QueryField extends StatelessWidget {
               overflow: TextOverflow.ellipsis,
             ),
           ),
-          if (query.isNotEmpty) Container(width: 2, height: 30, color: AppColors.accent),
+          if (query.isNotEmpty)
+            Container(width: 2, height: 30, color: AppColors.accent),
         ],
       ),
     );
@@ -214,7 +234,9 @@ class _ResultsPanel extends StatelessWidget {
             textBaseline: TextBaseline.alphabetic,
             children: [
               AppText(
-                searching ? 'Searching…' : '$total result${total == 1 ? '' : 's'}',
+                searching
+                    ? 'Searching…'
+                    : '$total result${total == 1 ? '' : 's'}',
                 style: AppTypography.rowLabel,
               ),
               if (!searching) ...[
@@ -223,14 +245,31 @@ class _ResultsPanel extends StatelessWidget {
                 // otherwise reach all the way to the rail's clock overlay,
                 // which ignores this screen's own right-edge padding.
                 Flexible(
-                  child: AppText('on ${server.name}', color: AppColors.ink3, maxLines: 1, overflow: TextOverflow.ellipsis),
+                  child: AppText(
+                    'on ${server.name}',
+                    color: AppColors.ink3,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
                 ),
               ],
             ],
           ),
           const SizedBox(height: AppSpacing.lg),
-          if (shows.isNotEmpty) PosterRow(title: 'SERIES', items: shows, server: server, onClick: onSelect),
-          if (movies.isNotEmpty) PosterRow(title: 'MOVIES', items: movies, server: server, onClick: onSelect),
+          if (shows.isNotEmpty)
+            PosterRow(
+              title: 'SERIES',
+              items: shows,
+              server: server,
+              onClick: onSelect,
+            ),
+          if (movies.isNotEmpty)
+            PosterRow(
+              title: 'MOVIES',
+              items: movies,
+              server: server,
+              onClick: onSelect,
+            ),
         ],
       ),
     );

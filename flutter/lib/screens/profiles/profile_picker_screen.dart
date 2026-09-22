@@ -1,5 +1,6 @@
-import 'package:flutter/material.dart' show Icons;
 import 'package:flutter/widgets.dart';
+
+import '../../theme/phosphor_icons.dart';
 
 import '../../data/settings/app_settings.dart';
 import '../../kit/card.dart';
@@ -20,7 +21,12 @@ const _itemGap = 56.0;
 class ProfilePickerScreen extends StatefulWidget {
   final List<Profile> profiles;
   final ValueChanged<Profile> onSelectProfile;
-  final Future<void> Function({required String name, required String watchTogetherName, required String token}) onAddProfile;
+  final Future<void> Function({
+    required String name,
+    required String watchTogetherName,
+    required String token,
+  })
+  onAddProfile;
   // Forwarded to AddProfileDialog — see its own doc comment.
   final Widget Function(ValueChanged<String> onLinked)? linkPanelBuilder;
 
@@ -43,7 +49,9 @@ class _ProfilePickerScreenState extends State<ProfilePickerScreen> {
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) => _firstFocus.requestFocus());
+    WidgetsBinding.instance.addPostFrameCallback(
+      (_) => _firstFocus.requestFocus(),
+    );
   }
 
   @override
@@ -52,8 +60,16 @@ class _ProfilePickerScreenState extends State<ProfilePickerScreen> {
     super.dispose();
   }
 
-  Future<void> _addProfile({required String name, required String watchTogetherName, required String token}) async {
-    await widget.onAddProfile(name: name, watchTogetherName: watchTogetherName, token: token);
+  Future<void> _addProfile({
+    required String name,
+    required String watchTogetherName,
+    required String token,
+  }) async {
+    await widget.onAddProfile(
+      name: name,
+      watchTogetherName: watchTogetherName,
+      token: token,
+    );
   }
 
   @override
@@ -69,9 +85,16 @@ class _ProfilePickerScreenState extends State<ProfilePickerScreen> {
                 Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    AppText('Reelay', style: AppTypography.title2, color: AppColors.ink3),
+                    AppText(
+                      'Reelay',
+                      style: AppTypography.title2,
+                      color: AppColors.ink3,
+                    ),
                     const SizedBox(height: AppSpacing.md),
-                    const AppText("Who's watching?", style: AppTypography.title1),
+                    const AppText(
+                      "Who's watching?",
+                      style: AppTypography.title1,
+                    ),
                   ],
                 ),
                 const SizedBox(height: 72),
@@ -86,7 +109,9 @@ class _ProfilePickerScreenState extends State<ProfilePickerScreen> {
                         focusNode: index == 0 ? _firstFocus : null,
                         onClick: () => widget.onSelectProfile(profile),
                       ),
-                    _AddProfileItem(onClick: () => setState(() => _showingAddDialog = true)),
+                    _AddProfileItem(
+                      onClick: () => setState(() => _showingAddDialog = true),
+                    ),
                   ],
                 ),
                 const SizedBox(height: 40),
@@ -114,7 +139,11 @@ class _ProfileItem extends StatefulWidget {
   final FocusNode? focusNode;
   final VoidCallback onClick;
 
-  const _ProfileItem({required this.profile, this.focusNode, required this.onClick});
+  const _ProfileItem({
+    required this.profile,
+    this.focusNode,
+    required this.onClick,
+  });
 
   @override
   State<_ProfileItem> createState() => _ProfileItemState();
@@ -141,12 +170,21 @@ class _ProfileItemState extends State<_ProfileItem> {
               shape: const CircleBorder(),
               onFocusChange: (focused) => setState(() => _focused = focused),
               child: thumb != null
-                  ? ClipOval(child: Image.network(thumb, fit: BoxFit.cover, width: _avatarSize, height: _avatarSize))
+                  ? ClipOval(
+                      child: Image.network(
+                        thumb,
+                        fit: BoxFit.cover,
+                        width: _avatarSize,
+                        height: _avatarSize,
+                      ),
+                    )
                   : ColoredBox(
                       color: AppColors.surface,
                       child: Center(
                         child: AppText(
-                          profile.name.isNotEmpty ? profile.name[0].toUpperCase() : '?',
+                          profile.name.isNotEmpty
+                              ? profile.name[0].toUpperCase()
+                              : '?',
                           style: AppTypography.display,
                           color: AppColors.inkOnArt,
                         ),
@@ -157,7 +195,9 @@ class _ProfileItemState extends State<_ProfileItem> {
           const SizedBox(height: AppSpacing.lg),
           AppText(
             profile.name,
-            style: _focused ? AppTypography.title2 : AppTypography.title2.copyWith(fontWeight: FontWeight.w400),
+            style: _focused
+                ? AppTypography.title2
+                : AppTypography.title2.copyWith(fontWeight: FontWeight.w400),
             color: _focused ? AppColors.ink : AppColors.ink2,
           ),
           const SizedBox(height: AppSpacing.xs),
@@ -192,7 +232,9 @@ class _AddProfileItem extends StatelessWidget {
                 focusedContainer: AppColors.surfaceRaised,
                 focusedContent: AppColors.ink,
               ),
-              child: const Center(child: AppIcon(Icons.add, size: 44)),
+              child: const Center(
+                child: AppIcon(PhosphorIconsRegular.plus, size: 44),
+              ),
             ),
           ),
           const SizedBox(height: AppSpacing.lg),

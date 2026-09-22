@@ -1,6 +1,7 @@
-import 'package:flutter/material.dart' show Icons;
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
+
+import '../../theme/phosphor_icons.dart';
 
 import '../../data/plex/plex_image_url.dart';
 import '../../data/plex/plex_models.dart';
@@ -90,7 +91,9 @@ class _MovieDetailScreenState extends State<MovieDetailScreen> {
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) => _playFocus.requestFocus());
+    WidgetsBinding.instance.addPostFrameCallback(
+      (_) => _playFocus.requestFocus(),
+    );
     _load();
   }
 
@@ -103,7 +106,9 @@ class _MovieDetailScreenState extends State<MovieDetailScreen> {
         _relatedHubs = const [];
         _coStarRows = const [];
       });
-      WidgetsBinding.instance.addPostFrameCallback((_) => _playFocus.requestFocus());
+      WidgetsBinding.instance.addPostFrameCallback(
+        (_) => _playFocus.requestFocus(),
+      );
       _load();
     }
   }
@@ -116,7 +121,10 @@ class _MovieDetailScreenState extends State<MovieDetailScreen> {
   }
 
   Future<void> _load() async {
-    final results = await Future.wait([widget.loadDetail(), widget.loadRelatedHubs()]);
+    final results = await Future.wait([
+      widget.loadDetail(),
+      widget.loadRelatedHubs(),
+    ]);
     if (!mounted) return;
     final detail = results[0] as PlexMovieDetail?;
     final relatedHubs = results[1] as List<PlexHub>;
@@ -127,14 +135,18 @@ class _MovieDetailScreenState extends State<MovieDetailScreen> {
     await _computeCoStarRows(detail, relatedHubs);
   }
 
-  Future<void> _computeCoStarRows(PlexMovieDetail? detail, List<PlexHub> relatedHubs) async {
+  Future<void> _computeCoStarRows(
+    PlexMovieDetail? detail,
+    List<PlexHub> relatedHubs,
+  ) async {
     final roles = detail?.roles;
     if (roles == null) return;
 
     final autoHubNames = <String>{};
     for (final hub in relatedHubs) {
       const prefix = 'More with ';
-      if (hub.title.startsWith(prefix)) autoHubNames.add(hub.title.substring(prefix.length));
+      if (hub.title.startsWith(prefix))
+        autoHubNames.add(hub.title.substring(prefix.length));
     }
 
     final seen = <Object>{};
@@ -151,7 +163,9 @@ class _MovieDetailScreenState extends State<MovieDetailScreen> {
     for (final person in candidates) {
       final actorId = person.id;
       if (actorId == null) continue;
-      final items = (await widget.loadByActor(actorId)).where((i) => i.ratingKey != widget.movie.ratingKey).toList();
+      final items = (await widget.loadByActor(actorId))
+          .where((i) => i.ratingKey != widget.movie.ratingKey)
+          .toList();
       if (items.length >= 3) rows.add(_CoStarRow(person, items));
     }
     if (mounted) setState(() => _coStarRows = rows);
@@ -159,7 +173,11 @@ class _MovieDetailScreenState extends State<MovieDetailScreen> {
 
   void _scrollToTop() {
     if (!_scrollController.hasClients) return;
-    _scrollController.animateTo(0, duration: const Duration(milliseconds: 300), curve: Curves.easeOut);
+    _scrollController.animateTo(
+      0,
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.easeOut,
+    );
   }
 
   @override
@@ -167,7 +185,9 @@ class _MovieDetailScreenState extends State<MovieDetailScreen> {
     final detail = _detail;
     final hasResume = (detail?.viewOffset ?? 0) > 0;
     final playLabel = hasResume ? 'Continue' : 'Play';
-    final watchTogetherLabel = hasResume ? 'Continue Together' : 'Watch Together';
+    final watchTogetherLabel = hasResume
+        ? 'Continue Together'
+        : 'Watch Together';
 
     final sections = <Widget>[
       _MovieHero(
@@ -190,27 +210,45 @@ class _MovieDetailScreenState extends State<MovieDetailScreen> {
       ),
     ];
     if (detail != null) {
-      sections.add(CastCrewRow(server: widget.server, cast: detail.roles, crew: [...detail.directors, ...detail.writers], onSelectPerson: widget.onSelectPerson));
+      sections.add(
+        CastCrewRow(
+          server: widget.server,
+          cast: detail.roles,
+          crew: [...detail.directors, ...detail.writers],
+          onSelectPerson: widget.onSelectPerson,
+        ),
+      );
     }
     for (final hub in _relatedHubs) {
-      sections.add(PosterRow(
-        key: ValueKey(hub.hubIdentifier ?? hub.title),
-        title: hub.title,
-        items: hub.items,
-        server: widget.server,
-        onClick: widget.onSelectRelated,
-      ));
+      sections.add(
+        PosterRow(
+          key: ValueKey(hub.hubIdentifier ?? hub.title),
+          title: hub.title,
+          items: hub.items,
+          server: widget.server,
+          onClick: widget.onSelectRelated,
+        ),
+      );
     }
     for (final row in _coStarRows) {
-      sections.add(PosterRow(
-        key: ValueKey(row.person.id ?? row.person.tag),
-        title: 'More with ${row.person.tag}',
-        items: row.items
-            .map((i) => PlexOnDeckItem(ratingKey: i.ratingKey, type: i.type ?? 'movie', title: i.title, thumb: i.thumb))
-            .toList(),
-        server: widget.server,
-        onClick: widget.onSelectRelated,
-      ));
+      sections.add(
+        PosterRow(
+          key: ValueKey(row.person.id ?? row.person.tag),
+          title: 'More with ${row.person.tag}',
+          items: row.items
+              .map(
+                (i) => PlexOnDeckItem(
+                  ratingKey: i.ratingKey,
+                  type: i.type ?? 'movie',
+                  title: i.title,
+                  thumb: i.thumb,
+                ),
+              )
+              .toList(),
+          server: widget.server,
+          onClick: widget.onSelectRelated,
+        ),
+      );
     }
     sections.add(const SizedBox(height: 48));
 
@@ -276,7 +314,8 @@ class _MovieHero extends StatelessWidget {
   // escapes there, same class of bug as library_screen.dart's
   // _trapUpAboveTabs.
   KeyEventResult _trapUp(FocusNode node, KeyEvent event) {
-    if (event is KeyDownEvent && event.logicalKey == LogicalKeyboardKey.arrowUp) {
+    if (event is KeyDownEvent &&
+        event.logicalKey == LogicalKeyboardKey.arrowUp) {
       return KeyEventResult.handled;
     }
     return KeyEventResult.ignored;
@@ -286,7 +325,9 @@ class _MovieHero extends StatelessWidget {
   Widget build(BuildContext context) {
     final remainingMs = (duration ?? 0) - (viewOffset ?? 0);
     final hasProgress = (viewOffset ?? 0) > 0 && remainingMs > 0;
-    final progress = duration != null && duration! > 0 ? ((viewOffset ?? 0) / duration!).clamp(0.0, 1.0) : 0.0;
+    final progress = duration != null && duration! > 0
+        ? ((viewOffset ?? 0) / duration!).clamp(0.0, 1.0)
+        : 0.0;
 
     final metaParts = <String>[
       if (movie.year != null) '${movie.year}',
@@ -305,13 +346,29 @@ class _MovieHero extends StatelessWidget {
       child: Stack(
         fit: StackFit.expand,
         children: [
-          Artwork(imageUrl: PlexImageUrl.of(server, movie.art ?? movie.thumb), noiseOpacity: 0.3),
+          Artwork(
+            imageUrl: PlexImageUrl.of(server, movie.art ?? movie.thumb),
+            noiseOpacity: 0.3,
+          ),
           // scrim.edge — the ground colour holds solid under the text
           // column and fades away toward the artwork. DESIGN.md #2.
-          const Positioned.fill(child: DecoratedBox(decoration: BoxDecoration(gradient: AppScrims.edge))),
-          const Positioned.fill(child: DecoratedBox(decoration: BoxDecoration(gradient: AppScrims.bottom))),
+          const Positioned.fill(
+            child: DecoratedBox(
+              decoration: BoxDecoration(gradient: AppScrims.edge),
+            ),
+          ),
+          const Positioned.fill(
+            child: DecoratedBox(
+              decoration: BoxDecoration(gradient: AppScrims.bottom),
+            ),
+          ),
           Padding(
-            padding: const EdgeInsets.fromLTRB(AppSpacing.xxxl, AppSpacing.xxl, AppSpacing.xxxl, AppSpacing.xl),
+            padding: const EdgeInsets.fromLTRB(
+              AppSpacing.xxxl,
+              AppSpacing.xxl,
+              AppSpacing.xxxl,
+              AppSpacing.xl,
+            ),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
@@ -320,8 +377,12 @@ class _MovieHero extends StatelessWidget {
                   child: Container(
                     width: _posterWidth,
                     height: _posterHeight,
-                    decoration: BoxDecoration(border: Border.all(color: AppColors.lineStrong)),
-                    child: Artwork(imageUrl: PlexImageUrl.of(server, movie.thumb)),
+                    decoration: BoxDecoration(
+                      border: Border.all(color: AppColors.lineStrong),
+                    ),
+                    child: Artwork(
+                      imageUrl: PlexImageUrl.of(server, movie.thumb),
+                    ),
                   ),
                 ),
                 const SizedBox(width: AppSpacing.xxl),
@@ -333,7 +394,11 @@ class _MovieHero extends StatelessWidget {
                       Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Container(width: 20, height: 2, color: AppColors.accent),
+                          Container(
+                            width: 20,
+                            height: 2,
+                            color: AppColors.accent,
+                          ),
                           const SizedBox(width: AppSpacing.md),
                           const AppText('MOVIE', style: AppTypography.micro),
                         ],
@@ -341,7 +406,12 @@ class _MovieHero extends StatelessWidget {
                       const SizedBox(height: AppSpacing.sm),
                       ConstrainedBox(
                         constraints: const BoxConstraints(maxWidth: 960),
-                        child: AppText(movie.title, style: AppTypography.display, maxLines: 2, overflow: TextOverflow.ellipsis),
+                        child: AppText(
+                          movie.title,
+                          style: AppTypography.display,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
                       ),
                       if (metaParts.isNotEmpty) ...[
                         const SizedBox(height: AppSpacing.sm),
@@ -353,15 +423,26 @@ class _MovieHero extends StatelessWidget {
                           children: [
                             Flexible(
                               child: ConstrainedBox(
-                                constraints: const BoxConstraints(maxWidth: 380),
+                                constraints: const BoxConstraints(
+                                  maxWidth: 380,
+                                ),
                                 child: SizedBox(
                                   height: 4,
                                   child: DecoratedBox(
-                                    decoration: BoxDecoration(color: AppColors.ink.withValues(alpha: 0.22), borderRadius: BorderRadius.circular(2)),
+                                    decoration: BoxDecoration(
+                                      color: AppColors.ink.withValues(
+                                        alpha: 0.22,
+                                      ),
+                                      borderRadius: BorderRadius.circular(2),
+                                    ),
                                     child: FractionallySizedBox(
                                       alignment: Alignment.centerLeft,
                                       widthFactor: progress,
-                                      child: const DecoratedBox(decoration: BoxDecoration(color: AppColors.accent)),
+                                      child: const DecoratedBox(
+                                        decoration: BoxDecoration(
+                                          color: AppColors.accent,
+                                        ),
+                                      ),
                                     ),
                                   ),
                                 ),
@@ -372,7 +453,12 @@ class _MovieHero extends StatelessWidget {
                             // bar only visualizes, so it keeps its natural width
                             // (never truncates) and the decorative bar is what
                             // yields if the row is ever tighter than 380+label.
-                            AppText(formatMinutesLeft(remainingMs), color: AppColors.ink2, maxLines: 1, overflow: TextOverflow.ellipsis),
+                            AppText(
+                              formatMinutesLeft(remainingMs),
+                              color: AppColors.ink2,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
                           ],
                         ),
                       ],
@@ -380,44 +466,106 @@ class _MovieHero extends StatelessWidget {
                         const SizedBox(height: AppSpacing.md),
                         ConstrainedBox(
                           constraints: const BoxConstraints(maxWidth: 780),
-                          child: AppText(summary!, style: AppTypography.body, maxLines: 4, overflow: TextOverflow.ellipsis),
+                          child: AppText(
+                            summary!,
+                            style: AppTypography.body,
+                            maxLines: 4,
+                            overflow: TextOverflow.ellipsis,
+                          ),
                         ),
                       ],
                       const SizedBox(height: AppSpacing.lg),
-                      Focus(canRequestFocus: false, onKeyEvent: _trapUp, child: Wrap(
-                        // Wrap, not Row — RoomCard in watch_together_row.dart
-                        // hit the same problem: Watch Together plus the
-                        // watchlist button can be wider than the column
-                        // allows. Drops to a second line instead of
-                        // hard-overflowing.
-                        spacing: AppSpacing.md,
-                        runSpacing: AppSpacing.md,
-                        crossAxisAlignment: WrapCrossAlignment.center,
-                        children: [
-                          AppButton(onClick: onPlay, focusNode: playFocus, onFocusChange: _onFocus, child: AppText(playLabel)),
-                          AppOutlinedButton(
-                            onClick: onWatchTogether,
-                            onFocusChange: _onFocus,
-                            child: Row(mainAxisSize: MainAxisSize.min, children: [
-                              const WatchTogetherIcon(),
-                              Padding(padding: const EdgeInsets.only(left: AppSpacing.sm), child: AppText(watchTogetherLabel)),
-                            ]),
-                          ),
-                          if (showRestart)
-                            AppIconButton(onClick: onRestartSolo, border: _restartButtonBorder, onFocusChange: _onFocus, child: const AppIcon(Icons.replay)),
-                          WatchlistButton(isOnWatchlist: isOnWatchlist, onClick: onToggleWatchlist, onFocusChange: _onFocus),
-                        ],
-                      )),
+                      Focus(
+                        canRequestFocus: false,
+                        onKeyEvent: _trapUp,
+                        child: Wrap(
+                          // Wrap, not Row — RoomCard in watch_together_row.dart
+                          // hit the same problem: Watch Together plus the
+                          // watchlist button can be wider than the column
+                          // allows. Drops to a second line instead of
+                          // hard-overflowing.
+                          spacing: AppSpacing.md,
+                          runSpacing: AppSpacing.md,
+                          crossAxisAlignment: WrapCrossAlignment.center,
+                          children: [
+                            AppButton(
+                              onClick: onPlay,
+                              focusNode: playFocus,
+                              onFocusChange: _onFocus,
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const AppIcon(
+                                    PhosphorIconsFill.play,
+                                    size: 22,
+                                  ),
+                                  const SizedBox(width: AppSpacing.sm),
+                                  AppText(playLabel),
+                                ],
+                              ),
+                            ),
+                            AppOutlinedButton(
+                              onClick: onWatchTogether,
+                              onFocusChange: _onFocus,
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const WatchTogetherIcon(),
+                                  Padding(
+                                    padding: const EdgeInsets.only(
+                                      left: AppSpacing.sm,
+                                    ),
+                                    child: AppText(watchTogetherLabel),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            if (showRestart)
+                              AppIconButton(
+                                onClick: onRestartSolo,
+                                border: _restartButtonBorder,
+                                onFocusChange: _onFocus,
+                                child: const AppIcon(
+                                  PhosphorIconsRegular.arrowCounterClockwise,
+                                ),
+                              ),
+                            WatchlistButton(
+                              isOnWatchlist: isOnWatchlist,
+                              onClick: onToggleWatchlist,
+                              onFocusChange: _onFocus,
+                            ),
+                          ],
+                        ),
+                      ),
                       const SizedBox(height: AppSpacing.lg),
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg, vertical: AppSpacing.sm),
-                        decoration: BoxDecoration(color: AppColors.surface, border: Border.all(color: AppColors.line), borderRadius: BorderRadius.circular(AppShape.radiusMd)),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: AppSpacing.lg,
+                          vertical: AppSpacing.sm,
+                        ),
+                        decoration: BoxDecoration(
+                          color: AppColors.surface,
+                          border: Border.all(color: AppColors.line),
+                          borderRadius: BorderRadius.circular(
+                            AppShape.radiusMd,
+                          ),
+                        ),
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            Container(width: 8, height: 8, decoration: const BoxDecoration(shape: BoxShape.circle, color: AppColors.success)),
+                            Container(
+                              width: 8,
+                              height: 8,
+                              decoration: const BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: AppColors.success,
+                              ),
+                            ),
                             const SizedBox(width: AppSpacing.md),
-                            AppText('Playing from ${sourceParts.join(' · ')}', color: AppColors.ink2),
+                            AppText(
+                              'Playing from ${sourceParts.join(' · ')}',
+                              color: AppColors.ink2,
+                            ),
                           ],
                         ),
                       ),
