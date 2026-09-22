@@ -181,6 +181,19 @@ class Search extends AppState {
   const Search({required this.ctx, required this.returnState});
 }
 
+/// Screen 20 — a rail-level peer destination like Library, not reached via
+/// a back-stack (same shape as Library: no returnState). It "belongs to
+/// the Plex account rather than to a server, so it spans every library at
+/// once" (screen 20's own note) — [ctx] is only used for its
+/// server/sections, to resolve a tapped item against the current server
+/// the same way Home's existing `selectWatchlistItem` already did;
+/// selectedSection/items are irrelevant here.
+class Watchlist extends AppState {
+  final LibraryContext ctx;
+
+  const Watchlist({required this.ctx});
+}
+
 class MovieDetail extends AppState {
   final LibraryContext ctx;
   final PlexLibraryItem movie;

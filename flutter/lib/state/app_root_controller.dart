@@ -673,26 +673,42 @@ class AppRootController extends ChangeNotifier {
     }
   }
 
-  Future<void> selectWatchlistItem(Home current, PlexWatchlistItem entry) async {
+  Future<void> selectWatchlistItem(Home current, PlexWatchlistItem entry) =>
+      openWatchlistItem(server: current.server, sections: current.sections, entry: entry, returnState: current);
+
+  /// Resolves a watchlist entry (an account-wide Plex Discover guid, not
+  /// tied to any server) against the currently-connected server's own
+  /// library by guid — the same cross-reference Home's watchlist row
+  /// already did, generalized so the dedicated Watchlist screen (20) can
+  /// use it too. No cross-server duplicate folding (that's the README's
+  /// "largest single piece of work", not built) — a title not on *this*
+  /// server shows the same "isn't in your Plex library yet" outcome
+  /// regardless of whether some other configured server might have it.
+  Future<void> openWatchlistItem({
+    required PlexServer server,
+    required List<PlexSection> sections,
+    required PlexWatchlistItem entry,
+    required AppState returnState,
+  }) async {
     final guid = entry.guid;
     List<PlexLibraryItem> matches = const [];
     if (guid != null) {
       try {
-        matches = await PlexServerApi(current.server, _clientIdentifier).fetchLibraryItemsByGuid(guid);
+        matches = await PlexServerApi(server, _clientIdentifier).fetchLibraryItemsByGuid(guid);
       } catch (_) {}
     }
     final match = matches.firstOrNull;
     if (match == null) {
-      _setState(AppError(message: '"${entry.title}" isn\'t in your Plex library yet.', retryState: current));
+      _setState(AppError(message: '"${entry.title}" isn\'t in your Plex library yet.', retryState: returnState));
       return;
     }
     final ctx = LibraryContext(
-      server: current.server,
-      sections: current.sections,
-      selectedSection: sectionFor(current.sections, match.type ?? ''),
+      server: server,
+      sections: sections,
+      selectedSection: sectionFor(sections, match.type ?? ''),
       items: const [],
     );
-    _setState(MovieDetail(ctx: ctx, movie: match, returnState: current));
+    _setState(MovieDetail(ctx: ctx, movie: match, returnState: returnState));
   }
 
   void selectRecentlyAdded(Home current, PlexLibraryItem item) {

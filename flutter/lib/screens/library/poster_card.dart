@@ -37,6 +37,7 @@ class PosterCard extends StatefulWidget {
   final String title;
   final String? subtitle;
   final VoidCallback onClick;
+  final VoidCallback? onLongClick;
   final FocusNode? focusNode;
   final bool autofocus;
   final int staggerDelayMs;
@@ -47,6 +48,7 @@ class PosterCard extends StatefulWidget {
     required this.title,
     this.subtitle,
     required this.onClick,
+    this.onLongClick,
     this.focusNode,
     this.autofocus = false,
     this.staggerDelayMs = 0,
@@ -110,6 +112,7 @@ class _PosterCardState extends State<PosterCard> {
               aspectRatio: _posterAspectRatio,
               child: AppCard(
                 onClick: widget.onClick,
+                onLongClick: widget.onLongClick,
                 focusNode: _focusNode,
                 autofocus: widget.autofocus,
                 border: _posterBorder,

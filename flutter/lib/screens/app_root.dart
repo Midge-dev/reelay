@@ -24,6 +24,7 @@ import 'library/movie_detail_screen.dart';
 import 'library/person_filmography_screen.dart';
 import 'library/search_screen.dart';
 import 'library/show_detail_screen.dart';
+import 'library/watchlist_screen.dart';
 import 'lobby/lobby_screen.dart';
 import 'navigation/app_navigation_drawer.dart';
 import 'player/player_screen.dart';
@@ -238,6 +239,20 @@ class _AppContent extends StatelessWidget {
             onBack: () => controller.returnTo(returnState),
           ),
         ),
+      Watchlist(:final ctx) => _drawer(
+          ctx: ctx,
+          isHomeSelected: false,
+          child: WatchlistScreen(
+            items: controller.watchlist,
+            onSelectItem: (entry) => controller.openWatchlistItem(
+              server: ctx.server,
+              sections: ctx.sections,
+              entry: entry,
+              returnState: state,
+            ),
+            onRemove: controller.removeFromWatchlist,
+          ),
+        ),
       MovieDetail(:final ctx, :final movie, :final returnState) when ctx.selectedSection.type == _sectionTypeShow => _drawer(
           ctx: ctx,
           isHomeSelected: false,
@@ -449,6 +464,9 @@ class _AppContent extends StatelessWidget {
         ctx: LibraryContext(server: home.server, sections: home.sections, selectedSection: home.sections.first, items: const []),
         returnState: home,
       )),
+      onOpenWatchlist: () => controller.returnTo(Watchlist(
+        ctx: LibraryContext(server: home.server, sections: home.sections, selectedSection: home.sections.first, items: const []),
+      )),
       // Clicking Home while already on Home used to be a pure no-op —
       // no state change at all means nothing ever reclaims focus from the
       // nav rail, so the drawer never collapses back down (it only
@@ -520,6 +538,7 @@ class _AppContent extends StatelessWidget {
       onOpenSettings: () => controller.returnTo(Settings(ctx: ctx, returnState: Library(ctx: ctx))),
       onOpenHome: () => controller.goHome(ctx.server, ctx.sections),
       onOpenSearch: () => controller.returnTo(Search(ctx: ctx, returnState: Library(ctx: ctx))),
+      onOpenWatchlist: () => controller.returnTo(Watchlist(ctx: ctx)),
       account: controller.localAccount,
       versionName: _appVersionName,
       currentServer: ctx.server,
