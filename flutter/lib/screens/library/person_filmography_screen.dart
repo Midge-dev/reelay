@@ -4,6 +4,7 @@ import '../../data/plex/plex_image_url.dart';
 import '../../data/plex/plex_models.dart';
 import '../../focus/back_handler.dart';
 import '../../kit/text.dart';
+import '../../theme/scale.dart';
 import '../../theme/tokens.dart';
 import '../../theme/typography.dart';
 import '../common/artwork.dart';
@@ -43,15 +44,15 @@ class PersonFilmographyScreen extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Padding(
-              padding: const EdgeInsets.only(left: 32, top: 32, right: 32),
+              padding: EdgeInsets.only(left: 32.du(context), top: 32.du(context), right: 32.du(context)),
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.center,
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   ClipOval(
                     child: SizedBox(
-                      width: 88,
-                      height: 88,
+                      width: 88.du(context),
+                      height: 88.du(context),
                       child: thumbUrl != null
                           ? Artwork(imageUrl: thumbUrl)
                           : ColoredBox(
@@ -66,14 +67,14 @@ class PersonFilmographyScreen extends StatelessWidget {
                             ),
                     ),
                   ),
-                  const SizedBox(width: 20),
+                  SizedBox(width: 20.du(context)),
                   Flexible(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         AppText(personName, style: AppTypography.title1, maxLines: 1, overflow: TextOverflow.ellipsis),
-                        const SizedBox(height: 4),
+                        SizedBox(height: 4.du(context)),
                         AppText(
                           '${items.length} title${items.length == 1 ? '' : 's'} in your library',
                           color: AppColors.ink3,
@@ -86,14 +87,14 @@ class PersonFilmographyScreen extends StatelessWidget {
             ),
             Expanded(
               child: GridView.builder(
-                padding: const EdgeInsets.all(32),
+                padding: EdgeInsets.all(32.du(context)),
                 // See the matching comment in collection_detail_screen.dart.
                 clipBehavior: Clip.none,
-                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                   crossAxisCount: _gridColumns,
-                  mainAxisSpacing: 24,
-                  crossAxisSpacing: 24,
-                  mainAxisExtent: _posterCardHeight,
+                  mainAxisSpacing: 24.du(context),
+                  crossAxisSpacing: 24.du(context),
+                  mainAxisExtent: _posterCardHeight.du(context),
                 ),
                 itemCount: items.length,
                 itemBuilder: (context, index) {

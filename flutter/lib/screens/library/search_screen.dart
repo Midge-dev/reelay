@@ -8,6 +8,7 @@ import '../../data/plex/plex_models.dart';
 import '../../focus/back_handler.dart';
 import '../../kit/icon.dart';
 import '../../kit/text.dart';
+import '../../theme/scale.dart';
 import '../../theme/tokens.dart';
 import '../../theme/typography.dart';
 import 'movie_detail_sections.dart';
@@ -108,23 +109,23 @@ class _SearchScreenState extends State<SearchScreen> {
       child: ColoredBox(
         color: AppColors.background,
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(
-            AppSpacing.xxxl,
-            AppSpacing.xxl,
-            AppSpacing.xxxl,
-            AppSpacing.xl,
+          padding: EdgeInsets.fromLTRB(
+            AppSpacing.xxxl.du(context),
+            AppSpacing.xxl.du(context),
+            AppSpacing.xxxl.du(context),
+            AppSpacing.xl.du(context),
           ),
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               SizedBox(
-                width: _leftColumnWidth,
+                width: _leftColumnWidth.du(context),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     _QueryField(query: _query),
-                    const SizedBox(height: AppSpacing.md),
+                    SizedBox(height: AppSpacing.md.du(context)),
                     SearchKeyboard(
                       onChar: _onChar,
                       onBackspace: _onBackspace,
@@ -134,7 +135,7 @@ class _SearchScreenState extends State<SearchScreen> {
                   ],
                 ),
               ),
-              const SizedBox(width: AppSpacing.xxxl),
+              SizedBox(width: AppSpacing.xxxl.du(context)),
               Expanded(
                 child: _ResultsPanel(
                   server: widget.server,
@@ -161,12 +162,12 @@ class _QueryField extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      height: _queryFieldHeight,
-      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xl),
+      height: _queryFieldHeight.du(context),
+      padding: EdgeInsets.symmetric(horizontal: AppSpacing.xl.du(context)),
       decoration: BoxDecoration(
         color: AppColors.surface,
         border: Border.all(color: AppColors.line),
-        borderRadius: BorderRadius.circular(AppShape.radiusMd),
+        borderRadius: BorderRadius.circular(AppShape.radiusMd.du(context)),
       ),
       child: Row(
         children: [
@@ -175,7 +176,7 @@ class _QueryField extends StatelessWidget {
             size: 24,
             tint: AppColors.ink3,
           ),
-          const SizedBox(width: AppSpacing.md),
+          SizedBox(width: AppSpacing.md.du(context)),
           Expanded(
             child: AppText(
               query.isEmpty ? 'Type a title…' : query,
@@ -185,7 +186,7 @@ class _QueryField extends StatelessWidget {
             ),
           ),
           if (query.isNotEmpty)
-            Container(width: 2, height: 30, color: AppColors.accent),
+            Container(width: 2.du(context), height: 30.du(context), color: AppColors.accent),
         ],
       ),
     );
@@ -216,7 +217,7 @@ class _ResultsPanel extends StatelessWidget {
     final total = shows.length + movies.length;
     if (!searching && total == 0) {
       return Padding(
-        padding: const EdgeInsets.only(top: AppSpacing.sm),
+        padding: EdgeInsets.only(top: AppSpacing.sm.du(context)),
         child: AppText('No matches for "$query".', color: AppColors.ink2),
       );
     }
@@ -240,7 +241,7 @@ class _ResultsPanel extends StatelessWidget {
                 style: AppTypography.rowLabel,
               ),
               if (!searching) ...[
-                const SizedBox(width: AppSpacing.md),
+                SizedBox(width: AppSpacing.md.du(context)),
                 // Flexible, not a bare child — a long server name can
                 // otherwise reach all the way to the rail's clock overlay,
                 // which ignores this screen's own right-edge padding.
@@ -255,7 +256,7 @@ class _ResultsPanel extends StatelessWidget {
               ],
             ],
           ),
-          const SizedBox(height: AppSpacing.lg),
+          SizedBox(height: AppSpacing.lg.du(context)),
           if (shows.isNotEmpty)
             PosterRow(
               title: 'SERIES',

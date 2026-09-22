@@ -11,6 +11,7 @@ import '../../kit/icon.dart';
 import '../../kit/icon_button.dart';
 import '../../kit/surface_style.dart';
 import '../../kit/text.dart';
+import '../../theme/scale.dart';
 import '../../theme/tokens.dart';
 import '../../theme/typography.dart';
 import '../common/artwork.dart';
@@ -131,7 +132,7 @@ class _EpisodeDetailScreenState extends State<EpisodeDetailScreen> {
       child: ColoredBox(
         color: AppColors.background,
         child: SizedBox(
-          height: _heroHeight,
+          height: _heroHeight.du(context),
           child: Stack(
             fit: StackFit.expand,
             children: [
@@ -152,11 +153,11 @@ class _EpisodeDetailScreenState extends State<EpisodeDetailScreen> {
                 ),
               ),
               Padding(
-                padding: const EdgeInsets.fromLTRB(
-                  AppSpacing.xxxl,
-                  AppSpacing.xxl,
-                  AppSpacing.xxxl,
-                  AppSpacing.xl,
+                padding: EdgeInsets.fromLTRB(
+                  AppSpacing.xxxl.du(context),
+                  AppSpacing.xxl.du(context),
+                  AppSpacing.xxxl.du(context),
+                  AppSpacing.xl.du(context),
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -166,20 +167,20 @@ class _EpisodeDetailScreenState extends State<EpisodeDetailScreen> {
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         Container(
-                          width: 20,
-                          height: 2,
+                          width: 20.du(context),
+                          height: 2.du(context),
                           color: AppColors.accent,
                         ),
-                        const SizedBox(width: AppSpacing.md),
+                        SizedBox(width: AppSpacing.md.du(context)),
                         AppText(
                           kickerParts.join(' · ').toUpperCase(),
                           style: AppTypography.micro,
                         ),
                       ],
                     ),
-                    const SizedBox(height: AppSpacing.sm),
+                    SizedBox(height: AppSpacing.sm.du(context)),
                     ConstrainedBox(
-                      constraints: const BoxConstraints(maxWidth: 900),
+                      constraints: BoxConstraints(maxWidth: 900.du(context)),
                       child: AppText(
                         episode.title,
                         style: AppTypography.display,
@@ -188,24 +189,24 @@ class _EpisodeDetailScreenState extends State<EpisodeDetailScreen> {
                       ),
                     ),
                     if (metaParts.isNotEmpty) ...[
-                      const SizedBox(height: AppSpacing.sm),
+                      SizedBox(height: AppSpacing.sm.du(context)),
                       AppText(metaParts.join(' · '), color: AppColors.ink2),
                     ],
                     if (hasProgress) ...[
-                      const SizedBox(height: AppSpacing.md),
+                      SizedBox(height: AppSpacing.md.du(context)),
                       Row(
                         children: [
                           Flexible(
                             child: ConstrainedBox(
-                              constraints: const BoxConstraints(maxWidth: 380),
+                              constraints: BoxConstraints(maxWidth: 380.du(context)),
                               child: SizedBox(
-                                height: 4,
+                                height: 4.du(context),
                                 child: DecoratedBox(
                                   decoration: BoxDecoration(
                                     color: AppColors.ink.withValues(
                                       alpha: 0.22,
                                     ),
-                                    borderRadius: BorderRadius.circular(2),
+                                    borderRadius: BorderRadius.circular(2.du(context)),
                                   ),
                                   child: FractionallySizedBox(
                                     alignment: Alignment.centerLeft,
@@ -220,7 +221,7 @@ class _EpisodeDetailScreenState extends State<EpisodeDetailScreen> {
                               ),
                             ),
                           ),
-                          const SizedBox(width: AppSpacing.lg),
+                          SizedBox(width: AppSpacing.lg.du(context)),
                           // The remaining-time label carries the information the
                           // bar only visualizes, so it keeps its natural width
                           // (never truncates) and the decorative bar is what
@@ -235,9 +236,9 @@ class _EpisodeDetailScreenState extends State<EpisodeDetailScreen> {
                       ),
                     ],
                     if (episode.summary != null) ...[
-                      const SizedBox(height: AppSpacing.md),
+                      SizedBox(height: AppSpacing.md.du(context)),
                       ConstrainedBox(
-                        constraints: const BoxConstraints(maxWidth: 780),
+                        constraints: BoxConstraints(maxWidth: 780.du(context)),
                         child: AppText(
                           episode.summary!,
                           style: AppTypography.body,
@@ -246,7 +247,7 @@ class _EpisodeDetailScreenState extends State<EpisodeDetailScreen> {
                         ),
                       ),
                     ],
-                    const SizedBox(height: AppSpacing.lg),
+                    SizedBox(height: AppSpacing.lg.du(context)),
                     Focus(
                       canRequestFocus: false,
                       onKeyEvent: _trapUp,
@@ -256,8 +257,8 @@ class _EpisodeDetailScreenState extends State<EpisodeDetailScreen> {
                         // in watch_together_row.dart. A resumed episode adds
                         // a fourth and fifth button (Play from start,
                         // restart) that can be wider than the column allows.
-                        spacing: AppSpacing.md,
-                        runSpacing: AppSpacing.md,
+                        spacing: AppSpacing.md.du(context),
+                        runSpacing: AppSpacing.md.du(context),
                         crossAxisAlignment: WrapCrossAlignment.center,
                         children: [
                           AppButton(
@@ -281,8 +282,8 @@ class _EpisodeDetailScreenState extends State<EpisodeDetailScreen> {
                               children: [
                                 const WatchTogetherIcon(),
                                 Padding(
-                                  padding: const EdgeInsets.only(
-                                    left: AppSpacing.sm,
+                                  padding: EdgeInsets.only(
+                                    left: AppSpacing.sm.du(context),
                                   ),
                                   child: AppText(
                                     hasResume

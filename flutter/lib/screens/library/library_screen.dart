@@ -10,6 +10,7 @@ import '../../kit/icon.dart';
 import '../../kit/surface_style.dart';
 import '../../kit/text.dart';
 import '../../theme/phosphor_icons.dart';
+import '../../theme/scale.dart';
 import '../../theme/tokens.dart';
 import '../../theme/typography.dart';
 import '../common/click_to_type_text_field.dart';
@@ -169,7 +170,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
       setState(
         () => _panelAnchor = Offset(
           chipTopLeft.dx,
-          chipTopLeft.dy + chipBox.size.height + 8,
+          chipTopLeft.dy + chipBox.size.height + 8.du(context),
         ),
       );
     });
@@ -245,7 +246,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
         key: _stackKey,
         children: [
           Padding(
-            padding: const EdgeInsets.fromLTRB(32, 24, 32, 0),
+            padding: EdgeInsets.fromLTRB(32.du(context), 24.du(context), 32.du(context), 0),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
@@ -257,7 +258,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
                       widget.selectedSection.title,
                       style: AppTypography.title1,
                     ),
-                    const SizedBox(width: 18),
+                    SizedBox(width: 18.du(context)),
                     AppText(
                       'Plex · ${widget.server.name}',
                       color: AppColors.ink3,
@@ -272,13 +273,13 @@ class _LibraryScreenState extends State<LibraryScreen> {
                     ),
                   ],
                 ),
-                const SizedBox(height: 22),
+                SizedBox(height: 22.du(context)),
                 Focus(
                   canRequestFocus: false,
                   onKeyEvent: _trapUpAboveFilterRow,
                   child: _buildFilterRow(availableGenres, availableDecades),
                 ),
-                const SizedBox(height: 22),
+                SizedBox(height: 22.du(context)),
                 Expanded(
                   child: _viewMode == _ViewMode.titles
                       ? _buildTitlesGrid(titleResults)
@@ -316,7 +317,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
     List<int> availableDecades,
   ) {
     return SizedBox(
-      height: 58,
+      height: 58.du(context),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
@@ -326,9 +327,9 @@ class _LibraryScreenState extends State<LibraryScreen> {
             titlesFocusNode: _titlesModeFocus,
             collectionsFocusNode: _collectionsModeFocus,
           ),
-          const SizedBox(width: 22),
-          Container(width: 1, height: 36, color: AppColors.line),
-          const SizedBox(width: 22),
+          SizedBox(width: 22.du(context)),
+          Container(width: 1.du(context), height: 36.du(context), color: AppColors.line),
+          SizedBox(width: 22.du(context)),
           // The filter-chip cluster scrolls horizontally rather than
           // overflowing — a library with every filter applied plus a long
           // genre name can exceed the row's remaining width even at 1920,
@@ -345,9 +346,9 @@ class _LibraryScreenState extends State<LibraryScreen> {
               ),
             ),
           ),
-          const SizedBox(width: 22),
+          SizedBox(width: 22.du(context)),
           SizedBox(
-            width: 260,
+            width: 260.du(context),
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
@@ -356,7 +357,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
                   size: 20,
                   tint: AppColors.ink3,
                 ),
-                const SizedBox(width: 12),
+                SizedBox(width: 12.du(context)),
                 Expanded(
                   child: ClickToTypeTextField(
                     value: _searchQuery,
@@ -388,7 +389,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
           focusNode: _genreChipFocus,
           onClick: () => _toggleFilter(_FilterKind.genre),
         ),
-        const SizedBox(width: 12),
+        SizedBox(width: 12.du(context)),
         _FilterChip(
           key: _decadeChipKey,
           label: 'Decade',
@@ -397,7 +398,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
           focusNode: _decadeChipFocus,
           onClick: () => _toggleFilter(_FilterKind.decade),
         ),
-        const SizedBox(width: 12),
+        SizedBox(width: 12.du(context)),
         _FilterChip(
           key: _addedChipKey,
           label: 'Added',
@@ -406,7 +407,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
           focusNode: _addedChipFocus,
           onClick: () => _toggleFilter(_FilterKind.added),
         ),
-        const SizedBox(width: 12),
+        SizedBox(width: 12.du(context)),
       ],
       _FilterChip(
         key: _sortChipKey,
@@ -418,7 +419,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
         onClick: () => _toggleFilter(_FilterKind.sort),
       ),
       if (_viewMode == _ViewMode.titles && anyFilterApplied) ...[
-        const SizedBox(width: 12),
+        SizedBox(width: 12.du(context)),
         _ClearAllChip(
           focusNode: _clearAllFocus,
           onClick: () => setState(() {
@@ -543,9 +544,9 @@ class _LibraryScreenState extends State<LibraryScreen> {
 
   Widget _buildTitlesGrid(List<PlexLibraryItem> results) {
     if (widget.items.isEmpty) {
-      return const Padding(
-        padding: EdgeInsets.all(32),
-        child: AppText('Nothing in this library yet.'),
+      return Padding(
+        padding: EdgeInsets.all(32.du(context)),
+        child: const AppText('Nothing in this library yet.'),
       );
     }
     if (results.isEmpty) {
@@ -555,13 +556,13 @@ class _LibraryScreenState extends State<LibraryScreen> {
       controller: _gridScrollController,
       grid: GridView.builder(
         controller: _gridScrollController,
-        padding: const EdgeInsets.only(bottom: 48),
+        padding: EdgeInsets.only(bottom: 48.du(context)),
         clipBehavior: Clip.none,
-        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
           crossAxisCount: _gridColumns,
-          mainAxisSpacing: 24,
-          crossAxisSpacing: 24,
-          mainAxisExtent: _posterCardHeight,
+          mainAxisSpacing: 24.du(context),
+          crossAxisSpacing: 24.du(context),
+          mainAxisExtent: _posterCardHeight.du(context),
         ),
         itemCount: results.length,
         itemBuilder: (context, index) {
@@ -636,10 +637,10 @@ class _LibraryScreenState extends State<LibraryScreen> {
     }
 
     return Padding(
-      padding: const EdgeInsets.only(top: 24, bottom: 48),
+      padding: EdgeInsets.only(top: 24.du(context), bottom: 48.du(context)),
       child: Center(
         child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 660),
+          constraints: BoxConstraints(maxWidth: 660.du(context)),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -648,14 +649,14 @@ class _LibraryScreenState extends State<LibraryScreen> {
                 size: 64,
                 tint: AppColors.lineStrong,
               ),
-              const SizedBox(height: 24),
+              SizedBox(height: 24.du(context)),
               AppText(
                 headline,
                 style: AppTypography.title2,
                 textAlign: TextAlign.center,
               ),
               if (factSentence != null) ...[
-                const SizedBox(height: 12),
+                SizedBox(height: 12.du(context)),
                 AppText(
                   factSentence,
                   color: AppColors.ink3,
@@ -663,11 +664,11 @@ class _LibraryScreenState extends State<LibraryScreen> {
                 ),
               ],
               if (causes.isNotEmpty || searchActive) ...[
-                const SizedBox(height: 24),
+                SizedBox(height: 24.du(context)),
                 Wrap(
                   alignment: WrapAlignment.center,
-                  spacing: 16,
-                  runSpacing: 12,
+                  spacing: 16.du(context),
+                  runSpacing: 12.du(context),
                   children: [
                     for (final cause in causes)
                       AppOutlinedButton(
@@ -676,7 +677,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             const AppIcon(PhosphorIconsRegular.x, size: 20),
-                            const SizedBox(width: AppSpacing.sm),
+                            SizedBox(width: AppSpacing.sm.du(context)),
                             AppText(cause.$2),
                           ],
                         ),
@@ -688,7 +689,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             const AppIcon(PhosphorIconsRegular.x, size: 20),
-                            const SizedBox(width: AppSpacing.sm),
+                            SizedBox(width: AppSpacing.sm.du(context)),
                             const AppText('Clear search'),
                           ],
                         ),
@@ -718,22 +719,22 @@ class _LibraryScreenState extends State<LibraryScreen> {
       return const LoadingScreen();
     }
     if (results.isEmpty) {
-      return const Padding(
-        padding: EdgeInsets.all(32),
-        child: AppText('No collections found'),
+      return Padding(
+        padding: EdgeInsets.all(32.du(context)),
+        child: const AppText('No collections found'),
       );
     }
     return _fadingGrid(
       controller: _collectionsScrollController,
       grid: GridView.builder(
         controller: _collectionsScrollController,
-        padding: const EdgeInsets.only(bottom: 48),
+        padding: EdgeInsets.only(bottom: 48.du(context)),
         clipBehavior: Clip.none,
-        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
           crossAxisCount: _gridColumns,
-          mainAxisSpacing: 24,
-          crossAxisSpacing: 24,
-          mainAxisExtent: _posterCardHeight,
+          mainAxisSpacing: 24.du(context),
+          crossAxisSpacing: 24.du(context),
+          mainAxisExtent: _posterCardHeight.du(context),
         ),
         itemCount: results.length,
         itemBuilder: (context, index) {
@@ -755,9 +756,10 @@ class _LibraryScreenState extends State<LibraryScreen> {
   }
 }
 
-final _segmentShape = RoundedRectangleBorder(
-  borderRadius: BorderRadius.circular(AppShape.radiusSm),
-);
+RoundedRectangleBorder _segmentShape(BuildContext context) =>
+    RoundedRectangleBorder(
+      borderRadius: BorderRadius.circular(AppShape.radiusSm.du(context)),
+    );
 final _segmentColors = SurfaceColors(
   container: AppColors.transparent,
   content: AppColors.ink3,
@@ -789,23 +791,25 @@ class _ModeSwitch extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(5),
+      padding: EdgeInsets.all(5.du(context)),
       decoration: BoxDecoration(
         color: AppColors.surface,
         border: Border.all(color: AppColors.line),
-        borderRadius: BorderRadius.circular(AppShape.radiusMd),
+        borderRadius: BorderRadius.circular(AppShape.radiusMd.du(context)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
           _segmentButton(
+            context,
             'Titles',
             mode == _ViewMode.titles,
             titlesFocusNode,
             () => onSelect(_ViewMode.titles),
           ),
-          const SizedBox(width: 6),
+          SizedBox(width: 6.du(context)),
           _segmentButton(
+            context,
             'Collections',
             mode == _ViewMode.collections,
             collectionsFocusNode,
@@ -817,22 +821,23 @@ class _ModeSwitch extends StatelessWidget {
   }
 
   Widget _segmentButton(
+    BuildContext context,
     String label,
     bool selected,
     FocusNode focusNode,
     VoidCallback onClick,
   ) {
     return SizedBox(
-      height: 48,
+      height: 48.du(context),
       child: FocusableSurface(
         onClick: onClick,
         selected: selected,
         focusNode: focusNode,
-        shape: _segmentShape,
+        shape: _segmentShape(context),
         colors: _segmentColors,
         border: _segmentBorder,
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 22),
+          padding: EdgeInsets.symmetric(horizontal: 22.du(context)),
           child: AppText(label),
         ),
       ),
@@ -840,9 +845,10 @@ class _ModeSwitch extends StatelessWidget {
   }
 }
 
-final _filterChipShape = RoundedRectangleBorder(
-  borderRadius: BorderRadius.circular(AppShape.radiusMd),
-);
+RoundedRectangleBorder _filterChipShape(BuildContext context) =>
+    RoundedRectangleBorder(
+      borderRadius: BorderRadius.circular(AppShape.radiusMd.du(context)),
+    );
 final _filterChipColors = SurfaceColors(
   container: AppColors.transparent,
   content: AppColors.ink2,
@@ -886,21 +892,21 @@ class _FilterChip extends StatelessWidget {
         ? (open || alwaysShowValue ? '$label · $valueLabel' : valueLabel!)
         : label;
     return SizedBox(
-      height: 58,
+      height: 58.du(context),
       child: FocusableSurface(
         onClick: onClick,
         selected: applied && !alwaysShowValue,
         focusNode: focusNode,
-        shape: _filterChipShape,
+        shape: _filterChipShape(context),
         colors: _filterChipColors,
         border: _filterChipBorder,
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 20),
+          padding: EdgeInsets.symmetric(horizontal: 20.du(context)),
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
               AppText(text),
-              const SizedBox(width: 12),
+              SizedBox(width: 12.du(context)),
               AppIcon(
                 open
                     ? PhosphorIconsRegular.caretUp
@@ -925,12 +931,12 @@ class _ClearAllChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      height: 58,
+      height: 58.du(context),
       child: FocusableSurface(
         onClick: onClick,
         focusNode: focusNode,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(AppShape.radiusMd),
+          borderRadius: BorderRadius.circular(AppShape.radiusMd.du(context)),
         ),
         colors: SurfaceColors(
           container: AppColors.transparent,
@@ -944,9 +950,9 @@ class _ClearAllChip extends StatelessWidget {
           idle: SurfaceBorderSide.solid(AppColors.lineStrong),
           focused: SurfaceBorderSide.solid(AppColors.accent),
         ),
-        child: const Padding(
-          padding: EdgeInsets.symmetric(horizontal: 20),
-          child: AppText('Clear all'),
+        child: Padding(
+          padding: EdgeInsets.symmetric(horizontal: 20.du(context)),
+          child: const AppText('Clear all'),
         ),
       ),
     );

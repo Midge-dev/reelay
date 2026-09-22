@@ -6,6 +6,7 @@ import '../../kit/card.dart';
 import '../../kit/edge_fade_row.dart';
 import '../../kit/surface_style.dart';
 import '../../kit/text.dart';
+import '../../theme/scale.dart';
 import '../../theme/tokens.dart';
 import '../../theme/typography.dart';
 import '../common/artwork.dart';
@@ -36,8 +37,8 @@ class CastCrewRow extends StatelessWidget {
       children: [
         Padding(
           padding: EdgeInsets.only(
-            left: AppSpacing.xxxl,
-            bottom: AppSpacing.lg,
+            left: AppSpacing.xxxl.du(context),
+            bottom: AppSpacing.lg.du(context),
           ),
           child: AppText('Cast & Crew', style: AppTypography.rowLabel),
         ),
@@ -46,7 +47,7 @@ class CastCrewRow extends StatelessWidget {
           // home_screen.dart — headroom for EdgeFadeRow's ShaderMask bounds.
           // Content height: 130 avatar + 10 padding + a label line (26) +
           // a 3px gap + a caption line (24), +24 headroom.
-          height: 217,
+          height: 217.du(context),
           child: EdgeFadeRow(
             child: ListView.separated(
               scrollDirection: Axis.horizontal,
@@ -54,9 +55,9 @@ class CastCrewRow extends StatelessWidget {
               // Compose's LazyRow doesn't — matters once a card's focus-scale
               // can bleed past this SizedBox's fixed height.
               clipBehavior: Clip.none,
-              padding: const EdgeInsets.symmetric(horizontal: 48, vertical: 12),
+              padding: EdgeInsets.symmetric(horizontal: 48.du(context), vertical: 12.du(context)),
               itemCount: people.length,
-              separatorBuilder: (context, index) => const SizedBox(width: 18),
+              separatorBuilder: (context, index) => SizedBox(width: 18.du(context)),
               itemBuilder: (context, index) {
                 final person = people[index];
                 final subtitle =
@@ -97,14 +98,14 @@ class _CastMemberAvatar extends StatelessWidget {
     // caption/ink3 for the role, matching every other card's two-line
     // caption convention.
     return SizedBox(
-      width: 150,
+      width: 150.du(context),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.center,
         mainAxisSize: MainAxisSize.min,
         children: [
           SizedBox(
-            width: 130,
-            height: 130,
+            width: 130.du(context),
+            height: 130.du(context),
             child: AppCard(
               onClick: onClick,
               shape: const CircleBorder(),
@@ -129,7 +130,7 @@ class _CastMemberAvatar extends StatelessWidget {
             ),
           ),
           Padding(
-            padding: const EdgeInsets.only(top: 10),
+            padding: EdgeInsets.only(top: 10.du(context)),
             child: AppText(
               person.tag,
               style: AppTypography.label,
@@ -140,7 +141,7 @@ class _CastMemberAvatar extends StatelessWidget {
           ),
           if (subtitle != null)
             Padding(
-              padding: const EdgeInsets.only(top: 3),
+              padding: EdgeInsets.only(top: 3.du(context)),
               child: AppText(
                 subtitle!,
                 style: AppTypography.caption,
@@ -181,25 +182,25 @@ class PosterRow extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       children: [
         Padding(
-          padding: const EdgeInsets.only(
-            left: AppSpacing.xxxl,
-            top: AppSpacing.xs,
-            bottom: AppSpacing.lg,
+          padding: EdgeInsets.only(
+            left: AppSpacing.xxxl.du(context),
+            top: AppSpacing.xs.du(context),
+            bottom: AppSpacing.lg.du(context),
           ),
           child: AppText(title, style: AppTypography.rowLabel),
         ),
         SizedBox(
           // Content height: 198 poster (132 wide, 2:3) + 10 padding + a
           // label line (26), +24 headroom.
-          height: 258,
+          height: 258.du(context),
           child: EdgeFadeRow(
             child: ListView.separated(
               scrollDirection: Axis.horizontal,
               // See the matching comment on CastCrewRow above.
               clipBehavior: Clip.none,
-              padding: const EdgeInsets.symmetric(horizontal: 48, vertical: 12),
+              padding: EdgeInsets.symmetric(horizontal: 48.du(context), vertical: 12.du(context)),
               itemCount: items.length,
-              separatorBuilder: (context, index) => const SizedBox(width: 18),
+              separatorBuilder: (context, index) => SizedBox(width: 18.du(context)),
               itemBuilder: (context, index) {
                 final item = items[index];
                 return _RelatedPoster(
@@ -241,7 +242,7 @@ class _RelatedPoster extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      width: 132,
+      width: 132.du(context),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         mainAxisSize: MainAxisSize.min,
@@ -259,7 +260,7 @@ class _RelatedPoster extends StatelessWidget {
             ),
           ),
           Padding(
-            padding: const EdgeInsets.only(top: 10),
+            padding: EdgeInsets.only(top: 10.du(context)),
             child: AppText(
               item.title,
               style: AppTypography.label,

@@ -6,6 +6,7 @@ import '../../kit/icon.dart';
 import '../../kit/surface_style.dart';
 import '../../kit/text.dart';
 import '../../theme/phosphor_icons.dart';
+import '../../theme/scale.dart';
 import '../../theme/tokens.dart';
 import '../../theme/typography.dart';
 import '../common/neon_scrollbar.dart';
@@ -31,11 +32,11 @@ class AppliedValueChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      height: 58,
+      height: 58.du(context),
       child: FocusableSurface(
         onClick: onRemove,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(AppShape.radiusMd),
+          borderRadius: BorderRadius.circular(AppShape.radiusMd.du(context)),
         ),
         colors: SurfaceColors(
           container: AppColors.accent900,
@@ -49,12 +50,12 @@ class AppliedValueChip extends StatelessWidget {
           focused: SurfaceBorderSide.solid(AppColors.accent),
         ),
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 18),
+          padding: EdgeInsets.symmetric(horizontal: 18.du(context)),
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
               AppText(label),
-              const SizedBox(width: 12),
+              SizedBox(width: 12.du(context)),
               const AppIcon(PhosphorIconsRegular.x, size: 17),
             ],
           ),
@@ -64,9 +65,10 @@ class AppliedValueChip extends StatelessWidget {
   }
 }
 
-final _menuShape = RoundedRectangleBorder(
-  borderRadius: BorderRadius.circular(AppShape.radiusMd),
-);
+RoundedRectangleBorder _menuShape(BuildContext context) =>
+    RoundedRectangleBorder(
+      borderRadius: BorderRadius.circular(AppShape.radiusMd.du(context)),
+    );
 final _menuRowColors = SurfaceColors(
   container: AppColors.transparent,
   content: AppColors.ink2,
@@ -117,18 +119,18 @@ class MenuOptionRow extends StatelessWidget {
         : _menuRowColors;
 
     return SizedBox(
-      height: 64,
+      height: 64.du(context),
       child: FocusableSurface(
         onClick: onClick,
         selected: applied,
         focusNode: focusNode,
         onFocusChange: onFocusChange,
-        shape: _menuShape,
+        shape: _menuShape(context),
         colors: colors,
         border: _menuRowBorder,
         contentAlignment: AlignmentDirectional.centerStart,
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 18),
+          padding: EdgeInsets.symmetric(horizontal: 18.du(context)),
           child: Row(
             children: [
               Expanded(
@@ -139,7 +141,7 @@ class MenuOptionRow extends StatelessWidget {
                 ),
               ),
               if (countLabel != null) ...[
-                const SizedBox(width: 12),
+                SizedBox(width: 12.du(context)),
                 AppText(
                   countLabel!,
                   color: dimmed
@@ -148,7 +150,7 @@ class MenuOptionRow extends StatelessWidget {
                 ),
               ],
               if (applied) ...[
-                const SizedBox(width: 12),
+                SizedBox(width: 12.du(context)),
                 const AppIcon(PhosphorIconsFill.checkCircle, size: 22),
               ],
             ],
@@ -254,13 +256,13 @@ class _FilterDropdownState extends State<FilterDropdown> {
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: 520,
-      constraints: const BoxConstraints(maxHeight: 520),
-      padding: const EdgeInsets.all(28),
+      width: 520.du(context),
+      constraints: BoxConstraints(maxHeight: 520.du(context)),
+      padding: EdgeInsets.all(28.du(context)),
       decoration: BoxDecoration(
         color: AppColors.surfaceOverlay,
         border: Border.all(color: AppColors.lineStrong),
-        borderRadius: BorderRadius.circular(AppShape.radiusLg),
+        borderRadius: BorderRadius.circular(AppShape.radiusLg.du(context)),
         boxShadow: AppElevation.overlay,
       ),
       child: Focus(
@@ -275,7 +277,7 @@ class _FilterDropdownState extends State<FilterDropdown> {
               style: AppTypography.micro,
               color: AppColors.accent300,
             ),
-            const SizedBox(height: 10),
+            SizedBox(height: 10.du(context)),
             Flexible(
               child: Row(
                 mainAxisSize: MainAxisSize.min,
@@ -303,24 +305,24 @@ class _FilterDropdownState extends State<FilterDropdown> {
                                   setState(() => _highlightedIndex = index);
                               },
                             ),
-                            const SizedBox(height: 2),
+                            SizedBox(height: 2.du(context)),
                           ],
                         ],
                       ),
                     ),
                   ),
-                  const SizedBox(width: 8),
+                  SizedBox(width: 8.du(context)),
                   NeonScrollbar(controller: _scrollController),
                 ],
               ),
             ),
-            const SizedBox(height: 16),
+            SizedBox(height: 16.du(context)),
             DecoratedBox(
               decoration: BoxDecoration(
                 border: Border(top: BorderSide(color: AppColors.lineStrong)),
               ),
               child: Padding(
-                padding: const EdgeInsets.only(top: 16),
+                padding: EdgeInsets.only(top: 16.du(context)),
                 child: AppText(widget.footerHint, color: AppColors.ink3),
               ),
             ),

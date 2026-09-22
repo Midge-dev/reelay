@@ -7,6 +7,7 @@ import '../../kit/edge_fade_row.dart';
 import '../../kit/icon.dart';
 import '../../kit/text.dart';
 import '../../theme/phosphor_icons.dart';
+import '../../theme/scale.dart';
 import '../../theme/tokens.dart';
 import '../../theme/typography.dart';
 import 'poster_card.dart';
@@ -106,7 +107,7 @@ class _WatchlistScreenState extends State<WatchlistScreen> {
     return ColoredBox(
       color: AppColors.background,
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(32, 24, 32, 0),
+        padding: EdgeInsets.fromLTRB(32.du(context), 24.du(context), 32.du(context), 0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
@@ -125,7 +126,7 @@ class _WatchlistScreenState extends State<WatchlistScreen> {
                   ),
               ],
             ),
-            const SizedBox(height: 22),
+            SizedBox(height: 22.du(context)),
             Expanded(child: _items.isEmpty ? _buildEmptyState() : _buildGrid()),
           ],
         ),
@@ -134,9 +135,9 @@ class _WatchlistScreenState extends State<WatchlistScreen> {
   }
 
   Widget _buildEmptyState() {
-    return const Padding(
-      padding: EdgeInsets.only(top: 24),
-      child: AppText(
+    return Padding(
+      padding: EdgeInsets.only(top: 24.du(context)),
+      child: const AppText(
         'Nothing saved yet — press + on anything to keep it here.',
       ),
     );
@@ -155,13 +156,13 @@ class _WatchlistScreenState extends State<WatchlistScreen> {
         ),
         child: GridView.builder(
           controller: _scrollController,
-          padding: const EdgeInsets.only(bottom: 48),
+          padding: EdgeInsets.only(bottom: 48.du(context)),
           clipBehavior: Clip.none,
-          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
             crossAxisCount: _gridColumns,
-            mainAxisSpacing: 24,
-            crossAxisSpacing: 24,
-            mainAxisExtent: _posterCardHeight,
+            mainAxisSpacing: 24.du(context),
+            crossAxisSpacing: 24.du(context),
+            mainAxisExtent: _posterCardHeight.du(context),
           ),
           itemCount: _items.length,
           itemBuilder: (context, index) {
@@ -196,14 +197,14 @@ class _UndoChip extends StatelessWidget {
     return GestureDetector(
       onTap: onUndo,
       child: Container(
-        padding: const EdgeInsets.symmetric(
-          horizontal: AppSpacing.lg,
-          vertical: AppSpacing.sm,
+        padding: EdgeInsets.symmetric(
+          horizontal: AppSpacing.lg.du(context),
+          vertical: AppSpacing.sm.du(context),
         ),
         decoration: BoxDecoration(
           color: AppColors.surface,
           border: Border.all(color: AppColors.lineStrong),
-          borderRadius: BorderRadius.circular(AppShape.radiusMd),
+          borderRadius: BorderRadius.circular(AppShape.radiusMd.du(context)),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
@@ -213,7 +214,7 @@ class _UndoChip extends StatelessWidget {
               size: 18,
               tint: AppColors.accent300,
             ),
-            const SizedBox(width: AppSpacing.sm),
+            SizedBox(width: AppSpacing.sm.du(context)),
             AppText(
               'Removed · Undo ($secondsLeft)',
               color: AppColors.accent300,

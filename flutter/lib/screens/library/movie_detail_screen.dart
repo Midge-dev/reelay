@@ -11,6 +11,7 @@ import '../../kit/icon.dart';
 import '../../kit/icon_button.dart';
 import '../../kit/surface_style.dart';
 import '../../kit/text.dart';
+import '../../theme/scale.dart';
 import '../../theme/tokens.dart';
 import '../../theme/typography.dart';
 import '../common/artwork.dart';
@@ -250,7 +251,7 @@ class _MovieDetailScreenState extends State<MovieDetailScreen> {
         ),
       );
     }
-    sections.add(const SizedBox(height: 48));
+    sections.add(SizedBox(height: 48.du(context)));
 
     return BackHandler(
       onBack: widget.onBack,
@@ -259,7 +260,7 @@ class _MovieDetailScreenState extends State<MovieDetailScreen> {
         child: ListView.separated(
           controller: _scrollController,
           itemCount: sections.length,
-          separatorBuilder: (context, index) => const SizedBox(height: 28),
+          separatorBuilder: (context, index) => SizedBox(height: 28.du(context)),
           itemBuilder: (context, index) => sections[index],
         ),
       ),
@@ -342,7 +343,7 @@ class _MovieHero extends StatelessWidget {
     ];
 
     return SizedBox(
-      height: _heroHeight,
+      height: _heroHeight.du(context),
       child: Stack(
         fit: StackFit.expand,
         children: [
@@ -363,20 +364,20 @@ class _MovieHero extends StatelessWidget {
             ),
           ),
           Padding(
-            padding: const EdgeInsets.fromLTRB(
-              AppSpacing.xxxl,
-              AppSpacing.xxl,
-              AppSpacing.xxxl,
-              AppSpacing.xl,
+            padding: EdgeInsets.fromLTRB(
+              AppSpacing.xxxl.du(context),
+              AppSpacing.xxl.du(context),
+              AppSpacing.xxxl.du(context),
+              AppSpacing.xl.du(context),
             ),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
                 ClipRRect(
-                  borderRadius: BorderRadius.circular(AppShape.radiusMd),
+                  borderRadius: BorderRadius.circular(AppShape.radiusMd.du(context)),
                   child: Container(
-                    width: _posterWidth,
-                    height: _posterHeight,
+                    width: _posterWidth.du(context),
+                    height: _posterHeight.du(context),
                     decoration: BoxDecoration(
                       border: Border.all(color: AppColors.lineStrong),
                     ),
@@ -385,7 +386,7 @@ class _MovieHero extends StatelessWidget {
                     ),
                   ),
                 ),
-                const SizedBox(width: AppSpacing.xxl),
+                SizedBox(width: AppSpacing.xxl.du(context)),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -395,17 +396,17 @@ class _MovieHero extends StatelessWidget {
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           Container(
-                            width: 20,
-                            height: 2,
+                            width: 20.du(context),
+                            height: 2.du(context),
                             color: AppColors.accent,
                           ),
-                          const SizedBox(width: AppSpacing.md),
+                          SizedBox(width: AppSpacing.md.du(context)),
                           AppText('MOVIE', style: AppTypography.micro),
                         ],
                       ),
-                      const SizedBox(height: AppSpacing.sm),
+                      SizedBox(height: AppSpacing.sm.du(context)),
                       ConstrainedBox(
-                        constraints: const BoxConstraints(maxWidth: 960),
+                        constraints: BoxConstraints(maxWidth: 960.du(context)),
                         child: AppText(
                           movie.title,
                           style: AppTypography.display,
@@ -414,26 +415,26 @@ class _MovieHero extends StatelessWidget {
                         ),
                       ),
                       if (metaParts.isNotEmpty) ...[
-                        const SizedBox(height: AppSpacing.sm),
+                        SizedBox(height: AppSpacing.sm.du(context)),
                         AppText(metaParts.join(' · '), color: AppColors.ink2),
                       ],
                       if (hasProgress) ...[
-                        const SizedBox(height: AppSpacing.md),
+                        SizedBox(height: AppSpacing.md.du(context)),
                         Row(
                           children: [
                             Flexible(
                               child: ConstrainedBox(
-                                constraints: const BoxConstraints(
-                                  maxWidth: 380,
+                                constraints: BoxConstraints(
+                                  maxWidth: 380.du(context),
                                 ),
                                 child: SizedBox(
-                                  height: 4,
+                                  height: 4.du(context),
                                   child: DecoratedBox(
                                     decoration: BoxDecoration(
                                       color: AppColors.ink.withValues(
                                         alpha: 0.22,
                                       ),
-                                      borderRadius: BorderRadius.circular(2),
+                                      borderRadius: BorderRadius.circular(2.du(context)),
                                     ),
                                     child: FractionallySizedBox(
                                       alignment: Alignment.centerLeft,
@@ -448,7 +449,7 @@ class _MovieHero extends StatelessWidget {
                                 ),
                               ),
                             ),
-                            const SizedBox(width: AppSpacing.lg),
+                            SizedBox(width: AppSpacing.lg.du(context)),
                             // The remaining-time label carries the information the
                             // bar only visualizes, so it keeps its natural width
                             // (never truncates) and the decorative bar is what
@@ -463,9 +464,9 @@ class _MovieHero extends StatelessWidget {
                         ),
                       ],
                       if (summary != null) ...[
-                        const SizedBox(height: AppSpacing.md),
+                        SizedBox(height: AppSpacing.md.du(context)),
                         ConstrainedBox(
-                          constraints: const BoxConstraints(maxWidth: 780),
+                          constraints: BoxConstraints(maxWidth: 780.du(context)),
                           child: AppText(
                             summary!,
                             style: AppTypography.body,
@@ -474,7 +475,7 @@ class _MovieHero extends StatelessWidget {
                           ),
                         ),
                       ],
-                      const SizedBox(height: AppSpacing.lg),
+                      SizedBox(height: AppSpacing.lg.du(context)),
                       Focus(
                         canRequestFocus: false,
                         onKeyEvent: _trapUp,
@@ -484,8 +485,8 @@ class _MovieHero extends StatelessWidget {
                           // watchlist button can be wider than the column
                           // allows. Drops to a second line instead of
                           // hard-overflowing.
-                          spacing: AppSpacing.md,
-                          runSpacing: AppSpacing.md,
+                          spacing: AppSpacing.md.du(context),
+                          runSpacing: AppSpacing.md.du(context),
                           crossAxisAlignment: WrapCrossAlignment.center,
                           children: [
                             AppButton(
@@ -499,7 +500,7 @@ class _MovieHero extends StatelessWidget {
                                     PhosphorIconsFill.play,
                                     size: 22,
                                   ),
-                                  const SizedBox(width: AppSpacing.sm),
+                                  SizedBox(width: AppSpacing.sm.du(context)),
                                   AppText(playLabel),
                                 ],
                               ),
@@ -512,8 +513,8 @@ class _MovieHero extends StatelessWidget {
                                 children: [
                                   const WatchTogetherIcon(),
                                   Padding(
-                                    padding: const EdgeInsets.only(
-                                      left: AppSpacing.sm,
+                                    padding: EdgeInsets.only(
+                                      left: AppSpacing.sm.du(context),
                                     ),
                                     child: AppText(watchTogetherLabel),
                                   ),
@@ -537,31 +538,31 @@ class _MovieHero extends StatelessWidget {
                           ],
                         ),
                       ),
-                      const SizedBox(height: AppSpacing.lg),
+                      SizedBox(height: AppSpacing.lg.du(context)),
                       Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: AppSpacing.lg,
-                          vertical: AppSpacing.sm,
+                        padding: EdgeInsets.symmetric(
+                          horizontal: AppSpacing.lg.du(context),
+                          vertical: AppSpacing.sm.du(context),
                         ),
                         decoration: BoxDecoration(
                           color: AppColors.surface,
                           border: Border.all(color: AppColors.line),
                           borderRadius: BorderRadius.circular(
-                            AppShape.radiusMd,
+                            AppShape.radiusMd.du(context),
                           ),
                         ),
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             Container(
-                              width: 8,
-                              height: 8,
+                              width: 8.du(context),
+                              height: 8.du(context),
                               decoration: const BoxDecoration(
                                 shape: BoxShape.circle,
                                 color: AppColors.success,
                               ),
                             ),
-                            const SizedBox(width: AppSpacing.md),
+                            SizedBox(width: AppSpacing.md.du(context)),
                             AppText(
                               'Playing from ${sourceParts.join(' · ')}',
                               color: AppColors.ink2,

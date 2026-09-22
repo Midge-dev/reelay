@@ -11,6 +11,7 @@ import '../../kit/card.dart';
 import '../../kit/filter_chip.dart';
 import '../../kit/icon.dart';
 import '../../kit/text.dart';
+import '../../theme/scale.dart';
 import '../../theme/tokens.dart';
 import '../../theme/typography.dart';
 import '../common/artwork.dart';
@@ -255,7 +256,7 @@ class _ShowDetailScreenState extends State<ShowDetailScreen> {
         );
       }
     }
-    sections.add(const SizedBox(height: 48));
+    sections.add(SizedBox(height: 48.du(context)));
 
     return BackHandler(
       onBack: widget.onBack,
@@ -264,7 +265,7 @@ class _ShowDetailScreenState extends State<ShowDetailScreen> {
         child: ListView.separated(
           controller: _scrollController,
           itemCount: sections.length,
-          separatorBuilder: (context, index) => const SizedBox(height: 20),
+          separatorBuilder: (context, index) => SizedBox(height: 20.du(context)),
           itemBuilder: (context, index) => sections[index],
         ),
       ),
@@ -325,7 +326,7 @@ class _ShowHero extends StatelessWidget {
     ];
 
     return SizedBox(
-      height: _heroHeight,
+      height: _heroHeight.du(context),
       child: Stack(
         fit: StackFit.expand,
         children: [
@@ -346,11 +347,11 @@ class _ShowHero extends StatelessWidget {
             ),
           ),
           Padding(
-            padding: const EdgeInsets.fromLTRB(
-              AppSpacing.xxxl,
-              AppSpacing.xxl,
-              AppSpacing.xxxl,
-              AppSpacing.xl,
+            padding: EdgeInsets.fromLTRB(
+              AppSpacing.xxxl.du(context),
+              AppSpacing.xxl.du(context),
+              AppSpacing.xxxl.du(context),
+              AppSpacing.xl.du(context),
             ),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.end,
@@ -364,17 +365,17 @@ class _ShowHero extends StatelessWidget {
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           Container(
-                            width: 20,
-                            height: 2,
+                            width: 20.du(context),
+                            height: 2.du(context),
                             color: AppColors.accent,
                           ),
-                          const SizedBox(width: AppSpacing.md),
+                          SizedBox(width: AppSpacing.md.du(context)),
                           AppText('SHOW', style: AppTypography.micro),
                         ],
                       ),
-                      const SizedBox(height: AppSpacing.sm),
+                      SizedBox(height: AppSpacing.sm.du(context)),
                       ConstrainedBox(
-                        constraints: const BoxConstraints(maxWidth: 900),
+                        constraints: BoxConstraints(maxWidth: 900.du(context)),
                         child: AppText(
                           show.title,
                           style: AppTypography.display,
@@ -383,13 +384,13 @@ class _ShowHero extends StatelessWidget {
                         ),
                       ),
                       if (metaParts.isNotEmpty) ...[
-                        const SizedBox(height: AppSpacing.sm),
+                        SizedBox(height: AppSpacing.sm.du(context)),
                         AppText(metaParts.join(' · '), color: AppColors.ink2),
                       ],
                       if (summary != null) ...[
-                        const SizedBox(height: AppSpacing.md),
+                        SizedBox(height: AppSpacing.md.du(context)),
                         ConstrainedBox(
-                          constraints: const BoxConstraints(maxWidth: 780),
+                          constraints: BoxConstraints(maxWidth: 780.du(context)),
                           child: AppText(
                             summary!,
                             style: AppTypography.body,
@@ -398,7 +399,7 @@ class _ShowHero extends StatelessWidget {
                           ),
                         ),
                       ],
-                      const SizedBox(height: AppSpacing.lg),
+                      SizedBox(height: AppSpacing.lg.du(context)),
                       Focus(
                         canRequestFocus: false,
                         onKeyEvent: _trapUp,
@@ -407,8 +408,8 @@ class _ShowHero extends StatelessWidget {
                           // Watch Together and the watchlist button can be
                           // wider than the column allows. See the matching
                           // comment in movie_detail_screen.dart.
-                          spacing: AppSpacing.md,
-                          runSpacing: AppSpacing.md,
+                          spacing: AppSpacing.md.du(context),
+                          runSpacing: AppSpacing.md.du(context),
                           crossAxisAlignment: WrapCrossAlignment.center,
                           children: [
                             AppButton(
@@ -424,11 +425,11 @@ class _ShowHero extends StatelessWidget {
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
                                   const WatchTogetherIcon(),
-                                  const Padding(
+                                  Padding(
                                     padding: EdgeInsets.only(
-                                      left: AppSpacing.sm,
+                                      left: AppSpacing.sm.du(context),
                                     ),
-                                    child: AppText('Watch Together'),
+                                    child: const AppText('Watch Together'),
                                   ),
                                 ],
                               ),
@@ -444,12 +445,12 @@ class _ShowHero extends StatelessWidget {
                     ],
                   ),
                 ),
-                const SizedBox(width: AppSpacing.xxl),
+                SizedBox(width: AppSpacing.xxl.du(context)),
                 ClipRRect(
-                  borderRadius: BorderRadius.circular(AppShape.radiusMd),
+                  borderRadius: BorderRadius.circular(AppShape.radiusMd.du(context)),
                   child: Container(
-                    width: _posterWidth,
-                    height: _posterHeight,
+                    width: _posterWidth.du(context),
+                    height: _posterHeight.du(context),
                     decoration: BoxDecoration(
                       border: Border.all(color: AppColors.lineStrong),
                     ),
@@ -491,10 +492,10 @@ class _SeasonChipsRow extends StatelessWidget {
       });
 
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xxxl),
+      padding: EdgeInsets.symmetric(horizontal: AppSpacing.xxxl.du(context)),
       child: Wrap(
-        spacing: AppSpacing.md,
-        runSpacing: AppSpacing.md,
+        spacing: AppSpacing.md.du(context),
+        runSpacing: AppSpacing.md.du(context),
         children: [
           for (final season in sorted)
             AppFilterChip(
@@ -552,24 +553,24 @@ class _EpisodeRowState extends State<_EpisodeRow> {
         : 0.0;
 
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xxxl),
+      padding: EdgeInsets.symmetric(horizontal: AppSpacing.xxxl.du(context)),
       child: AppCard(
         onClick: widget.onClick,
         focusNode: _focusNode,
         onFocusChange: (focused) => setState(() => _focused = focused),
         child: Padding(
-          padding: const EdgeInsets.symmetric(
-            horizontal: AppSpacing.lg,
-            vertical: AppSpacing.md,
+          padding: EdgeInsets.symmetric(
+            horizontal: AppSpacing.lg.du(context),
+            vertical: AppSpacing.md.du(context),
           ),
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               ClipRRect(
-                borderRadius: BorderRadius.circular(AppShape.radiusSm),
+                borderRadius: BorderRadius.circular(AppShape.radiusSm.du(context)),
                 child: SizedBox(
-                  width: _episodeThumbWidth,
-                  height: _episodeThumbHeight,
+                  width: _episodeThumbWidth.du(context),
+                  height: _episodeThumbHeight.du(context),
                   child: Stack(
                     fit: StackFit.expand,
                     children: [
@@ -582,7 +583,7 @@ class _EpisodeRowState extends State<_EpisodeRow> {
                           right: 0,
                           bottom: 0,
                           child: Container(
-                            height: 4,
+                            height: 4.du(context),
                             color: AppColors.ink.withValues(alpha: 0.22),
                             alignment: Alignment.centerLeft,
                             child: FractionallySizedBox(
@@ -595,7 +596,7 @@ class _EpisodeRowState extends State<_EpisodeRow> {
                   ),
                 ),
               ),
-              const SizedBox(width: AppSpacing.xl),
+              SizedBox(width: AppSpacing.xl.du(context)),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -609,7 +610,7 @@ class _EpisodeRowState extends State<_EpisodeRow> {
                           style: AppTypography.caption,
                         ),
                         if (hasProgress) ...[
-                          const SizedBox(width: AppSpacing.md),
+                          SizedBox(width: AppSpacing.md.du(context)),
                           AppText(
                             formatMinutesLeft(remaining),
                             style: AppTypography.caption,
@@ -617,7 +618,7 @@ class _EpisodeRowState extends State<_EpisodeRow> {
                         ],
                       ],
                     ),
-                    const SizedBox(height: 4),
+                    SizedBox(height: 4.du(context)),
                     AppText(
                       episode.title,
                       style: _focused
@@ -629,7 +630,7 @@ class _EpisodeRowState extends State<_EpisodeRow> {
                       overflow: TextOverflow.ellipsis,
                     ),
                     if (episode.summary != null) ...[
-                      const SizedBox(height: 4),
+                      SizedBox(height: 4.du(context)),
                       AppText(
                         episode.summary!,
                         style: AppTypography.caption,
@@ -640,7 +641,7 @@ class _EpisodeRowState extends State<_EpisodeRow> {
                   ],
                 ),
               ),
-              const SizedBox(width: AppSpacing.lg),
+              SizedBox(width: AppSpacing.lg.du(context)),
               Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
@@ -649,7 +650,7 @@ class _EpisodeRowState extends State<_EpisodeRow> {
                     style: AppTypography.caption,
                   ),
                   if (widget.isNextUp) ...[
-                    const SizedBox(width: AppSpacing.md),
+                    SizedBox(width: AppSpacing.md.du(context)),
                     const AppIcon(PhosphorIconsFill.play, size: 26),
                   ],
                 ],

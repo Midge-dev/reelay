@@ -5,6 +5,7 @@ import '../../kit/marquee_text.dart';
 import '../../kit/scroll_peek.dart';
 import '../../kit/surface_style.dart';
 import '../../kit/text.dart';
+import '../../theme/scale.dart';
 import '../../theme/tokens.dart';
 import '../../theme/typography.dart';
 import '../common/artwork.dart';
@@ -92,7 +93,7 @@ class _PosterCardState extends State<PosterCard> {
     // row-aware reveal again from here, at the whole-card level, includes
     // the title and leaves the next row peeking rather than fully hidden.
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) ensureRowVisible(context, peekExtent: posterRowPeekExtent);
+      if (mounted) ensureRowVisible(context, peekExtent: posterRowPeekExtent.du(context));
     });
   }
 
@@ -106,7 +107,7 @@ class _PosterCardState extends State<PosterCard> {
     return Align(
       alignment: Alignment.topCenter,
       child: SizedBox(
-        width: _posterWidth,
+        width: _posterWidth.du(context),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           mainAxisSize: MainAxisSize.min,
@@ -134,7 +135,7 @@ class _PosterCardState extends State<PosterCard> {
               ),
             ),
             Padding(
-              padding: const EdgeInsets.only(top: 16),
+              padding: EdgeInsets.only(top: 16.du(context)),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisSize: MainAxisSize.min,

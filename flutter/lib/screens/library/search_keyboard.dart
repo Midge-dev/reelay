@@ -4,6 +4,7 @@ import 'package:flutter/widgets.dart';
 import '../../kit/focusable_surface.dart';
 import '../../kit/surface_style.dart';
 import '../../kit/text.dart';
+import '../../theme/scale.dart';
 import '../../theme/tokens.dart';
 import '../../theme/typography.dart';
 
@@ -58,8 +59,8 @@ final List<List<SearchKey>> searchKeyGrid = searchKeyRows.map((row) {
 
 const _keyHeight = 52.0;
 const _keyGap = AppSpacing.xs;
-final _keyShape = RoundedRectangleBorder(
-  borderRadius: BorderRadius.circular(AppShape.radiusSm),
+RoundedRectangleBorder _keyShape(BuildContext context) => RoundedRectangleBorder(
+  borderRadius: BorderRadius.circular(AppShape.radiusSm.du(context)),
 );
 final _keyColors = SurfaceColors(
   container: AppColors.surface,
@@ -146,7 +147,7 @@ class _SearchKeyboardState extends State<SearchKeyboard> {
       mainAxisSize: MainAxisSize.min,
       children: [
         for (var rowIndex = 0; rowIndex < searchKeyRows.length; rowIndex++) ...[
-          if (rowIndex > 0) const SizedBox(height: _keyGap),
+          if (rowIndex > 0) SizedBox(height: _keyGap.du(context)),
           _buildRow(rowIndex),
         ],
       ],
@@ -158,7 +159,7 @@ class _SearchKeyboardState extends State<SearchKeyboard> {
     final children = <Widget>[];
     var col = 0;
     for (final key in row) {
-      if (children.isNotEmpty) children.add(const SizedBox(width: _keyGap));
+      if (children.isNotEmpty) children.add(SizedBox(width: _keyGap.du(context)));
       final colStart = col;
       final colEnd = col + key.span - 1;
       col += key.span;
@@ -259,7 +260,7 @@ class _SearchKeyButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      height: _keyHeight,
+      height: _keyHeight.du(context),
       child: Focus(
         canRequestFocus: false,
         onKeyEvent: _handleArrowKeys,
@@ -268,7 +269,7 @@ class _SearchKeyButton extends StatelessWidget {
           onLongClick: onLongClick,
           focusNode: focusNode,
           autofocus: autofocus,
-          shape: _keyShape,
+          shape: _keyShape(context),
           colors: _keyColors,
           border: _keyBorder,
           child: AppText(

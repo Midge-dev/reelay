@@ -4,6 +4,7 @@ import '../../data/plex/plex_image_url.dart';
 import '../../data/plex/plex_models.dart';
 import '../../focus/back_handler.dart';
 import '../../kit/text.dart';
+import '../../theme/scale.dart';
 import '../../theme/tokens.dart';
 import '../../theme/typography.dart';
 import 'poster_card.dart';
@@ -38,34 +39,34 @@ class CollectionDetailScreen extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Padding(
-              padding: const EdgeInsets.only(left: 32, top: 32, right: 32),
+              padding: EdgeInsets.only(left: 32.du(context), top: 32.du(context), right: 32.du(context)),
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.end,
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   AppText(collection.title, style: AppTypography.title1),
-                  const SizedBox(width: 16),
+                  SizedBox(width: 16.du(context)),
                   AppText('${items.length} title${items.length == 1 ? '' : 's'}', color: AppColors.ink3),
                 ],
               ),
             ),
             Expanded(
               child: items.isEmpty
-                  ? const Padding(
-                      padding: EdgeInsets.all(32),
-                      child: AppText('No titles found in this collection.'),
+                  ? Padding(
+                      padding: EdgeInsets.all(32.du(context)),
+                      child: const AppText('No titles found in this collection.'),
                     )
                   : GridView.builder(
-                      padding: const EdgeInsets.all(32),
+                      padding: EdgeInsets.all(32.du(context)),
                       // Flutter's GridView clips its children by default
                       // where Compose's grid doesn't — matters once a
                       // card's focus-scale can bleed past its own cell.
                       clipBehavior: Clip.none,
-                      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                         crossAxisCount: _gridColumns,
-                        mainAxisSpacing: 24,
-                        crossAxisSpacing: 24,
-                        mainAxisExtent: _posterCardHeight,
+                        mainAxisSpacing: 24.du(context),
+                        crossAxisSpacing: 24.du(context),
+                        mainAxisExtent: _posterCardHeight.du(context),
                       ),
                       itemCount: items.length,
                       itemBuilder: (context, index) {
