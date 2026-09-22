@@ -18,7 +18,7 @@ import '../common/watch_together_icon.dart';
 import '../common/watchlist_button.dart';
 import 'movie_detail_sections.dart';
 
-const _heroHeight = 560.0;
+const _heroHeight = 680.0;
 const _posterWidth = 280.0;
 const _posterHeight = 420.0;
 const _restartButtonBorder = SurfaceBorder(
@@ -398,11 +398,18 @@ class _MovieHero extends StatelessWidget {
                         ),
                       ],
                       const SizedBox(height: AppSpacing.lg),
-                      Focus(canRequestFocus: false, onKeyEvent: _trapUp, child: Row(
-                        mainAxisSize: MainAxisSize.min,
+                      Focus(canRequestFocus: false, onKeyEvent: _trapUp, child: Wrap(
+                        // Wrap, not Row: a show with a long "Play S3E12"
+                        // label plus Watch Together, Seasons and the
+                        // watchlist button can be wider than the column
+                        // allows — see the matching comment on RoomCard in
+                        // watch_together_row.dart. Drops to a second line
+                        // instead of hard-overflowing.
+                        spacing: AppSpacing.md,
+                        runSpacing: AppSpacing.md,
+                        crossAxisAlignment: WrapCrossAlignment.center,
                         children: [
                           AppButton(onClick: onPlay ?? () {}, focusNode: playFocus, onFocusChange: _onFocus, child: AppText(playLabel)),
-                          const SizedBox(width: AppSpacing.md),
                           AppOutlinedButton(
                             onClick: onWatchTogether ?? () {},
                             onFocusChange: _onFocus,
@@ -411,15 +418,9 @@ class _MovieHero extends StatelessWidget {
                               Padding(padding: const EdgeInsets.only(left: AppSpacing.sm), child: AppText(watchTogetherLabel)),
                             ]),
                           ),
-                          if (isShow) ...[
-                            const SizedBox(width: AppSpacing.md),
-                            AppOutlinedButton(onClick: onSeasons, onFocusChange: _onFocus, child: const AppText('Seasons')),
-                          ],
-                          if (showRestart) ...[
-                            const SizedBox(width: AppSpacing.md),
+                          if (isShow) AppOutlinedButton(onClick: onSeasons, onFocusChange: _onFocus, child: const AppText('Seasons')),
+                          if (showRestart)
                             AppIconButton(onClick: onRestartSolo ?? () {}, border: _restartButtonBorder, onFocusChange: _onFocus, child: const AppIcon(Icons.replay)),
-                          ],
-                          const SizedBox(width: AppSpacing.md),
                           WatchlistButton(isOnWatchlist: isOnWatchlist, onClick: onToggleWatchlist, onFocusChange: _onFocus),
                         ],
                       )),
