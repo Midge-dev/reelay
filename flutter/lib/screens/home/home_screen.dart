@@ -5,6 +5,7 @@ import '../../data/plex/plex_image_url.dart';
 import '../../data/plex/plex_models.dart';
 import '../../kit/edge_fade_row.dart';
 import '../../kit/text.dart';
+import '../../theme/scale.dart';
 import '../../theme/tokens.dart';
 import '../../theme/typography.dart';
 import '../library/poster_card.dart';
@@ -211,16 +212,16 @@ class _HomeScreenState extends State<HomeScreen> {
       color: AppColors.background,
       child: ListView(
         controller: _homeScrollController,
-        padding: const EdgeInsets.only(bottom: 48),
+        padding: EdgeInsets.only(bottom: 48.du(context)),
         children: [
           _buildContinueWatchingSection(continueWatchingGetsFocus),
           if (widget.liveRooms.isNotEmpty)
             Padding(
-              padding: const EdgeInsets.fromLTRB(
-                AppSpacing.xxxl,
+              padding: EdgeInsets.fromLTRB(
+                AppSpacing.xxxl.du(context),
                 0,
-                AppSpacing.xxxl,
-                AppSpacing.xl,
+                AppSpacing.xxxl.du(context),
+                AppSpacing.xl.du(context),
               ),
               child: WatchTogetherBar(
                 rooms: widget.liveRooms,
@@ -297,17 +298,17 @@ class _HomeScreenState extends State<HomeScreen> {
     if (widget.onDeck.isEmpty) {
       return Padding(
         padding: EdgeInsets.only(
-          left: AppSpacing.xxxl,
-          top: AppSpacing.xxxl,
-          bottom: AppSpacing.lg,
+          left: AppSpacing.xxxl.du(context),
+          top: AppSpacing.xxxl.du(context),
+          bottom: AppSpacing.lg.du(context),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisSize: MainAxisSize.min,
           children: [
             AppText('Continue Watching', style: AppTypography.rowLabel),
-            SizedBox(height: AppSpacing.md),
-            AppText('Nothing in progress right now.'),
+            SizedBox(height: AppSpacing.md.du(context)),
+            const AppText('Nothing in progress right now.'),
           ],
         ),
       );
@@ -340,9 +341,9 @@ class _HomeScreenState extends State<HomeScreen> {
               children: [
                 Padding(
                   padding: EdgeInsets.only(
-                    left: AppSpacing.xxxl,
-                    top: AppSpacing.xl,
-                    bottom: AppSpacing.lg,
+                    left: AppSpacing.xxxl.du(context),
+                    top: AppSpacing.xl.du(context),
+                    bottom: AppSpacing.lg.du(context),
                   ),
                   child: AppText(
                     'More in progress',
@@ -361,7 +362,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   // a label line (26) + a 3px gap + a caption line (24),
                   // +24 headroom. Confirmed on-device (Shield): 296 clipped
                   // by ~2px, so this carries a few extra for safety.
-                  height: 304,
+                  height: 304.du(context),
                   child: EdgeFadeRow(
                     child: ListView.separated(
                       scrollDirection: Axis.horizontal,
@@ -375,13 +376,13 @@ class _HomeScreenState extends State<HomeScreen> {
                       // headroom against the screen edge itself, not just
                       // the row's own bounds. Vertical 12 matches the +24
                       // SizedBox headroom above.
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 48,
-                        vertical: 12,
+                      padding: EdgeInsets.symmetric(
+                        horizontal: 48.du(context),
+                        vertical: 12.du(context),
                       ),
                       itemCount: moreInProgress.length,
                       separatorBuilder: (context, index) =>
-                          const SizedBox(width: 24),
+                          SizedBox(width: 24.du(context)),
                       itemBuilder: (context, index) {
                         final item = moreInProgress[index];
                         return ContinueWatchingPoster(
@@ -430,10 +431,10 @@ class _HomeRow<T> extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           Padding(
-            padding: const EdgeInsets.only(
-              left: AppSpacing.xxxl,
-              top: AppSpacing.xxl,
-              bottom: AppSpacing.xl,
+            padding: EdgeInsets.only(
+              left: AppSpacing.xxxl.du(context),
+              top: AppSpacing.xxl.du(context),
+              bottom: AppSpacing.xl.du(context),
             ),
             child: AppText(title, style: AppTypography.rowLabel),
           ),
@@ -441,18 +442,18 @@ class _HomeRow<T> extends StatelessWidget {
             // See the matching comment on Continue Watching's SizedBox above.
             // Content height 288 (240 poster + 16 padding + a Nocturne body
             // line at ~32) + 24 headroom.
-            height: 316,
+            height: 316.du(context),
             child: EdgeFadeRow(
               child: ListView.separated(
                 scrollDirection: Axis.horizontal,
                 // See the matching comment on Continue Watching's ListView above.
                 clipBehavior: Clip.none,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 48,
-                  vertical: 12,
+                padding: EdgeInsets.symmetric(
+                  horizontal: 48.du(context),
+                  vertical: 12.du(context),
                 ),
                 itemCount: items.length,
-                separatorBuilder: (context, index) => const SizedBox(width: 24),
+                separatorBuilder: (context, index) => SizedBox(width: 24.du(context)),
                 itemBuilder: (context, index) =>
                     itemBuilder(items[index], index),
               ),

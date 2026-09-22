@@ -6,6 +6,7 @@ import '../../focus/back_handler.dart';
 import '../../focus/dpad_long_press.dart';
 import '../../kit/scroll_peek.dart';
 import '../../kit/text.dart';
+import '../../theme/scale.dart';
 import '../../theme/tokens.dart';
 import '../../theme/typography.dart';
 import '../common/artwork.dart';
@@ -146,7 +147,7 @@ class _WatchlistPosterState extends State<WatchlistPoster> {
       enabled: _confirmingRemove,
       onBack: _closeConfirm,
       child: SizedBox(
-        width: 160,
+        width: 160.du(context),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           mainAxisSize: MainAxisSize.min,
@@ -154,11 +155,11 @@ class _WatchlistPosterState extends State<WatchlistPoster> {
             AspectRatio(
               aspectRatio: 2 / 3,
               child: ClipRRect(
-                borderRadius: BorderRadius.circular(8),
+                borderRadius: BorderRadius.circular(8.du(context)),
                 child: Container(
                   decoration: BoxDecoration(
                     border: _focused
-                        ? Border.all(color: AppColors.accent, width: 2)
+                        ? Border.all(color: AppColors.accent, width: 2.du(context))
                         : null,
                   ),
                   child: Focus(
@@ -200,7 +201,7 @@ class _WatchlistPosterState extends State<WatchlistPoster> {
               ),
             ),
             Padding(
-              padding: const EdgeInsets.only(top: 16),
+              padding: EdgeInsets.only(top: 16.du(context)),
               child: AppText(
                 widget.entry.title,
                 maxLines: 1,
@@ -300,7 +301,7 @@ class _ContinueWatchingPosterState extends State<ContinueWatchingPoster> {
       enabled: _confirmingRemove,
       onBack: _closeConfirm,
       child: SizedBox(
-        width: 372,
+        width: 372.du(context),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           mainAxisSize: MainAxisSize.min,
@@ -316,18 +317,19 @@ class _ContinueWatchingPosterState extends State<ContinueWatchingPoster> {
                   // spine on focus — a spine would cover the thumbnail.
                   // DESIGN.md #3.
                   decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(AppShape.radiusMd),
+                    borderRadius: BorderRadius.circular(AppShape.radiusMd.du(context)),
                     border: Border.all(
                       color: _focused
                           ? AppFocusTreatment.artFrameColor
                           : AppColors.line,
-                      width: _focused
-                          ? AppShape.artFrameWidth
-                          : AppShape.borderWidth,
+                      width: (_focused
+                              ? AppShape.artFrameWidth
+                              : AppShape.borderWidth)
+                          .du(context),
                     ),
                   ),
                   child: ClipRRect(
-                    borderRadius: BorderRadius.circular(8),
+                    borderRadius: BorderRadius.circular(8.du(context)),
                     child: Focus(
                       focusNode: _focusNode,
                       autofocus: widget.autofocus,
@@ -352,8 +354,8 @@ class _ContinueWatchingPosterState extends State<ContinueWatchingPoster> {
                                 !_confirmingRemove &&
                                 remainingMs > 0)
                               Positioned(
-                                left: 16,
-                                bottom: 16,
+                                left: 16.du(context),
+                                bottom: 16.du(context),
                                 child: AppText(
                                   formatMinutesLeft(remainingMs),
                                   color: AppColors.inkOnArt,
@@ -365,7 +367,7 @@ class _ContinueWatchingPosterState extends State<ContinueWatchingPoster> {
                               right: 0,
                               bottom: 0,
                               child: Container(
-                                height: 4,
+                                height: 4.du(context),
                                 color: AppColors.ink.withValues(alpha: 0.22),
                                 alignment: Alignment.centerLeft,
                                 child: FractionallySizedBox(
@@ -393,7 +395,7 @@ class _ContinueWatchingPosterState extends State<ContinueWatchingPoster> {
               ),
             ),
             Padding(
-              padding: const EdgeInsets.only(top: 12),
+              padding: EdgeInsets.only(top: 12.du(context)),
               child: AppText(
                 continueWatchingTitle(widget.item),
                 style: _focused
@@ -409,7 +411,7 @@ class _ContinueWatchingPosterState extends State<ContinueWatchingPoster> {
                 final subtitle = continueWatchingSubtitle(widget.item);
                 if (subtitle.isEmpty) return const SizedBox.shrink();
                 return Padding(
-                  padding: const EdgeInsets.only(top: 3),
+                  padding: EdgeInsets.only(top: 3.du(context)),
                   child: AppText(
                     subtitle,
                     style: AppTypography.caption,

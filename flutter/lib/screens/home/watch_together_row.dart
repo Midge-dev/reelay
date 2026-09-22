@@ -11,6 +11,7 @@ import '../../kit/edge_fade_row.dart';
 import '../../kit/scroll_peek.dart';
 import '../../kit/text.dart';
 import '../../sync/relay_protocol.dart';
+import '../../theme/scale.dart';
 import '../../theme/tokens.dart';
 import '../../theme/typography.dart';
 import '../common/artwork.dart';
@@ -62,22 +63,22 @@ class WatchTogetherRow extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       children: [
         Padding(
-          padding: const EdgeInsets.only(left: 32, top: 32, bottom: 16),
+          padding: EdgeInsets.only(left: 32.du(context), top: 32.du(context), bottom: 16.du(context)),
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.center,
             mainAxisSize: MainAxisSize.min,
             children: [
               Container(
-                width: 8,
-                height: 8,
+                width: 8.du(context),
+                height: 8.du(context),
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   color: AppColors.accent,
                 ),
               ),
-              const SizedBox(width: 12),
+              SizedBox(width: 12.du(context)),
               AppText('Watch Together', style: AppTypography.rowLabel),
-              const SizedBox(width: 12),
+              SizedBox(width: 12.du(context)),
               AppText(
                 '${rooms.length} room${rooms.length == 1 ? '' : 's'} live · $relayCount relay${relayCount == 1 ? '' : 's'}',
                 color: AppColors.ink3,
@@ -97,7 +98,7 @@ class WatchTogetherRow extends StatelessWidget {
           // Nocturne's larger type scale; this whole row is superseded by
           // the single-slot Watch Together bar in the redesign (see
           // DESIGN.md), so it isn't worth tuning further than "fits".
-          height: 410,
+          height: 410.du(context),
           child: EdgeFadeRow(
             child: ListView.separated(
               controller: scrollController,
@@ -107,16 +108,16 @@ class WatchTogetherRow extends StatelessWidget {
               // and RoomCard also has a focus-scale that can bleed past its
               // own bounds.
               clipBehavior: Clip.none,
-              padding: const EdgeInsets.symmetric(horizontal: 48, vertical: 10),
+              padding: EdgeInsets.symmetric(horizontal: 48.du(context), vertical: 10.du(context)),
               itemCount:
                   rooms.length + (rooms.length > _visibleRoomCards ? 1 : 0),
-              separatorBuilder: (context, index) => const SizedBox(width: 20),
+              separatorBuilder: (context, index) => SizedBox(width: 20.du(context)),
               itemBuilder: (context, index) {
                 if (index >= rooms.length) {
                   return _OverflowTile(
                     count: rooms.length - _visibleRoomCards,
                     onClick: () => scrollController.animateTo(
-                      _visibleRoomCards * 320.0,
+                      (_visibleRoomCards * 320.0).du(context),
                       duration: const Duration(milliseconds: 400),
                       curve: Curves.easeOut,
                     ),
@@ -143,9 +144,10 @@ class WatchTogetherRow extends StatelessWidget {
   }
 }
 
-const _roomCardShape = RoundedRectangleBorder(
-  borderRadius: BorderRadius.all(Radius.circular(8)),
-);
+RoundedRectangleBorder _roomCardShape(BuildContext context) =>
+    RoundedRectangleBorder(
+      borderRadius: BorderRadius.all(Radius.circular(8.du(context))),
+    );
 
 /// Ports HomeScreen.kt's `RoomCard` — hand-rolls its own focus tracking
 /// (not FocusableSurface) so it can layer the scale/glow/border exactly
@@ -254,12 +256,12 @@ class _RoomCardState extends State<RoomCard>
         builder: (context, child) =>
             Transform.scale(scale: _scaleController.value, child: child),
         child: Container(
-          width: 300,
+          width: 300.du(context),
           decoration: BoxDecoration(
             color: AppColors.surface,
-            borderRadius: BorderRadius.circular(8),
+            borderRadius: BorderRadius.circular(8.du(context)),
             border: _cardFocused
-                ? Border.all(color: AppColors.accent, width: 2)
+                ? Border.all(color: AppColors.accent, width: 2.du(context))
                 : null,
             // Elevation is an edge plus ambient darkness, never a coloured
             // glow — DESIGN.md #4.
@@ -271,7 +273,7 @@ class _RoomCardState extends State<RoomCard>
             mainAxisSize: MainAxisSize.min,
             children: [
               SizedBox(
-                height: 106,
+                height: 106.du(context),
                 child: Stack(
                   fit: StackFit.expand,
                   children: [
@@ -288,9 +290,9 @@ class _RoomCardState extends State<RoomCard>
                       ),
                     ),
                     Positioned(
-                      left: 14,
-                      right: 14,
-                      bottom: 14,
+                      left: 14.du(context),
+                      right: 14.du(context),
+                      bottom: 14.du(context),
                       child: AppText(
                         room.title,
                         color: AppColors.inkOnArt,
@@ -300,16 +302,16 @@ class _RoomCardState extends State<RoomCard>
                     ),
                     if (widget.isHosted || widget.isMine)
                       Positioned(
-                        top: 10,
-                        right: 10,
+                        top: 10.du(context),
+                        right: 10.du(context),
                         child: Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 10,
-                            vertical: 5,
+                          padding: EdgeInsets.symmetric(
+                            horizontal: 10.du(context),
+                            vertical: 5.du(context),
                           ),
                           decoration: BoxDecoration(
                             color: AppColors.accent.withValues(alpha: 0.9),
-                            borderRadius: BorderRadius.circular(50),
+                            borderRadius: BorderRadius.circular(50.du(context)),
                           ),
                           child: AppText(
                             widget.isHosted ? "You're hosting" : "You're in",
@@ -327,7 +329,7 @@ class _RoomCardState extends State<RoomCard>
                 ),
               ),
               Padding(
-                padding: const EdgeInsets.all(14),
+                padding: EdgeInsets.all(14.du(context)),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisSize: MainAxisSize.min,
@@ -337,8 +339,8 @@ class _RoomCardState extends State<RoomCard>
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         Container(
-                          width: 34,
-                          height: 34,
+                          width: 34.du(context),
+                          height: 34.du(context),
                           decoration: BoxDecoration(
                             shape: BoxShape.circle,
                             color: AppColors.accent.withValues(alpha: 0.35),
@@ -355,7 +357,7 @@ class _RoomCardState extends State<RoomCard>
                             ),
                           ),
                         ),
-                        const SizedBox(width: 10),
+                        SizedBox(width: 10.du(context)),
                         Flexible(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
@@ -368,7 +370,7 @@ class _RoomCardState extends State<RoomCard>
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                               ),
-                              const SizedBox(height: 4),
+                              SizedBox(height: 4.du(context)),
                               AppText(
                                 '${room.occupants} of ${room.maxSeats} watching',
                                 color: AppColors.ink3,
@@ -378,22 +380,22 @@ class _RoomCardState extends State<RoomCard>
                         ),
                       ],
                     ),
-                    const SizedBox(height: 12),
+                    SizedBox(height: 12.du(context)),
                     Row(
                       crossAxisAlignment: CrossAxisAlignment.center,
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         Container(
-                          width: 6,
-                          height: 6,
+                          width: 6.du(context),
+                          height: 6.du(context),
                           decoration: BoxDecoration(
                             color: widget.isHosted && _failed
                                 ? AppColors.ink3
                                 : AppColors.accent,
-                            borderRadius: BorderRadius.circular(50),
+                            borderRadius: BorderRadius.circular(50.du(context)),
                           ),
                         ),
-                        const SizedBox(width: 8),
+                        SizedBox(width: 8.du(context)),
                         Flexible(
                           child: AppText(
                             'Available on ${widget.merged.relay.nickname}',
@@ -402,7 +404,7 @@ class _RoomCardState extends State<RoomCard>
                         ),
                       ],
                     ),
-                    const SizedBox(height: 12),
+                    SizedBox(height: 12.du(context)),
                     if (widget.isHosted && _failed)
                       AppText("Can't reach relay", color: AppColors.ink3)
                     else
@@ -412,8 +414,8 @@ class _RoomCardState extends State<RoomCard>
                       // asserting; Flutter's doesn't, so this drops to a
                       // second line instead of hard-overflowing).
                       Wrap(
-                        spacing: 16,
-                        runSpacing: 8,
+                        spacing: 16.du(context),
+                        runSpacing: 8.du(context),
                         crossAxisAlignment: WrapCrossAlignment.center,
                         children: [
                           Focus(
@@ -482,11 +484,11 @@ class _OverflowTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      width: 132,
-      height: 212,
+      width: 132.du(context),
+      height: 212.du(context),
       child: AppCard(
         onClick: onClick,
-        shape: _roomCardShape,
+        shape: _roomCardShape(context),
         child: Center(
           child: Column(
             mainAxisSize: MainAxisSize.min,

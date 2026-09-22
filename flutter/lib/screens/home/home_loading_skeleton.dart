@@ -1,5 +1,6 @@
 import 'package:flutter/widgets.dart';
 
+import '../../theme/scale.dart';
 import '../../theme/tokens.dart';
 
 const _cardWidth = 372.0;
@@ -48,9 +49,9 @@ class _HomeLoadingSkeletonState extends State<HomeLoadingSkeleton> with SingleTi
       builder: (context, child) => Opacity(
         opacity: _pulse.value * opacity,
         child: Container(
-          width: width,
-          height: height,
-          decoration: BoxDecoration(color: AppColors.surface, borderRadius: BorderRadius.circular(AppShape.radiusSm)),
+          width: width.du(context),
+          height: height.du(context),
+          decoration: BoxDecoration(color: AppColors.surface, borderRadius: BorderRadius.circular(AppShape.radiusSm.du(context))),
         ),
       ),
     );
@@ -61,36 +62,36 @@ class _HomeLoadingSkeletonState extends State<HomeLoadingSkeleton> with SingleTi
     return ColoredBox(
       color: AppColors.background,
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(AppSpacing.xxxl, AppSpacing.xxxl, AppSpacing.xxxl, 0),
+        padding: EdgeInsets.fromLTRB(AppSpacing.xxxl.du(context), AppSpacing.xxxl.du(context), AppSpacing.xxxl.du(context), 0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             _block(width: 110, height: 17),
-            const SizedBox(height: AppSpacing.md),
+            SizedBox(height: AppSpacing.md.du(context)),
             _block(width: 640, height: 62),
-            const SizedBox(height: AppSpacing.md),
+            SizedBox(height: AppSpacing.md.du(context)),
             _block(width: 520, height: 19),
-            const SizedBox(height: AppSpacing.md),
+            SizedBox(height: AppSpacing.md.du(context)),
             _block(width: 380, height: 4),
-            const SizedBox(height: AppSpacing.md),
+            SizedBox(height: AppSpacing.md.du(context)),
             _block(width: 660, height: 21),
-            const SizedBox(height: AppSpacing.lg),
+            SizedBox(height: AppSpacing.lg.du(context)),
             Row(
               mainAxisSize: MainAxisSize.min,
               children: [
                 _block(width: 160, height: 62),
-                const SizedBox(width: AppSpacing.md),
+                SizedBox(width: AppSpacing.md.du(context)),
                 _block(width: 220, height: 62),
               ],
             ),
-            const SizedBox(height: AppSpacing.xxl),
+            SizedBox(height: AppSpacing.xxl.du(context)),
             _block(width: 220, height: 22),
-            const SizedBox(height: AppSpacing.lg),
+            SizedBox(height: AppSpacing.lg.du(context)),
             Row(
               mainAxisSize: MainAxisSize.min,
               children: [
                 for (var i = 0; i < _cardBaseOpacities.length; i++) ...[
-                  if (i > 0) const SizedBox(width: AppSpacing.xl),
+                  if (i > 0) SizedBox(width: AppSpacing.xl.du(context)),
                   _block(width: _cardWidth, height: _cardHeight, opacity: _cardBaseOpacities[i]),
                 ],
               ],

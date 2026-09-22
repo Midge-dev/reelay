@@ -7,6 +7,7 @@ import '../../data/plex/plex_models.dart';
 import '../../kit/button.dart';
 import '../../kit/icon.dart';
 import '../../kit/text.dart';
+import '../../theme/scale.dart';
 import '../../theme/tokens.dart';
 import '../../theme/typography.dart';
 import '../common/artwork.dart';
@@ -55,7 +56,7 @@ class HomeHero extends StatelessWidget {
     final progress = progressFraction(item);
 
     return SizedBox(
-      height: _heroHeight,
+      height: _heroHeight.du(context),
       child: Stack(
         fit: StackFit.expand,
         children: [
@@ -83,11 +84,11 @@ class HomeHero extends StatelessWidget {
             ),
           ),
           Padding(
-            padding: const EdgeInsets.fromLTRB(
-              AppSpacing.xxxl,
-              AppSpacing.xxxl,
-              AppSpacing.xxxl,
-              AppSpacing.xl,
+            padding: EdgeInsets.fromLTRB(
+              AppSpacing.xxxl.du(context),
+              AppSpacing.xxxl.du(context),
+              AppSpacing.xxxl.du(context),
+              AppSpacing.xl.du(context),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -96,14 +97,14 @@ class HomeHero extends StatelessWidget {
                 Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Container(width: 20, height: 2, color: AppColors.accent),
-                    const SizedBox(width: AppSpacing.md),
+                    Container(width: 20.du(context), height: 2.du(context), color: AppColors.accent),
+                    SizedBox(width: AppSpacing.md.du(context)),
                     AppText('RESUME', style: AppTypography.micro),
                   ],
                 ),
-                const SizedBox(height: AppSpacing.md),
+                SizedBox(height: AppSpacing.md.du(context)),
                 ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 900),
+                  constraints: BoxConstraints(maxWidth: 900.du(context)),
                   child: AppText(
                     continueWatchingTitle(item),
                     style: AppTypography.display,
@@ -112,7 +113,7 @@ class HomeHero extends StatelessWidget {
                   ),
                 ),
                 if (isEpisode) ...[
-                  const SizedBox(height: AppSpacing.sm),
+                  SizedBox(height: AppSpacing.sm.du(context)),
                   AppText(
                     item.parentIndex != null && item.index != null
                         ? 'Season ${item.parentIndex}, Episode ${item.index} · ${item.title}'
@@ -123,20 +124,20 @@ class HomeHero extends StatelessWidget {
                   ),
                 ],
                 if (remainingMs > 0) ...[
-                  const SizedBox(height: AppSpacing.md),
+                  SizedBox(height: AppSpacing.md.du(context)),
                   Row(
                     children: [
                       Flexible(
                         child: ConstrainedBox(
-                          constraints: const BoxConstraints(
-                            maxWidth: _progressBarWidth,
+                          constraints: BoxConstraints(
+                            maxWidth: _progressBarWidth.du(context),
                           ),
                           child: SizedBox(
-                            height: 4,
+                            height: 4.du(context),
                             child: DecoratedBox(
                               decoration: BoxDecoration(
                                 color: AppColors.ink.withValues(alpha: 0.22),
-                                borderRadius: BorderRadius.circular(2),
+                                borderRadius: BorderRadius.circular(2.du(context)),
                               ),
                               child: FractionallySizedBox(
                                 alignment: Alignment.centerLeft,
@@ -151,7 +152,7 @@ class HomeHero extends StatelessWidget {
                           ),
                         ),
                       ),
-                      const SizedBox(width: AppSpacing.lg),
+                      SizedBox(width: AppSpacing.lg.du(context)),
                       // The remaining-time label carries the information the
                       // bar only visualizes, so it keeps its natural width
                       // (never truncates) and the decorative bar is what
@@ -165,7 +166,7 @@ class HomeHero extends StatelessWidget {
                     ],
                   ),
                 ],
-                const SizedBox(height: AppSpacing.lg),
+                SizedBox(height: AppSpacing.lg.du(context)),
                 Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
@@ -173,25 +174,25 @@ class HomeHero extends StatelessWidget {
                       onClick: onResume,
                       focusNode: resumeFocusNode,
                       autofocus: autofocus,
-                      child: const Row(
+                      child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          AppIcon(PhosphorIconsFill.play, size: 22),
-                          SizedBox(width: AppSpacing.sm),
-                          AppText('Resume'),
+                          const AppIcon(PhosphorIconsFill.play, size: 22),
+                          SizedBox(width: AppSpacing.sm.du(context)),
+                          const AppText('Resume'),
                         ],
                       ),
                     ),
                     if (onWatchTogether != null) ...[
-                      const SizedBox(width: AppSpacing.md),
+                      SizedBox(width: AppSpacing.md.du(context)),
                       AppOutlinedButton(
                         onClick: () => onWatchTogether!(item),
-                        child: const Row(
+                        child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            AppIcon(PhosphorIconsRegular.usersThree, size: 22),
-                            SizedBox(width: AppSpacing.sm),
-                            AppText('Watch Together'),
+                            const AppIcon(PhosphorIconsRegular.usersThree, size: 22),
+                            SizedBox(width: AppSpacing.sm.du(context)),
+                            const AppText('Watch Together'),
                           ],
                         ),
                       ),

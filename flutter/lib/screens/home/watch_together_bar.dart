@@ -2,6 +2,7 @@ import 'package:flutter/widgets.dart';
 
 import '../../kit/button.dart';
 import '../../kit/text.dart';
+import '../../theme/scale.dart';
 import '../../theme/tokens.dart';
 import '../../theme/typography.dart';
 import 'watch_together_row.dart' show MergedRoom;
@@ -112,36 +113,36 @@ class _WatchTogetherBarState extends State<WatchTogetherBar> {
       clipBehavior: Clip.none,
       children: [
         Container(
-          height: _barHeight,
+          height: _barHeight.du(context),
           width: double.infinity,
-          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xl),
+          padding: EdgeInsets.symmetric(horizontal: AppSpacing.xl.du(context)),
           decoration: BoxDecoration(
             color: isSeated ? AppColors.surfaceRaised : AppColors.surface,
-            borderRadius: BorderRadius.circular(AppShape.radiusMd),
+            borderRadius: BorderRadius.circular(AppShape.radiusMd.du(context)),
             border: Border.all(
               color: isSeated ? AppColors.accent : AppColors.line,
-              width: isSeated ? AppShape.borderWidth : 1,
+              width: (isSeated ? AppShape.borderWidth : 1).du(context),
             ),
           ),
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               Container(
-                width: AppShape.spineWidth,
-                height: 32,
+                width: AppShape.spineWidth.du(context),
+                height: 32.du(context),
                 decoration: BoxDecoration(
                   color: spineColor,
-                  borderRadius: BorderRadius.circular(3),
+                  borderRadius: BorderRadius.circular(3.du(context)),
                 ),
               ),
-              const SizedBox(width: AppSpacing.lg),
+              SizedBox(width: AppSpacing.lg.du(context)),
               AppText(
                 headline,
                 style: AppTypography.label.copyWith(
                   fontWeight: FontWeight.w500,
                 ),
               ),
-              const SizedBox(width: AppSpacing.md),
+              SizedBox(width: AppSpacing.md.du(context)),
               Flexible(
                 child: AppText(
                   subline,
@@ -150,7 +151,7 @@ class _WatchTogetherBarState extends State<WatchTogetherBar> {
                   overflow: TextOverflow.ellipsis,
                 ),
               ),
-              const SizedBox(width: AppSpacing.lg),
+              SizedBox(width: AppSpacing.lg.du(context)),
               if (isHosting && _endFailed)
                 AppText("Can't reach relay", color: AppColors.ink3)
               else if (isHosting) ...[
@@ -161,9 +162,9 @@ class _WatchTogetherBarState extends State<WatchTogetherBar> {
                   autofocus: widget.autofocus,
                   child: const AppText('Go back in'),
                 ),
-                const SizedBox(width: AppSpacing.md),
-                Container(width: 1, height: 24, color: AppColors.lineStrong),
-                const SizedBox(width: AppSpacing.md),
+                SizedBox(width: AppSpacing.md.du(context)),
+                Container(width: 1.du(context), height: 24.du(context), color: AppColors.lineStrong),
+                SizedBox(width: AppSpacing.md.du(context)),
                 // Never the first focus target — a D-pad slip must not be
                 // able to close a room full of people.
                 AppOutlinedButton(
@@ -185,9 +186,9 @@ class _WatchTogetherBarState extends State<WatchTogetherBar> {
                   ),
                 ),
               if (moreCount > 0) ...[
-                const SizedBox(width: AppSpacing.md),
-                Container(width: 1, height: 24, color: AppColors.lineStrong),
-                const SizedBox(width: AppSpacing.md),
+                SizedBox(width: AppSpacing.md.du(context)),
+                Container(width: 1.du(context), height: 24.du(context), color: AppColors.lineStrong),
+                SizedBox(width: AppSpacing.md.du(context)),
                 AppText(
                   '$moreCount more room${moreCount == 1 ? '' : 's'}',
                   color: AppColors.accent300,
@@ -227,12 +228,12 @@ class _EndSessionConfirm extends StatelessWidget {
         color: AppScrims.dialog,
         child: Center(
           child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 520),
+            constraints: BoxConstraints(maxWidth: 520.du(context)),
             child: Container(
-              padding: const EdgeInsets.all(AppSpacing.xxl),
+              padding: EdgeInsets.all(AppSpacing.xxl.du(context)),
               decoration: BoxDecoration(
                 color: AppColors.surfaceOverlay,
-                borderRadius: BorderRadius.circular(AppShape.radiusLg),
+                borderRadius: BorderRadius.circular(AppShape.radiusLg.du(context)),
                 border: Border.all(color: AppColors.lineStrong),
                 boxShadow: AppElevation.overlay,
               ),
@@ -241,12 +242,12 @@ class _EndSessionConfirm extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   AppText('End the session?', style: AppTypography.title2),
-                  const SizedBox(height: AppSpacing.md),
+                  SizedBox(height: AppSpacing.md.du(context)),
                   AppText(
                     'Everyone will be dropped back to their own home screens. Your place is kept, and you can keep watching on your own.',
                     color: AppColors.ink2,
                   ),
-                  const SizedBox(height: AppSpacing.xl),
+                  SizedBox(height: AppSpacing.xl.du(context)),
                   Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
@@ -255,7 +256,7 @@ class _EndSessionConfirm extends StatelessWidget {
                         autofocus: true,
                         child: const AppText('Keep it open'),
                       ),
-                      const SizedBox(width: AppSpacing.md),
+                      SizedBox(width: AppSpacing.md.du(context)),
                       AppOutlinedButton(
                         onClick: onEndForEveryone,
                         child: const AppText(
