@@ -6,6 +6,7 @@ import '../../theme/phosphor_icons.dart';
 import '../../kit/icon.dart';
 import '../../kit/icon_button.dart';
 import '../../kit/text.dart';
+import '../../theme/scale.dart';
 import '../../theme/tokens.dart';
 import '../common/time_format.dart';
 
@@ -176,7 +177,7 @@ class PlayerControlsBar extends StatelessWidget {
         ),
       ),
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(24, 48, 24, 16),
+        padding: EdgeInsets.fromLTRB(24.du(context), 48.du(context), 24.du(context), 16.du(context)),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -193,12 +194,12 @@ class PlayerControlsBar extends StatelessWidget {
                 ),
               ),
             ),
-            const SizedBox(height: 12),
+            SizedBox(height: 12.du(context)),
             AppText(
               '${formatTimecode(positionMs)} / ${formatTimecode(durationMs)}',
               color: AppColors.inkOnArt,
             ),
-            const SizedBox(height: 12),
+            SizedBox(height: 12.du(context)),
             // mainAxisAlignment.center on a mainAxisSize.min Row is a no-op
             // (nothing to center within), and the Column above pins it to
             // the start — Center makes the button group actually center
@@ -219,7 +220,7 @@ class PlayerControlsBar extends StatelessWidget {
                       ),
                     ),
                   ),
-                  const SizedBox(width: 16),
+                  SizedBox(width: 16.du(context)),
                   trapped(
                     1,
                     AppIconButton(
@@ -233,7 +234,7 @@ class PlayerControlsBar extends StatelessWidget {
                       ),
                     ),
                   ),
-                  const SizedBox(width: 16),
+                  SizedBox(width: 16.du(context)),
                   trapped(
                     2,
                     AppIconButton(
@@ -245,7 +246,7 @@ class PlayerControlsBar extends StatelessWidget {
                       ),
                     ),
                   ),
-                  const SizedBox(width: 16),
+                  SizedBox(width: 16.du(context)),
                   trapped(
                     3,
                     AppIconButton(
@@ -260,7 +261,7 @@ class PlayerControlsBar extends StatelessWidget {
                       ),
                     ),
                   ),
-                  const SizedBox(width: 16),
+                  SizedBox(width: 16.du(context)),
                   trapped(
                     4,
                     AppIconButton(
@@ -272,7 +273,7 @@ class PlayerControlsBar extends StatelessWidget {
                       ),
                     ),
                   ),
-                  const SizedBox(width: 16),
+                  SizedBox(width: 16.du(context)),
                   trapped(
                     5,
                     AppIconButton(
@@ -287,7 +288,7 @@ class PlayerControlsBar extends StatelessWidget {
                       ),
                     ),
                   ),
-                  const SizedBox(width: 16),
+                  SizedBox(width: 16.du(context)),
                   trapped(
                     6,
                     AppIconButton(
@@ -324,20 +325,21 @@ class _ProgressTrack extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final thumbSize = _thumbSize.du(context);
     return SizedBox(
-      height: _thumbSize,
+      height: thumbSize,
       child: LayoutBuilder(
         builder: (context, constraints) {
           final trackWidth = constraints.maxWidth;
-          final thumbLeft = (trackWidth * playedFraction - _thumbSize / 2)
-              .clamp(0.0, trackWidth - _thumbSize);
+          final thumbLeft = (trackWidth * playedFraction - thumbSize / 2)
+              .clamp(0.0, trackWidth - thumbSize);
           return Stack(
             alignment: Alignment.centerLeft,
             children: [
               ClipRRect(
-                borderRadius: BorderRadius.circular(2),
+                borderRadius: BorderRadius.circular(2.du(context)),
                 child: SizedBox(
-                  height: 4,
+                  height: 4.du(context),
                   child: Stack(
                     fit: StackFit.expand,
                     children: [
@@ -365,8 +367,8 @@ class _ProgressTrack extends StatelessWidget {
               Positioned(
                 left: thumbLeft,
                 child: Container(
-                  width: _thumbSize,
-                  height: _thumbSize,
+                  width: thumbSize,
+                  height: thumbSize,
                   decoration: BoxDecoration(
                     color: focused ? AppColors.accent : AppColors.transparent,
                     shape: BoxShape.circle,

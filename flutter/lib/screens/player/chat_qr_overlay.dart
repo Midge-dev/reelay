@@ -5,6 +5,7 @@ import 'package:qr_flutter/qr_flutter.dart';
 
 import '../../focus/back_handler.dart';
 import '../../kit/text.dart';
+import '../../theme/scale.dart';
 import '../../theme/tokens.dart';
 import '../../theme/typography.dart';
 
@@ -61,13 +62,13 @@ class _ChatQrOverlayState extends State<ChatQrOverlay> {
     return BackHandler(
       onBack: widget.onDismiss,
       child: ClipRRect(
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(16.du(context)),
         child: DecoratedBox(
           decoration: BoxDecoration(
             color: AppScrims.dialog.withValues(alpha: 0.9),
           ),
           child: Padding(
-            padding: const EdgeInsets.all(20),
+            padding: EdgeInsets.all(20.du(context)),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.center,
@@ -77,14 +78,14 @@ class _ChatQrOverlayState extends State<ChatQrOverlay> {
                   style: AppTypography.label,
                   color: AppColors.inkOnArt,
                 ),
-                const SizedBox(height: 12),
+                SizedBox(height: 12.du(context)),
                 ClipRRect(
-                  borderRadius: BorderRadius.circular(8),
+                  borderRadius: BorderRadius.circular(8.du(context)),
                   child: Container(
-                    width: 120,
-                    height: 120,
+                    width: 120.du(context),
+                    height: 120.du(context),
                     color: AppColors.inkOnArt,
-                    padding: const EdgeInsets.all(8),
+                    padding: EdgeInsets.all(8.du(context)),
                     child: QrImageView(
                       data: widget.chatUrl,
                       backgroundColor: AppColors.inkOnArt,

@@ -9,6 +9,7 @@ import '../../kit/surface_style.dart';
 import '../../kit/text.dart';
 import '../../playback/playback_decision.dart';
 import '../../theme/phosphor_icons.dart';
+import '../../theme/scale.dart';
 import '../../theme/tokens.dart';
 import '../../theme/typography.dart';
 
@@ -90,7 +91,7 @@ class _PlayerMenuPanelState extends State<PlayerMenuPanel> {
               top: 0,
               bottom: 0,
               right: 0,
-              width: 680,
+              width: 680.du(context),
               child: DecoratedBox(
                 decoration: BoxDecoration(
                   color: AppColors.canvas,
@@ -98,7 +99,7 @@ class _PlayerMenuPanelState extends State<PlayerMenuPanel> {
                   boxShadow: AppElevation.overlay,
                 ),
                 child: Padding(
-                  padding: const EdgeInsets.all(AppSpacing.xxxl),
+                  padding: EdgeInsets.all(AppSpacing.xxxl.du(context)),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -115,7 +116,7 @@ class _PlayerMenuPanelState extends State<PlayerMenuPanel> {
                               onClick: () =>
                                   setState(() => _tab = _MenuTab.subtitles),
                             ),
-                            const SizedBox(width: AppSpacing.md),
+                            SizedBox(width: AppSpacing.md.du(context)),
                             _TabButton(
                               label: 'Quality',
                               selected: _tab == _MenuTab.quality,
@@ -126,7 +127,7 @@ class _PlayerMenuPanelState extends State<PlayerMenuPanel> {
                           ],
                         ),
                       ),
-                      const SizedBox(height: AppSpacing.xl),
+                      SizedBox(height: AppSpacing.xl.du(context)),
                       Expanded(
                         child: switch (_tab) {
                           _MenuTab.subtitles => _buildSubtitlesList(),
@@ -159,7 +160,7 @@ class _PlayerMenuPanelState extends State<PlayerMenuPanel> {
             focusNode: index == 0 ? _firstRowFocus : null,
             onClick: () => widget.onSelectSubtitle(option.streamId),
           ),
-          const SizedBox(height: AppSpacing.sm),
+          SizedBox(height: AppSpacing.sm.du(context)),
         ],
       ],
     );
@@ -174,16 +175,17 @@ class _PlayerMenuPanelState extends State<PlayerMenuPanel> {
             selected: preset.kbps == widget.selectedBitrateKbps,
             onClick: () => widget.onSelectBitrate(preset.kbps),
           ),
-          const SizedBox(height: AppSpacing.sm),
+          SizedBox(height: AppSpacing.sm.du(context)),
         ],
       ],
     );
   }
 }
 
-final _tabShape = RoundedRectangleBorder(
-  borderRadius: BorderRadius.circular(AppShape.radiusSm),
-);
+RoundedRectangleBorder _tabShape(BuildContext context) =>
+    RoundedRectangleBorder(
+      borderRadius: BorderRadius.circular(AppShape.radiusSm.du(context)),
+    );
 final _tabColors = SurfaceColors(
   container: AppColors.surface,
   content: AppColors.ink3,
@@ -212,16 +214,16 @@ class _TabButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      height: 52,
+      height: 52.du(context),
       child: FocusableSurface(
         onClick: onClick,
         selected: selected,
         focusNode: focusNode,
-        shape: _tabShape,
+        shape: _tabShape(context),
         colors: _tabColors,
         border: _tabBorder,
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
+          padding: EdgeInsets.symmetric(horizontal: AppSpacing.lg.du(context)),
           child: AppText(label),
         ),
       ),
@@ -229,9 +231,10 @@ class _TabButton extends StatelessWidget {
   }
 }
 
-final _rowShape = RoundedRectangleBorder(
-  borderRadius: BorderRadius.circular(AppShape.radiusMd),
-);
+RoundedRectangleBorder _rowShape(BuildContext context) =>
+    RoundedRectangleBorder(
+      borderRadius: BorderRadius.circular(AppShape.radiusMd.du(context)),
+    );
 final _rowColors = SurfaceColors(
   container: AppColors.surface,
   content: AppColors.ink2,
@@ -260,16 +263,16 @@ class _MenuRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ConstrainedBox(
-      constraints: const BoxConstraints(minHeight: 88),
+      constraints: BoxConstraints(minHeight: 88.du(context)),
       child: FocusableSurface(
         onClick: onClick,
         selected: selected,
         focusNode: focusNode,
-        shape: _rowShape,
+        shape: _rowShape(context),
         colors: _rowColors,
         border: _rowBorder,
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xl),
+          padding: EdgeInsets.symmetric(horizontal: AppSpacing.xl.du(context)),
           child: Row(
             children: [
               Expanded(child: AppText(label, style: AppTypography.label)),

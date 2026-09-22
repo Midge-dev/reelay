@@ -8,6 +8,7 @@ import '../../kit/button.dart';
 import '../../kit/icon.dart';
 import '../../kit/text.dart';
 import '../../theme/phosphor_icons.dart';
+import '../../theme/scale.dart';
 import '../../theme/tokens.dart';
 import '../../theme/typography.dart';
 import '../common/artwork.dart';
@@ -71,12 +72,12 @@ class _UpNextCardState extends State<UpNextCard> {
     final item = widget.item;
     final episodeLabel = item.index != null ? 'UP NEXT · EPISODE ${item.index}' : 'UP NEXT';
     return Container(
-      width: 760,
-      padding: const EdgeInsets.all(AppSpacing.xxl),
+      width: 760.du(context),
+      padding: EdgeInsets.all(AppSpacing.xxl.du(context)),
       decoration: BoxDecoration(
         color: AppScrims.chip,
         border: Border.all(color: AppColors.lineStrong),
-        borderRadius: BorderRadius.circular(AppShape.radiusLg),
+        borderRadius: BorderRadius.circular(AppShape.radiusLg.du(context)),
         boxShadow: AppElevation.overlay,
       ),
       child: Column(
@@ -87,26 +88,26 @@ class _UpNextCardState extends State<UpNextCard> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               SizedBox(
-                width: 260,
-                height: 146,
+                width: 260.du(context),
+                height: 146.du(context),
                 child: ClipRRect(
-                  borderRadius: BorderRadius.circular(AppShape.radiusMd),
+                  borderRadius: BorderRadius.circular(AppShape.radiusMd.du(context)),
                   child: Artwork(imageUrl: PlexImageUrl.of(widget.server, item.thumb)),
                 ),
               ),
-              const SizedBox(width: AppSpacing.xl),
+              SizedBox(width: AppSpacing.xl.du(context)),
               Expanded(
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     AppText(episodeLabel, style: AppTypography.micro, color: AppColors.accent300),
-                    const SizedBox(height: AppSpacing.sm),
+                    SizedBox(height: AppSpacing.sm.du(context)),
                     AppText(item.title, style: AppTypography.title2, color: AppColors.inkOnArt),
-                    const SizedBox(height: AppSpacing.lg),
+                    SizedBox(height: AppSpacing.lg.du(context)),
                     Wrap(
-                      spacing: AppSpacing.md,
-                      runSpacing: AppSpacing.sm,
+                      spacing: AppSpacing.md.du(context),
+                      runSpacing: AppSpacing.sm.du(context),
                       crossAxisAlignment: WrapCrossAlignment.center,
                       children: [
                         AppButton(
@@ -115,7 +116,7 @@ class _UpNextCardState extends State<UpNextCard> {
                           autofocus: true,
                           child: Row(mainAxisSize: MainAxisSize.min, children: [
                             const AppIcon(PhosphorIconsFill.play, size: 20),
-                            const SizedBox(width: AppSpacing.sm),
+                            SizedBox(width: AppSpacing.sm.du(context)),
                             AppText('Play in $_secondsLeft'),
                           ]),
                         ),

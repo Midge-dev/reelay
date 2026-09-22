@@ -21,6 +21,7 @@ import '../../sync/relay_client.dart';
 import '../../sync/relay_protocol.dart';
 import '../../sync/relay_urls.dart';
 import '../../sync/sync_view_model.dart';
+import '../../theme/scale.dart';
 import '../../theme/tokens.dart';
 import '../../theme/typography.dart';
 import '../common/app_loading_indicator.dart';
@@ -658,7 +659,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
               if (_phase == PlaybackPhase.waitingForPeers &&
                   _waitingOn.isNotEmpty)
                 Positioned(
-                  top: 24,
+                  top: 24.du(context),
                   left: 0,
                   right: 0,
                   child: Center(
@@ -674,7 +675,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
                 Align(
                   alignment: _chatAlignment(),
                   child: Padding(
-                    padding: const EdgeInsets.all(24),
+                    padding: EdgeInsets.all(24.du(context)),
                     child: ChatOverlay(
                       messages: _sync!.chatMessages,
                       corner: widget.settings.chatOverlayCorner,
@@ -709,8 +710,8 @@ class _PlayerScreenState extends State<PlayerScreen> {
                           if (widget.relay != null &&
                               _connectionState != ConnectionState.connected)
                             Positioned(
-                              right: 24,
-                              top: 24,
+                              right: 24.du(context),
+                              top: 24.du(context),
                               child: _Chip(
                                 child: AppText(
                                   _syncStatusLabel(),
@@ -757,8 +758,8 @@ class _PlayerScreenState extends State<PlayerScreen> {
               ),
               if (_chatQrOpen && _chatUrl != null)
                 Positioned(
-                  right: 24,
-                  top: 24,
+                  right: 24.du(context),
+                  top: 24.du(context),
                   child: ChatQrOverlay(
                     chatUrl: _chatUrl!,
                     onDismiss: () => setState(() => _chatQrOpen = false),
@@ -766,8 +767,8 @@ class _PlayerScreenState extends State<PlayerScreen> {
                 ),
               if (_upNextItem != null && !_menuOpen)
                 Positioned(
-                  right: 64,
-                  bottom: 64,
+                  right: 64.du(context),
+                  bottom: 64.du(context),
                   child: BackHandler(
                     onBack: _dismissUpNext,
                     child: UpNextCard(
@@ -824,7 +825,7 @@ class _Chip extends StatelessWidget {
     return DecoratedBox(
       decoration: BoxDecoration(color: AppScrims.dialog.withValues(alpha: 0.6)),
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        padding: EdgeInsets.symmetric(horizontal: 12.du(context), vertical: 6.du(context)),
         child: child,
       ),
     );
@@ -856,7 +857,7 @@ class _TitleBar extends StatelessWidget {
 
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(24, 24, 24, 48),
+      padding: EdgeInsets.fromLTRB(24.du(context), 24.du(context), 24.du(context), 48.du(context)),
       decoration: BoxDecoration(
         gradient: LinearGradient(
           begin: Alignment.topCenter,
@@ -871,12 +872,12 @@ class _TitleBar extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Expanded(child: AppText(title, color: AppColors.inkOnArt)),
-          const SizedBox(width: 24),
+          SizedBox(width: 24.du(context)),
           Column(
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
               AppText(qualityLabel, style: statusStyle),
-              const SizedBox(height: 4),
+              SizedBox(height: 4.du(context)),
               AppText(subtitleLabel, style: statusStyle),
             ],
           ),
