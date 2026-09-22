@@ -615,8 +615,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           AppText(widget.hint!, color: AppColors.accent),
           SizedBox(height: 12.du(context)),
         ],
-        SizedBox(
-          height: 64.du(context),
+        ConstrainedBox(
+          constraints: BoxConstraints(minHeight: 64.du(context)),
           child: FocusableSurface(
             onClick: () {
               setState(() => _showingRelaySettings = true);
