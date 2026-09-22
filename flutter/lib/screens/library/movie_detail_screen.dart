@@ -13,11 +13,14 @@ import '../../kit/text.dart';
 import '../../theme/tokens.dart';
 import '../../theme/typography.dart';
 import '../common/artwork.dart';
+import '../common/time_format.dart';
 import '../common/watch_together_icon.dart';
 import '../common/watchlist_button.dart';
 import 'movie_detail_sections.dart';
 
-const _heroHeight = 420.0;
+const _heroHeight = 560.0;
+const _posterWidth = 280.0;
+const _posterHeight = 420.0;
 const _restartButtonBorder = SurfaceBorder(
   idle: SurfaceBorderSide.solid(AppColors.line),
   focused: SurfaceBorderSide.solid(AppColors.accent),
@@ -186,6 +189,9 @@ class _MovieDetailScreenState extends State<MovieDetailScreen> {
         server: widget.server,
         movie: widget.movie,
         summary: detail?.summary ?? widget.movie.summary,
+        duration: detail?.duration,
+        viewOffset: detail?.viewOffset,
+        media: detail?.media.isNotEmpty == true ? detail!.media.first : null,
         playLabel: playLabel,
         watchTogetherLabel: watchTogetherLabel,
         showRestart: hasResume,
@@ -244,6 +250,9 @@ class _MovieHero extends StatelessWidget {
   final PlexServer server;
   final PlexLibraryItem movie;
   final String? summary;
+  final int? duration;
+  final int? viewOffset;
+  final PlexMedia? media;
   final String playLabel;
   final String watchTogetherLabel;
   final bool showRestart;
@@ -261,6 +270,9 @@ class _MovieHero extends StatelessWidget {
     required this.server,
     required this.movie,
     this.summary,
+    this.duration,
+    this.viewOffset,
+    this.media,
     required this.playLabel,
     required this.watchTogetherLabel,
     required this.showRestart,
@@ -293,76 +305,141 @@ class _MovieHero extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final remainingMs = (duration ?? 0) - (viewOffset ?? 0);
+    final hasProgress = (viewOffset ?? 0) > 0 && remainingMs > 0;
+    final progress = duration != null && duration! > 0 ? ((viewOffset ?? 0) / duration!).clamp(0.0, 1.0) : 0.0;
+
+    final metaParts = <String>[
+      if (movie.year != null) '${movie.year}',
+      if (duration != null) formatRuntime(duration!),
+      if (movie.genres.isNotEmpty) movie.genres.first.tag,
+    ];
+
+    final sourceParts = <String>[
+      server.name,
+      if (media?.videoResolution != null) media!.videoResolution!.toUpperCase(),
+      if (media?.videoCodec != null) media!.videoCodec!.toUpperCase(),
+    ];
+
     return SizedBox(
       height: _heroHeight,
       child: Stack(
         fit: StackFit.expand,
         children: [
-          Artwork(imageUrl: PlexImageUrl.of(server, movie.art ?? movie.thumb)),
-          Positioned(
-            left: 0,
-            right: 0,
-            bottom: 0,
-            child: Container(
-              decoration: const BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  stops: [0, 0.35, 1],
-                  colors: [AppColors.transparent, Color(0xCC000000), AppScrims.dialog],
-                ),
-              ),
-              padding: const EdgeInsets.all(48),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  AppText(movie.title, style: AppTypography.title1, color: AppColors.inkOnArt),
-                  if (movie.year != null)
-                    Padding(padding: const EdgeInsets.only(top: 8), child: AppText('${movie.year}', color: AppColors.inkOnArt)),
-                  if (summary != null)
-                    Padding(padding: const EdgeInsets.only(top: 16), child: AppText(summary!, color: AppColors.inkOnArt)),
-                  Padding(
-                    padding: const EdgeInsets.only(top: 24),
-                    child: Focus(canRequestFocus: false, onKeyEvent: _trapUp, child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        AppButton(onClick: onPlay ?? () {}, focusNode: playFocus, onFocusChange: _onFocus, child: AppText(playLabel)),
-                        const SizedBox(width: 16),
-                        AppOutlinedButton(
-                          onClick: onWatchTogether ?? () {},
-                          onFocusChange: _onFocus,
-                          child: Row(mainAxisSize: MainAxisSize.min, children: [
-                            const WatchTogetherIcon(),
-                            Padding(padding: const EdgeInsets.only(left: 12), child: AppText(watchTogetherLabel)),
-                          ]),
-                        ),
-                        if (!isShow) ...[
-                          const SizedBox(width: 16),
-                          WatchlistButton(isOnWatchlist: isOnWatchlist, onClick: onToggleWatchlist, onFocusChange: _onFocus),
-                        ],
-                        if (isShow) ...[
-                          const SizedBox(width: 16),
-                          AppOutlinedButton(onClick: onSeasons, onFocusChange: _onFocus, child: const AppText('Seasons')),
-                        ],
-                        if (showRestart) ...[
-                          const SizedBox(width: 16),
-                          AppIconButton(
-                            onClick: onRestartSolo ?? () {},
-                            border: _restartButtonBorder,
-                            onFocusChange: _onFocus,
-                            child: const AppIcon(Icons.replay, tint: AppColors.inkOnArt),
-                          ),
-                        ],
-                        if (isShow) ...[
-                          const SizedBox(width: 16),
-                          WatchlistButton(isOnWatchlist: isOnWatchlist, onClick: onToggleWatchlist, onFocusChange: _onFocus),
-                        ],
-                      ],
-                    )),
+          Artwork(imageUrl: PlexImageUrl.of(server, movie.art ?? movie.thumb), noiseOpacity: 0.3),
+          // scrim.edge — the ground colour holds solid under the text
+          // column and fades away toward the artwork. DESIGN.md #2.
+          const Positioned.fill(child: DecoratedBox(decoration: BoxDecoration(gradient: AppScrims.edge))),
+          const Positioned.fill(child: DecoratedBox(decoration: BoxDecoration(gradient: AppScrims.bottom))),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(AppSpacing.xxxl, AppSpacing.xxl, AppSpacing.xxxl, AppSpacing.xl),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(AppShape.radiusMd),
+                  child: Container(
+                    width: _posterWidth,
+                    height: _posterHeight,
+                    decoration: BoxDecoration(border: Border.all(color: AppColors.lineStrong)),
+                    child: Artwork(imageUrl: PlexImageUrl.of(server, movie.thumb)),
                   ),
-                ],
-              ),
+                ),
+                const SizedBox(width: AppSpacing.xxl),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Container(width: 20, height: 2, color: AppColors.accent),
+                          const SizedBox(width: AppSpacing.md),
+                          AppText(isShow ? 'SHOW' : 'MOVIE', style: AppTypography.micro),
+                        ],
+                      ),
+                      const SizedBox(height: AppSpacing.sm),
+                      ConstrainedBox(
+                        constraints: const BoxConstraints(maxWidth: 960),
+                        child: AppText(movie.title, style: AppTypography.display, maxLines: 2, overflow: TextOverflow.ellipsis),
+                      ),
+                      if (metaParts.isNotEmpty) ...[
+                        const SizedBox(height: AppSpacing.sm),
+                        AppText(metaParts.join(' · '), color: AppColors.ink2),
+                      ],
+                      if (hasProgress) ...[
+                        const SizedBox(height: AppSpacing.md),
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            SizedBox(
+                              width: 380,
+                              height: 4,
+                              child: DecoratedBox(
+                                decoration: BoxDecoration(color: AppColors.ink.withValues(alpha: 0.22), borderRadius: BorderRadius.circular(2)),
+                                child: FractionallySizedBox(
+                                  alignment: Alignment.centerLeft,
+                                  widthFactor: progress,
+                                  child: const DecoratedBox(decoration: BoxDecoration(color: AppColors.accent)),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: AppSpacing.lg),
+                            AppText(formatMinutesLeft(remainingMs), color: AppColors.ink2),
+                          ],
+                        ),
+                      ],
+                      if (summary != null) ...[
+                        const SizedBox(height: AppSpacing.md),
+                        ConstrainedBox(
+                          constraints: const BoxConstraints(maxWidth: 780),
+                          child: AppText(summary!, style: AppTypography.body, maxLines: 4, overflow: TextOverflow.ellipsis),
+                        ),
+                      ],
+                      const SizedBox(height: AppSpacing.lg),
+                      Focus(canRequestFocus: false, onKeyEvent: _trapUp, child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          AppButton(onClick: onPlay ?? () {}, focusNode: playFocus, onFocusChange: _onFocus, child: AppText(playLabel)),
+                          const SizedBox(width: AppSpacing.md),
+                          AppOutlinedButton(
+                            onClick: onWatchTogether ?? () {},
+                            onFocusChange: _onFocus,
+                            child: Row(mainAxisSize: MainAxisSize.min, children: [
+                              const WatchTogetherIcon(),
+                              Padding(padding: const EdgeInsets.only(left: AppSpacing.sm), child: AppText(watchTogetherLabel)),
+                            ]),
+                          ),
+                          if (isShow) ...[
+                            const SizedBox(width: AppSpacing.md),
+                            AppOutlinedButton(onClick: onSeasons, onFocusChange: _onFocus, child: const AppText('Seasons')),
+                          ],
+                          if (showRestart) ...[
+                            const SizedBox(width: AppSpacing.md),
+                            AppIconButton(onClick: onRestartSolo ?? () {}, border: _restartButtonBorder, onFocusChange: _onFocus, child: const AppIcon(Icons.replay)),
+                          ],
+                          const SizedBox(width: AppSpacing.md),
+                          WatchlistButton(isOnWatchlist: isOnWatchlist, onClick: onToggleWatchlist, onFocusChange: _onFocus),
+                        ],
+                      )),
+                      const SizedBox(height: AppSpacing.lg),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg, vertical: AppSpacing.sm),
+                        decoration: BoxDecoration(color: AppColors.surface, border: Border.all(color: AppColors.line), borderRadius: BorderRadius.circular(AppShape.radiusMd)),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Container(width: 8, height: 8, decoration: const BoxDecoration(shape: BoxShape.circle, color: AppColors.success)),
+                            const SizedBox(width: AppSpacing.md),
+                            AppText('Playing from ${sourceParts.join(' · ')}', color: AppColors.ink2),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
             ),
           ),
         ],

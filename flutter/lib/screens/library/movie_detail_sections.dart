@@ -4,6 +4,7 @@ import '../../data/plex/plex_image_url.dart';
 import '../../data/plex/plex_models.dart';
 import '../../kit/card.dart';
 import '../../kit/edge_fade_row.dart';
+import '../../kit/surface_style.dart';
 import '../../kit/text.dart';
 import '../../theme/tokens.dart';
 import '../../theme/typography.dart';
@@ -28,13 +29,15 @@ class CastCrewRow extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       children: [
         const Padding(
-          padding: EdgeInsets.only(left: 32, bottom: 16),
+          padding: EdgeInsets.only(left: AppSpacing.xxxl, bottom: AppSpacing.lg),
           child: AppText('Cast & Crew', style: AppTypography.rowLabel),
         ),
         SizedBox(
           // See the matching comment on Continue Watching's SizedBox in
           // home_screen.dart — headroom for EdgeFadeRow's ShaderMask bounds.
-          height: 174,
+          // Content height: 130 avatar + 10 padding + a label line (26) +
+          // a 3px gap + a caption line (24), +24 headroom.
+          height: 217,
           child: EdgeFadeRow(
           child: ListView.separated(
             scrollDirection: Axis.horizontal,
@@ -74,15 +77,18 @@ class _CastMemberAvatar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Person circle 130 per DESIGN.md's geometry — label for the name,
+    // caption/ink3 for the role, matching every other card's two-line
+    // caption convention.
     return SizedBox(
-      width: 112,
+      width: 150,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.center,
         mainAxisSize: MainAxisSize.min,
         children: [
           SizedBox(
-            width: 84,
-            height: 84,
+            width: 130,
+            height: 130,
             child: AppCard(
               onClick: onClick,
               shape: const CircleBorder(),
@@ -93,7 +99,7 @@ class _CastMemberAvatar extends StatelessWidget {
                       child: Center(
                         child: AppText(
                           person.tag.isNotEmpty ? person.tag[0].toUpperCase() : '?',
-                          style: AppTypography.label,
+                          style: AppTypography.title2,
                           color: AppColors.inkOnArt,
                         ),
                       ),
@@ -102,12 +108,12 @@ class _CastMemberAvatar extends StatelessWidget {
           ),
           Padding(
             padding: const EdgeInsets.only(top: 10),
-            child: AppText(person.tag, maxLines: 1, overflow: TextOverflow.ellipsis, textAlign: TextAlign.center),
+            child: AppText(person.tag, style: AppTypography.label, maxLines: 1, overflow: TextOverflow.ellipsis, textAlign: TextAlign.center),
           ),
           if (subtitle != null)
             Padding(
               padding: const EdgeInsets.only(top: 3),
-              child: AppText(subtitle!, color: AppColors.ink3, maxLines: 1, overflow: TextOverflow.ellipsis, textAlign: TextAlign.center),
+              child: AppText(subtitle!, style: AppTypography.caption, color: AppColors.ink3, maxLines: 1, overflow: TextOverflow.ellipsis, textAlign: TextAlign.center),
             ),
         ],
       ),
@@ -134,12 +140,13 @@ class PosterRow extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       children: [
         Padding(
-          padding: const EdgeInsets.only(left: 32, top: 4, bottom: 16),
+          padding: const EdgeInsets.only(left: AppSpacing.xxxl, top: AppSpacing.xs, bottom: AppSpacing.lg),
           child: AppText(title, style: AppTypography.rowLabel),
         ),
         SizedBox(
-          // See the matching comment on CastCrewRow above.
-          height: 256,
+          // Content height: 198 poster (132 wide, 2:3) + 10 padding + a
+          // label line (26), +24 headroom.
+          height: 258,
           child: EdgeFadeRow(
           child: ListView.separated(
             scrollDirection: Axis.horizontal,
@@ -160,6 +167,12 @@ class PosterRow extends StatelessWidget {
   }
 }
 
+const _relatedPosterBorder = SurfaceBorder(
+  idle: SurfaceBorderSide.solid(AppColors.line),
+  focused: SurfaceBorderSide.solid(AppColors.accent, width: AppShape.artFrameWidth),
+  noSpine: true,
+);
+
 class _RelatedPoster extends StatelessWidget {
   final PlexServer server;
   final PlexOnDeckItem item;
@@ -177,14 +190,17 @@ class _RelatedPoster extends StatelessWidget {
         children: [
           AspectRatio(
             aspectRatio: 2 / 3,
+            // Artwork takes a frame all the way round instead of a spine —
+            // a spine would cover the poster. DESIGN.md #3.
             child: AppCard(
               onClick: onClick,
+              border: _relatedPosterBorder,
               child: SizedBox.expand(child: Artwork(imageUrl: PlexImageUrl.of(server, item.thumb))),
             ),
           ),
           Padding(
             padding: const EdgeInsets.only(top: 10),
-            child: AppText(item.title, maxLines: 1, overflow: TextOverflow.ellipsis),
+            child: AppText(item.title, style: AppTypography.label, maxLines: 1, overflow: TextOverflow.ellipsis),
           ),
         ],
       ),

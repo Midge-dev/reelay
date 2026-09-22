@@ -24,13 +24,6 @@ const _restartButtonBorder = SurfaceBorder(
 );
 const _kickerStyle = TextStyle(fontSize: 12, letterSpacing: 1.4, fontWeight: FontWeight.w500, color: AppColors.accent);
 
-String _formatRuntime(int ms) {
-  final totalMinutes = ms ~/ 60000;
-  final hours = totalMinutes ~/ 60;
-  final minutes = totalMinutes % 60;
-  return hours > 0 ? '${hours}h ${minutes}m' : '${minutes}m';
-}
-
 /// Ports ui/library/EpisodeDetailScreen.kt.
 class EpisodeDetailScreen extends StatefulWidget {
   final PlexServer server;
@@ -119,10 +112,10 @@ class _EpisodeDetailScreenState extends State<EpisodeDetailScreen> {
 
     final metaParts = <String>[];
     if (episode.originallyAvailableAt != null) metaParts.add(episode.originallyAvailableAt!);
-    if (episode.duration != null) metaParts.add(_formatRuntime(episode.duration!));
+    if (episode.duration != null) metaParts.add(formatRuntime(episode.duration!));
     if (hasResume) {
       final remainingMs = (episode.duration ?? 0) - (episode.viewOffset ?? 0);
-      if (remainingMs > 0) metaParts.add('${_formatRuntime(remainingMs)} left');
+      if (remainingMs > 0) metaParts.add('${formatRuntime(remainingMs)} left');
     }
     final metaLine = metaParts.join(' · ');
 

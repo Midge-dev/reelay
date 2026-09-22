@@ -9,6 +9,15 @@ String formatMinutesLeft(int remainingMs) {
   return minutes == 0 ? '${hours}h left' : '${hours}h ${minutes.toString().padLeft(2, '0')}m left';
 }
 
+/// "1h 58m" / "42m" — a title's total runtime, for a detail page's
+/// metadata line.
+String formatRuntime(int ms) {
+  final totalMinutes = ms ~/ 60000;
+  final hours = totalMinutes ~/ 60;
+  final minutes = totalMinutes % 60;
+  return hours > 0 ? '${hours}h ${minutes}m' : '${minutes}m';
+}
+
 /// Ports ui/common/TimeFormat.kt's `formatTimecode`.
 String formatTimecode(int ms) {
   final totalSeconds = ms ~/ 1000;

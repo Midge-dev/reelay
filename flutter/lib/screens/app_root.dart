@@ -12,6 +12,7 @@ import '../theme/tokens.dart';
 import '../theme/typography.dart';
 import 'auth/auth_screen.dart';
 import 'common/loading_screen.dart';
+import 'home/home_loading_skeleton.dart';
 import 'home/home_screen.dart';
 import 'library/collection_detail_screen.dart';
 import 'library/episode_detail_screen.dart';
@@ -168,7 +169,7 @@ class _AppContent extends StatelessWidget {
           onOpenHome: () {},
           account: controller.localAccount,
           versionName: _appVersionName,
-          child: const LoadingScreen(),
+          child: const HomeLoadingSkeleton(),
         ),
       Settings(:final ctx, :final returnState, :final relayHint) => _drawer(
           ctx: ctx,
