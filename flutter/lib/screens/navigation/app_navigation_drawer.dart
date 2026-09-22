@@ -279,7 +279,7 @@ class _AppNavigationDrawerState extends State<AppNavigationDrawer> {
             // zero-alpha shadow at the same offset/blur, so this still
             // animates smoothly in and out with the width, not a hard cut.
             decoration: BoxDecoration(
-              color: AppColors.surface,
+              color: AppColors.canvas,
               boxShadow: effectiveExpanded
                   ? [
                       BoxShadow(
