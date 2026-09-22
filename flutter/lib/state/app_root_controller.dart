@@ -163,6 +163,18 @@ class AppRootController extends ChangeNotifier {
     unawaited(_refreshWatchlist());
   }
 
+  /// Persists the chosen server (screen 06's switcher panel) and runs the
+  /// same reconnect [connect] already does on startup — there's no lighter
+  /// in-place swap of the active [PlexServer]; every AppState variant
+  /// carries its own `server`/`ctx.server` copy (see app_state.dart), so a
+  /// full reconnect is what actually replaces all of them consistently.
+  Future<void> switchServer(String machineIdentifier) async {
+    final settings = await _settingsStore.observe().first;
+    await _settingsStore.save(settings.copyWith(selectedServerId: machineIdentifier));
+    final token = _accountToken;
+    if (token != null) await connect(token);
+  }
+
   // ---- Watchlist ----
 
   Future<void> _refreshWatchlist() async {

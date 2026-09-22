@@ -3,6 +3,17 @@ import 'package:dio/dio.dart';
 import 'plex_http_client.dart';
 import 'plex_models.dart';
 
+/// Which path a [PlexResource] was actually reached through — screen 06 of
+/// the Nocturne handoff calls this Local/Relayed/Unreachable.
+enum ServerReachability { local, relayed, unreachable }
+
+class ReachableServer {
+  final PlexServer server;
+  final ServerReachability reachability;
+
+  const ReachableServer(this.server, this.reachability);
+}
+
 class PlexResourcesApi {
   final String clientIdentifier;
   final Dio _client = plexHttpClient();
@@ -49,13 +60,25 @@ class PlexResourcesApi {
     return null;
   }
 
-  Future<PlexServer?> _connectTo(PlexResource resource) async {
+  Future<PlexServer?> _connectTo(PlexResource resource) async => (await connectToResource(resource))?.server;
+
+  /// Like [_connectTo], but reports *which* path answered rather than
+  /// just handing back the first working [PlexServer] — the server
+  /// switcher (screen 06) shows this per row, direct connections tried
+  /// before relay so "Local" only ever means genuinely local.
+  Future<ReachableServer?> connectToResource(PlexResource resource) async {
     final token = resource.accessToken;
     if (token == null) return null;
     final direct = resource.connections.where((c) => !c.relay).toList();
     final relay = resource.connections.where((c) => c.relay).toList();
-    final connection = await _firstReachable(direct, token) ?? await _firstReachable(relay, token);
-    if (connection == null) return null;
+    final directHit = await _firstReachable(direct, token);
+    if (directHit != null) return ReachableServer(_toServer(resource, token, directHit), ServerReachability.local);
+    final relayHit = await _firstReachable(relay, token);
+    if (relayHit != null) return ReachableServer(_toServer(resource, token, relayHit), ServerReachability.relayed);
+    return null;
+  }
+
+  PlexServer _toServer(PlexResource resource, String token, PlexConnection connection) {
     final baseUrl = connection.uri.endsWith('/') ? connection.uri.substring(0, connection.uri.length - 1) : connection.uri;
     return PlexServer(name: resource.name, baseUrl: baseUrl, accessToken: token);
   }

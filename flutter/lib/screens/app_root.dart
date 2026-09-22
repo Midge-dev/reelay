@@ -2,6 +2,7 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../data/plex/plex_models.dart';
+import '../data/plex/plex_resources_api.dart';
 import '../data/plex/plex_server_api.dart';
 import '../focus/back_handler.dart';
 import '../kit/text.dart';
@@ -144,7 +145,7 @@ class _AppContent extends StatelessWidget {
             onSelectCollection: (collection) => _openCollection(ctx, collection),
           ),
         ),
-      LoadingSection(:final sections, :final selectedSectionKey, :final returnState) => BackHandler(
+      LoadingSection(:final server, :final sections, :final selectedSectionKey, :final returnState) => BackHandler(
           onBack: () => controller.returnTo(returnState),
           child: AppNavigationDrawer(
             sections: sections,
@@ -157,10 +158,15 @@ class _AppContent extends StatelessWidget {
             onOpenSearch: () {},
             account: controller.localAccount,
             versionName: _appVersionName,
+            currentServer: server,
+            loadServers: _loadServers,
+            probeServer: _probeServer,
+            loadLibraryCount: _loadLibraryCount,
+            onSwitchServer: _switchServer,
             child: const LoadingScreen(),
           ),
         ),
-      LoadingHome(:final sections) => AppNavigationDrawer(
+      LoadingHome(:final server, :final sections) => AppNavigationDrawer(
           sections: sections,
           selectedSectionKey: null,
           isSettingsSelected: false,
@@ -171,6 +177,11 @@ class _AppContent extends StatelessWidget {
           onOpenSearch: () {},
           account: controller.localAccount,
           versionName: _appVersionName,
+          currentServer: server,
+          loadServers: _loadServers,
+          probeServer: _probeServer,
+          loadLibraryCount: _loadLibraryCount,
+          onSwitchServer: _switchServer,
           child: const HomeLoadingSkeleton(),
         ),
       Settings(:final ctx, :final returnState, :final relayHint) => _drawer(
@@ -430,6 +441,11 @@ class _AppContent extends StatelessWidget {
       onOpenHome: () => controller.goHome(home.server, home.sections),
       account: controller.localAccount,
       versionName: _appVersionName,
+      currentServer: home.server,
+      loadServers: _loadServers,
+      probeServer: _probeServer,
+      loadLibraryCount: _loadLibraryCount,
+      onSwitchServer: _switchServer,
       child: HomeScreen(
         server: home.server,
         onDeck: home.onDeck,
@@ -488,9 +504,22 @@ class _AppContent extends StatelessWidget {
       onOpenSearch: () => controller.returnTo(Search(ctx: ctx, returnState: Library(ctx: ctx))),
       account: controller.localAccount,
       versionName: _appVersionName,
+      currentServer: ctx.server,
+      loadServers: _loadServers,
+      probeServer: _probeServer,
+      loadLibraryCount: _loadLibraryCount,
+      onSwitchServer: _switchServer,
       child: child,
     );
   }
+
+  void _switchServer(PlexResource resource) => controller.switchServer(resource.machineIdentifier);
+
+  Future<List<PlexResource>> _loadServers() => PlexResourcesApi(controller.clientIdentifier).listServers(controller.accountTokenOrEmpty);
+
+  Future<ReachableServer?> _probeServer(PlexResource resource) => PlexResourcesApi(controller.clientIdentifier).connectToResource(resource);
+
+  Future<int?> _loadLibraryCount(PlexServer server) async => (await PlexServerApi(server, controller.clientIdentifier).fetchSections()).length;
 
   void _openCollection(LibraryContext ctx, PlexCollection collection) async {
     try {

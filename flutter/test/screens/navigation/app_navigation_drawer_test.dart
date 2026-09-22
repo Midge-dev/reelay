@@ -4,6 +4,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:reelay/data/plex/plex_models.dart';
 import 'package:reelay/screens/navigation/app_navigation_drawer.dart';
 
+const _server = PlexServer(name: 'Home', baseUrl: 'http://192.168.1.5:32400', accessToken: 'tok');
+
 const _sections = [
   PlexSection(key: 's1', title: 'Movies', type: 'movie'),
   PlexSection(key: 's2', title: 'Shows', type: 'show'),
@@ -30,6 +32,11 @@ void main() {
         onOpenSettings: () {},
         onOpenHome: () {},
         onOpenSearch: () {},
+        loadServers: () async => const [],
+        probeServer: (_) async => null,
+        loadLibraryCount: (_) async => null,
+        currentServer: _server,
+        onSwitchServer: (_) {},
         child: const SizedBox(),
       ),
     );
@@ -53,6 +60,11 @@ void main() {
         onOpenSettings: () {},
         onOpenHome: () {},
         onOpenSearch: () {},
+        loadServers: () async => const [],
+        probeServer: (_) async => null,
+        loadLibraryCount: (_) async => null,
+        currentServer: _server,
+        onSwitchServer: (_) {},
         child: const SizedBox(),
       ),
     );
@@ -78,6 +90,11 @@ void main() {
         onOpenSettings: () {},
         onOpenHome: () {},
         onOpenSearch: () {},
+        loadServers: () async => const [],
+        probeServer: (_) async => null,
+        loadLibraryCount: (_) async => null,
+        currentServer: _server,
+        onSwitchServer: (_) {},
         child: const SizedBox(),
       ),
     );
@@ -100,6 +117,11 @@ void main() {
         onOpenSettings: () => opened = true,
         onOpenHome: () {},
         onOpenSearch: () {},
+        loadServers: () async => const [],
+        probeServer: (_) async => null,
+        loadLibraryCount: (_) async => null,
+        currentServer: _server,
+        onSwitchServer: (_) {},
         child: const SizedBox(),
       ),
     );

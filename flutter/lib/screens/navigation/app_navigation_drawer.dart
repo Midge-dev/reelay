@@ -4,6 +4,7 @@ import 'package:flutter/widgets.dart';
 
 import '../../data/plex/plex_auth_api.dart';
 import '../../data/plex/plex_models.dart';
+import '../../data/plex/plex_resources_api.dart' show ReachableServer;
 import '../../kit/focusable_surface.dart';
 import '../../kit/icon.dart';
 import '../../kit/surface_style.dart';
@@ -11,6 +12,7 @@ import '../../kit/text.dart';
 import '../../theme/tokens.dart';
 import '../../theme/typography.dart';
 import '../common/digital_clock.dart';
+import 'server_switcher_panel.dart';
 
 const _sectionTypeShow = 'show';
 
@@ -39,6 +41,11 @@ class AppNavigationDrawer extends StatefulWidget {
   final VoidCallback onOpenSearch;
   final PlexAccount? account;
   final String? versionName;
+  final PlexServer currentServer;
+  final Future<List<PlexResource>> Function() loadServers;
+  final Future<ReachableServer?> Function(PlexResource resource) probeServer;
+  final Future<int?> Function(PlexServer server) loadLibraryCount;
+  final ValueChanged<PlexResource> onSwitchServer;
   final Widget child;
 
   const AppNavigationDrawer({
@@ -54,6 +61,11 @@ class AppNavigationDrawer extends StatefulWidget {
     required this.onOpenSearch,
     this.account,
     this.versionName,
+    required this.currentServer,
+    required this.loadServers,
+    required this.probeServer,
+    required this.loadLibraryCount,
+    required this.onSwitchServer,
     required this.child,
   });
 
@@ -71,6 +83,8 @@ class _AppNavigationDrawerState extends State<AppNavigationDrawer> {
   // leave the drawer visibly expanded the whole time. This forces the
   // width to collapse right away without waiting for focus to move.
   bool _forceCollapsed = false;
+  bool _showServerSwitcher = false;
+  final _avatarFocusNode = FocusNode(debugLabel: 'nav-rail-avatar');
   final _railFocusNode = FocusNode(debugLabel: 'nav-rail');
   final _homeItemFocusNode = FocusNode(debugLabel: 'nav-rail-home');
   final _searchItemFocusNode = FocusNode(debugLabel: 'nav-rail-search');
@@ -94,6 +108,7 @@ class _AppNavigationDrawerState extends State<AppNavigationDrawer> {
   }
 
   List<FocusNode> get _orderedRailFocusNodes => [
+        _avatarFocusNode,
         _homeItemFocusNode,
         _searchItemFocusNode,
         for (final section in widget.sections) _sectionFocusNodes[section.key]!,
@@ -171,10 +186,30 @@ class _AppNavigationDrawerState extends State<AppNavigationDrawer> {
     action();
   }
 
+  void _openServerSwitcher() {
+    setState(() {
+      _forceCollapsed = true;
+      _showServerSwitcher = true;
+    });
+  }
+
+  void _closeServerSwitcher() {
+    setState(() => _showServerSwitcher = false);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _avatarFocusNode.requestFocus();
+    });
+  }
+
+  void _switchServer(PlexResource resource) {
+    _closeServerSwitcher();
+    widget.onSwitchServer(resource);
+  }
+
   @override
   void dispose() {
     _railFocusNode.removeListener(_handleRailFocusChange);
     _railFocusNode.dispose();
+    _avatarFocusNode.dispose();
     _homeItemFocusNode.dispose();
     _searchItemFocusNode.dispose();
     _settingsItemFocusNode.dispose();
@@ -236,7 +271,13 @@ class _AppNavigationDrawerState extends State<AppNavigationDrawer> {
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.stretch,
                               children: [
-                                _UserAvatarItem(account: widget.account, expanded: effectiveExpanded),
+                                _UserAvatarItem(
+                                  account: widget.account,
+                                  expanded: effectiveExpanded,
+                                  selected: _showServerSwitcher,
+                                  focusNode: _avatarFocusNode,
+                                  onClick: _openServerSwitcher,
+                                ),
                                 const SizedBox(height: 8),
                                 _SidebarItem(
                                   icon: Icons.home,
@@ -300,6 +341,19 @@ class _AppNavigationDrawerState extends State<AppNavigationDrawer> {
             ),
           ),
         ),
+        if (_showServerSwitcher)
+          ServerSwitcherPanel(
+            account: widget.account,
+            currentServer: widget.currentServer,
+            sections: widget.sections,
+            selectedSectionKey: widget.selectedSectionKey,
+            loadServers: widget.loadServers,
+            probeServer: widget.probeServer,
+            loadLibraryCount: widget.loadLibraryCount,
+            onSelectSection: (section) => _handleSelect(() => widget.onSelectSection(section)),
+            onSwitchServer: _switchServer,
+            onClose: _closeServerSwitcher,
+          ),
       ],
     );
   }
@@ -382,47 +436,58 @@ class _SidebarItem extends StatelessWidget {
 class _UserAvatarItem extends StatelessWidget {
   final PlexAccount? account;
   final bool expanded;
+  final bool selected;
+  final FocusNode? focusNode;
+  final VoidCallback onClick;
 
-  const _UserAvatarItem({this.account, required this.expanded});
+  const _UserAvatarItem({this.account, required this.expanded, required this.selected, this.focusNode, required this.onClick});
 
   @override
   Widget build(BuildContext context) {
     final thumb = account?.thumb;
     return SizedBox(
       height: _railItemHeight,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 8),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            Container(
-              width: 40,
-              height: 40,
-              decoration: BoxDecoration(shape: BoxShape.circle, color: AppColors.accent.withValues(alpha: 0.35)),
-              alignment: Alignment.center,
-              child: thumb != null
-                  ? ClipOval(child: Image.network(thumb, width: 40, height: 40, fit: BoxFit.cover))
-                  : AppText((account?.username.isNotEmpty == true ? account!.username[0] : '?').toUpperCase(), style: AppTypography.body, color: AppColors.inkOnArt),
-            ),
-            ClipRect(
-              child: AnimatedSize(
-                duration: _railAnimDuration,
-                child: expanded
-                    ? Padding(
-                        padding: const EdgeInsets.only(left: 14),
-                        // TODO: port basicMarquee() for usernames that overflow — deferred polish, not needed for basic functionality.
-                        child: AppText(
-                          account?.username ?? '',
-                          color: AppColors.inkOnArt,
-                          maxLines: 1,
-                          overflow: TextOverflow.clip,
-                        ),
-                      )
-                    : const SizedBox.shrink(),
+      child: FocusableSurface(
+        onClick: onClick,
+        selected: selected,
+        focusNode: focusNode,
+        shape: _railItemShape,
+        colors: _railItemColors,
+        border: _railItemBorder,
+        contentAlignment: AlignmentDirectional.centerStart,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 4),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(shape: BoxShape.circle, color: AppColors.accent.withValues(alpha: 0.35)),
+                alignment: Alignment.center,
+                child: thumb != null
+                    ? ClipOval(child: Image.network(thumb, width: 40, height: 40, fit: BoxFit.cover))
+                    : AppText((account?.username.isNotEmpty == true ? account!.username[0] : '?').toUpperCase(), style: AppTypography.body, color: AppColors.inkOnArt),
               ),
-            ),
-          ],
+              ClipRect(
+                child: AnimatedSize(
+                  duration: _railAnimDuration,
+                  child: expanded
+                      ? Padding(
+                          padding: const EdgeInsets.only(left: 14),
+                          // TODO: port basicMarquee() for usernames that overflow — deferred polish, not needed for basic functionality.
+                          child: AppText(
+                            account?.username ?? '',
+                            maxLines: 1,
+                            overflow: TextOverflow.clip,
+                          ),
+                        )
+                      : const SizedBox.shrink(),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
