@@ -671,7 +671,15 @@ class AppRootController extends ChangeNotifier {
   }
 
   void selectSection(LibraryContext ctx, SectionGroup group) {
-    if (group.key == ctx.selectedSectionGroup.key) {
+    // Reselecting the section already on screen is a no-op fetch-wise —
+    // but only when there's actually something to reuse. If the first
+    // load of this section ever came back empty (a slow server on cold
+    // connect, a transient fetch failure — _fetchGroupItems swallows
+    // per-server errors into an empty list same as everywhere else in
+    // this app), skipping the shortcut here is what gives a later tap a
+    // real chance to refetch, instead of replaying that stale empty
+    // result forever.
+    if (group.key == ctx.selectedSectionGroup.key && ctx.items.isNotEmpty) {
       _setState(Library(ctx: ctx));
       return;
     }
