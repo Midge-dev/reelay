@@ -149,33 +149,6 @@ class CollectionDetail extends AppState {
   const CollectionDetail({required this.ctx, required this.collection, required this.items, required this.returnState});
 }
 
-class ShowSeasons extends AppState {
-  final LibraryContext ctx;
-  final PlexLibraryItem show;
-  final List<PlexSeason> seasons;
-  final AppState returnState;
-
-  const ShowSeasons({required this.ctx, required this.show, required this.seasons, required this.returnState});
-}
-
-class ShowEpisodes extends AppState {
-  final LibraryContext ctx;
-  final PlexLibraryItem show;
-  final List<PlexSeason> seasons;
-  final PlexSeason season;
-  final List<PlexEpisode> episodes;
-  final AppState returnState;
-
-  const ShowEpisodes({
-    required this.ctx,
-    required this.show,
-    required this.seasons,
-    required this.season,
-    required this.episodes,
-    required this.returnState,
-  });
-}
-
 class EpisodeDetail extends AppState {
   final LibraryContext ctx;
   final PlexLibraryItem show;

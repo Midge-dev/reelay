@@ -19,8 +19,7 @@ import 'library/episode_detail_screen.dart';
 import 'library/library_screen.dart';
 import 'library/movie_detail_screen.dart';
 import 'library/person_filmography_screen.dart';
-import 'library/show_episodes_screen.dart';
-import 'library/show_seasons_screen.dart';
+import 'library/show_detail_screen.dart';
 import 'lobby/lobby_screen.dart';
 import 'navigation/app_navigation_drawer.dart';
 import 'player/player_screen.dart';
@@ -190,13 +189,12 @@ class _AppContent extends StatelessWidget {
             },
           ),
         ),
-      MovieDetail(:final ctx, :final movie, :final returnState) => _drawer(
+      MovieDetail(:final ctx, :final movie, :final returnState) when ctx.selectedSection.type == _sectionTypeShow => _drawer(
           ctx: ctx,
           isHomeSelected: false,
-          child: MovieDetailScreen(
+          child: ShowDetailScreen(
             server: ctx.server,
-            movie: movie,
-            isShow: ctx.selectedSection.type == _sectionTypeShow,
+            show: movie,
             onBack: () => controller.returnTo(returnState),
             isOnWatchlist: controller.isOnWatchlist,
             onToggleWatchlist: controller.toggleWatchlist,
@@ -207,14 +205,48 @@ class _AppContent extends StatelessWidget {
                 return null;
               }
             },
-            onSeasons: () async {
+            loadDetail: () async {
               try {
-                final seasons = await _serverApi(ctx).fetchSeasons(movie.ratingKey);
-                controller.returnTo(ShowSeasons(ctx: ctx, show: movie, seasons: seasons, returnState: returnState));
-              } catch (e) {
-                controller.returnTo(AppError(message: '$e', retryState: state));
+                return await _serverApi(ctx).fetchMovieDetail(movie.ratingKey);
+              } catch (_) {
+                return null;
               }
             },
+            loadSeasons: () async {
+              try {
+                return await _serverApi(ctx).fetchSeasons(movie.ratingKey);
+              } catch (_) {
+                return const [];
+              }
+            },
+            loadEpisodes: (seasonRatingKey) async {
+              try {
+                return await _serverApi(ctx).fetchEpisodes(seasonRatingKey);
+              } catch (_) {
+                return const [];
+              }
+            },
+            onPlay: (targetRatingKey) => controller.playMovie(ctx, targetRatingKey, state),
+            onWatchTogether: (targetRatingKey) => controller.startWatchTogether(
+              ctx: ctx,
+              returnState: state,
+              roomTitle: movie.title,
+              thumb: movie.thumb,
+              targetRatingKey: targetRatingKey,
+              restart: false,
+            ),
+            onSelectEpisode: (episode) => controller.returnTo(EpisodeDetail(ctx: ctx, show: movie, episode: episode, returnState: state)),
+          ),
+        ),
+      MovieDetail(:final ctx, :final movie, :final returnState) => _drawer(
+          ctx: ctx,
+          isHomeSelected: false,
+          child: MovieDetailScreen(
+            server: ctx.server,
+            movie: movie,
+            onBack: () => controller.returnTo(returnState),
+            isOnWatchlist: controller.isOnWatchlist,
+            onToggleWatchlist: controller.toggleWatchlist,
             loadDetail: () async {
               try {
                 return await _serverApi(ctx).fetchMovieDetail(movie.ratingKey);
@@ -281,36 +313,6 @@ class _AppContent extends StatelessWidget {
             items: items,
             onSelectItem: (item) => controller.returnTo(MovieDetail(ctx: ctx, movie: item, returnState: state)),
             onBack: () => controller.returnTo(returnState),
-          ),
-        ),
-      ShowSeasons(:final ctx, :final show, :final seasons, :final returnState) => _drawer(
-          ctx: ctx,
-          isHomeSelected: false,
-          child: ShowSeasonsScreen(
-            server: ctx.server,
-            showTitle: show.title,
-            seasons: seasons,
-            onSelect: (season) async {
-              try {
-                final episodes = await _serverApi(ctx).fetchEpisodes(season.ratingKey);
-                controller.returnTo(ShowEpisodes(ctx: ctx, show: show, seasons: seasons, season: season, episodes: episodes, returnState: returnState));
-              } catch (e) {
-                controller.returnTo(AppError(message: '$e', retryState: state));
-              }
-            },
-            onBack: () => controller.returnTo(MovieDetail(ctx: ctx, movie: show, returnState: returnState)),
-          ),
-        ),
-      ShowEpisodes(:final ctx, :final show, :final seasons, :final season, :final episodes, :final returnState) => _drawer(
-          ctx: ctx,
-          isHomeSelected: false,
-          child: ShowEpisodesScreen(
-            server: ctx.server,
-            showTitle: show.title,
-            seasonTitle: season.title,
-            episodes: episodes,
-            onSelect: (episode) => controller.returnTo(EpisodeDetail(ctx: ctx, show: show, episode: episode, returnState: state)),
-            onBack: () => controller.returnTo(ShowSeasons(ctx: ctx, show: show, seasons: seasons, returnState: returnState)),
           ),
         ),
       EpisodeDetail(:final ctx, :final show, :final episode, :final returnState) => _drawer(

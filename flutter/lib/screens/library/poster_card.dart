@@ -27,8 +27,8 @@ const _posterBorder = SurfaceBorder(
 /// reserved scroll gap and the visible fade band line up exactly.
 const posterRowPeekExtent = 120.0;
 
-/// Shared by CollectionDetailScreen/PersonFilmographyScreen/ShowSeasonsScreen
-/// — Kotlin doesn't share a helper between these either (each screen
+/// Shared by CollectionDetailScreen/PersonFilmographyScreen — Kotlin
+/// doesn't share a helper between these either (each screen
 /// declares its own near-identical `*Poster` composable), but since this
 /// is a literal copy-paste in the source, porting it once here avoids
 /// tripling the duplication for no reason.

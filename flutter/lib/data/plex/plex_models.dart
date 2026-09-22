@@ -83,6 +83,12 @@ class PlexLibraryItem {
   final int? addedAt;
   final String? originallyAvailableAt;
   final String? guid;
+  final String? contentRating;
+
+  /// Total episode count on a show item (Plex's own rollup) — the season
+  /// count is not carried here since it's just `seasons.length` once a
+  /// show detail screen has actually loaded them.
+  final int? leafCount;
 
   @JsonKey(name: 'Genre', defaultValue: [])
   final List<PlexTag> genres;
@@ -103,6 +109,8 @@ class PlexLibraryItem {
     this.addedAt,
     this.originallyAvailableAt,
     this.guid,
+    this.contentRating,
+    this.leafCount,
     this.genres = const [],
     this.collections = const [],
   });

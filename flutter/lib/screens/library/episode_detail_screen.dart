@@ -17,7 +17,7 @@ import '../common/time_format.dart';
 import '../common/watch_together_icon.dart';
 import '../common/watchlist_button.dart';
 
-const _heroHeight = 600.0;
+const _heroHeight = 710.0;
 const _restartButtonBorder = SurfaceBorder(
   idle: SurfaceBorderSide.solid(AppColors.line),
   focused: SurfaceBorderSide.solid(AppColors.accent),

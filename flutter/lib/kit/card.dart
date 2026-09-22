@@ -34,6 +34,7 @@ class AppCard extends StatelessWidget {
   final SurfaceColors? colors;
   final SurfaceBorder border;
   final bool ensureVisibleOnFocus;
+  final ValueChanged<bool>? onFocusChange;
   final Widget child;
 
   const AppCard({
@@ -48,6 +49,7 @@ class AppCard extends StatelessWidget {
     this.colors,
     this.border = _cardBorder,
     this.ensureVisibleOnFocus = true,
+    this.onFocusChange,
     required this.child,
   });
 
@@ -57,6 +59,7 @@ class AppCard extends StatelessWidget {
         if (context.mounted) ensureCardVisible(context);
       });
     }
+    onFocusChange?.call(focused);
   }
 
   @override

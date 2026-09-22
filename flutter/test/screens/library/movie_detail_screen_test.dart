@@ -8,7 +8,6 @@ const _movie = PlexLibraryItem(ratingKey: '1', title: 'Arrival', year: 2016, sum
 
 Future<void> _pump(
   WidgetTester tester, {
-  bool isShow = false,
   ValueChanged<String>? onPlay,
   bool Function(String?)? isOnWatchlist,
 }) async {
@@ -23,15 +22,12 @@ Future<void> _pump(
       child: MovieDetailScreen(
         server: _server,
         movie: _movie,
-        isShow: isShow,
         onBack: () {},
         onPlay: onPlay ?? (_) {},
         onWatchTogether: (_) {},
         onRestartSolo: (_) {},
-        onSeasons: () {},
         isOnWatchlist: isOnWatchlist ?? (_) => false,
         onToggleWatchlist: (_) {},
-        resolveNextEpisode: () async => null,
         loadDetail: () async => null,
         loadRelatedHubs: () async => const [],
         loadByActor: (_) async => const [],
@@ -53,23 +49,14 @@ void main() {
     expect(find.text('Play'), findsOneWidget);
   });
 
-  testWidgets('a movie (not a show) shows a Watchlist button, not Seasons', (tester) async {
-    await _pump(tester, isShow: false);
+  testWidgets('shows a Watchlist button', (tester) async {
+    await _pump(tester);
     await tester.pump();
 
     expect(find.text('+'), findsOneWidget, reason: 'not on watchlist -> + button');
-    expect(find.text('Seasons'), findsNothing);
   });
 
-  testWidgets('a show shows Seasons and a Watchlist button', (tester) async {
-    await _pump(tester, isShow: true);
-    await tester.pump();
-
-    expect(find.text('Seasons'), findsOneWidget);
-    expect(find.text('+'), findsOneWidget);
-  });
-
-  testWidgets('tapping Play invokes onPlay with the movie ratingKey when not a show', (tester) async {
+  testWidgets('tapping Play invokes onPlay with the movie ratingKey', (tester) async {
     String? played;
     await _pump(tester, onPlay: (key) => played = key);
     await tester.pump();

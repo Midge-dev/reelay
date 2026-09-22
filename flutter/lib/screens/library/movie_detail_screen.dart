@@ -39,15 +39,12 @@ const _restartButtonBorder = SurfaceBorder(
 class MovieDetailScreen extends StatefulWidget {
   final PlexServer server;
   final PlexLibraryItem movie;
-  final bool isShow;
   final VoidCallback onBack;
   final ValueChanged<String> onPlay;
   final ValueChanged<String> onWatchTogether;
   final ValueChanged<String> onRestartSolo;
-  final VoidCallback onSeasons;
   final bool Function(String?) isOnWatchlist;
   final ValueChanged<String?> onToggleWatchlist;
-  final Future<PlexOnDeckItem?> Function() resolveNextEpisode;
   final Future<PlexMovieDetail?> Function() loadDetail;
   final Future<List<PlexHub>> Function() loadRelatedHubs;
   final Future<List<PlexLibraryItem>> Function(int actorId) loadByActor;
@@ -58,15 +55,12 @@ class MovieDetailScreen extends StatefulWidget {
     super.key,
     required this.server,
     required this.movie,
-    required this.isShow,
     required this.onBack,
     required this.onPlay,
     required this.onWatchTogether,
     required this.onRestartSolo,
-    required this.onSeasons,
     required this.isOnWatchlist,
     required this.onToggleWatchlist,
-    required this.resolveNextEpisode,
     required this.loadDetail,
     required this.loadRelatedHubs,
     required this.loadByActor,
@@ -89,7 +83,6 @@ class _MovieDetailScreenState extends State<MovieDetailScreen> {
   final _playFocus = FocusNode(debugLabel: 'movie-detail-play');
   final _scrollController = ScrollController();
 
-  PlexOnDeckItem? _nextEpisode;
   PlexMovieDetail? _detail;
   List<PlexHub> _relatedHubs = const [];
   List<_CoStarRow> _coStarRows = const [];
@@ -106,7 +99,6 @@ class _MovieDetailScreenState extends State<MovieDetailScreen> {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.movie.ratingKey != widget.movie.ratingKey) {
       setState(() {
-        _nextEpisode = null;
         _detail = null;
         _relatedHubs = const [];
         _coStarRows = const [];
@@ -124,10 +116,6 @@ class _MovieDetailScreenState extends State<MovieDetailScreen> {
   }
 
   Future<void> _load() async {
-    if (widget.isShow) {
-      final next = await widget.resolveNextEpisode();
-      if (mounted) setState(() => _nextEpisode = next);
-    }
     final results = await Future.wait([widget.loadDetail(), widget.loadRelatedHubs()]);
     if (!mounted) return;
     final detail = results[0] as PlexMovieDetail?;
@@ -177,11 +165,8 @@ class _MovieDetailScreenState extends State<MovieDetailScreen> {
   @override
   Widget build(BuildContext context) {
     final detail = _detail;
-    final hasResume = !widget.isShow && (detail?.viewOffset ?? 0) > 0;
-    final playTarget = widget.isShow ? _nextEpisode?.ratingKey : widget.movie.ratingKey;
-    final playLabel = widget.isShow
-        ? (_nextEpisode != null ? 'Play S${_nextEpisode!.parentIndex}E${_nextEpisode!.index}' : 'Play')
-        : (hasResume ? 'Continue' : 'Play');
+    final hasResume = (detail?.viewOffset ?? 0) > 0;
+    final playLabel = hasResume ? 'Continue' : 'Play';
     final watchTogetherLabel = hasResume ? 'Continue Together' : 'Watch Together';
 
     final sections = <Widget>[
@@ -196,11 +181,9 @@ class _MovieDetailScreenState extends State<MovieDetailScreen> {
         watchTogetherLabel: watchTogetherLabel,
         showRestart: hasResume,
         playFocus: _playFocus,
-        isShow: widget.isShow,
-        onPlay: playTarget != null ? () => widget.onPlay(playTarget) : null,
-        onWatchTogether: playTarget != null ? () => widget.onWatchTogether(playTarget) : null,
-        onRestartSolo: playTarget != null ? () => widget.onRestartSolo(playTarget) : null,
-        onSeasons: widget.onSeasons,
+        onPlay: () => widget.onPlay(widget.movie.ratingKey),
+        onWatchTogether: () => widget.onWatchTogether(widget.movie.ratingKey),
+        onRestartSolo: () => widget.onRestartSolo(widget.movie.ratingKey),
         isOnWatchlist: widget.isOnWatchlist(detail?.guid),
         onToggleWatchlist: () => widget.onToggleWatchlist(detail?.guid),
         onActionButtonFocused: _scrollToTop,
@@ -257,11 +240,9 @@ class _MovieHero extends StatelessWidget {
   final String watchTogetherLabel;
   final bool showRestart;
   final FocusNode playFocus;
-  final bool isShow;
-  final VoidCallback? onPlay;
-  final VoidCallback? onWatchTogether;
-  final VoidCallback? onRestartSolo;
-  final VoidCallback onSeasons;
+  final VoidCallback onPlay;
+  final VoidCallback onWatchTogether;
+  final VoidCallback onRestartSolo;
   final bool isOnWatchlist;
   final VoidCallback onToggleWatchlist;
   final VoidCallback onActionButtonFocused;
@@ -277,11 +258,9 @@ class _MovieHero extends StatelessWidget {
     required this.watchTogetherLabel,
     required this.showRestart,
     required this.playFocus,
-    required this.isShow,
-    this.onPlay,
-    this.onWatchTogether,
-    this.onRestartSolo,
-    required this.onSeasons,
+    required this.onPlay,
+    required this.onWatchTogether,
+    required this.onRestartSolo,
     required this.isOnWatchlist,
     required this.onToggleWatchlist,
     required this.onActionButtonFocused,
@@ -356,7 +335,7 @@ class _MovieHero extends StatelessWidget {
                         children: [
                           Container(width: 20, height: 2, color: AppColors.accent),
                           const SizedBox(width: AppSpacing.md),
-                          AppText(isShow ? 'SHOW' : 'MOVIE', style: AppTypography.micro),
+                          const AppText('MOVIE', style: AppTypography.micro),
                         ],
                       ),
                       const SizedBox(height: AppSpacing.sm),
@@ -406,28 +385,26 @@ class _MovieHero extends StatelessWidget {
                       ],
                       const SizedBox(height: AppSpacing.lg),
                       Focus(canRequestFocus: false, onKeyEvent: _trapUp, child: Wrap(
-                        // Wrap, not Row: a show with a long "Play S3E12"
-                        // label plus Watch Together, Seasons and the
+                        // Wrap, not Row — RoomCard in watch_together_row.dart
+                        // hit the same problem: Watch Together plus the
                         // watchlist button can be wider than the column
-                        // allows — see the matching comment on RoomCard in
-                        // watch_together_row.dart. Drops to a second line
-                        // instead of hard-overflowing.
+                        // allows. Drops to a second line instead of
+                        // hard-overflowing.
                         spacing: AppSpacing.md,
                         runSpacing: AppSpacing.md,
                         crossAxisAlignment: WrapCrossAlignment.center,
                         children: [
-                          AppButton(onClick: onPlay ?? () {}, focusNode: playFocus, onFocusChange: _onFocus, child: AppText(playLabel)),
+                          AppButton(onClick: onPlay, focusNode: playFocus, onFocusChange: _onFocus, child: AppText(playLabel)),
                           AppOutlinedButton(
-                            onClick: onWatchTogether ?? () {},
+                            onClick: onWatchTogether,
                             onFocusChange: _onFocus,
                             child: Row(mainAxisSize: MainAxisSize.min, children: [
                               const WatchTogetherIcon(),
                               Padding(padding: const EdgeInsets.only(left: AppSpacing.sm), child: AppText(watchTogetherLabel)),
                             ]),
                           ),
-                          if (isShow) AppOutlinedButton(onClick: onSeasons, onFocusChange: _onFocus, child: const AppText('Seasons')),
                           if (showRestart)
-                            AppIconButton(onClick: onRestartSolo ?? () {}, border: _restartButtonBorder, onFocusChange: _onFocus, child: const AppIcon(Icons.replay)),
+                            AppIconButton(onClick: onRestartSolo, border: _restartButtonBorder, onFocusChange: _onFocus, child: const AppIcon(Icons.replay)),
                           WatchlistButton(isOnWatchlist: isOnWatchlist, onClick: onToggleWatchlist, onFocusChange: _onFocus),
                         ],
                       )),

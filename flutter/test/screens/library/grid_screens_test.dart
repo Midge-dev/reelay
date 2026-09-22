@@ -4,7 +4,6 @@ import 'package:reelay/data/plex/plex_models.dart';
 import 'package:reelay/screens/library/collection_detail_screen.dart';
 import 'package:reelay/screens/library/person_filmography_screen.dart';
 import 'package:reelay/screens/library/poster_card.dart';
-import 'package:reelay/screens/library/show_seasons_screen.dart';
 
 /// PosterCard's title label sits below the clickable card, as a plain
 /// (non-focusable) sibling — same shape as Kotlin's CardContainer. Tap the
@@ -91,33 +90,6 @@ void main() {
       expect(find.text('1 title in your library'), findsOneWidget);
       expect(find.text('D'), findsOneWidget, reason: 'no thumb -> falls back to the first letter of the name');
       expect(find.text('Dune'), findsOneWidget);
-    });
-  });
-
-  group('ShowSeasonsScreen', () {
-    testWidgets('shows the show title and every season', (tester) async {
-      PlexSeason? selected;
-      await _pump(
-        tester,
-        ShowSeasonsScreen(
-          server: _server,
-          showTitle: 'Severance',
-          seasons: const [
-            PlexSeason(ratingKey: 's1', title: 'Season 1'),
-            PlexSeason(ratingKey: 's2', title: 'Season 2'),
-          ],
-          onSelect: (s) => selected = s,
-          onBack: () {},
-        ),
-      );
-
-      expect(find.text('Severance'), findsOneWidget);
-      expect(find.text('Season 1'), findsOneWidget);
-      expect(find.text('Season 2'), findsOneWidget);
-
-      await tester.tap(_posterCardFor('Season 2'));
-      await tester.pump();
-      expect(selected?.ratingKey, 's2');
     });
   });
 }

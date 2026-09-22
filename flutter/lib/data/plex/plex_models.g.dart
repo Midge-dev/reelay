@@ -77,6 +77,8 @@ PlexLibraryItem _$PlexLibraryItemFromJson(Map<String, dynamic> json) =>
       addedAt: (json['addedAt'] as num?)?.toInt(),
       originallyAvailableAt: json['originallyAvailableAt'] as String?,
       guid: json['guid'] as String?,
+      contentRating: json['contentRating'] as String?,
+      leafCount: (json['leafCount'] as num?)?.toInt(),
       genres:
           (json['Genre'] as List<dynamic>?)
               ?.map((e) => PlexTag.fromJson(e as Map<String, dynamic>))
@@ -103,6 +105,8 @@ Map<String, dynamic> _$PlexLibraryItemToJson(PlexLibraryItem instance) =>
       'addedAt': instance.addedAt,
       'originallyAvailableAt': instance.originallyAvailableAt,
       'guid': instance.guid,
+      'contentRating': instance.contentRating,
+      'leafCount': instance.leafCount,
       'Genre': instance.genres,
       'Collection': instance.collections,
     };
