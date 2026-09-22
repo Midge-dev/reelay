@@ -167,8 +167,10 @@ class _ClickToTypeTextFieldState extends State<ClickToTypeTextField> {
                   ? Text(
                       widget.hintText!,
                       style: style.copyWith(color: AppColors.ink3),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     )
-                  : Text(widget.value, style: style),
+                  : Text(widget.value, style: style, maxLines: 1, overflow: TextOverflow.ellipsis),
             ),
     );
   }
