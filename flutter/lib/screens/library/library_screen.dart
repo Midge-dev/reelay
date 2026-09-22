@@ -3,6 +3,7 @@ import 'package:flutter/widgets.dart';
 
 import '../../data/plex/plex_image_url.dart';
 import '../../data/plex/plex_models.dart';
+import '../../kit/button.dart';
 import '../../kit/edge_fade_row.dart';
 import '../../kit/focusable_surface.dart';
 import '../../kit/icon.dart';
@@ -548,10 +549,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
       );
     }
     if (results.isEmpty) {
-      return const Padding(
-        padding: EdgeInsets.only(top: 24),
-        child: AppText('Nothing matches these filters.'),
-      );
+      return _buildEmptyResultsState();
     }
     return _fadingGrid(
       controller: _gridScrollController,
@@ -577,6 +575,113 @@ class _LibraryScreenState extends State<LibraryScreen> {
             onClick: () => widget.onSelectItem(item),
           );
         },
+      ),
+    );
+  }
+
+  /// Screen 23 — inline, not a takeover: the rail, header and filter row
+  /// all stay exactly where they were, and the copy names the specific
+  /// filters responsible with real counts rather than a generic "no
+  /// results" ("Name the cause, not the symptom" — DESIGN.md rule 10).
+  /// Each cause gets its own "Drop the X" action; "Clear all" only when
+  /// two or more are actually stacked.
+  Widget _buildEmptyResultsState() {
+    final causes = <(String headlineFragment, String dropLabel, String factLabel, VoidCallback onDrop)>[
+      if (_genreFilter != null)
+        (
+          '${formatGenreLabel(_genreFilter!).toLowerCase()} titles',
+          'Drop the genre',
+          '${applyLibraryFilters(items: widget.items, query: '', sortMode: SortMode.title, genre: _genreFilter).length} ${formatGenreLabel(_genreFilter!).toLowerCase()} titles',
+          () => setState(() => _genreFilter = null),
+        ),
+      if (_decadeFilter != null)
+        (
+          'titles from the ${_decadeFilter}s',
+          'Drop the decade',
+          '${applyLibraryFilters(items: widget.items, query: '', sortMode: SortMode.title, decade: _decadeFilter).length} titles from the ${_decadeFilter}s',
+          () => setState(() => _decadeFilter = null),
+        ),
+      if (_dateAddedFilter != null)
+        (
+          'titles added ${_dateAddedFilter!.label.toLowerCase()}',
+          'Drop "Added"',
+          '${applyLibraryFilters(items: widget.items, query: '', sortMode: SortMode.title, dateAddedBucket: _dateAddedFilter).length} titles added ${_dateAddedFilter!.label.toLowerCase()}',
+          () => setState(() => _dateAddedFilter = null),
+        ),
+    ];
+    final searchActive = _searchQuery.trim().isNotEmpty;
+
+    final String headline;
+    final String? factSentence;
+    if (causes.isEmpty && searchActive) {
+      headline = 'Nothing matches "${_searchQuery.trim()}"';
+      factSentence = null;
+    } else if (causes.isEmpty) {
+      headline = 'Nothing matches these filters';
+      factSentence = null;
+    } else {
+      headline = 'No ${causes.map((c) => c.$1).join(' + ')} on ${widget.selectedSection.title}';
+      factSentence = causes.length > 1
+          ? '${widget.selectedSection.title} has ${causes.map((c) => c.$3).join(' and ')}. Together they leave nothing.'
+          : null;
+    }
+
+    return Padding(
+      padding: const EdgeInsets.only(top: 24, bottom: 48),
+      child: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 660),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const AppIcon(PhosphorIconsRegular.funnel, size: 64, tint: AppColors.lineStrong),
+              const SizedBox(height: 24),
+              AppText(headline, style: AppTypography.title2, textAlign: TextAlign.center),
+              if (factSentence != null) ...[
+                const SizedBox(height: 12),
+                AppText(factSentence, color: AppColors.ink3, textAlign: TextAlign.center),
+              ],
+              if (causes.isNotEmpty || searchActive) ...[
+                const SizedBox(height: 24),
+                Wrap(
+                  alignment: WrapAlignment.center,
+                  spacing: 16,
+                  runSpacing: 12,
+                  children: [
+                    for (final cause in causes)
+                      AppOutlinedButton(
+                        onClick: cause.$4,
+                        child: Row(mainAxisSize: MainAxisSize.min, children: [
+                          const AppIcon(PhosphorIconsRegular.x, size: 20),
+                          const SizedBox(width: AppSpacing.sm),
+                          AppText(cause.$2),
+                        ]),
+                      ),
+                    if (searchActive)
+                      AppOutlinedButton(
+                        onClick: () => setState(() => _searchQuery = ''),
+                        child: Row(mainAxisSize: MainAxisSize.min, children: [
+                          const AppIcon(PhosphorIconsRegular.x, size: 20),
+                          const SizedBox(width: AppSpacing.sm),
+                          const AppText('Clear search'),
+                        ]),
+                      ),
+                    if (causes.length + (searchActive ? 1 : 0) > 1)
+                      AppOutlinedButton(
+                        onClick: () => setState(() {
+                          _genreFilter = null;
+                          _decadeFilter = null;
+                          _dateAddedFilter = null;
+                          _searchQuery = '';
+                        }),
+                        child: const AppText('Clear all'),
+                      ),
+                  ],
+                ),
+              ],
+            ],
+          ),
+        ),
       ),
     );
   }

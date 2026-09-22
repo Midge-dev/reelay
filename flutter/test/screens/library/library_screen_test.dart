@@ -63,6 +63,34 @@ void main() {
     expect(find.text('Search'), findsNothing, reason: 'search moved into the filter row, not a tab');
   });
 
+  testWidgets('stacking two filters to zero results names both causes with real counts and offers to drop each', (tester) async {
+    const itemsWithYears = [
+      PlexLibraryItem(ratingKey: '1', title: 'Alien', genres: [PlexTag(tag: 'Horror')], year: 2010),
+      PlexLibraryItem(ratingKey: '2', title: 'Arrival', genres: [PlexTag(tag: 'Sci-Fi')], year: 2016),
+      PlexLibraryItem(ratingKey: '3', title: 'Old Western', genres: [PlexTag(tag: 'Western')], year: 1995),
+    ];
+    await _pump(tester, items: itemsWithYears);
+
+    await tester.tap(find.text('Genre'));
+    await tester.pump();
+    await tester.pump();
+    await tester.tap(find.text('Horror'));
+    await tester.pump();
+
+    await tester.ensureVisible(find.text('Decade'));
+    await tester.pump();
+    await tester.tap(find.text('Decade'));
+    await tester.pump();
+    await tester.pump();
+    await tester.tap(find.text('1990s'));
+    await tester.pump();
+
+    expect(find.text('No horror titles + titles from the 1990s on Movies'), findsOneWidget);
+    expect(find.text('Movies has 1 horror titles and 1 titles from the 1990s. Together they leave nothing.'), findsOneWidget);
+    expect(find.text('Drop the genre'), findsOneWidget);
+    expect(find.text('Drop the decade'), findsOneWidget);
+  });
+
   testWidgets('an empty library shows the empty-state message', (tester) async {
     await _pump(tester, items: const []);
 

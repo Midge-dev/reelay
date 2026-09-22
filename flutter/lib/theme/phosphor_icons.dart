@@ -13,6 +13,12 @@ import 'package:flutter/widgets.dart';
 class PhosphorIconsRegular {
   const PhosphorIconsRegular._();
 
+  static const arrowClockwise = IconData(
+    0xe036,
+    fontFamily: 'PhosphorRegular',
+    fontPackage: 'phosphor_flutter',
+    matchTextDirection: true,
+  );
   static const arrowCounterClockwise = IconData(
     0xe038,
     fontFamily: 'PhosphorRegular',
@@ -43,6 +49,18 @@ class PhosphorIconsRegular {
     fontPackage: 'phosphor_flutter',
     matchTextDirection: true,
   );
+  static const clock = IconData(
+    0xe19a,
+    fontFamily: 'PhosphorRegular',
+    fontPackage: 'phosphor_flutter',
+    matchTextDirection: true,
+  );
+  static const cloudSlash = IconData(
+    0xe1b6,
+    fontFamily: 'PhosphorRegular',
+    fontPackage: 'phosphor_flutter',
+    matchTextDirection: true,
+  );
   static const closedCaptioning = IconData(
     0xe1a4,
     fontFamily: 'PhosphorRegular',
@@ -57,6 +75,12 @@ class PhosphorIconsRegular {
   );
   static const filmSlate = IconData(
     0xe8c2,
+    fontFamily: 'PhosphorRegular',
+    fontPackage: 'phosphor_flutter',
+    matchTextDirection: true,
+  );
+  static const funnel = IconData(
+    0xe266,
     fontFamily: 'PhosphorRegular',
     fontPackage: 'phosphor_flutter',
     matchTextDirection: true,
@@ -117,6 +141,12 @@ class PhosphorIconsRegular {
   );
   static const usersThree = IconData(
     0xe68e,
+    fontFamily: 'PhosphorRegular',
+    fontPackage: 'phosphor_flutter',
+    matchTextDirection: true,
+  );
+  static const warning = IconData(
+    0xe4e0,
     fontFamily: 'PhosphorRegular',
     fontPackage: 'phosphor_flutter',
     matchTextDirection: true,
