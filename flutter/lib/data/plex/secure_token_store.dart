@@ -4,9 +4,18 @@ abstract class SecureTokenStore {
   Future<void> saveToken(String token);
   Future<String?> loadToken();
   Future<void> clearToken();
+
+  /// Per-profile variants — screen 07's picker binds one Plex account
+  /// token per [Profile], distinct from the single legacy key above
+  /// (which stays around only to migrate a pre-profiles install's one
+  /// signed-in account into that profile's own keyed token).
+  Future<void> saveTokenForProfile(String profileId, String token);
+  Future<String?> loadTokenForProfile(String profileId);
+  Future<void> clearTokenForProfile(String profileId);
 }
 
 const _tokenKey = 'plex_token';
+String _profileTokenKey(String profileId) => 'plex_token_$profileId';
 
 // macOS's default Data Protection Keychain requires a `keychain-access-groups`
 // entitlement matched against a real development-signing certificate; ad-hoc
@@ -34,4 +43,16 @@ class FlutterSecureTokenStore implements SecureTokenStore {
 
   @override
   Future<void> clearToken() => _storage.delete(key: _tokenKey, mOptions: _macOsOptions);
+
+  @override
+  Future<void> saveTokenForProfile(String profileId, String token) =>
+      _storage.write(key: _profileTokenKey(profileId), value: token, mOptions: _macOsOptions);
+
+  @override
+  Future<String?> loadTokenForProfile(String profileId) =>
+      _storage.read(key: _profileTokenKey(profileId), mOptions: _macOsOptions);
+
+  @override
+  Future<void> clearTokenForProfile(String profileId) =>
+      _storage.delete(key: _profileTokenKey(profileId), mOptions: _macOsOptions);
 }

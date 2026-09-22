@@ -25,6 +25,42 @@ class RelayEntry {
   Map<String, dynamic> toJson() => {'id': id, 'nickname': nickname, 'url': url, 'isDefault': isDefault};
 }
 
+/// A device-local identity, distinct from the Plex account it's bound to —
+/// see DESIGN.md's "Profiles are Reelay's own" note. Holds at most one Plex
+/// account (Jellyfin is a real, disabled slot elsewhere in the UI, not
+/// modeled here yet — see server_switcher_panel.dart's matching note).
+class Profile {
+  final String id;
+  final String name;
+  final String watchTogetherName;
+  final String plexUsername;
+  final String? thumb;
+
+  const Profile({
+    required this.id,
+    required this.name,
+    required this.watchTogetherName,
+    required this.plexUsername,
+    this.thumb,
+  });
+
+  factory Profile.fromJson(Map<String, dynamic> json) => Profile(
+        id: json['id'] as String,
+        name: json['name'] as String,
+        watchTogetherName: json['watchTogetherName'] as String,
+        plexUsername: json['plexUsername'] as String,
+        thumb: json['thumb'] as String?,
+      );
+
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'name': name,
+        'watchTogetherName': watchTogetherName,
+        'plexUsername': plexUsername,
+        'thumb': thumb,
+      };
+}
+
 class BitratePreset {
   final int kbps;
   final String label;
@@ -52,6 +88,7 @@ class AppSettings {
   final bool showChatOverlay;
   final ChatOverlayCorner chatOverlayCorner;
   final String? selectedServerId;
+  final List<Profile> profiles;
 
   const AppSettings({
     this.relays = const [],
@@ -61,6 +98,7 @@ class AppSettings {
     this.showChatOverlay = true,
     this.chatOverlayCorner = ChatOverlayCorner.bottomEnd,
     this.selectedServerId,
+    this.profiles = const [],
   });
 
   AppSettings copyWith({
@@ -71,6 +109,7 @@ class AppSettings {
     bool? showChatOverlay,
     ChatOverlayCorner? chatOverlayCorner,
     String? selectedServerId,
+    List<Profile>? profiles,
   }) {
     return AppSettings(
       relays: relays ?? this.relays,
@@ -80,6 +119,7 @@ class AppSettings {
       showChatOverlay: showChatOverlay ?? this.showChatOverlay,
       chatOverlayCorner: chatOverlayCorner ?? this.chatOverlayCorner,
       selectedServerId: selectedServerId ?? this.selectedServerId,
+      profiles: profiles ?? this.profiles,
     );
   }
 

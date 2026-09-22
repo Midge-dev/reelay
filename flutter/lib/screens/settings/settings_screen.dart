@@ -23,6 +23,7 @@ import '../../theme/typography.dart';
 import '../common/loading_screen.dart';
 import '../common/neon_scrollbar.dart';
 import '../common/relay_status.dart';
+import '../profiles/add_profile_dialog.dart';
 import 'chat_corner_picker.dart';
 import 'max_seats_menu.dart';
 import 'relay_settings_pane.dart';
@@ -65,6 +66,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
 
   bool _showingRelaySettings = false;
   bool _maxSeatsMenuExpanded = false;
+  bool _showingAddProfile = false;
 
   PairingServer? _pairingServer;
   String? _pairingUrl;
@@ -299,6 +301,11 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                         child: _buildSourcesSection(),
                       ),
                       _SettingsGroup(
+                        title: 'Profiles',
+                        showRule: true,
+                        child: _buildProfilesSection(),
+                      ),
+                      _SettingsGroup(
                         title: 'Watch Together',
                         showRule: true,
                         child: _buildWatchTogetherSection(),
@@ -349,6 +356,11 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               ),
             ),
           ],
+          if (_showingAddProfile)
+            AddProfileDialog(
+              onCreate: _addProfile,
+              onCancel: () => setState(() => _showingAddProfile = false),
+            ),
         ],
       ),
     );
@@ -385,6 +397,32 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           ),
       ],
     );
+  }
+
+  Widget _buildProfilesSection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        for (final profile in _settings.profiles)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 8),
+            child: AppText('${profile.name} · Plex · ${profile.plexUsername}'),
+          ),
+        if (_settings.profiles.isEmpty) const Padding(padding: EdgeInsets.only(bottom: 8), child: AppText('No profiles yet')),
+        const SizedBox(height: 8),
+        AppButton(onClick: () => setState(() => _showingAddProfile = true), child: const AppText('Add profile')),
+      ],
+    );
+  }
+
+  Future<void> _addProfile({required String name, required String watchTogetherName, required String token}) async {
+    await ref.read(appRootControllerProvider).addProfile(name: name, watchTogetherName: watchTogetherName, token: token);
+    final settings = await ref.read(settingsStoreProvider).observe().first;
+    if (!mounted) return;
+    setState(() {
+      _settings = settings;
+      _showingAddProfile = false;
+    });
   }
 
   Widget _buildWatchTogetherSection() {

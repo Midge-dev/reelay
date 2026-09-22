@@ -25,6 +25,7 @@ import 'library/show_detail_screen.dart';
 import 'lobby/lobby_screen.dart';
 import 'navigation/app_navigation_drawer.dart';
 import 'player/player_screen.dart';
+import 'profiles/profile_picker_screen.dart';
 import 'settings/relay_setup_screen.dart';
 import 'settings/settings_screen.dart';
 import 'splash/splash_screen.dart';
@@ -117,7 +118,12 @@ class _AppContent extends StatelessWidget {
       Checking() => const LoadingScreen(),
       ConnectingToServer(:final username) =>
         LoadingScreen(username != null ? 'Logged in as $username — connecting to library…' : 'Connecting to library…'),
-      LoggedOut() => AuthScreen(onLoggedIn: controller.connect),
+      LoggedOut() => AuthScreen(onLoggedIn: controller.completeFirstLogin),
+      ProfilePicker(:final profiles) => ProfilePickerScreen(
+          profiles: profiles,
+          onSelectProfile: controller.selectProfile,
+          onAddProfile: controller.addProfileAndActivate,
+        ),
       AppError(:final message, :final retryState) => BackHandler(
           onBack: () => controller.returnTo(retryState),
           child: ColoredBox(

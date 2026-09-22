@@ -15,6 +15,7 @@ const _forceBurnKey = 'force_burn_subtitles';
 const _showChatOverlayKey = 'show_chat_overlay';
 const _chatOverlayCornerKey = 'chat_overlay_corner';
 const _selectedServerIdKey = 'selected_server_id';
+const _profilesKey = 'profiles';
 
 /// Ports SettingsStore.kt. Kotlin's `ObservableSettings` gives a reactive
 /// `Flow` for free because it observes the underlying platform store
@@ -38,6 +39,7 @@ class SettingsStore {
 
   Future<void> _load() async {
     final relaysJson = await _prefs.getString(_relayEntriesKey);
+    final profilesJson = await _prefs.getString(_profilesKey);
     final settings = AppSettings(
       relays: _decodeRelays(relaysJson),
       maxHostSeats: await _prefs.getInt(_maxHostSeatsKey) ?? AppSettings.defaultMaxHostSeats,
@@ -46,6 +48,7 @@ class SettingsStore {
       showChatOverlay: await _prefs.getBool(_showChatOverlayKey) ?? true,
       chatOverlayCorner: _decodeCorner(await _prefs.getString(_chatOverlayCornerKey)),
       selectedServerId: await _prefs.getString(_selectedServerIdKey),
+      profiles: _decodeProfiles(profilesJson),
     );
     _subject.add(await _migrateLegacyRelayUrlIfNeeded(settings));
   }
@@ -55,6 +58,16 @@ class SettingsStore {
     try {
       final list = jsonDecode(json) as List<dynamic>;
       return list.map((e) => RelayEntry.fromJson(e as Map<String, dynamic>)).toList();
+    } catch (_) {
+      return const [];
+    }
+  }
+
+  List<Profile> _decodeProfiles(String? json) {
+    if (json == null || json.trim().isEmpty) return const [];
+    try {
+      final list = jsonDecode(json) as List<dynamic>;
+      return list.map((e) => Profile.fromJson(e as Map<String, dynamic>)).toList();
     } catch (_) {
       return const [];
     }
@@ -101,6 +114,11 @@ class SettingsStore {
       await _prefs.setString(_selectedServerIdKey, normalized.selectedServerId!);
     } else {
       await _prefs.remove(_selectedServerIdKey);
+    }
+    if (normalized.profiles.isNotEmpty) {
+      await _prefs.setString(_profilesKey, jsonEncode(normalized.profiles.map((p) => p.toJson()).toList()));
+    } else {
+      await _prefs.remove(_profilesKey);
     }
 
     _subject.add(normalized);

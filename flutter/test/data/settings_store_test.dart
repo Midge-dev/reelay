@@ -55,4 +55,26 @@ void main() {
 
     store.dispose();
   });
+
+  test('save persists profiles and re-emits through observe(), surviving a reload', () async {
+    final store = SettingsStore(SharedPreferencesAsync());
+    await store.observe().first;
+
+    const profile = Profile(id: 'p1', name: 'Sam', watchTogetherName: 'Sammy', plexUsername: 'GrimLad', thumb: 'https://example.com/t.jpg');
+    await store.save(const AppSettings(profiles: [profile]));
+
+    final updated = await store.observe().first;
+    expect(updated.profiles, hasLength(1));
+    expect(updated.profiles.single.name, 'Sam');
+    expect(updated.profiles.single.watchTogetherName, 'Sammy');
+    expect(updated.profiles.single.plexUsername, 'GrimLad');
+    expect(updated.profiles.single.thumb, 'https://example.com/t.jpg');
+    store.dispose();
+
+    // A fresh store reading the same backing prefs should see it too.
+    final reloaded = SettingsStore(SharedPreferencesAsync());
+    final reloadedSettings = await reloaded.observe().first;
+    expect(reloadedSettings.profiles.single.id, 'p1');
+    reloaded.dispose();
+  });
 }

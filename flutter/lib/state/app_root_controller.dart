@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math';
 
 import 'package:collection/collection.dart';
 import 'package:flutter/foundation.dart';
@@ -78,6 +79,9 @@ class AppRootController extends ChangeNotifier {
   String? get accountToken => _accountToken;
   String get accountTokenOrEmpty => _accountToken ?? '';
 
+  Profile? _activeProfile;
+  Profile? get activeProfile => _activeProfile;
+
   AppSettings get currentSettings => _settingsStore.current ?? const AppSettings();
 
   Future<void> saveBitratePreference(int kbps) {
@@ -121,12 +125,95 @@ class AppRootController extends ChangeNotifier {
   // ---- Startup / auth ----
 
   Future<void> start() async {
-    final token = await _tokenStore.loadToken();
-    if (token == null) {
-      _setState(const LoggedOut());
-    } else {
-      await connect(token);
+    final settings = await _settingsStore.observe().first;
+    final profiles = settings.profiles;
+
+    if (profiles.isEmpty) {
+      // Pre-profiles install: migrate whatever single account was already
+      // signed in into profile #1 (DESIGN.md's "the first profile is
+      // everybody" — a picker never even existed before this).
+      final legacyToken = await _tokenStore.loadToken();
+      if (legacyToken != null) {
+        await completeFirstLogin(legacyToken);
+      } else {
+        _setState(const LoggedOut());
+      }
+      return;
     }
+
+    if (profiles.length == 1) {
+      // Never shown the picker for a single-person household.
+      await selectProfile(profiles.first);
+      return;
+    }
+
+    _setState(ProfilePicker(profiles: profiles));
+  }
+
+  /// Fetches the account, wraps it in a [Profile], persists it, and saves
+  /// its own keyed token — but does not activate it. Callers decide
+  /// whether creating a profile also means becoming it (the picker/first
+  /// login do; provisioning one for someone else from Settings doesn't).
+  Future<Profile> _createProfile({
+    required String token,
+    required String? name,
+    required String? watchTogetherName,
+  }) async {
+    final clientId = await _plexIdentity.getOrCreateClientIdentifier();
+    PlexAccount? account;
+    try {
+      account = await PlexAuthApi(clientId).fetchAccount(token);
+    } catch (_) {
+      account = null;
+    }
+    final resolvedName = name ?? account?.username ?? 'You';
+    final profile = Profile(
+      id: _randomProfileId(),
+      name: resolvedName,
+      watchTogetherName: (watchTogetherName?.isNotEmpty ?? false) ? watchTogetherName! : resolvedName,
+      plexUsername: account?.username ?? resolvedName,
+      thumb: account?.thumb,
+    );
+
+    await _tokenStore.saveTokenForProfile(profile.id, token);
+    final settings = await _settingsStore.observe().first;
+    await _settingsStore.save(settings.copyWith(profiles: [...settings.profiles, profile]));
+    return profile;
+  }
+
+  /// Settings' "add a profile" — provisions one for someone else to pick
+  /// later without switching away from whoever is currently signed in.
+  Future<Profile> addProfile({required String name, required String watchTogetherName, required String token}) =>
+      _createProfile(token: token, name: name, watchTogetherName: watchTogetherName);
+
+  /// Screen 07b via the picker — creating a profile there means becoming
+  /// it immediately, reusing the same PIN-link flow first-run login uses.
+  Future<void> addProfileAndActivate({required String name, required String watchTogetherName, required String token}) async {
+    final profile = await _createProfile(token: token, name: name, watchTogetherName: watchTogetherName);
+    _activeProfile = profile;
+    await connect(token);
+  }
+
+  /// AuthScreen's onLoggedIn, for the case start() found no profiles and
+  /// no legacy token — creates profile #1 from whatever account just
+  /// signed in and activates it (there's no one else to fall back to),
+  /// same as the migration path in start() does for a pre-profiles install.
+  Future<void> completeFirstLogin(String token) async {
+    final profile = await _createProfile(token: token, name: null, watchTogetherName: null);
+    _activeProfile = profile;
+    await connect(token);
+  }
+
+  Future<void> selectProfile(Profile profile) async {
+    final token = await _tokenStore.loadTokenForProfile(profile.id);
+    if (token == null) {
+      // The keyed token is gone (cleared externally, etc.) — nothing to
+      // recover automatically; back to sign-in is the only honest option.
+      _setState(const LoggedOut());
+      return;
+    }
+    _activeProfile = profile;
+    await connect(token);
   }
 
   Future<void> connect(String token) async {
@@ -337,7 +424,7 @@ class AppRootController extends ChangeNotifier {
     required String targetRatingKey,
     required bool restart,
   }) async {
-    final hostName = _localAccount?.username ?? 'Host';
+    final hostName = _activeProfile?.watchTogetherName ?? _localAccount?.username ?? 'Host';
     final settings = await _settingsStore.observe().first;
     final defaultRelay = settings.defaultRelay;
     if (defaultRelay == null) {
@@ -385,7 +472,7 @@ class AppRootController extends ChangeNotifier {
     final next = settings.relays.firstWhereOrNull((r) => r.url != current.relay.relayUrl);
     if (next == null) return;
     releaseRelayClient();
-    final hostName = _localAccount?.username ?? 'Host';
+    final hostName = _activeProfile?.watchTogetherName ?? _localAccount?.username ?? 'Host';
     final newClient = await _ensureRelayClient(
       next.url,
       CreateRoom(
@@ -641,3 +728,11 @@ PlexEpisode episodeFrom(PlexOnDeckItem item) => PlexEpisode(
 /// sections.first()` pattern repeated throughout MainActivity.kt.
 PlexSection sectionFor(List<PlexSection> sections, String type) =>
     sections.firstWhereOrNull((s) => s.type == type) ?? sections.first;
+
+/// Mirrors settings_store.dart's `_randomRelayId` — same shape, separate
+/// copy since that one's private to its own file.
+String _randomProfileId() {
+  const chars = 'abcdefghijklmnopqrstuvwxyz';
+  final random = Random.secure();
+  return List.generate(16, (_) => chars[random.nextInt(chars.length)]).join();
+}

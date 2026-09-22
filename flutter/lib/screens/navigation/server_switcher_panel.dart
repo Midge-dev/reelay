@@ -14,6 +14,7 @@ import '../../kit/surface_style.dart';
 import '../../kit/text.dart';
 import '../../theme/tokens.dart';
 import '../../theme/typography.dart';
+import '../common/jellyfin_coming_soon_row.dart';
 
 const _panelWidth = 820.0;
 const _railWidth = 80.0;
@@ -233,9 +234,7 @@ class _ServerSwitcherPanelState extends State<ServerSwitcherPanel> {
                                 ),
                                 const SizedBox(height: AppSpacing.md),
                               ],
-                              _JellyfinComingSoonRow(
-                                focusNode: _rows.isEmpty ? _firstFocus : null,
-                              ),
+                              const JellyfinComingSoonRow(),
                               const SizedBox(height: AppSpacing.xl),
                               const DecoratedBox(
                                 decoration: BoxDecoration(
@@ -396,80 +395,3 @@ class _ReachabilityBadge extends StatelessWidget {
   }
 }
 
-const _jellyfinBadgeBorder = Border.fromBorderSide(
-  BorderSide(color: AppColors.warning),
-);
-
-class _JellyfinComingSoonRow extends StatelessWidget {
-  final FocusNode? focusNode;
-
-  const _JellyfinComingSoonRow({this.focusNode});
-
-  @override
-  Widget build(BuildContext context) {
-    // Disabled, same treatment as the Jellyfin slot in the add-profile
-    // dialog (screen 07b) — a real, visible placeholder for when Jellyfin
-    // support lands, not a functioning row.
-    return Opacity(
-      opacity: 0.45,
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(minHeight: _rowMinHeight),
-        child: DecoratedBox(
-          decoration: BoxDecoration(
-            color: AppColors.surface,
-            border: Border.all(color: AppColors.line),
-            borderRadius: BorderRadius.circular(AppShape.radiusMd),
-          ),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(
-              horizontal: AppSpacing.xl,
-              vertical: AppSpacing.md,
-            ),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                const AppIcon(Icons.dns, size: 26, tint: AppColors.ink3),
-                const SizedBox(width: AppSpacing.lg),
-                const Expanded(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      AppText(
-                        'Jellyfin',
-                        style: AppTypography.label,
-                        color: AppColors.ink2,
-                      ),
-                      SizedBox(height: 3),
-                      AppText(
-                        'Not connectable yet',
-                        style: AppTypography.caption,
-                        color: AppColors.ink3,
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(width: AppSpacing.lg),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: AppSpacing.sm,
-                    vertical: 2,
-                  ),
-                  decoration: BoxDecoration(
-                    border: _jellyfinBadgeBorder,
-                    borderRadius: BorderRadius.circular(AppShape.radiusSm),
-                  ),
-                  child: const AppText(
-                    'COMING SOON',
-                    style: AppTypography.caption,
-                    color: AppColors.warning,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}

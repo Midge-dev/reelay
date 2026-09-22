@@ -1,4 +1,5 @@
 import '../data/plex/plex_models.dart';
+import '../data/settings/app_settings.dart';
 import '../sync/relay_client.dart';
 
 /// Ports MainActivity.kt's private `LibraryContext` data class — the
@@ -35,6 +36,16 @@ class Checking extends AppState {
 
 class LoggedOut extends AppState {
   const LoggedOut();
+}
+
+/// Screen 07 — shown only when 2+ profiles exist on the device (a
+/// single-person household never sees it, per DESIGN.md). Never reachable
+/// mid-session in this pass; only at cold start, matching the handoff's
+/// "first screen after launch" framing.
+class ProfilePicker extends AppState {
+  final List<Profile> profiles;
+
+  const ProfilePicker({required this.profiles});
 }
 
 class ConnectingToServer extends AppState {
