@@ -25,6 +25,18 @@ class PhosphorIconsRegular {
     fontPackage: 'phosphor_flutter',
     matchTextDirection: true,
   );
+  static const caretDown = IconData(
+    0xe136,
+    fontFamily: 'PhosphorRegular',
+    fontPackage: 'phosphor_flutter',
+    matchTextDirection: true,
+  );
+  static const caretUp = IconData(
+    0xe13c,
+    fontFamily: 'PhosphorRegular',
+    fontPackage: 'phosphor_flutter',
+    matchTextDirection: true,
+  );
   static const chatCircleText = IconData(
     0xe16e,
     fontFamily: 'PhosphorRegular',
@@ -105,6 +117,12 @@ class PhosphorIconsRegular {
   );
   static const usersThree = IconData(
     0xe68e,
+    fontFamily: 'PhosphorRegular',
+    fontPackage: 'phosphor_flutter',
+    matchTextDirection: true,
+  );
+  static const x = IconData(
+    0xe4f6,
     fontFamily: 'PhosphorRegular',
     fontPackage: 'phosphor_flutter',
     matchTextDirection: true,

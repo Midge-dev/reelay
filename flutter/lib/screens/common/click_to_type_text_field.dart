@@ -31,6 +31,9 @@ class ClickToTypeTextField extends StatefulWidget {
   final TextStyle? textStyle;
   final VoidCallback? onNavigateRight;
   final FocusNode? focusNode;
+  // Shown, in ink3, in place of the value when empty and not being edited —
+  // opt-in since most callers (e.g. profile name fields) want a blank box.
+  final String? hintText;
 
   const ClickToTypeTextField({
     super.key,
@@ -39,6 +42,7 @@ class ClickToTypeTextField extends StatefulWidget {
     this.textStyle,
     this.onNavigateRight,
     this.focusNode,
+    this.hintText,
   });
 
   @override
@@ -138,7 +142,9 @@ class _ClickToTypeTextFieldState extends State<ClickToTypeTextField> {
           : Focus(
               focusNode: _displayFocusNode,
               onKeyEvent: _handleDisplayKeyEvent,
-              child: Text(widget.value, style: style),
+              child: widget.value.isEmpty && widget.hintText != null
+                  ? Text(widget.hintText!, style: style.copyWith(color: AppColors.ink3))
+                  : Text(widget.value, style: style),
             ),
     );
   }
