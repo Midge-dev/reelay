@@ -1,7 +1,9 @@
 import 'package:flutter/widgets.dart';
 
+import '../../data/settings/app_settings.dart';
 import '../../kit/focusable_surface.dart';
 import '../../kit/icon.dart';
+import '../../kit/icon_button.dart';
 import '../../kit/surface_style.dart';
 import '../../kit/text.dart';
 import '../../theme/phosphor_icons.dart';
@@ -31,6 +33,8 @@ final _rowBorder = SurfaceBorder(
 class AppearanceScreen extends StatelessWidget {
   final ThemeId current;
   final ValueChanged<ThemeId> onSelect;
+  final double uiScale;
+  final ValueChanged<double> onSelectUiScale;
   final VoidCallback onBack;
   final FocusNode backFocus;
 
@@ -38,6 +42,8 @@ class AppearanceScreen extends StatelessWidget {
     super.key,
     required this.current,
     required this.onSelect,
+    required this.uiScale,
+    required this.onSelectUiScale,
     required this.onBack,
     required this.backFocus,
   });
@@ -78,6 +84,18 @@ class AppearanceScreen extends StatelessWidget {
                       color: AppColors.ink3,
                     ),
                   ),
+                  AppText('UI Size', style: AppTypography.rowLabel),
+                  Padding(
+                    padding: EdgeInsets.only(top: 4.du(context), bottom: 14.du(context)),
+                    child: AppText(
+                      'Turn this up if things still look small on your TV — there\'s no way for the app to know your screen\'s physical size on its own.',
+                      color: AppColors.ink3,
+                    ),
+                  ),
+                  Padding(
+                    padding: EdgeInsets.only(bottom: 24.du(context)),
+                    child: _UiScaleStepper(value: uiScale, onChanged: onSelectUiScale),
+                  ),
                   for (final id in ThemeId.values)
                     Padding(
                       padding: EdgeInsets.only(bottom: 12.du(context)),
@@ -98,6 +116,66 @@ class AppearanceScreen extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+/// The "UI Size" control — a stepper, not a drag slider, since there's no
+/// pointer on a D-pad remote. Steps by [AppSettings.uiScaleStep] and snaps
+/// to that grid on every change (rather than drifting on floating-point
+/// arithmetic across repeated presses), clamped to
+/// [AppSettings.minUiScale]/[AppSettings.maxUiScale].
+class _UiScaleStepper extends StatelessWidget {
+  final double value;
+  final ValueChanged<double> onChanged;
+
+  const _UiScaleStepper({required this.value, required this.onChanged});
+
+  double _snap(double v) {
+    final stepped = (v / AppSettings.uiScaleStep).round() * AppSettings.uiScaleStep;
+    return stepped.clamp(AppSettings.minUiScale, AppSettings.maxUiScale);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final canDecrease = value > AppSettings.minUiScale;
+    final canIncrease = value < AppSettings.maxUiScale;
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        AppIconButton(
+          enabled: canDecrease,
+          onClick: () => onChanged(_snap(value - AppSettings.uiScaleStep)),
+          child: const AppIcon(PhosphorIconsRegular.minus, size: 22),
+        ),
+        SizedBox(
+          width: 110.du(context),
+          child: Center(
+            child: AppText(
+              '${(value * 100).round()}%',
+              style: AppTypography.label,
+            ),
+          ),
+        ),
+        AppIconButton(
+          enabled: canIncrease,
+          onClick: () => onChanged(_snap(value + AppSettings.uiScaleStep)),
+          child: const AppIcon(PhosphorIconsRegular.plus, size: 22),
+        ),
+        if (value != AppSettings.defaultUiScale) ...[
+          SizedBox(width: AppSpacing.lg.du(context)),
+          FocusableSurface(
+            onClick: () => onChanged(AppSettings.defaultUiScale),
+            shape: const StadiumBorder(),
+            colors: SurfaceColors(
+              container: AppColors.transparent,
+              content: AppColors.ink3,
+              focusedContent: AppColors.ink,
+            ),
+            child: const AppText('Reset to 100%'),
+          ),
+        ],
+      ],
     );
   }
 }

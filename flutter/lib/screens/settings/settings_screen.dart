@@ -294,6 +294,14 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     await store.save(persisted.copyWith(themeId: id));
   }
 
+  Future<void> _selectUiScale(double scale) async {
+    // Same "applies at once" behavior as the theme picker above.
+    setState(() => _settings = _settings.copyWith(uiScale: scale));
+    final store = ref.read(settingsStoreProvider);
+    final persisted = await store.observe().first;
+    await store.save(persisted.copyWith(uiScale: scale));
+  }
+
   void _cancelPairing() {
     _pairingServer?.stop();
     setState(() {
@@ -361,6 +369,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       return AppearanceScreen(
         current: _settings.themeId,
         onSelect: _selectTheme,
+        uiScale: _settings.uiScale,
+        onSelectUiScale: _selectUiScale,
         backFocus: _appearanceBackFocus,
         onBack: () {
           setState(() => _showingAppearance = false);
@@ -563,9 +573,12 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const AppText('Theme'),
+              const AppText('Theme & UI size'),
               const Spacer(),
-              AppText(_settings.themeId.label, color: AppColors.ink3),
+              AppText(
+                '${_settings.themeId.label} · ${(_settings.uiScale * 100).round()}%',
+                color: AppColors.ink3,
+              ),
             ],
           ),
         ),

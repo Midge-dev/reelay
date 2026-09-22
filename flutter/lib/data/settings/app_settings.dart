@@ -84,6 +84,18 @@ class AppSettings {
   static const defaultMaxBitrateKbps = 8000;
   static const defaultMaxHostSeats = 8;
 
+  // Screen 22's "UI Size" stepper — a manual multiplier on top of
+  // AppScale's screenHeight/1080 factor (see theme/scale.dart). No API
+  // tells a set-top box its panel's real physical size, so a 4K TV
+  // reporting the same 1920x1080 logical surface as a 32" one renders
+  // identically at factor 1.0 even though it reads much smaller from a
+  // couch — this is the manual compensation for that, not a replacement
+  // for it.
+  static const defaultUiScale = 1.0;
+  static const minUiScale = 0.75;
+  static const maxUiScale = 2.0;
+  static const uiScaleStep = 0.05;
+
   static const bitratePresets = [
     BitratePreset(2000, '2 Mbps (Low)'),
     BitratePreset(4000, '4 Mbps (Medium)'),
@@ -106,6 +118,7 @@ class AppSettings {
   final Set<String> disabledServerIds;
   final List<Profile> profiles;
   final ThemeId themeId;
+  final double uiScale;
 
   const AppSettings({
     this.relays = const [],
@@ -117,6 +130,7 @@ class AppSettings {
     this.disabledServerIds = const {},
     this.profiles = const [],
     this.themeId = ThemeId.nocturne,
+    this.uiScale = defaultUiScale,
   });
 
   AppSettings copyWith({
@@ -129,6 +143,7 @@ class AppSettings {
     Set<String>? disabledServerIds,
     List<Profile>? profiles,
     ThemeId? themeId,
+    double? uiScale,
   }) {
     return AppSettings(
       relays: relays ?? this.relays,
@@ -140,6 +155,7 @@ class AppSettings {
       disabledServerIds: disabledServerIds ?? this.disabledServerIds,
       profiles: profiles ?? this.profiles,
       themeId: themeId ?? this.themeId,
+      uiScale: uiScale ?? this.uiScale,
     );
   }
 

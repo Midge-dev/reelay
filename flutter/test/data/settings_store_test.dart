@@ -20,7 +20,24 @@ void main() {
     expect(settings.maxHostSeats, AppSettings.defaultMaxHostSeats);
     expect(settings.maxVideoBitrateKbps, AppSettings.defaultMaxBitrateKbps);
     expect(settings.themeId, ThemeId.nocturne);
+    expect(settings.uiScale, AppSettings.defaultUiScale);
     store.dispose();
+  });
+
+  test('save persists uiScale and re-emits through observe(), surviving a reload', () async {
+    final store = SettingsStore(SharedPreferencesAsync());
+    await store.observe().first;
+
+    await store.save(const AppSettings(uiScale: 1.3));
+
+    final updated = await store.observe().first;
+    expect(updated.uiScale, 1.3);
+    store.dispose();
+
+    final reloaded = SettingsStore(SharedPreferencesAsync());
+    final reloadedSettings = await reloaded.observe().first;
+    expect(reloadedSettings.uiScale, 1.3);
+    reloaded.dispose();
   });
 
   test('save persists the theme and re-emits through observe(), surviving a reload', () async {

@@ -115,6 +115,12 @@ class PhosphorIconsRegular {
     fontPackage: 'phosphor_flutter',
     matchTextDirection: true,
   );
+  static const minus = IconData(
+    0xe32a,
+    fontFamily: 'PhosphorRegular',
+    fontPackage: 'phosphor_flutter',
+    matchTextDirection: true,
+  );
   static const monitor = IconData(
     0xe32e,
     fontFamily: 'PhosphorRegular',

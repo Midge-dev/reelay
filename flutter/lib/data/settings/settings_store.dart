@@ -18,6 +18,7 @@ const _chatOverlayCornerKey = 'chat_overlay_corner';
 const _disabledServerIdsKey = 'disabled_server_ids';
 const _profilesKey = 'profiles';
 const _themeIdKey = 'theme_id';
+const _uiScaleKey = 'ui_scale';
 
 /// Ports SettingsStore.kt. Kotlin's `ObservableSettings` gives a reactive
 /// `Flow` for free because it observes the underlying platform store
@@ -60,6 +61,7 @@ class SettingsStore {
       ),
       profiles: _decodeProfiles(profilesJson),
       themeId: _decodeThemeId(await _prefs.getString(_themeIdKey)),
+      uiScale: await _prefs.getDouble(_uiScaleKey) ?? AppSettings.defaultUiScale,
     );
     _subject.add(await _migrateLegacyRelayUrlIfNeeded(settings));
   }
@@ -176,6 +178,7 @@ class SettingsStore {
       await _prefs.remove(_profilesKey);
     }
     await _prefs.setString(_themeIdKey, normalized.themeId.name);
+    await _prefs.setDouble(_uiScaleKey, normalized.uiScale);
 
     _subject.add(normalized);
   }

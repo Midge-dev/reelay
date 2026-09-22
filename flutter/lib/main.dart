@@ -1,6 +1,7 @@
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'data/settings/app_settings.dart';
 import 'screens/app_root.dart';
 import 'state/data_providers.dart';
 import 'theme/scale.dart';
@@ -24,6 +25,12 @@ class ReelayApp extends ConsumerWidget {
     AppColors.applyTheme(
       ref.watch(settingsStreamProvider).value?.themeId ?? ThemeId.nocturne,
     );
+    // Screen 22's "UI Size" stepper — a manual multiplier on top of the
+    // screenHeight/1080 factor, since no API tells a set-top box its
+    // panel's real physical size (see AppSettings.uiScale's doc comment).
+    final uiScale =
+        ref.watch(settingsStreamProvider).value?.uiScale ??
+        AppSettings.defaultUiScale;
     return WidgetsApp(
       title: 'Reelay',
       color: const Color(0xFF9184D9),
@@ -34,7 +41,7 @@ class ReelayApp extends ConsumerWidget {
       // this here, once, rather than at any individual screen, or the
       // numbers get hard-coded at 1.0.
       builder: (context, child) => AppScale(
-        factor: MediaQuery.sizeOf(context).height / 1080,
+        factor: (MediaQuery.sizeOf(context).height / 1080) * uiScale,
         child: child!,
       ),
       pageRouteBuilder: <T>(RouteSettings settings, WidgetBuilder builder) {

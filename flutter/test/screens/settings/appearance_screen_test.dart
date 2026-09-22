@@ -1,12 +1,16 @@
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:reelay/data/settings/app_settings.dart';
 import 'package:reelay/screens/settings/appearance_screen.dart';
+import 'package:reelay/theme/phosphor_icons.dart';
 import 'package:reelay/theme/tokens.dart';
 
 Future<void> _pump(
   WidgetTester tester, {
   ThemeId current = ThemeId.nocturne,
   ValueChanged<ThemeId>? onSelect,
+  double uiScale = AppSettings.defaultUiScale,
+  ValueChanged<double>? onSelectUiScale,
   VoidCallback? onBack,
 }) async {
   tester.view.physicalSize = const Size(1920, 1080);
@@ -20,6 +24,8 @@ Future<void> _pump(
       child: AppearanceScreen(
         current: current,
         onSelect: onSelect ?? (_) {},
+        uiScale: uiScale,
+        onSelectUiScale: onSelectUiScale ?? (_) {},
         onBack: onBack ?? () {},
         backFocus: FocusNode(),
       ),
@@ -81,4 +87,76 @@ void main() {
       );
     },
   );
+
+  group('UI Size stepper', () {
+    testWidgets('shows the current scale as a percentage', (tester) async {
+      await _pump(tester, uiScale: 1.25);
+
+      expect(find.text('125%'), findsOneWidget);
+    });
+
+    testWidgets('tapping + steps up by one increment', (tester) async {
+      double? selected;
+      await _pump(tester, uiScale: 1.0, onSelectUiScale: (v) => selected = v);
+
+      await tester.tap(find.byIcon(PhosphorIconsRegular.plus));
+      await tester.pump();
+
+      expect(selected, closeTo(1.0 + AppSettings.uiScaleStep, 0.001));
+    });
+
+    testWidgets('tapping - steps down by one increment', (tester) async {
+      double? selected;
+      await _pump(tester, uiScale: 1.0, onSelectUiScale: (v) => selected = v);
+
+      await tester.tap(find.byIcon(PhosphorIconsRegular.minus));
+      await tester.pump();
+
+      expect(selected, closeTo(1.0 - AppSettings.uiScaleStep, 0.001));
+    });
+
+    testWidgets('- is disabled at the minimum', (tester) async {
+      double? selected;
+      await _pump(
+        tester,
+        uiScale: AppSettings.minUiScale,
+        onSelectUiScale: (v) => selected = v,
+      );
+
+      await tester.tap(find.byIcon(PhosphorIconsRegular.minus));
+      await tester.pump();
+
+      expect(selected, isNull);
+    });
+
+    testWidgets('+ is disabled at the maximum', (tester) async {
+      double? selected;
+      await _pump(
+        tester,
+        uiScale: AppSettings.maxUiScale,
+        onSelectUiScale: (v) => selected = v,
+      );
+
+      await tester.tap(find.byIcon(PhosphorIconsRegular.plus));
+      await tester.pump();
+
+      expect(selected, isNull);
+    });
+
+    testWidgets('no reset shortcut shown at the default scale', (tester) async {
+      await _pump(tester, uiScale: AppSettings.defaultUiScale);
+
+      expect(find.text('Reset to 100%'), findsNothing);
+    });
+
+    testWidgets('tapping the reset shortcut returns to 100%', (tester) async {
+      double? selected;
+      await _pump(tester, uiScale: 1.3, onSelectUiScale: (v) => selected = v);
+
+      await tester.tap(find.text('Reset to 100%'));
+      await tester.pump();
+
+      expect(selected, AppSettings.defaultUiScale);
+    });
+  });
 }
