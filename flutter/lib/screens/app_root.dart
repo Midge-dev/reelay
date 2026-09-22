@@ -13,6 +13,8 @@ import '../theme/tokens.dart';
 import '../theme/typography.dart';
 import 'auth/auth_screen.dart';
 import 'common/loading_screen.dart';
+import 'common/no_servers_screen.dart';
+import 'common/playback_failed_screen.dart';
 import 'home/home_loading_skeleton.dart';
 import 'home/home_screen.dart';
 import 'library/collection_detail_screen.dart';
@@ -123,6 +125,16 @@ class _AppContent extends StatelessWidget {
           profiles: profiles,
           onSelectProfile: controller.selectProfile,
           onAddProfile: controller.addProfileAndActivate,
+        ),
+      NoServersReachable(:final token, :final resources) => NoServersScreen(
+          resources: resources,
+          onRetry: () => controller.connect(token),
+          onStartOver: () => controller.returnTo(const LoggedOut()),
+        ),
+      PlaybackFailed(:final ctx, :final targetRatingKey, :final fromStart, :final reason, :final returnState) => PlaybackFailedScreen(
+          reason: reason,
+          onRetry: () => controller.playMovie(ctx, targetRatingKey, returnState, fromStart: fromStart),
+          onBack: () => controller.returnTo(returnState),
         ),
       AppError(:final message, :final retryState) => BackHandler(
           onBack: () => controller.returnTo(retryState),

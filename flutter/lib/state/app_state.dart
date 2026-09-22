@@ -66,6 +66,45 @@ class AppError extends AppState {
   const AppError({required this.message, required this.retryState});
 }
 
+/// Screen 25 — a title that wouldn't start. Spec puts this as a dialog
+/// over the (dimmed, still-visible) detail page; this port renders it as
+/// its own full screen instead, matching how AppError already works here
+/// rather than adding a new "render one AppState behind another" pattern
+/// to app_root.dart for a single call site — a disclosed simplification,
+/// not an oversight. No alternate-source offer: that needs cross-server
+/// duplicate folding (README: "the largest single piece of work in this
+/// package"), which doesn't exist yet. [ctx]/[targetRatingKey]/[fromStart]
+/// are exactly playMovie's own params, so retry is the identical call.
+class PlaybackFailed extends AppState {
+  final LibraryContext ctx;
+  final String targetRatingKey;
+  final bool fromStart;
+  final String reason;
+  final AppState returnState;
+
+  const PlaybackFailed({
+    required this.ctx,
+    required this.targetRatingKey,
+    required this.fromStart,
+    required this.reason,
+    required this.returnState,
+  });
+}
+
+/// Screen 24 — the one failure that earns the whole screen, since with
+/// every server gone there's no content behind it to keep visible (see
+/// AppError's doc comment: this app is single-server end to end, so
+/// "every server" here means the account's one configured/preferred
+/// server). [resources] is the account's full resource list (usually one
+/// entry) so the screen can name what actually failed, not just say
+/// "something went wrong".
+class NoServersReachable extends AppState {
+  final String token;
+  final List<PlexResource> resources;
+
+  const NoServersReachable({required this.token, required this.resources});
+}
+
 class RelaySetup extends AppState {
   final LibraryContext ctx;
 

@@ -229,10 +229,22 @@ class AppRootController extends ChangeNotifier {
 
     try {
       final settings = await _settingsStore.observe().first;
-      final server = await PlexResourcesApi(_clientIdentifier)
-          .findReachableServer(token, preferredMachineIdentifier: settings.selectedServerId);
+      final resourcesApi = PlexResourcesApi(_clientIdentifier);
+      final server = await resourcesApi.findReachableServer(token, preferredMachineIdentifier: settings.selectedServerId);
       if (server == null) {
-        throw const _FriendlyError("No reachable Plex server found — make sure it's online and reachable on this network.");
+        // Screen 24 — this is the one failure that earns the whole screen,
+        // so it gets a real state (with the account's resource list, for a
+        // named-per-server display) rather than falling into the generic
+        // AppError catch below, which would just print the raw exception.
+        List<PlexResource> resources;
+        try {
+          resources = await resourcesApi.listServers(token);
+        } catch (_) {
+          resources = const [];
+        }
+        _setState(NoServersReachable(token: token, resources: resources));
+        unawaited(_refreshWatchlist());
+        return;
       }
       final serverApi = PlexServerApi(server, _clientIdentifier);
       final sections = await serverApi.fetchSections();
@@ -586,8 +598,19 @@ class AppRootController extends ChangeNotifier {
         returnState: returnState,
         relay: null,
       ));
-    } catch (e) {
-      _setState(AppError(message: '$e', retryState: returnState));
+    } catch (_) {
+      // Screen 25 — name what failed plainly rather than the raw
+      // exception; the actual cause is almost always "the server
+      // stopped answering partway through starting", which is also the
+      // one phrase from the mockup that's true regardless of the
+      // specific underlying network error.
+      _setState(PlaybackFailed(
+        ctx: ctx,
+        targetRatingKey: targetRatingKey,
+        fromStart: fromStart,
+        reason: '${ctx.server.name} stopped answering partway through starting.',
+        returnState: returnState,
+      ));
     }
   }
 
