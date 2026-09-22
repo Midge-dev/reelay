@@ -15,7 +15,7 @@ const _maxBitrateKey = 'max_video_bitrate_kbps';
 const _forceBurnKey = 'force_burn_subtitles';
 const _showChatOverlayKey = 'show_chat_overlay';
 const _chatOverlayCornerKey = 'chat_overlay_corner';
-const _selectedServerIdKey = 'selected_server_id';
+const _disabledServerIdsKey = 'disabled_server_ids';
 const _profilesKey = 'profiles';
 const _themeIdKey = 'theme_id';
 
@@ -55,7 +55,9 @@ class SettingsStore {
       chatOverlayCorner: _decodeCorner(
         await _prefs.getString(_chatOverlayCornerKey),
       ),
-      selectedServerId: await _prefs.getString(_selectedServerIdKey),
+      disabledServerIds: _decodeDisabledServerIds(
+        await _prefs.getString(_disabledServerIdsKey),
+      ),
       profiles: _decodeProfiles(profilesJson),
       themeId: _decodeThemeId(await _prefs.getString(_themeIdKey)),
     );
@@ -83,6 +85,16 @@ class SettingsStore {
           .toList();
     } catch (_) {
       return const [];
+    }
+  }
+
+  Set<String> _decodeDisabledServerIds(String? json) {
+    if (json == null || json.trim().isEmpty) return const {};
+    try {
+      final list = jsonDecode(json) as List<dynamic>;
+      return list.cast<String>().toSet();
+    } catch (_) {
+      return const {};
     }
   }
 
@@ -147,13 +159,13 @@ class SettingsStore {
       _chatOverlayCornerKey,
       normalized.chatOverlayCorner.name,
     );
-    if (normalized.selectedServerId != null) {
+    if (normalized.disabledServerIds.isNotEmpty) {
       await _prefs.setString(
-        _selectedServerIdKey,
-        normalized.selectedServerId!,
+        _disabledServerIdsKey,
+        jsonEncode(normalized.disabledServerIds.toList()),
       );
     } else {
-      await _prefs.remove(_selectedServerIdKey);
+      await _prefs.remove(_disabledServerIdsKey);
     }
     if (normalized.profiles.isNotEmpty) {
       await _prefs.setString(

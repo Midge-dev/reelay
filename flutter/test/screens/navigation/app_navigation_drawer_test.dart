@@ -1,10 +1,12 @@
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:reelay/data/plex/plex_models.dart';
+import 'package:reelay/data/plex/plex_resources_api.dart';
 import 'package:reelay/screens/navigation/app_navigation_drawer.dart';
 import 'package:reelay/theme/phosphor_icons.dart';
 
-const _server = PlexServer(name: 'Home', baseUrl: 'http://192.168.1.5:32400', accessToken: 'tok');
+const _server = PlexServer(name: 'Home', baseUrl: 'http://192.168.1.5:32400', accessToken: 'tok', machineIdentifier: 'home-id');
+const _connectedServers = [ReachableServer(_server, ServerReachability.local)];
 
 const _sections = [
   PlexSection(key: 's1', title: 'Movies', type: 'movie'),
@@ -35,8 +37,9 @@ void main() {
         loadServers: () async => const [],
         probeServer: (_) async => null,
         loadLibraryCount: (_) async => null,
-        currentServer: _server,
-        onSwitchServer: (_) {},
+        connectedServers: _connectedServers,
+        disabledServerIds: const {},
+        onToggleServer: (_, _) {},
         child: const SizedBox(),
       ),
     );
@@ -65,8 +68,9 @@ void main() {
         loadServers: () async => const [],
         probeServer: (_) async => null,
         loadLibraryCount: (_) async => null,
-        currentServer: _server,
-        onSwitchServer: (_) {},
+        connectedServers: _connectedServers,
+        disabledServerIds: const {},
+        onToggleServer: (_, _) {},
         child: const SizedBox(),
       ),
     );
@@ -95,8 +99,9 @@ void main() {
         loadServers: () async => const [],
         probeServer: (_) async => null,
         loadLibraryCount: (_) async => null,
-        currentServer: _server,
-        onSwitchServer: (_) {},
+        connectedServers: _connectedServers,
+        disabledServerIds: const {},
+        onToggleServer: (_, _) {},
         child: const SizedBox(),
       ),
     );
@@ -122,8 +127,9 @@ void main() {
         loadServers: () async => const [],
         probeServer: (_) async => null,
         loadLibraryCount: (_) async => null,
-        currentServer: _server,
-        onSwitchServer: (_) {},
+        connectedServers: _connectedServers,
+        disabledServerIds: const {},
+        onToggleServer: (_, _) {},
         child: const SizedBox(),
       ),
     );

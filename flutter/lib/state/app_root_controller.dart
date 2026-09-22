@@ -92,6 +92,18 @@ class AppRootController extends ChangeNotifier {
   List<PlexWatchlistItem>? _watchlistItems;
   List<PlexWatchlistItem> get watchlist => _watchlistItems ?? const [];
 
+  // Multi-server hub (Phase 1 of the refactor): every reachable, non-
+  // disabled server the account can see, probed concurrently at connect
+  // time — see PlexResourcesApi.connectToAllServers. AppState still only
+  // renders content from one of these for now (_primaryServer below);
+  // fanning content itself out across all of them lands in a later phase.
+  // The switcher panel (screen 06) already reads the full list, though —
+  // that's real multi-server, just not for library/home content yet.
+  List<ReachableServer> _connectedServers = const [];
+  List<ReachableServer> get connectedServers => _connectedServers;
+  List<PlexResource> _unreachableResources = const [];
+  List<PlexResource> get unreachableResources => _unreachableResources;
+
   RelayIdentity? _relayIdentity;
   RelayClient? _relayClient;
   RelayClient? get relayClient => _relayClient;
@@ -230,12 +242,21 @@ class AppRootController extends ChangeNotifier {
     try {
       final settings = await _settingsStore.observe().first;
       final resourcesApi = PlexResourcesApi(_clientIdentifier);
-      final server = await resourcesApi.findReachableServer(token, preferredMachineIdentifier: settings.selectedServerId);
+      final probed = await resourcesApi.connectToAllServers(
+        token,
+        disabledMachineIdentifiers: settings.disabledServerIds,
+      );
+      _connectedServers = probed.connected;
+      _unreachableResources = probed.unreachable;
+      final server = probed.connected.firstOrNull?.server;
       if (server == null) {
         // Screen 24 — this is the one failure that earns the whole screen,
         // so it gets a real state (with the account's resource list, for a
         // named-per-server display) rather than falling into the generic
         // AppError catch below, which would just print the raw exception.
+        // A deliberately-empty hub (every server disabled) reaches this
+        // same screen for now — see the plan's open question on distinct
+        // messaging for that case.
         List<PlexResource> resources;
         try {
           resources = await resourcesApi.listServers(token);
@@ -262,14 +283,22 @@ class AppRootController extends ChangeNotifier {
     unawaited(_refreshWatchlist());
   }
 
-  /// Persists the chosen server (screen 06's switcher panel) and runs the
-  /// same reconnect [connect] already does on startup — there's no lighter
-  /// in-place swap of the active [PlexServer]; every AppState variant
-  /// carries its own `server`/`ctx.server` copy (see app_state.dart), so a
-  /// full reconnect is what actually replaces all of them consistently.
-  Future<void> switchServer(String machineIdentifier) async {
+  /// Toggles one server in or out of the hub (screen 06's switcher panel —
+  /// there's no more "the active server" to switch to, every non-disabled
+  /// reachable server contributes at once) and runs the same reconnect
+  /// [connect] already does on startup — there's no lighter in-place swap;
+  /// every AppState variant carries its own server copy (see
+  /// app_state.dart), so a full reconnect is what actually replaces all of
+  /// them consistently.
+  Future<void> setServerEnabled(String machineIdentifier, bool enabled) async {
     final settings = await _settingsStore.observe().first;
-    await _settingsStore.save(settings.copyWith(selectedServerId: machineIdentifier));
+    final disabled = {...settings.disabledServerIds};
+    if (enabled) {
+      disabled.remove(machineIdentifier);
+    } else {
+      disabled.add(machineIdentifier);
+    }
+    await _settingsStore.save(settings.copyWith(disabledServerIds: disabled));
     final token = _accountToken;
     if (token != null) await connect(token);
   }

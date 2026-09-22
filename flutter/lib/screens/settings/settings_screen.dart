@@ -11,7 +11,6 @@ import '../../kit/button.dart';
 import '../../kit/filter_chip.dart';
 import '../../kit/focusable_surface.dart';
 import '../../kit/list_item.dart';
-import '../../kit/radio_button.dart';
 import '../../kit/surface_style.dart';
 import '../../kit/switch.dart';
 import '../../kit/text.dart';
@@ -485,6 +484,11 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const AppText('Available sources'),
+        SizedBox(height: 4.du(context)),
+        AppText(
+          'Every reachable source feeds the hub at once — turn one off to leave it out.',
+          color: AppColors.ink3,
+        ),
         SizedBox(height: 8.du(context)),
         if (!_sourcesLoaded)
           const AppText('Loading sources…')
@@ -500,18 +504,24 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 Padding(
                   padding: EdgeInsets.only(bottom: 8.du(context)),
                   child: AppListItem(
-                    selected:
-                        _settings.selectedServerId == source.machineIdentifier,
-                    onClick: () => setState(
-                      () => _settings = _settings.copyWith(
-                        selectedServerId: source.machineIdentifier,
-                      ),
-                    ),
+                    selected: false,
+                    onClick: () => setState(() {
+                      final enabled = _settings.disabledServerIds.contains(
+                        source.machineIdentifier,
+                      );
+                      final disabled = {..._settings.disabledServerIds};
+                      if (enabled) {
+                        disabled.remove(source.machineIdentifier);
+                      } else {
+                        disabled.add(source.machineIdentifier);
+                      }
+                      _settings = _settings.copyWith(disabledServerIds: disabled);
+                    }),
                     focusNode: index == 0 ? _firstSourceFocus : null,
-                    leading: AppRadioButton(
-                      selected:
-                          _settings.selectedServerId ==
-                          source.machineIdentifier,
+                    leading: _SourceToggleIndicator(
+                      enabled: !_settings.disabledServerIds.contains(
+                        source.machineIdentifier,
+                      ),
                     ),
                     headline: AppText(
                       '${source.name}${source.owned ? ' (owned)' : ''}',
@@ -814,6 +824,43 @@ class _SettingsGroup extends StatelessWidget {
         SizedBox(height: 6.du(context)),
         child,
       ],
+    );
+  }
+}
+
+const _sourceToggleWidth = 44.0;
+const _sourceToggleHeight = 24.0;
+const _sourceToggleThumbSize = 18.0;
+const _sourceToggleThumbInset = 3.0;
+
+/// A track-and-thumb visual with no focus/gesture handling of its own — the
+/// enclosing AppListItem is the row's one focusable target (see
+/// AppRadioButton's matching "purely decorative" precedent, and
+/// server_switcher_panel.dart's identical indicator for the same reason).
+class _SourceToggleIndicator extends StatelessWidget {
+  final bool enabled;
+
+  const _SourceToggleIndicator({required this.enabled});
+
+  @override
+  Widget build(BuildContext context) {
+    final thumbSize = _sourceToggleThumbSize.du(context);
+    final thumbInset = _sourceToggleThumbInset.du(context);
+    return Container(
+      width: _sourceToggleWidth.du(context),
+      height: _sourceToggleHeight.du(context),
+      decoration: BoxDecoration(
+        color: enabled ? AppColors.accent700 : AppColors.surface,
+        border: Border.all(color: AppColors.line, width: AppShape.borderWidth.du(context)),
+        borderRadius: BorderRadius.circular((_sourceToggleHeight / 2).du(context)),
+      ),
+      alignment: enabled ? Alignment.centerRight : Alignment.centerLeft,
+      padding: EdgeInsets.symmetric(horizontal: thumbInset),
+      child: Container(
+        width: thumbSize,
+        height: thumbSize,
+        decoration: BoxDecoration(shape: BoxShape.circle, color: AppColors.ink),
+      ),
     );
   }
 }

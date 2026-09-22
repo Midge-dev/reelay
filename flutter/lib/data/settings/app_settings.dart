@@ -99,7 +99,11 @@ class AppSettings {
   final bool forceBurnSubtitles;
   final bool showChatOverlay;
   final ChatOverlayCorner chatOverlayCorner;
-  final String? selectedServerId;
+  // Multi-server hub: every reachable, owned/shared server the account can
+  // see connects at once by default — this is the opt-out list, keyed by
+  // PlexServer.machineIdentifier, not an opt-in single selection. Replaces
+  // the old single nullable `selectedServerId`.
+  final Set<String> disabledServerIds;
   final List<Profile> profiles;
   final ThemeId themeId;
 
@@ -110,7 +114,7 @@ class AppSettings {
     this.forceBurnSubtitles = false,
     this.showChatOverlay = true,
     this.chatOverlayCorner = ChatOverlayCorner.bottomEnd,
-    this.selectedServerId,
+    this.disabledServerIds = const {},
     this.profiles = const [],
     this.themeId = ThemeId.nocturne,
   });
@@ -122,7 +126,7 @@ class AppSettings {
     bool? forceBurnSubtitles,
     bool? showChatOverlay,
     ChatOverlayCorner? chatOverlayCorner,
-    String? selectedServerId,
+    Set<String>? disabledServerIds,
     List<Profile>? profiles,
     ThemeId? themeId,
   }) {
@@ -133,7 +137,7 @@ class AppSettings {
       forceBurnSubtitles: forceBurnSubtitles ?? this.forceBurnSubtitles,
       showChatOverlay: showChatOverlay ?? this.showChatOverlay,
       chatOverlayCorner: chatOverlayCorner ?? this.chatOverlayCorner,
-      selectedServerId: selectedServerId ?? this.selectedServerId,
+      disabledServerIds: disabledServerIds ?? this.disabledServerIds,
       profiles: profiles ?? this.profiles,
       themeId: themeId ?? this.themeId,
     );

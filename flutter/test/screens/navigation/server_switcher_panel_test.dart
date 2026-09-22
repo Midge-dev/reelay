@@ -7,7 +7,7 @@ import 'package:reelay/kit/card.dart';
 import 'package:reelay/kit/filter_chip.dart';
 import 'package:reelay/screens/navigation/server_switcher_panel.dart';
 
-const _currentServer = PlexServer(name: 'Attic', baseUrl: 'http://192.168.1.5:32400', accessToken: 'tok');
+const _atticServer = PlexServer(name: 'Attic', baseUrl: 'http://192.168.1.5:32400', accessToken: 'tok', machineIdentifier: 'm1');
 const _sections = [
   PlexSection(key: 's1', title: 'Movies', type: 'movie'),
   PlexSection(key: 's2', title: 'TV Shows', type: 'show'),
@@ -20,10 +20,12 @@ const _resources = [
 
 Future<void> _pump(
   WidgetTester tester, {
+  List<ReachableServer>? connectedServers,
+  Set<String>? disabledServerIds,
   List<PlexResource>? resources,
   Future<ReachableServer?> Function(PlexResource)? probeServer,
   ValueChanged<PlexSection>? onSelectSection,
-  ValueChanged<PlexResource>? onSwitchServer,
+  void Function(PlexResource, bool)? onToggleServer,
   VoidCallback? onClose,
 }) async {
   tester.view.physicalSize = const Size(1920, 1080);
@@ -38,14 +40,15 @@ Future<void> _pump(
         children: [
           ServerSwitcherPanel(
             account: const PlexAccount(username: 'GrimLad'),
-            currentServer: _currentServer,
+            connectedServers: connectedServers ?? const [ReachableServer(_atticServer, ServerReachability.local)],
+            disabledServerIds: disabledServerIds ?? const {},
             sections: _sections,
             selectedSectionKey: 's1',
             loadServers: () async => resources ?? _resources,
             probeServer: probeServer ?? (_) async => null,
-            loadLibraryCount: (_) async => null,
+            loadLibraryCount: (_) async => 2,
             onSelectSection: onSelectSection ?? (_) {},
-            onSwitchServer: onSwitchServer ?? (_) {},
+            onToggleServer: onToggleServer ?? (_, _) {},
             onClose: onClose ?? () {},
           ),
         ],
@@ -59,19 +62,19 @@ void main() {
   testWidgets('shows the title with the account username and every server row', (tester) async {
     await _pump(tester);
 
-    expect(find.text('Where GrimLad is watching from'), findsOneWidget);
+    expect(find.text("GrimLad's servers"), findsOneWidget);
     expect(find.text('Attic'), findsOneWidget);
     expect(find.text('Loft'), findsOneWidget);
   });
 
-  testWidgets('the active server shows Local and its real library count without probing', (tester) async {
+  testWidgets('an already-connected server shows Local and its real library count without probing', (tester) async {
     await _pump(tester);
 
     expect(find.text('Local'), findsOneWidget);
     expect(find.textContaining('2 libraries'), findsOneWidget);
   });
 
-  testWidgets('a reachable non-active server shows the probed reachability', (tester) async {
+  testWidgets('a reachable non-connected server shows the probed reachability', (tester) async {
     await _pump(
       tester,
       probeServer: (resource) async => ReachableServer(
@@ -84,16 +87,20 @@ void main() {
     expect(find.text('Relayed'), findsOneWidget);
   });
 
-  testWidgets('an unreachable server shows Unreachable and cannot be tapped', (tester) async {
-    PlexResource? switched;
-    await _pump(tester, probeServer: (_) async => null, onSwitchServer: (r) => switched = r);
+  testWidgets('an unreachable server shows Unreachable and cannot be toggled', (tester) async {
+    (PlexResource, bool)? toggled;
+    await _pump(
+      tester,
+      probeServer: (_) async => null,
+      onToggleServer: (r, enabled) => toggled = (r, enabled),
+    );
     await tester.pump();
 
     expect(find.text('Unreachable'), findsOneWidget);
 
     await tester.tap(find.text('Loft'));
     await tester.pump();
-    expect(switched, isNull);
+    expect(toggled, isNull);
   });
 
   testWidgets('always shows a disabled Jellyfin row', (tester) async {
@@ -103,22 +110,43 @@ void main() {
     expect(find.text('COMING SOON'), findsOneWidget);
   });
 
-  testWidgets('tapping a reachable server invokes onSwitchServer', (tester) async {
-    PlexResource? switched;
+  testWidgets('tapping a reachable, enabled server turns it off', (tester) async {
+    (PlexResource, bool)? toggled;
     await _pump(
       tester,
       probeServer: (resource) async => ReachableServer(
         const PlexServer(name: 'Loft', baseUrl: 'http://10.0.0.5:32400', accessToken: 'tok2'),
         ServerReachability.local,
       ),
-      onSwitchServer: (r) => switched = r,
+      onToggleServer: (r, enabled) => toggled = (r, enabled),
     );
     await tester.pump();
 
     await tester.tap(find.byType(AppCard).at(1));
     await tester.pump();
 
-    expect(switched?.machineIdentifier, 'm2');
+    expect(toggled?.$1.machineIdentifier, 'm2');
+    expect(toggled?.$2, isFalse);
+  });
+
+  testWidgets('tapping a reachable, disabled server turns it on', (tester) async {
+    (PlexResource, bool)? toggled;
+    await _pump(
+      tester,
+      disabledServerIds: const {'m2'},
+      probeServer: (resource) async => ReachableServer(
+        const PlexServer(name: 'Loft', baseUrl: 'http://10.0.0.5:32400', accessToken: 'tok2'),
+        ServerReachability.local,
+      ),
+      onToggleServer: (r, enabled) => toggled = (r, enabled),
+    );
+    await tester.pump();
+
+    await tester.tap(find.byType(AppCard).at(1));
+    await tester.pump();
+
+    expect(toggled?.$1.machineIdentifier, 'm2');
+    expect(toggled?.$2, isTrue);
   });
 
   testWidgets('tapping a library chip invokes onSelectSection and onClose', (tester) async {

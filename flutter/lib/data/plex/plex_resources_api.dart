@@ -14,6 +14,16 @@ class ReachableServer {
   const ReachableServer(this.server, this.reachability);
 }
 
+/// Result of probing every enabled server at once — see
+/// [PlexResourcesApi.connectToAllServers]. [unreachable] backs the
+/// "Attic is unreachable, 3 of 4 shown" partial-outage header.
+class ConnectedServers {
+  final List<ReachableServer> connected;
+  final List<PlexResource> unreachable;
+
+  const ConnectedServers(this.connected, this.unreachable);
+}
+
 class PlexResourcesApi {
   final String clientIdentifier;
   final Dio _client = plexHttpClient();
@@ -61,6 +71,36 @@ class PlexResourcesApi {
   }
 
   Future<PlexServer?> _connectTo(PlexResource resource) async => (await connectToResource(resource))?.server;
+
+  /// The multi-server hub's entry point: probes every listed server
+  /// concurrently (mirrors [_firstReachable]'s per-connection fan-out, one
+  /// level up) instead of [findReachableServer]'s first-success-wins, so
+  /// every reachable, non-disabled server connects at once rather than
+  /// picking exactly one. Resources in [disabledMachineIdentifiers] are
+  /// skipped entirely — they don't even count toward the unreachable list,
+  /// since "off" and "down" are different states (DESIGN.md's "Partial is
+  /// not empty" header is about the latter, not a deliberate opt-out).
+  Future<ConnectedServers> connectToAllServers(
+    String accountToken, {
+    Set<String> disabledMachineIdentifiers = const {},
+  }) async {
+    final resources = (await listServers(accountToken))
+        .where((r) => !disabledMachineIdentifiers.contains(r.machineIdentifier))
+        .toList();
+    final results = await Future.wait(
+      resources.map((r) async => (r, await connectToResource(r))),
+    );
+    final connected = <ReachableServer>[];
+    final unreachable = <PlexResource>[];
+    for (final (resource, reachable) in results) {
+      if (reachable != null) {
+        connected.add(reachable);
+      } else {
+        unreachable.add(resource);
+      }
+    }
+    return ConnectedServers(connected, unreachable);
+  }
 
   /// Like [_connectTo], but reports *which* path answered rather than
   /// just handing back the first working [PlexServer] — the server

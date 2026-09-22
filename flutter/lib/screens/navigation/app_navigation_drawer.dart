@@ -49,11 +49,12 @@ class AppNavigationDrawer extends StatefulWidget {
   final VoidCallback? onOpenRooms;
   final PlexAccount? account;
   final String? versionName;
-  final PlexServer currentServer;
+  final List<ReachableServer> connectedServers;
+  final Set<String> disabledServerIds;
   final Future<List<PlexResource>> Function() loadServers;
   final Future<ReachableServer?> Function(PlexResource resource) probeServer;
   final Future<int?> Function(PlexServer server) loadLibraryCount;
-  final ValueChanged<PlexResource> onSwitchServer;
+  final void Function(PlexResource resource, bool enabled) onToggleServer;
   final Widget child;
 
   const AppNavigationDrawer({
@@ -71,11 +72,12 @@ class AppNavigationDrawer extends StatefulWidget {
     this.onOpenRooms,
     this.account,
     this.versionName,
-    required this.currentServer,
+    required this.connectedServers,
+    required this.disabledServerIds,
     required this.loadServers,
     required this.probeServer,
     required this.loadLibraryCount,
-    required this.onSwitchServer,
+    required this.onToggleServer,
     required this.child,
   });
 
@@ -229,9 +231,8 @@ class _AppNavigationDrawerState extends State<AppNavigationDrawer> {
     });
   }
 
-  void _switchServer(PlexResource resource) {
-    _closeServerSwitcher();
-    widget.onSwitchServer(resource);
+  void _toggleServer(PlexResource resource, bool enabled) {
+    widget.onToggleServer(resource, enabled);
   }
 
   @override
@@ -445,7 +446,8 @@ class _AppNavigationDrawerState extends State<AppNavigationDrawer> {
         if (_showServerSwitcher)
           ServerSwitcherPanel(
             account: widget.account,
-            currentServer: widget.currentServer,
+            connectedServers: widget.connectedServers,
+            disabledServerIds: widget.disabledServerIds,
             sections: widget.sections,
             selectedSectionKey: widget.selectedSectionKey,
             loadServers: widget.loadServers,
@@ -453,7 +455,7 @@ class _AppNavigationDrawerState extends State<AppNavigationDrawer> {
             loadLibraryCount: widget.loadLibraryCount,
             onSelectSection: (section) =>
                 _handleSelect(() => widget.onSelectSection(section)),
-            onSwitchServer: _switchServer,
+            onToggleServer: _toggleServer,
             onClose: _closeServerSwitcher,
           ),
       ],

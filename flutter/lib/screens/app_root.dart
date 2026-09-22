@@ -166,7 +166,7 @@ class _AppContent extends StatelessWidget {
             onSelectCollection: (collection) => _openCollection(ctx, collection),
           ),
         ),
-      LoadingSection(:final server, :final sections, :final selectedSectionKey, :final returnState) => BackHandler(
+      LoadingSection(:final sections, :final selectedSectionKey, :final returnState) => BackHandler(
           onBack: () => controller.returnTo(returnState),
           child: AppNavigationDrawer(
             sections: sections,
@@ -179,15 +179,16 @@ class _AppContent extends StatelessWidget {
             onOpenSearch: () {},
             account: controller.localAccount,
             versionName: _appVersionName,
-            currentServer: server,
+            connectedServers: controller.connectedServers,
+            disabledServerIds: controller.currentSettings.disabledServerIds,
             loadServers: _loadServers,
             probeServer: _probeServer,
             loadLibraryCount: _loadLibraryCount,
-            onSwitchServer: _switchServer,
+            onToggleServer: _toggleServer,
             child: const LoadingScreen(),
           ),
         ),
-      LoadingHome(:final server, :final sections) => AppNavigationDrawer(
+      LoadingHome(:final sections) => AppNavigationDrawer(
           sections: sections,
           selectedSectionKey: null,
           isSettingsSelected: false,
@@ -198,11 +199,12 @@ class _AppContent extends StatelessWidget {
           onOpenSearch: () {},
           account: controller.localAccount,
           versionName: _appVersionName,
-          currentServer: server,
+          connectedServers: controller.connectedServers,
+          disabledServerIds: controller.currentSettings.disabledServerIds,
           loadServers: _loadServers,
           probeServer: _probeServer,
           loadLibraryCount: _loadLibraryCount,
-          onSwitchServer: _switchServer,
+          onToggleServer: _toggleServer,
           child: const HomeLoadingSkeleton(),
         ),
       Settings(:final ctx, :final returnState, :final relayHint) => _drawer(
@@ -506,11 +508,12 @@ class _AppContent extends StatelessWidget {
       onOpenHome: () => controller.goHome(home.server, home.sections),
       account: controller.localAccount,
       versionName: _appVersionName,
-      currentServer: home.server,
+      connectedServers: controller.connectedServers,
+      disabledServerIds: controller.currentSettings.disabledServerIds,
       loadServers: _loadServers,
       probeServer: _probeServer,
       loadLibraryCount: _loadLibraryCount,
-      onSwitchServer: _switchServer,
+      onToggleServer: _toggleServer,
       child: HomeScreen(
         server: home.server,
         onDeck: home.onDeck,
@@ -569,16 +572,18 @@ class _AppContent extends StatelessWidget {
       onOpenWatchlist: () => controller.returnTo(Watchlist(ctx: ctx)),
       account: controller.localAccount,
       versionName: _appVersionName,
-      currentServer: ctx.server,
+      connectedServers: controller.connectedServers,
+      disabledServerIds: controller.currentSettings.disabledServerIds,
       loadServers: _loadServers,
       probeServer: _probeServer,
       loadLibraryCount: _loadLibraryCount,
-      onSwitchServer: _switchServer,
+      onToggleServer: _toggleServer,
       child: child,
     );
   }
 
-  void _switchServer(PlexResource resource) => controller.switchServer(resource.machineIdentifier);
+  void _toggleServer(PlexResource resource, bool enabled) =>
+      controller.setServerEnabled(resource.machineIdentifier, enabled);
 
   Future<List<PlexResource>> _loadServers() => PlexResourcesApi(controller.clientIdentifier).listServers(controller.accountTokenOrEmpty);
 

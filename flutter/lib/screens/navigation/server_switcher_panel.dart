@@ -1,3 +1,4 @@
+import 'package:collection/collection.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 
@@ -38,29 +39,37 @@ class _ServerRow {
 /// (direct before relay, screen 06's Local/Relayed/Unreachable) — already
 /// existed for the initial-connect flow (PlexResourcesApi.connectToResource)
 /// and is reused here, not reinvented.
+///
+/// Multi-server hub: there's no more "the active server" to switch to —
+/// every reachable, non-disabled server contributes to the hub at once.
+/// Each row is a status line plus an enable/disable toggle rather than an
+/// exclusive pick, so the panel stays open across multiple toggles instead
+/// of closing after the first one.
 class ServerSwitcherPanel extends StatefulWidget {
   final PlexAccount? account;
-  final PlexServer currentServer;
+  final List<ReachableServer> connectedServers;
+  final Set<String> disabledServerIds;
   final List<PlexSection> sections;
   final String? selectedSectionKey;
   final Future<List<PlexResource>> Function() loadServers;
   final Future<ReachableServer?> Function(PlexResource resource) probeServer;
   final Future<int?> Function(PlexServer server) loadLibraryCount;
   final ValueChanged<PlexSection> onSelectSection;
-  final ValueChanged<PlexResource> onSwitchServer;
+  final void Function(PlexResource resource, bool enabled) onToggleServer;
   final VoidCallback onClose;
 
   const ServerSwitcherPanel({
     super.key,
     this.account,
-    required this.currentServer,
+    required this.connectedServers,
+    required this.disabledServerIds,
     required this.sections,
     this.selectedSectionKey,
     required this.loadServers,
     required this.probeServer,
     required this.loadLibraryCount,
     required this.onSelectSection,
-    required this.onSwitchServer,
+    required this.onToggleServer,
     required this.onClose,
   });
 
@@ -108,14 +117,26 @@ class _ServerSwitcherPanelState extends State<ServerSwitcherPanel> {
   }
 
   Future<void> _probeRow(_ServerRow row) async {
-    // The active server's reachability and library count are already
-    // known — no need to re-probe or refetch either.
-    if (row.resource.name == widget.currentServer.name) {
+    // Already-connected servers' reachability is already known from the
+    // last full connect — no need to re-probe every one of them, only
+    // whichever resources aren't already part of the hub (disabled, or
+    // failed to connect last time).
+    final already = widget.connectedServers
+        .where((c) => c.server.machineIdentifier == row.resource.machineIdentifier)
+        .firstOrNull;
+    if (already != null) {
       setState(() {
         row.loading = false;
-        row.reachability = ServerReachability.local;
-        row.libraryCount = widget.sections.length;
+        row.reachability = already.reachability;
       });
+      int? count;
+      try {
+        count = await widget.loadLibraryCount(already.server);
+      } catch (_) {
+        count = null;
+      }
+      if (!mounted) return;
+      setState(() => row.libraryCount = count);
       return;
     }
     ReachableServer? reached;
@@ -170,6 +191,7 @@ class _ServerSwitcherPanelState extends State<ServerSwitcherPanel> {
   @override
   Widget build(BuildContext context) {
     final username = widget.account?.username;
+    final primaryServerName = widget.connectedServers.firstOrNull?.server.name;
     return Stack(
       children: [
         Positioned.fill(
@@ -212,9 +234,7 @@ class _ServerSwitcherPanelState extends State<ServerSwitcherPanel> {
                     ),
                     SizedBox(height: AppSpacing.sm.du(context)),
                     AppText(
-                      username != null
-                          ? "Where $username is watching from"
-                          : 'Choose a server',
+                      username != null ? "$username's servers" : 'Servers',
                       style: AppTypography.title2,
                     ),
                     SizedBox(height: AppSpacing.xl.du(context)),
@@ -229,12 +249,11 @@ class _ServerSwitcherPanelState extends State<ServerSwitcherPanel> {
                               for (final (index, row) in _rows.indexed) ...[
                                 _ServerResultRow(
                                   row: row,
-                                  selected:
-                                      row.resource.name ==
-                                      widget.currentServer.name,
+                                  enabled: !widget.disabledServerIds
+                                      .contains(row.resource.machineIdentifier),
                                   focusNode: index == 0 ? _firstFocus : null,
-                                  onClick: () =>
-                                      widget.onSwitchServer(row.resource),
+                                  onToggle: (enabled) =>
+                                      widget.onToggleServer(row.resource, enabled),
                                 ),
                                 SizedBox(height: AppSpacing.md.du(context)),
                               ],
@@ -249,7 +268,9 @@ class _ServerSwitcherPanelState extends State<ServerSwitcherPanel> {
                               ),
                               SizedBox(height: AppSpacing.xl.du(context)),
                               AppText(
-                                'LIBRARIES ON ${widget.currentServer.name.toUpperCase()}',
+                                primaryServerName != null
+                                    ? 'LIBRARIES ON ${primaryServerName.toUpperCase()}'
+                                    : 'LIBRARIES',
                                 style: AppTypography.micro,
                               ),
                               SizedBox(height: AppSpacing.lg.du(context)),
@@ -291,15 +312,15 @@ final _rowBorder = SurfaceBorder(
 
 class _ServerResultRow extends StatelessWidget {
   final _ServerRow row;
-  final bool selected;
+  final bool enabled;
   final FocusNode? focusNode;
-  final VoidCallback onClick;
+  final ValueChanged<bool> onToggle;
 
   const _ServerResultRow({
     required this.row,
-    required this.selected,
+    required this.enabled,
     this.focusNode,
-    required this.onClick,
+    required this.onToggle,
   });
 
   @override
@@ -315,9 +336,8 @@ class _ServerResultRow extends StatelessWidget {
     return Opacity(
       opacity: unreachable ? 0.45 : 1,
       child: AppCard(
-        onClick: onClick,
+        onClick: () => onToggle(!enabled),
         enabled: !unreachable,
-        selected: selected,
         focusNode: focusNode,
         border: _rowBorder,
         child: ConstrainedBox(
@@ -337,14 +357,7 @@ class _ServerResultRow extends StatelessWidget {
                     mainAxisSize: MainAxisSize.min,
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      AppText(
-                        row.resource.name,
-                        style: selected
-                            ? AppTypography.label.copyWith(
-                                fontWeight: FontWeight.w500,
-                              )
-                            : AppTypography.label,
-                      ),
+                      AppText(row.resource.name, style: AppTypography.label),
                       SizedBox(height: 3.du(context)),
                       AppText(
                         subtitleParts.join(' · '),
@@ -358,6 +371,8 @@ class _ServerResultRow extends StatelessWidget {
                   loading: row.loading,
                   reachability: row.reachability,
                 ),
+                SizedBox(width: AppSpacing.lg.du(context)),
+                _SwitchIndicator(checked: enabled),
               ],
             ),
           ),
@@ -395,6 +410,46 @@ class _ReachabilityBadge extends StatelessWidget {
         SizedBox(width: AppSpacing.sm.du(context)),
         AppText(label, style: AppTypography.caption, color: color),
       ],
+    );
+  }
+}
+
+const _switchTrackWidth = 44.0;
+const _switchTrackHeight = 24.0;
+const _switchThumbSize = 18.0;
+const _switchThumbInset = 3.0;
+
+/// A track-and-thumb visual with no focus/gesture handling of its own —
+/// same "purely decorative indicator inside a focusable row" pattern as
+/// AppRadioButton. The whole row (its enclosing AppCard) is the one
+/// focusable target here; a second independently-focusable AppSwitch
+/// nested inside it would give this row two focus leaves, which DESIGN.md's
+/// focus rules don't allow.
+class _SwitchIndicator extends StatelessWidget {
+  final bool checked;
+
+  const _SwitchIndicator({required this.checked});
+
+  @override
+  Widget build(BuildContext context) {
+    final trackWidth = _switchTrackWidth.du(context);
+    final thumbSize = _switchThumbSize.du(context);
+    final thumbInset = _switchThumbInset.du(context);
+    return Container(
+      width: trackWidth,
+      height: _switchTrackHeight.du(context),
+      decoration: BoxDecoration(
+        color: checked ? AppColors.accent700 : AppColors.surface,
+        border: Border.all(color: AppColors.line, width: AppShape.borderWidth.du(context)),
+        borderRadius: BorderRadius.circular((_switchTrackHeight / 2).du(context)),
+      ),
+      alignment: checked ? Alignment.centerRight : Alignment.centerLeft,
+      padding: EdgeInsets.symmetric(horizontal: thumbInset),
+      child: Container(
+        width: thumbSize,
+        height: thumbSize,
+        decoration: BoxDecoration(shape: BoxShape.circle, color: AppColors.ink),
+      ),
     );
   }
 }
