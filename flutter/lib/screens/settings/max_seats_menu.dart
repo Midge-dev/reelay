@@ -5,6 +5,7 @@ import '../../data/settings/app_settings.dart';
 import '../../kit/focusable_surface.dart';
 import '../../kit/surface_style.dart';
 import '../../kit/text.dart';
+import '../../theme/scale.dart';
 import '../../theme/tokens.dart';
 import '../common/neon_scrollbar.dart';
 
@@ -93,15 +94,17 @@ class _MaxSeatsMenuState extends State<MaxSeatsMenu> {
     // explicitly don't support intrinsic-dimension queries and throw their
     // own layout error when asked, the exact same invisible-menu failure
     // this whole computation exists to avoid.
+    final rowHeight = _rowHeight.du(context);
+    final rowSpacing = _rowSpacing.du(context);
     final naturalHeight =
-        options.length * _rowHeight + (options.length - 1) * _rowSpacing;
-    final menuHeight = naturalHeight.clamp(0.0, _maxMenuHeight);
+        options.length * rowHeight + (options.length - 1) * rowSpacing;
+    final menuHeight = naturalHeight.clamp(0.0, _maxMenuHeight.du(context));
     return Container(
-      width: 300,
-      padding: const EdgeInsets.all(12),
+      width: 300.du(context),
+      padding: EdgeInsets.all(12.du(context)),
       decoration: BoxDecoration(
         color: AppColors.background,
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(8.du(context)),
       ),
       child: Focus(
         canRequestFocus: false,
@@ -116,7 +119,7 @@ class _MaxSeatsMenuState extends State<MaxSeatsMenu> {
                   controller: _scrollController,
                   itemCount: options.length,
                   separatorBuilder: (context, index) =>
-                      const SizedBox(height: _rowSpacing),
+                      SizedBox(height: rowSpacing),
                   itemBuilder: (context, index) {
                     final value = options[index];
                     final applied = value == widget.selected;
@@ -132,7 +135,7 @@ class _MaxSeatsMenuState extends State<MaxSeatsMenu> {
                   },
                 ),
               ),
-              const SizedBox(width: 8),
+              SizedBox(width: 8.du(context)),
               NeonScrollbar(controller: _scrollController),
             ],
           ),
@@ -142,9 +145,10 @@ class _MaxSeatsMenuState extends State<MaxSeatsMenu> {
   }
 }
 
-const _rowShape = RoundedRectangleBorder(
-  borderRadius: BorderRadius.all(Radius.circular(8)),
-);
+RoundedRectangleBorder _rowShape(BuildContext context) =>
+    RoundedRectangleBorder(
+      borderRadius: BorderRadius.all(Radius.circular(8.du(context))),
+    );
 final _rowColors = SurfaceColors(
   container: AppColors.transparent,
   content: AppColors.inkOnArt,
@@ -173,23 +177,23 @@ class _MaxSeatsRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      height: _rowHeight,
+      height: _rowHeight.du(context),
       child: FocusableSurface(
         onClick: onClick,
         selected: applied,
         focusNode: focusNode,
         onFocusChange: onFocusChange,
-        shape: _rowShape,
+        shape: _rowShape(context),
         colors: _rowColors,
         border: _rowBorder,
         contentAlignment: AlignmentDirectional.centerStart,
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 14),
+          padding: EdgeInsets.symmetric(horizontal: 14.du(context)),
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              SizedBox(width: 16, child: applied ? const AppText('✓') : null),
-              const SizedBox(width: 12),
+              SizedBox(width: 16.du(context), child: applied ? const AppText('✓') : null),
+              SizedBox(width: 12.du(context)),
               AppText('$value'),
             ],
           ),

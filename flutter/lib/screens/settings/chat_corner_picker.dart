@@ -4,11 +4,13 @@ import '../../data/settings/app_settings.dart';
 import '../../kit/focusable_surface.dart';
 import '../../kit/surface_style.dart';
 import '../../kit/text.dart';
+import '../../theme/scale.dart';
 import '../../theme/tokens.dart';
 
-const _tileShape = RoundedRectangleBorder(
-  borderRadius: BorderRadius.all(Radius.circular(8)),
-);
+RoundedRectangleBorder _tileShape(BuildContext context) =>
+    RoundedRectangleBorder(
+      borderRadius: BorderRadius.all(Radius.circular(8.du(context))),
+    );
 final _tileColors = SurfaceColors(
   container: AppColors.background,
   content: AppColors.ink3,
@@ -46,7 +48,7 @@ class ChatCornerPicker extends StatelessWidget {
                 onClick: () => onSelect(ChatOverlayCorner.topStart),
               ),
             ),
-            const SizedBox(width: 12),
+            SizedBox(width: 12.du(context)),
             Expanded(
               child: _ChatCornerTile(
                 corner: ChatOverlayCorner.topEnd,
@@ -57,7 +59,7 @@ class ChatCornerPicker extends StatelessWidget {
             ),
           ],
         ),
-        const SizedBox(height: 12),
+        SizedBox(height: 12.du(context)),
         Row(
           children: [
             Expanded(
@@ -68,7 +70,7 @@ class ChatCornerPicker extends StatelessWidget {
                 onClick: () => onSelect(ChatOverlayCorner.bottomStart),
               ),
             ),
-            const SizedBox(width: 12),
+            SizedBox(width: 12.du(context)),
             Expanded(
               child: _ChatCornerTile(
                 corner: ChatOverlayCorner.bottomEnd,
@@ -120,34 +122,34 @@ class _ChatCornerTile extends StatelessWidget {
 
     final bars = [
       Container(
-        width: 44,
-        height: 8,
+        width: 44.du(context),
+        height: 8.du(context),
         decoration: BoxDecoration(
           color: brightBar,
-          borderRadius: BorderRadius.circular(2),
+          borderRadius: BorderRadius.circular(2.du(context)),
         ),
       ),
       Container(
-        width: 30,
-        height: 8,
+        width: 30.du(context),
+        height: 8.du(context),
         decoration: BoxDecoration(
           color: dimBar,
-          borderRadius: BorderRadius.circular(2),
+          borderRadius: BorderRadius.circular(2.du(context)),
         ),
       ),
     ];
     final ordered = stacksDownward ? bars : bars.reversed.toList();
 
     return SizedBox(
-      height: 64,
+      height: 64.du(context),
       child: FocusableSurface(
         onClick: onClick,
         selected: selected,
-        shape: _tileShape,
+        shape: _tileShape(context),
         colors: _tileColors,
         border: _tileBorder,
         child: Padding(
-          padding: const EdgeInsets.all(8),
+          padding: EdgeInsets.all(8.du(context)),
           child: Stack(
             children: [
               Align(
@@ -155,7 +157,7 @@ class _ChatCornerTile extends StatelessWidget {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [ordered[0], const SizedBox(height: 4), ordered[1]],
+                  children: [ordered[0], SizedBox(height: 4.du(context)), ordered[1]],
                 ),
               ),
               Align(

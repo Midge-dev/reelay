@@ -8,6 +8,7 @@ import '../../kit/button.dart';
 import '../../kit/text.dart';
 import '../../pairing/pairing_server.dart';
 import '../../state/data_providers.dart';
+import '../../theme/scale.dart';
 import '../../theme/tokens.dart';
 import '../../theme/typography.dart';
 import '../common/click_to_type_text_field.dart';
@@ -129,14 +130,14 @@ class _RelaySetupScreenState extends ConsumerState<RelaySetupScreen> {
     return ColoredBox(
       color: AppColors.background,
       child: Padding(
-        padding: const EdgeInsets.all(48),
+        padding: EdgeInsets.all(48.du(context)),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Expanded(
               child: Center(
                 child: ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 640),
+                  constraints: BoxConstraints(maxWidth: 640.du(context)),
                   child: SingleChildScrollView(
                     controller: _scrollController,
                     child: Column(
@@ -146,16 +147,16 @@ class _RelaySetupScreenState extends ConsumerState<RelaySetupScreen> {
                           'Set up watch-together',
                           style: AppTypography.title2,
                         ),
-                        const Padding(
-                          padding: EdgeInsets.only(top: 8, bottom: 32),
-                          child: AppText(
+                        Padding(
+                          padding: EdgeInsets.only(top: 8.du(context), bottom: 32.du(context)),
+                          child: const AppText(
                             "Reelay syncs playback with whoever you're watching with, over a "
                             'relay server. Paste its URL below, or scan the QR from your phone.',
                             textAlign: TextAlign.center,
                           ),
                         ),
                         SizedBox(
-                          width: 500,
+                          width: 500.du(context),
                           child: ClickToTypeTextField(
                             value: _relayUrl,
                             onValueChange: (v) => setState(() => _relayUrl = v),
@@ -163,7 +164,7 @@ class _RelaySetupScreenState extends ConsumerState<RelaySetupScreen> {
                           ),
                         ),
                         Padding(
-                          padding: const EdgeInsets.only(top: 16),
+                          padding: EdgeInsets.only(top: 16.du(context)),
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
@@ -177,29 +178,29 @@ class _RelaySetupScreenState extends ConsumerState<RelaySetupScreen> {
                         ),
                         if (_pairingError != null)
                           Padding(
-                            padding: const EdgeInsets.only(top: 16),
+                            padding: EdgeInsets.only(top: 16.du(context)),
                             child: AppText(_pairingError!),
                           ),
                         if (_pairingUrl != null)
                           Container(
-                            margin: const EdgeInsets.only(top: 24),
-                            padding: const EdgeInsets.all(24),
+                            margin: EdgeInsets.only(top: 24.du(context)),
+                            padding: EdgeInsets.all(24.du(context)),
                             color: AppColors.surface,
                             child: Row(
                               mainAxisSize: MainAxisSize.min,
                               crossAxisAlignment: CrossAxisAlignment.center,
                               children: [
                                 Container(
-                                  width: 160,
-                                  height: 160,
+                                  width: 160.du(context),
+                                  height: 160.du(context),
                                   color: AppColors.inkOnArt,
-                                  padding: const EdgeInsets.all(12),
+                                  padding: EdgeInsets.all(12.du(context)),
                                   child: QrImageView(
                                     data: _pairingUrl!,
                                     backgroundColor: AppColors.inkOnArt,
                                   ),
                                 ),
-                                const SizedBox(width: 24),
+                                SizedBox(width: 24.du(context)),
                                 Flexible(
                                   child: Column(
                                     crossAxisAlignment:
@@ -209,16 +210,16 @@ class _RelaySetupScreenState extends ConsumerState<RelaySetupScreen> {
                                       const AppText(
                                         'Scan with your phone (same Wi-Fi as the TV), or visit:',
                                       ),
-                                      const SizedBox(height: 12),
+                                      SizedBox(height: 12.du(context)),
                                       AppText(
                                         _pairingUrl!,
                                         style: AppTypography.body,
                                       ),
-                                      const SizedBox(height: 12),
+                                      SizedBox(height: 12.du(context)),
                                       const AppText(
                                         "Paste the relay URL there and it'll appear here automatically.",
                                       ),
-                                      const SizedBox(height: 12),
+                                      SizedBox(height: 12.du(context)),
                                       AppOutlinedButton(
                                         onClick: _cancelPairing,
                                         focusNode: _cancelPairingFocus,
@@ -231,7 +232,7 @@ class _RelaySetupScreenState extends ConsumerState<RelaySetupScreen> {
                             ),
                           ),
                         Padding(
-                          padding: const EdgeInsets.only(top: 32),
+                          padding: EdgeInsets.only(top: 32.du(context)),
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
@@ -243,7 +244,7 @@ class _RelaySetupScreenState extends ConsumerState<RelaySetupScreen> {
                                 focusNode: _saveFocus,
                                 child: const AppText('Save & continue'),
                               ),
-                              const SizedBox(width: 24),
+                              SizedBox(width: 24.du(context)),
                               AppOutlinedButton(
                                 onClick: widget.onDone,
                                 child: const AppText('Skip for now'),
@@ -258,7 +259,7 @@ class _RelaySetupScreenState extends ConsumerState<RelaySetupScreen> {
               ),
             ),
             Padding(
-              padding: const EdgeInsets.only(left: 12),
+              padding: EdgeInsets.only(left: 12.du(context)),
               child: NeonScrollbar(controller: _scrollController),
             ),
           ],

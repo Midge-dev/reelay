@@ -6,14 +6,16 @@ import '../../kit/button.dart';
 import '../../kit/focusable_surface.dart';
 import '../../kit/surface_style.dart';
 import '../../kit/text.dart';
+import '../../theme/scale.dart';
 import '../../theme/tokens.dart';
 import '../../theme/typography.dart';
 import '../common/neon_scrollbar.dart';
 import '../common/relay_status.dart';
 
-const _rowShape = RoundedRectangleBorder(
-  borderRadius: BorderRadius.all(Radius.circular(8)),
-);
+RoundedRectangleBorder _rowShape(BuildContext context) =>
+    RoundedRectangleBorder(
+      borderRadius: BorderRadius.all(Radius.circular(8.du(context))),
+    );
 final _rowColors = SurfaceColors(
   container: AppColors.background,
   content: AppColors.ink3,
@@ -91,12 +93,12 @@ class RelaySettingsPane extends StatelessWidget {
           Expanded(
             child: SingleChildScrollView(
               controller: scrollController,
-              padding: const EdgeInsets.all(48),
+              padding: EdgeInsets.all(48.du(context)),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Padding(
-                    padding: const EdgeInsets.only(bottom: 24),
+                    padding: EdgeInsets.only(bottom: 24.du(context)),
                     child: FocusableSurface(
                       onClick: onBack,
                       focusNode: backFocus,
@@ -110,7 +112,7 @@ class RelaySettingsPane extends StatelessWidget {
                   ),
                   AppText('Relay settings', style: AppTypography.title1),
                   Padding(
-                    padding: EdgeInsets.only(top: 8, bottom: 24),
+                    padding: EdgeInsets.only(top: 8.du(context), bottom: 24.du(context)),
                     child: AppText(
                       'Anyone who keeps a relay running can be added by address — a cloud host, a Pi in '
                       "someone's front room, whatever answers.",
@@ -119,7 +121,7 @@ class RelaySettingsPane extends StatelessWidget {
                   ),
                   for (final entry in settings.relays)
                     Padding(
-                      padding: const EdgeInsets.only(bottom: 12),
+                      padding: EdgeInsets.only(bottom: 12.du(context)),
                       child: RelayRow(
                         entry: entry,
                         status: relayStatuses[entry.id],
@@ -129,11 +131,11 @@ class RelaySettingsPane extends StatelessWidget {
                       ),
                     ),
                   SizedBox(
-                    height: 64,
+                    height: 64.du(context),
                     child: FocusableSurface(
                       onClick: onAddRelay,
                       focusNode: addRelayFocus,
-                      shape: _rowShape,
+                      shape: _rowShape(context),
                       colors: _rowColors,
                       border: _rowBorder,
                       child: const AppText('Add a relay'),
@@ -141,29 +143,29 @@ class RelaySettingsPane extends StatelessWidget {
                   ),
                   if (pairingError != null)
                     Padding(
-                      padding: const EdgeInsets.only(top: 16),
+                      padding: EdgeInsets.only(top: 16.du(context)),
                       child: AppText(pairingError!),
                     ),
                   if (pairingUrl != null)
                     Container(
-                      margin: const EdgeInsets.only(top: 12),
-                      padding: const EdgeInsets.all(24),
+                      margin: EdgeInsets.only(top: 12.du(context)),
+                      padding: EdgeInsets.all(24.du(context)),
                       color: AppColors.surface,
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         crossAxisAlignment: CrossAxisAlignment.center,
                         children: [
                           Container(
-                            width: 160,
-                            height: 160,
+                            width: 160.du(context),
+                            height: 160.du(context),
                             color: AppColors.inkOnArt,
-                            padding: const EdgeInsets.all(12),
+                            padding: EdgeInsets.all(12.du(context)),
                             child: QrImageView(
                               data: pairingUrl!,
                               backgroundColor: AppColors.inkOnArt,
                             ),
                           ),
-                          const SizedBox(width: 24),
+                          SizedBox(width: 24.du(context)),
                           Flexible(
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
@@ -172,15 +174,15 @@ class RelaySettingsPane extends StatelessWidget {
                                 const AppText(
                                   'Scan with your phone (same Wi-Fi as the TV), or visit:',
                                 ),
-                                const SizedBox(height: 12),
+                                SizedBox(height: 12.du(context)),
                                 AppText(pairingUrl!, style: AppTypography.body),
-                                const SizedBox(height: 12),
+                                SizedBox(height: 12.du(context)),
                                 AppText(
                                   editingRelayId != null
                                       ? "Update the nickname and URL there — it'll change here automatically."
                                       : "Type a nickname and the relay URL there — it'll appear here automatically.",
                                 ),
-                                const SizedBox(height: 12),
+                                SizedBox(height: 12.du(context)),
                                 AppOutlinedButton(
                                   onClick: onCancelPairing,
                                   focusNode: cancelPairingFocus,
@@ -194,7 +196,7 @@ class RelaySettingsPane extends StatelessWidget {
                     ),
                   if (testingRelayName != null)
                     Padding(
-                      padding: const EdgeInsets.only(top: 12),
+                      padding: EdgeInsets.only(top: 12.du(context)),
                       child: RelayStatusLine(
                         status: testStatus,
                         relayNickname: testingRelayName!,
@@ -206,7 +208,7 @@ class RelaySettingsPane extends StatelessWidget {
             ),
           ),
           Padding(
-            padding: const EdgeInsets.symmetric(vertical: 48, horizontal: 12),
+            padding: EdgeInsets.symmetric(vertical: 48.du(context), horizontal: 12.du(context)),
             child: NeonScrollbar(controller: scrollController),
           ),
         ],
@@ -235,10 +237,10 @@ class RelayRow extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        border: Border.all(color: AppColors.line, width: 2),
-        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: AppColors.line, width: 2.du(context)),
+        borderRadius: BorderRadius.circular(8.du(context)),
       ),
-      padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 20),
+      padding: EdgeInsets.symmetric(horizontal: 28.du(context), vertical: 20.du(context)),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
@@ -247,7 +249,7 @@ class RelayRow extends StatelessWidget {
                 ? RelayStatus.dotOnly
                 : RelayStatus.silent,
           ),
-          const SizedBox(width: 20),
+          SizedBox(width: 20.du(context)),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -258,22 +260,22 @@ class RelayRow extends StatelessWidget {
                   children: [
                     AppText(entry.nickname),
                     if (entry.isDefault) ...[
-                      const SizedBox(width: 12),
+                      SizedBox(width: 12.du(context)),
                       Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 5,
+                        padding: EdgeInsets.symmetric(
+                          horizontal: 12.du(context),
+                          vertical: 5.du(context),
                         ),
                         decoration: BoxDecoration(
                           color: AppColors.accent.withValues(alpha: 0.9),
-                          borderRadius: BorderRadius.circular(50),
+                          borderRadius: BorderRadius.circular(50.du(context)),
                         ),
                         child: AppText('Default', color: AppColors.inkOnArt),
                       ),
                     ],
                   ],
                 ),
-                const SizedBox(height: 6),
+                SizedBox(height: 6.du(context)),
                 AppText(relayStatusLabel(status), color: AppColors.ink3),
               ],
             ),
@@ -286,10 +288,10 @@ class RelayRow extends StatelessWidget {
                   onClick: onMakeDefault,
                   child: const AppText('Make default'),
                 ),
-                const SizedBox(width: 16),
+                SizedBox(width: 16.du(context)),
               ],
               AppOutlinedButton(onClick: onEdit, child: const AppText('Edit')),
-              const SizedBox(width: 16),
+              SizedBox(width: 16.du(context)),
               AppOutlinedButton(
                 onClick: onRemove,
                 child: const AppText('Remove'),

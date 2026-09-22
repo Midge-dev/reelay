@@ -18,6 +18,7 @@ import '../../kit/text.dart';
 import '../../pairing/pairing_server.dart';
 import '../../state/data_providers.dart';
 import '../../sync/relay_directory_api.dart';
+import '../../theme/scale.dart';
 import '../../theme/tokens.dart';
 import '../../theme/typography.dart';
 import '../common/loading_screen.dart';
@@ -387,12 +388,12 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 Expanded(
                   child: SingleChildScrollView(
                     controller: _scrollController,
-                    padding: const EdgeInsets.all(48),
+                    padding: EdgeInsets.all(48.du(context)),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         AppText('Settings', style: AppTypography.title1),
-                        const SizedBox(height: 32),
+                        SizedBox(height: 32.du(context)),
                         _SettingsGroup(
                           title: 'Libraries',
                           showRule: false,
@@ -423,7 +424,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                           showRule: true,
                           child: _buildChatSection(),
                         ),
-                        const SizedBox(height: 32),
+                        SizedBox(height: 32.du(context)),
                         AppButton(
                           onClick: () async {
                             await ref
@@ -439,9 +440,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   ),
                 ),
                 Padding(
-                  padding: const EdgeInsets.symmetric(
-                    vertical: 48,
-                    horizontal: 12,
+                  padding: EdgeInsets.symmetric(
+                    vertical: 48.du(context),
+                    horizontal: 12.du(context),
                   ),
                   child: NeonScrollbar(controller: _scrollController),
                 ),
@@ -453,8 +454,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               child: ColoredBox(color: AppScrims.dialog.withValues(alpha: 0.4)),
             ),
             Positioned(
-              left: 220,
-              top: 220,
+              left: 220.du(context),
+              top: 220.du(context),
               child: MaxSeatsMenu(
                 selected: _settings.maxHostSeats,
                 onSelect: (value) {
@@ -484,7 +485,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const AppText('Available sources'),
-        const SizedBox(height: 8),
+        SizedBox(height: 8.du(context)),
         if (!_sourcesLoaded)
           const AppText('Loading sources…')
         else if (_sourcesError != null)
@@ -497,7 +498,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             children: [
               for (final (index, source) in _sources.indexed)
                 Padding(
-                  padding: const EdgeInsets.only(bottom: 8),
+                  padding: EdgeInsets.only(bottom: 8.du(context)),
                   child: AppListItem(
                     selected:
                         _settings.selectedServerId == source.machineIdentifier,
@@ -525,7 +526,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
 
   Widget _buildAppearanceSection() {
     return SizedBox(
-      height: 64,
+      height: 64.du(context),
       child: FocusableSurface(
         onClick: () {
           setState(() => _showingAppearance = true);
@@ -534,8 +535,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           );
         },
         focusNode: _appearanceEntryFocus,
-        shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.all(Radius.circular(8)),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.all(Radius.circular(8.du(context))),
         ),
         colors: SurfaceColors(
           container: AppColors.background,
@@ -548,7 +549,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         ),
         contentAlignment: AlignmentDirectional.centerStart,
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 20),
+          padding: EdgeInsets.symmetric(horizontal: 20.du(context)),
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -568,15 +569,15 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       children: [
         for (final profile in _settings.profiles)
           Padding(
-            padding: const EdgeInsets.only(bottom: 8),
+            padding: EdgeInsets.only(bottom: 8.du(context)),
             child: AppText('${profile.name} · Plex · ${profile.plexUsername}'),
           ),
         if (_settings.profiles.isEmpty)
-          const Padding(
-            padding: EdgeInsets.only(bottom: 8),
-            child: AppText('No profiles yet'),
+          Padding(
+            padding: EdgeInsets.only(bottom: 8.du(context)),
+            child: const AppText('No profiles yet'),
           ),
-        const SizedBox(height: 8),
+        SizedBox(height: 8.du(context)),
         AppButton(
           onClick: () => setState(() => _showingAddProfile = true),
           child: const AppText('Add profile'),
@@ -612,10 +613,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       children: [
         if (widget.hint != null) ...[
           AppText(widget.hint!, color: AppColors.accent),
-          const SizedBox(height: 12),
+          SizedBox(height: 12.du(context)),
         ],
         SizedBox(
-          height: 64,
+          height: 64.du(context),
           child: FocusableSurface(
             onClick: () {
               setState(() => _showingRelaySettings = true);
@@ -624,8 +625,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               );
             },
             focusNode: _relaySettingsEntryFocus,
-            shape: const RoundedRectangleBorder(
-              borderRadius: BorderRadius.all(Radius.circular(8)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.all(Radius.circular(8.du(context))),
             ),
             colors: SurfaceColors(
               container: AppColors.background,
@@ -638,7 +639,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             ),
             contentAlignment: AlignmentDirectional.centerStart,
             child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
+              padding: EdgeInsets.symmetric(horizontal: 20.du(context)),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
@@ -662,14 +663,14 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             ),
           ),
         ),
-        const SizedBox(height: 12),
+        SizedBox(height: 12.du(context)),
         SizedBox(
-          height: 64,
+          height: 64.du(context),
           child: FocusableSurface(
             onClick: () => setState(() => _maxSeatsMenuExpanded = true),
             focusNode: _maxHostSeatsFocus,
-            shape: const RoundedRectangleBorder(
-              borderRadius: BorderRadius.all(Radius.circular(8)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.all(Radius.circular(8.du(context))),
             ),
             colors: SurfaceColors(
               container: AppColors.background,
@@ -682,7 +683,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             ),
             contentAlignment: AlignmentDirectional.centerStart,
             child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
+              padding: EdgeInsets.symmetric(horizontal: 20.du(context)),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
@@ -703,7 +704,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const AppText('Max transcode video bitrate'),
-        const SizedBox(height: 8),
+        SizedBox(height: 8.du(context)),
         Row(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -722,9 +723,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         if (selected)
-                          const Padding(
-                            padding: EdgeInsets.only(right: 8),
-                            child: AppText('✓'),
+                          Padding(
+                            padding: EdgeInsets.only(right: 8.du(context)),
+                            child: const AppText('✓'),
                           ),
                         AppText(preset.label),
                       ],
@@ -732,13 +733,13 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   );
                 },
               ),
-              const SizedBox(width: 16),
+              SizedBox(width: 16.du(context)),
             ],
           ],
         ),
-        const SizedBox(height: 24),
+        SizedBox(height: 24.du(context)),
         const AppText('Force-burn subtitles into video even when not required'),
-        const SizedBox(height: 8),
+        SizedBox(height: 8.du(context)),
         AppSwitch(
           checked: _settings.forceBurnSubtitles,
           onCheckedChange: (v) => setState(
@@ -756,18 +757,18 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         const AppText(
           'Show watch-together chat messages on screen during playback',
         ),
-        const SizedBox(height: 8),
+        SizedBox(height: 8.du(context)),
         AppSwitch(
           checked: _settings.showChatOverlay,
           onCheckedChange: (v) => setState(
             () => _settings = _settings.copyWith(showChatOverlay: v),
           ),
         ),
-        const SizedBox(height: 24),
+        SizedBox(height: 24.du(context)),
         const AppText('Chat position'),
-        const SizedBox(height: 4),
+        SizedBox(height: 4.du(context)),
         AppText('Pick the corner messages appear in', color: AppColors.ink3),
-        const SizedBox(height: 14),
+        SizedBox(height: 14.du(context)),
         ChatCornerPicker(
           selected: _settings.chatOverlayCorner,
           onSelect: (corner) => setState(
@@ -796,9 +797,9 @@ class _SettingsGroup extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         if (showRule) ...[
-          const SizedBox(height: 26),
-          Container(height: 1, color: AppColors.surface),
-          const SizedBox(height: 14),
+          SizedBox(height: 26.du(context)),
+          Container(height: 1.du(context), color: AppColors.surface),
+          SizedBox(height: 14.du(context)),
         ],
         AppText(
           title.toUpperCase(),
@@ -810,7 +811,7 @@ class _SettingsGroup extends StatelessWidget {
           ),
           color: AppColors.ink3,
         ),
-        const SizedBox(height: 6),
+        SizedBox(height: 6.du(context)),
         child,
       ],
     );

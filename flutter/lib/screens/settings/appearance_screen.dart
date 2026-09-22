@@ -5,13 +5,15 @@ import '../../kit/icon.dart';
 import '../../kit/surface_style.dart';
 import '../../kit/text.dart';
 import '../../theme/phosphor_icons.dart';
+import '../../theme/scale.dart';
 import '../../theme/tokens.dart';
 import '../../theme/typography.dart';
 import '../common/neon_scrollbar.dart';
 
-final _rowShape = RoundedRectangleBorder(
-  borderRadius: BorderRadius.circular(AppShape.radiusMd),
-);
+RoundedRectangleBorder _rowShape(BuildContext context) =>
+    RoundedRectangleBorder(
+      borderRadius: BorderRadius.circular(AppShape.radiusMd.du(context)),
+    );
 final _rowColors = SurfaceColors(
   container: AppColors.surface,
   content: AppColors.ink2,
@@ -51,12 +53,12 @@ class AppearanceScreen extends StatelessWidget {
           Expanded(
             child: SingleChildScrollView(
               controller: scrollController,
-              padding: const EdgeInsets.all(48),
+              padding: EdgeInsets.all(48.du(context)),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Padding(
-                    padding: const EdgeInsets.only(bottom: 24),
+                    padding: EdgeInsets.only(bottom: 24.du(context)),
                     child: FocusableSurface(
                       onClick: onBack,
                       focusNode: backFocus,
@@ -70,7 +72,7 @@ class AppearanceScreen extends StatelessWidget {
                   ),
                   AppText('Appearance', style: AppTypography.title1),
                   Padding(
-                    padding: const EdgeInsets.only(top: 8, bottom: 24),
+                    padding: EdgeInsets.only(top: 8.du(context), bottom: 24.du(context)),
                     child: AppText(
                       'Applies to every screen · takes effect at once',
                       color: AppColors.ink3,
@@ -78,7 +80,7 @@ class AppearanceScreen extends StatelessWidget {
                   ),
                   for (final id in ThemeId.values)
                     Padding(
-                      padding: const EdgeInsets.only(bottom: 12),
+                      padding: EdgeInsets.only(bottom: 12.du(context)),
                       child: _ThemeRow(
                         id: id,
                         selected: id == current,
@@ -91,7 +93,7 @@ class AppearanceScreen extends StatelessWidget {
             ),
           ),
           Padding(
-            padding: const EdgeInsets.symmetric(vertical: 48, horizontal: 12),
+            padding: EdgeInsets.symmetric(vertical: 48.du(context), horizontal: 12.du(context)),
             child: NeonScrollbar(controller: scrollController),
           ),
         ],
@@ -117,17 +119,17 @@ class _ThemeRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final palette = nocturnePalette(id);
     return SizedBox(
-      height: 96,
+      height: 96.du(context),
       child: FocusableSurface(
         onClick: onClick,
         selected: selected,
         autofocus: autofocus,
-        shape: _rowShape,
+        shape: _rowShape(context),
         colors: _rowColors,
         border: _rowBorder,
         contentAlignment: AlignmentDirectional.centerStart,
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xl),
+          padding: EdgeInsets.symmetric(horizontal: AppSpacing.xl.du(context)),
           child: Row(
             children: [
               Expanded(
@@ -136,7 +138,7 @@ class _ThemeRow extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     AppText(id.label, style: AppTypography.label),
-                    const SizedBox(height: 2),
+                    SizedBox(height: 2.du(context)),
                     AppText(
                       id.blurb,
                       style: AppTypography.caption,
@@ -145,26 +147,26 @@ class _ThemeRow extends StatelessWidget {
                   ],
                 ),
               ),
-              const SizedBox(width: AppSpacing.lg),
+              SizedBox(width: AppSpacing.lg.du(context)),
               _Swatches(palette: palette),
-              const SizedBox(width: AppSpacing.lg),
+              SizedBox(width: AppSpacing.lg.du(context)),
               SizedBox(
-                width: 44,
-                height: 44,
+                width: 44.du(context),
+                height: 44.du(context),
                 child: Container(
                   decoration: BoxDecoration(
                     color: palette.surfaceRaised,
-                    borderRadius: BorderRadius.circular(AppShape.radiusSm),
+                    borderRadius: BorderRadius.circular(AppShape.radiusSm.du(context)),
                     border: Border.all(
                       color: palette.accent,
-                      width: AppShape.borderWidth,
+                      width: AppShape.borderWidth.du(context),
                     ),
                   ),
                 ),
               ),
-              const SizedBox(width: AppSpacing.lg),
+              SizedBox(width: AppSpacing.lg.du(context)),
               SizedBox(
-                width: 26,
+                width: 26.du(context),
                 child: selected
                     ? AppIcon(
                         PhosphorIconsFill.checkCircle,
@@ -204,14 +206,14 @@ class _Swatches extends StatelessWidget {
       children: [
         for (final (index, color) in colors.indexed)
           Container(
-            width: 24,
-            height: 24,
+            width: 24.du(context),
+            height: 24.du(context),
             decoration: BoxDecoration(
               color: color,
               borderRadius: BorderRadius.horizontal(
-                left: index == 0 ? const Radius.circular(4) : Radius.zero,
+                left: index == 0 ? Radius.circular(4.du(context)) : Radius.zero,
                 right: index == colors.length - 1
-                    ? const Radius.circular(4)
+                    ? Radius.circular(4.du(context))
                     : Radius.zero,
               ),
             ),

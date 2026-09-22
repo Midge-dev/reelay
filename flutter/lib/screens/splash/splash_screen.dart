@@ -1,5 +1,6 @@
 import 'package:flutter/widgets.dart';
 
+import '../../theme/scale.dart';
 import '../../theme/tokens.dart';
 import '../../theme/typography.dart';
 
@@ -33,6 +34,8 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
 
   @override
   Widget build(BuildContext context) {
+    final titleStyle = AppTypography.title1.copyWith(color: AppColors.inkOnArt);
+    final bodyStyle = AppTypography.body.copyWith(color: AppColors.inkOnArt.withValues(alpha: 0.7));
     return ColoredBox(
       color: AppColors.background,
       child: Center(
@@ -41,10 +44,22 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Text('Reelay', style: AppTypography.title1.copyWith(color: AppColors.inkOnArt)),
+              Text(
+                'Reelay',
+                style: titleStyle.copyWith(
+                  fontSize: titleStyle.fontSize?.du(context),
+                  letterSpacing: titleStyle.letterSpacing?.du(context),
+                ),
+              ),
               Padding(
-                padding: const EdgeInsets.only(top: 12),
-                child: Text('Watch together', style: AppTypography.body.copyWith(color: AppColors.inkOnArt.withValues(alpha: 0.7))),
+                padding: EdgeInsets.only(top: 12.du(context)),
+                child: Text(
+                  'Watch together',
+                  style: bodyStyle.copyWith(
+                    fontSize: bodyStyle.fontSize?.du(context),
+                    letterSpacing: bodyStyle.letterSpacing?.du(context),
+                  ),
+                ),
               ),
             ],
           ),
