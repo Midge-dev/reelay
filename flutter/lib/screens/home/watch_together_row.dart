@@ -5,6 +5,7 @@ import 'package:flutter/widgets.dart';
 import '../../data/plex/plex_image_url.dart';
 import '../../data/plex/plex_models.dart';
 import '../../data/settings/app_settings.dart';
+import '../../focus/row_end_stop.dart';
 import '../../kit/button.dart';
 import '../../kit/card.dart';
 import '../../kit/edge_fade_row.dart';
@@ -104,46 +105,48 @@ class WatchTogetherRow extends StatelessWidget {
           // DESIGN.md), so it isn't worth tuning further than "fits".
           height: 410.du(context),
           child: EdgeFadeRow(
-            child: ListView.separated(
-              controller: scrollController,
-              scrollDirection: Axis.horizontal,
-              // See the matching comment on Home's rows — Flutter's ListView
-              // clips its children by default where Compose's LazyRow doesn't,
-              // and RoomCard also has a focus-scale that can bleed past its
-              // own bounds.
-              clipBehavior: Clip.none,
-              padding: EdgeInsets.symmetric(
-                horizontal: 48.du(context),
-                vertical: 10.du(context),
-              ),
-              itemCount:
-                  rooms.length + (rooms.length > _visibleRoomCards ? 1 : 0),
-              separatorBuilder: (context, index) =>
-                  SizedBox(width: 20.du(context)),
-              itemBuilder: (context, index) {
-                if (index >= rooms.length) {
-                  return _OverflowTile(
-                    count: rooms.length - _visibleRoomCards,
-                    onClick: () => scrollController.animateTo(
-                      (_visibleRoomCards * 320.0).du(context),
-                      duration: const Duration(milliseconds: 400),
-                      curve: Curves.easeOut,
-                    ),
+            child: RowEndStop(
+              child: ListView.separated(
+                controller: scrollController,
+                scrollDirection: Axis.horizontal,
+                // See the matching comment on Home's rows — Flutter's ListView
+                // clips its children by default where Compose's LazyRow doesn't,
+                // and RoomCard also has a focus-scale that can bleed past its
+                // own bounds.
+                clipBehavior: Clip.none,
+                padding: EdgeInsets.symmetric(
+                  horizontal: 48.du(context),
+                  vertical: 10.du(context),
+                ),
+                itemCount:
+                    rooms.length + (rooms.length > _visibleRoomCards ? 1 : 0),
+                separatorBuilder: (context, index) =>
+                    SizedBox(width: 20.du(context)),
+                itemBuilder: (context, index) {
+                  if (index >= rooms.length) {
+                    return _OverflowTile(
+                      count: rooms.length - _visibleRoomCards,
+                      onClick: () => scrollController.animateTo(
+                        (_visibleRoomCards * 320.0).du(context),
+                        duration: const Duration(milliseconds: 400),
+                        curve: Curves.easeOut,
+                      ),
+                    );
+                  }
+                  final merged = rooms[index];
+                  return RoomCard(
+                    key: ValueKey('${merged.relay.id}:${merged.room.roomId}'),
+                    server: server,
+                    merged: merged,
+                    isMine: merged.room.roomId == myRoomId,
+                    isHosted: hostedRoomIds.contains(merged.room.roomId),
+                    onClick: () => onSelectRoom(merged),
+                    onEndSession: onEndSession,
+                    joinFocusNode: index == 0 ? rowAnchorFocusNode : null,
+                    autofocus: index == 0 && firstCardAutofocus,
                   );
-                }
-                final merged = rooms[index];
-                return RoomCard(
-                  key: ValueKey('${merged.relay.id}:${merged.room.roomId}'),
-                  server: server,
-                  merged: merged,
-                  isMine: merged.room.roomId == myRoomId,
-                  isHosted: hostedRoomIds.contains(merged.room.roomId),
-                  onClick: () => onSelectRoom(merged),
-                  onEndSession: onEndSession,
-                  joinFocusNode: index == 0 ? rowAnchorFocusNode : null,
-                  autofocus: index == 0 && firstCardAutofocus,
-                );
-              },
+                },
+              ),
             ),
           ),
         ),

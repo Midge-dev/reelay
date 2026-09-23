@@ -129,6 +129,23 @@ class _ScreenMemoryScopeState extends State<ScreenMemoryScope> {
     return true;
   }
 
+  /// A focused item went away (a refresh dropped it, or moved it to
+  /// another row): rather than leave nothing focused, take the screen's
+  /// first item — unless something else has picked focus up by then.
+  void _lostFocusedItem() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || _contentFocus.hasFocus) return;
+      // Focus that fell back to a scope is focus on nothing; focus the user
+      // has since put somewhere real (the rail) is left alone.
+      final primary = FocusManager.instance.primaryFocus;
+      if (primary != null && primary is! FocusScopeNode) return;
+      _contentFocus.traversalDescendants
+          .where((n) => n.canRequestFocus)
+          .firstOrNull
+          ?.requestFocus();
+    });
+  }
+
   // Recording doesn't settle a pending restore: a screen that keeps its
   // own default focus while its data loads still hands focus back to the
   // remembered item once that item exists.
@@ -155,6 +172,7 @@ class RememberFocus extends StatefulWidget {
 }
 
 class _RememberFocusState extends State<RememberFocus> {
+  _ScreenMemoryScopeState? _scope;
   final _node = FocusNode(
     debugLabel: 'remember-focus',
     canRequestFocus: false,
@@ -176,7 +194,14 @@ class _RememberFocusState extends State<RememberFocus> {
   }
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _scope = ScreenMemory._scopeOf(context);
+  }
+
+  @override
   void dispose() {
+    if (_node.hasFocus) _scope?._lostFocusedItem();
     _node.dispose();
     super.dispose();
   }

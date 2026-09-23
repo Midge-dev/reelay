@@ -7,6 +7,7 @@ import '../../theme/phosphor_icons.dart';
 import '../../data/plex/plex_models.dart';
 import '../../data/plex/plex_resources_api.dart' show ReachableServer;
 import '../../focus/back_handler.dart';
+import '../../focus/row_end_stop.dart';
 import '../../focus/screen_memory.dart';
 import '../../kit/icon.dart';
 import '../../kit/text.dart';
@@ -231,7 +232,7 @@ class _QueryField extends StatelessWidget {
   }
 }
 
-class _ResultsPanel extends StatelessWidget {
+class _ResultsPanel extends StatefulWidget {
   final List<ReachableServer> servers;
   final String query;
   final bool searching;
@@ -248,6 +249,24 @@ class _ResultsPanel extends StatelessWidget {
     required this.onSelect,
   });
 
+  @override
+  State<_ResultsPanel> createState() => _ResultsPanelState();
+}
+
+class _ResultsPanelState extends State<_ResultsPanel> {
+  // Once the results have scrolled, their top edge fades out under the
+  // panel's top instead of ending in a hard cut.
+  final _scroll = ScrollController();
+
+  @override
+  void dispose() {
+    _scroll.dispose();
+    super.dispose();
+  }
+
+  List<FoldedWork<PlexOnDeckItem>> get shows => widget.shows;
+  List<FoldedWork<PlexOnDeckItem>> get movies => widget.movies;
+
   /// "across Attic and Loft" / "on Attic".
   String get _serverLabel {
     final names = {
@@ -260,10 +279,10 @@ class _ResultsPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (query.isEmpty) return const SizedBox.shrink();
+    if (widget.query.isEmpty) return const SizedBox.shrink();
 
     final total = shows.length + movies.length;
-    if (!searching && total == 0) {
+    if (!widget.searching && total == 0) {
       // Verbatim from the handoff's copy list.
       return AppText(
         'Nothing on your servers matches that.',
@@ -271,41 +290,68 @@ class _ResultsPanel extends StatelessWidget {
       );
     }
 
-    return SingleChildScrollView(
-      key: const PageStorageKey('search-results'),
-      clipBehavior: Clip.none,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.baseline,
-            textBaseline: TextBaseline.alphabetic,
-            children: [
-              AppText(
-                searching
-                    ? 'Searching…'
-                    : '${formatCount(total)} result${total == 1 ? '' : 's'}',
-                style: AppTypography.rowLabel,
-              ),
-              if (!searching) ...[
-                SizedBox(width: AppSpacing.lg.du(context)),
-                Flexible(
-                  child: AppText(
-                    _serverLabel,
-                    style: AppTypography.caption,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-              ],
-            ],
+    return AnimatedBuilder(
+      animation: _scroll,
+      builder: (context, child) {
+        final scrolled = _scroll.hasClients && _scroll.offset > 0;
+        // Scrolled, results that went above the panel are clipped at its
+        // top and fade into it; unscrolled nothing is clipped, so the
+        // first row's focused card keeps its full scale.
+        return ClipRect(
+          clipper: _TopEdgeClipper(clip: scrolled),
+          child: EdgeFadeRow(
+            axis: Axis.vertical,
+            fadeStart: scrolled,
+            fadeEnd: false,
+            child: child!,
           ),
-          if (shows.isNotEmpty)
-            _ResultGroup(label: 'SERIES', items: shows, onSelect: onSelect),
-          if (movies.isNotEmpty)
-            _ResultGroup(label: 'MOVIES', items: movies, onSelect: onSelect),
-        ],
+        );
+      },
+      child: SingleChildScrollView(
+        key: const PageStorageKey('search-results'),
+        controller: _scroll,
+        clipBehavior: Clip.none,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.baseline,
+              textBaseline: TextBaseline.alphabetic,
+              children: [
+                AppText(
+                  widget.searching
+                      ? 'Searching…'
+                      : '${formatCount(total)} result${total == 1 ? '' : 's'}',
+                  style: AppTypography.rowLabel,
+                ),
+                if (!widget.searching) ...[
+                  SizedBox(width: AppSpacing.lg.du(context)),
+                  Flexible(
+                    child: AppText(
+                      _serverLabel,
+                      style: AppTypography.caption,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ],
+              ],
+            ),
+            if (shows.isNotEmpty)
+              _ResultGroup(
+                label: 'SERIES',
+                items: shows,
+                onSelect: widget.onSelect,
+              ),
+            if (movies.isNotEmpty)
+              _ResultGroup(
+                label: 'MOVIES',
+                items: movies,
+                onSelect: widget.onSelect,
+              ),
+          ],
+        ),
       ),
     );
   }
@@ -376,37 +422,39 @@ class _ResultGroupState extends State<_ResultGroup> {
                   child: EdgeFadeRow(fadeStart: scrolled, child: child!),
                 );
               },
-              child: ListView.separated(
-                key: PageStorageKey('search-row-${widget.label}'),
-                controller: _scroll,
-                scrollDirection: Axis.horizontal,
-                clipBehavior: Clip.none,
-                padding: EdgeInsets.only(
-                  right: AppSpacing.safeX.du(context),
-                  top: (AppSpacing.rowHeadroom / 2).du(context),
-                  bottom: (AppSpacing.rowHeadroom / 2).du(context),
-                ),
-                itemCount: widget.items.length,
-                separatorBuilder: (context, index) =>
-                    SizedBox(width: AppSpacing.cardGap.du(context)),
-                itemBuilder: (context, index) {
-                  final item = widget.items[index];
-                  final id =
-                      '${item.primary.server.machineIdentifier}:${item.primary.value.ratingKey}';
-                  return RememberFocus(
-                    key: ValueKey(id),
-                    id: 'search:${widget.label}:$id',
-                    child: PosterCard(
-                      imageUrl: PlexImageUrl.of(
-                        item.primary.server,
-                        item.primary.value.thumb,
+              child: RowEndStop(
+                child: ListView.separated(
+                  key: PageStorageKey('search-row-${widget.label}'),
+                  controller: _scroll,
+                  scrollDirection: Axis.horizontal,
+                  clipBehavior: Clip.none,
+                  padding: EdgeInsets.only(
+                    right: AppSpacing.safeX.du(context),
+                    top: (AppSpacing.rowHeadroom / 2).du(context),
+                    bottom: (AppSpacing.rowHeadroom / 2).du(context),
+                  ),
+                  itemCount: widget.items.length,
+                  separatorBuilder: (context, index) =>
+                      SizedBox(width: AppSpacing.cardGap.du(context)),
+                  itemBuilder: (context, index) {
+                    final item = widget.items[index];
+                    final id =
+                        '${item.primary.server.machineIdentifier}:${item.primary.value.ratingKey}';
+                    return RememberFocus(
+                      key: ValueKey(id),
+                      id: 'search:${widget.label}:$id',
+                      child: PosterCard(
+                        imageUrl: PlexImageUrl.of(
+                          item.primary.server,
+                          item.primary.value.thumb,
+                        ),
+                        title: item.primary.value.title,
+                        subtitle: _caption(item),
+                        onClick: () => widget.onSelect(item),
                       ),
-                      title: item.primary.value.title,
-                      subtitle: _caption(item),
-                      onClick: () => widget.onSelect(item),
-                    ),
-                  );
-                },
+                    );
+                  },
+                ),
               ),
             ),
           ),
@@ -432,4 +480,23 @@ class _LeadingEdgeClipper extends CustomClipper<Rect> {
 
   @override
   bool shouldReclip(_LeadingEdgeClipper old) => old.bleed != bleed;
+}
+
+/// Clips only the top edge, and only when [clip]; every other side stays
+/// open for focus scale and the rows' own edge treatment.
+class _TopEdgeClipper extends CustomClipper<Rect> {
+  final bool clip;
+
+  const _TopEdgeClipper({required this.clip});
+
+  @override
+  Rect getClip(Size size) => Rect.fromLTRB(
+    -size.width,
+    clip ? 0 : -size.height,
+    size.width * 2,
+    size.height * 2,
+  );
+
+  @override
+  bool shouldReclip(_TopEdgeClipper old) => old.clip != clip;
 }

@@ -7,6 +7,7 @@ import '../../data/plex/plex_image_url.dart';
 import '../../data/plex/plex_models.dart';
 import '../../focus/back_handler.dart';
 import '../../focus/screen_memory.dart';
+import '../../focus/row_end_stop.dart';
 import '../../kit/button.dart';
 import '../../kit/card.dart';
 import '../../kit/edge_fade_row.dart';
@@ -862,30 +863,32 @@ class _MoreLikeThis extends StatelessWidget {
         SizedBox(
           height: (posterCardExtent + AppSpacing.rowHeadroom).du(context),
           child: EdgeFadeRow(
-            child: ListView.separated(
-              key: const PageStorageKey('more-like-this'),
-              scrollDirection: Axis.horizontal,
-              clipBehavior: Clip.none,
-              padding: EdgeInsets.symmetric(
-                horizontal: AppSpacing.safeX.du(context),
-                vertical: (AppSpacing.rowHeadroom / 2).du(context),
+            child: RowEndStop(
+              child: ListView.separated(
+                key: const PageStorageKey('more-like-this'),
+                scrollDirection: Axis.horizontal,
+                clipBehavior: Clip.none,
+                padding: EdgeInsets.symmetric(
+                  horizontal: AppSpacing.safeX.du(context),
+                  vertical: (AppSpacing.rowHeadroom / 2).du(context),
+                ),
+                itemCount: items.length,
+                separatorBuilder: (context, index) =>
+                    SizedBox(width: AppSpacing.xl.du(context)),
+                itemBuilder: (context, index) {
+                  final item = items[index];
+                  return RememberFocus(
+                    key: ValueKey(item.ratingKey),
+                    id: 'related:${item.ratingKey}',
+                    child: PosterCard(
+                      imageUrl: PlexImageUrl.of(server, item.thumb),
+                      title: item.title,
+                      subtitle: serverName,
+                      onClick: () => onSelect(item),
+                    ),
+                  );
+                },
               ),
-              itemCount: items.length,
-              separatorBuilder: (context, index) =>
-                  SizedBox(width: AppSpacing.xl.du(context)),
-              itemBuilder: (context, index) {
-                final item = items[index];
-                return RememberFocus(
-                  key: ValueKey(item.ratingKey),
-                  id: 'related:${item.ratingKey}',
-                  child: PosterCard(
-                    imageUrl: PlexImageUrl.of(server, item.thumb),
-                    title: item.title,
-                    subtitle: serverName,
-                    onClick: () => onSelect(item),
-                  ),
-                );
-              },
             ),
           ),
         ),

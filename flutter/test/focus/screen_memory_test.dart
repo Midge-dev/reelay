@@ -112,4 +112,16 @@ void main() {
     expect(identical(ScreenMemory.of(after), memory), isTrue);
     expect(identical(ScreenMemory.of(Object()), memory), isFalse);
   });
+
+  testWidgets('a focused item that goes away hands focus to the first item', (tester) async {
+    final memory = ScreenMemory();
+    await _show(tester, memory);
+    await _focus(tester, 'c');
+    expect(_focused(), 'c');
+
+    // A refresh drops 'c' (it moved rows, or was removed).
+    await _show(tester, memory, screen: const _Screen(ids: ['a', 'b']));
+    await tester.pump();
+    expect(_focused(), 'a');
+  });
 }

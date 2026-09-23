@@ -3,6 +3,7 @@ import 'package:flutter/widgets.dart';
 import '../../data/plex/plex_image_url.dart';
 import '../../data/plex/plex_models.dart';
 import '../../focus/screen_memory.dart';
+import '../../focus/row_end_stop.dart';
 import '../../kit/card.dart';
 import '../../kit/edge_fade_row.dart';
 import '../../kit/surface_style.dart';
@@ -187,21 +188,23 @@ class CastCrewRow extends StatelessWidget {
           height: (_personCircle + 10 + 26 + 24 + 8 + AppSpacing.rowHeadroom)
               .du(context),
           child: EdgeFadeRow(
-            child: ListView.separated(
-              key: const PageStorageKey('cast-crew'),
-              scrollDirection: Axis.horizontal,
-              clipBehavior: Clip.none,
-              padding: EdgeInsets.symmetric(
-                horizontal: AppSpacing.safeX.du(context),
-                vertical: (AppSpacing.rowHeadroom / 2).du(context),
-              ),
-              itemCount: entries.length,
-              separatorBuilder: (context, index) => SizedBox(
-                width: (_personGap - (_personWidth - _personCircle)).du(
-                  context,
+            child: RowEndStop(
+              child: ListView.separated(
+                key: const PageStorageKey('cast-crew'),
+                scrollDirection: Axis.horizontal,
+                clipBehavior: Clip.none,
+                padding: EdgeInsets.symmetric(
+                  horizontal: AppSpacing.safeX.du(context),
+                  vertical: (AppSpacing.rowHeadroom / 2).du(context),
                 ),
+                itemCount: entries.length,
+                separatorBuilder: (context, index) => SizedBox(
+                  width: (_personGap - (_personWidth - _personCircle)).du(
+                    context,
+                  ),
+                ),
+                itemBuilder: (context, index) => entries[index],
               ),
-              itemBuilder: (context, index) => entries[index],
             ),
           ),
         ),

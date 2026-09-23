@@ -5,6 +5,7 @@ import '../../data/plex/plex_image_url.dart';
 import '../../data/plex/plex_models.dart';
 import '../../data/plex/plex_resources_api.dart' show ReachableServer;
 import '../../focus/screen_memory.dart';
+import '../../focus/row_end_stop.dart';
 import '../../kit/edge_fade_row.dart';
 import '../../kit/icon.dart';
 import '../../kit/text.dart';
@@ -445,32 +446,34 @@ class _HomeScreenState extends State<HomeScreen> {
                 height: (209 + 12 + 26 + 3 + 24 + 8 + AppSpacing.rowHeadroom)
                     .du(context),
                 child: EdgeFadeRow(
-                  child: ListView.separated(
-                    key: const PageStorageKey('home-row-in-progress'),
-                    scrollDirection: Axis.horizontal,
-                    clipBehavior: Clip.none,
-                    padding: EdgeInsets.symmetric(
-                      horizontal: AppSpacing.safeX.du(context),
-                      vertical: (AppSpacing.rowHeadroom / 2).du(context),
+                  child: RowEndStop(
+                    child: ListView.separated(
+                      key: const PageStorageKey('home-row-in-progress'),
+                      scrollDirection: Axis.horizontal,
+                      clipBehavior: Clip.none,
+                      padding: EdgeInsets.symmetric(
+                        horizontal: AppSpacing.safeX.du(context),
+                        vertical: (AppSpacing.rowHeadroom / 2).du(context),
+                      ),
+                      itemCount: moreInProgress.length,
+                      separatorBuilder: (context, index) =>
+                          SizedBox(width: AppSpacing.cardGap.du(context)),
+                      itemBuilder: (context, index) {
+                        final item = moreInProgress[index];
+                        return RememberFocus(
+                          key: ValueKey(_workId(item)),
+                          id: 'home:in-progress:${_workId(item)}',
+                          child: ContinueWatchingPoster(
+                            item: item,
+                            onResume: () => widget.onResume(item),
+                            onRemove: () => widget.onRemove(item),
+                            focusNode: index == 0
+                                ? _continueWatchingRowFocus
+                                : null,
+                          ),
+                        );
+                      },
                     ),
-                    itemCount: moreInProgress.length,
-                    separatorBuilder: (context, index) =>
-                        SizedBox(width: AppSpacing.cardGap.du(context)),
-                    itemBuilder: (context, index) {
-                      final item = moreInProgress[index];
-                      return RememberFocus(
-                        key: ValueKey(_workId(item)),
-                        id: 'home:in-progress:${_workId(item)}',
-                        child: ContinueWatchingPoster(
-                          item: item,
-                          onResume: () => widget.onResume(item),
-                          onRemove: () => widget.onRemove(item),
-                          focusNode: index == 0
-                              ? _continueWatchingRowFocus
-                              : null,
-                        ),
-                      );
-                    },
                   ),
                 ),
               ),
@@ -529,27 +532,29 @@ class _HomeRow<T> extends StatelessWidget {
           SizedBox(
             height: (posterCardExtent + AppSpacing.rowHeadroom).du(context),
             child: EdgeFadeRow(
-              child: ListView.separated(
-                key: PageStorageKey('home-row-$title'),
-                scrollDirection: Axis.horizontal,
-                clipBehavior: Clip.none,
-                padding: EdgeInsets.symmetric(
-                  horizontal: AppSpacing.safeX.du(context),
-                  vertical: (AppSpacing.rowHeadroom / 2).du(context),
+              child: RowEndStop(
+                child: ListView.separated(
+                  key: PageStorageKey('home-row-$title'),
+                  scrollDirection: Axis.horizontal,
+                  clipBehavior: Clip.none,
+                  padding: EdgeInsets.symmetric(
+                    horizontal: AppSpacing.safeX.du(context),
+                    vertical: (AppSpacing.rowHeadroom / 2).du(context),
+                  ),
+                  itemCount: items.length,
+                  separatorBuilder: (context, index) =>
+                      SizedBox(width: AppSpacing.cardGap.du(context)),
+                  itemBuilder: (context, index) {
+                    final id = idOf(items[index]);
+                    // The same title can sit in two rows, so the row is
+                    // part of what's remembered.
+                    return RememberFocus(
+                      key: ValueKey(id),
+                      id: 'home:$title:$id',
+                      child: itemBuilder(items[index], index),
+                    );
+                  },
                 ),
-                itemCount: items.length,
-                separatorBuilder: (context, index) =>
-                    SizedBox(width: AppSpacing.cardGap.du(context)),
-                itemBuilder: (context, index) {
-                  final id = idOf(items[index]);
-                  // The same title can sit in two rows, so the row is
-                  // part of what's remembered.
-                  return RememberFocus(
-                    key: ValueKey(id),
-                    id: 'home:$title:$id',
-                    child: itemBuilder(items[index], index),
-                  );
-                },
               ),
             ),
           ),
