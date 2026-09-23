@@ -4,6 +4,7 @@ import '../../theme/phosphor_icons.dart';
 
 import '../../data/plex/plex_image_url.dart';
 import '../../data/plex/plex_models.dart';
+import '../../focus/screen_memory.dart';
 import '../../kit/button.dart';
 import '../../kit/icon.dart';
 import '../../kit/text.dart';
@@ -234,36 +235,44 @@ class HomeHero extends StatelessWidget {
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            AppButton(
-                              onClick: onResume,
-                              focusNode: resumeFocusNode,
-                              autofocus: autofocus,
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  const AppIcon(
-                                    PhosphorIconsFill.play,
-                                    size: 22,
-                                  ),
-                                  SizedBox(width: AppSpacing.md.du(context)),
-                                  const AppText('Resume'),
-                                ],
-                              ),
-                            ),
-                            if (onWatchTogether != null) ...[
-                              SizedBox(width: AppSpacing.lg.du(context)),
-                              AppOutlinedButton(
-                                onClick: () => onWatchTogether!(active),
+                            RememberFocus(
+                              id: 'hero:resume',
+                              child: AppButton(
+                                onClick: onResume,
+                                focusNode: resumeFocusNode,
+                                autofocus: autofocus,
                                 child: Row(
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
                                     const AppIcon(
-                                      PhosphorIconsRegular.usersThree,
+                                      PhosphorIconsFill.play,
                                       size: 22,
                                     ),
                                     SizedBox(width: AppSpacing.md.du(context)),
-                                    const AppText('Watch Together'),
+                                    const AppText('Resume'),
                                   ],
+                                ),
+                              ),
+                            ),
+                            if (onWatchTogether != null) ...[
+                              SizedBox(width: AppSpacing.lg.du(context)),
+                              RememberFocus(
+                                id: 'hero:watch-together',
+                                child: AppOutlinedButton(
+                                  onClick: () => onWatchTogether!(active),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      const AppIcon(
+                                        PhosphorIconsRegular.usersThree,
+                                        size: 22,
+                                      ),
+                                      SizedBox(
+                                        width: AppSpacing.md.du(context),
+                                      ),
+                                      const AppText('Watch Together'),
+                                    ],
+                                  ),
                                 ),
                               ),
                             ],

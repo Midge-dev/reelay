@@ -14,6 +14,7 @@ import '../data/plex/secure_token_store.dart';
 import '../data/settings/app_settings.dart';
 import '../data/settings/relay_identity_store.dart';
 import '../data/settings/settings_store.dart';
+import '../focus/screen_memory.dart';
 import '../screens/home/watch_together_row.dart';
 import '../sync/relay_client.dart';
 import '../sync/relay_directory_api.dart';
@@ -992,8 +993,11 @@ class AppRootController extends ChangeNotifier {
     // this app), skipping the shortcut here is what gives a later tap a
     // real chance to refetch, instead of replaying that stale empty
     // result forever.
-    if (group.key == ctx.selectedSectionGroup.key && ctx.items.isNotEmpty) {
-      _setState(Library(ctx: ctx));
+    final current = _state;
+    if (group.key == ctx.selectedSectionGroup.key &&
+        ctx.items.isNotEmpty &&
+        current is Library) {
+      _setState(Library(ctx: ctx, returnState: current.returnState));
       return;
     }
     openSection(ctx.servers, ctx.sectionGroups, group);
@@ -1031,6 +1035,7 @@ class AppRootController extends ChangeNotifier {
               selectedSectionGroup: group,
               items: items,
             ),
+            returnState: previous,
           ),
         );
       }
@@ -1048,7 +1053,10 @@ class AppRootController extends ChangeNotifier {
         guidOf: (i) => i.guid,
         alternateIdsOf: (i) => i.guids.map((g) => g.id).toList(),
       );
-      return Library(ctx: target.ctx.copyWith(items: items));
+      return Library(
+        ctx: target.ctx.copyWith(items: items),
+        returnState: target.returnState,
+      );
     }
     return target;
   }
@@ -1057,24 +1065,25 @@ class AppRootController extends ChangeNotifier {
     _setState(target);
     () async {
       final refreshed = await _refreshReturnState(target);
+      ScreenMemory.carry(target, refreshed);
       if (identical(_state, target)) _setState(refreshed);
     }();
   }
 
   void removeFromContinueWatching(Home home, FoldedWork<PlexOnDeckItem> work) {
     final target = work.primary;
-    _setState(
-      home.copyWith(
-        onDeck: home.onDeck
-            .where(
-              (w) =>
-                  w.primary.server.machineIdentifier !=
-                      target.server.machineIdentifier ||
-                  w.primary.value.ratingKey != target.value.ratingKey,
-            )
-            .toList(),
-      ),
+    final updated = home.copyWith(
+      onDeck: home.onDeck
+          .where(
+            (w) =>
+                w.primary.server.machineIdentifier !=
+                    target.server.machineIdentifier ||
+                w.primary.value.ratingKey != target.value.ratingKey,
+          )
+          .toList(),
     );
+    ScreenMemory.carry(home, updated);
+    _setState(updated);
     unawaited(
       PlexServerApi(
         target.server,

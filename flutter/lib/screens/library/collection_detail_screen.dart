@@ -3,6 +3,7 @@ import 'package:flutter/widgets.dart';
 import '../../data/plex/plex_image_url.dart';
 import '../../data/plex/plex_models.dart';
 import '../../focus/back_handler.dart';
+import '../../focus/screen_memory.dart';
 import '../../kit/text.dart';
 import '../../theme/scale.dart';
 import '../../theme/tokens.dart';
@@ -67,15 +68,21 @@ class CollectionDetailScreen extends StatelessWidget {
                         horizontal: AppSpacing.safeX.du(context),
                       ),
                       child: PosterGrid(
+                        storageId: 'collection-items',
                         itemCount: items.length,
                         itemBuilder: (context, index) {
                           final item = items[index];
-                          return PosterCard(
+                          return RememberFocus(
                             key: ValueKey(item.ratingKey),
-                            imageUrl: PlexImageUrl.of(server, item.thumb),
-                            title: item.title,
-                            autofocus: index == 0,
-                            onClick: () => onSelectItem(item),
+                            id: 'item:${item.ratingKey}',
+                            child: PosterCard(
+                              imageUrl: PlexImageUrl.of(server, item.thumb),
+                              title: item.title,
+                              autofocus:
+                                  index == 0 &&
+                                  !ScreenMemory.restoringOf(context),
+                              onClick: () => onSelectItem(item),
+                            ),
                           );
                         },
                       ),

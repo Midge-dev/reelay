@@ -7,6 +7,7 @@ import '../../theme/phosphor_icons.dart';
 import '../../data/plex/plex_models.dart';
 import '../../data/plex/plex_resources_api.dart' show ReachableServer;
 import '../../focus/back_handler.dart';
+import '../../focus/screen_memory.dart';
 import '../../kit/icon.dart';
 import '../../kit/text.dart';
 import '../../state/duplicate_fold.dart';
@@ -56,9 +57,20 @@ class _SearchScreenState extends State<SearchScreen> {
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback(
-      (_) => _firstKeyFocus.requestFocus(),
-    );
+    // Back from a result comes back to the same query and results, with
+    // the result that was opened focused again (ScreenMemory).
+    _query = ScreenMemory.read<String>(context, 'search.query') ?? '';
+    _results =
+        ScreenMemory.read<List<FoldedWork<PlexOnDeckItem>>>(
+          context,
+          'search.results',
+        ) ??
+        const [];
+    if (!ScreenMemory.restoringOf(context)) {
+      WidgetsBinding.instance.addPostFrameCallback(
+        (_) => _firstKeyFocus.requestFocus(),
+      );
+    }
   }
 
   @override
@@ -70,12 +82,14 @@ class _SearchScreenState extends State<SearchScreen> {
 
   void _onQueryChanged(String query) {
     setState(() => _query = query);
+    ScreenMemory.write(context, 'search.query', query);
     _debounce?.cancel();
     if (query.trim().isEmpty) {
       setState(() {
         _results = const [];
         _searching = false;
       });
+      ScreenMemory.write(context, 'search.results', _results);
       return;
     }
     _debounce = Timer(_searchDebounce, () => _runSearch(query));
@@ -95,6 +109,7 @@ class _SearchScreenState extends State<SearchScreen> {
       _results = results;
       _searching = false;
     });
+    ScreenMemory.write(context, 'search.results', results);
   }
 
   void _onChar(String c) => _onQueryChanged(_query + c);
@@ -257,6 +272,7 @@ class _ResultsPanel extends StatelessWidget {
     }
 
     return SingleChildScrollView(
+      key: const PageStorageKey('search-results'),
       clipBehavior: Clip.none,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -361,6 +377,7 @@ class _ResultGroupState extends State<_ResultGroup> {
                 );
               },
               child: ListView.separated(
+                key: PageStorageKey('search-row-${widget.label}'),
                 controller: _scroll,
                 scrollDirection: Axis.horizontal,
                 clipBehavior: Clip.none,
@@ -374,17 +391,20 @@ class _ResultGroupState extends State<_ResultGroup> {
                     SizedBox(width: AppSpacing.cardGap.du(context)),
                 itemBuilder: (context, index) {
                   final item = widget.items[index];
-                  return PosterCard(
-                    key: ValueKey(
-                      '${item.primary.server.machineIdentifier}:${item.primary.value.ratingKey}',
+                  final id =
+                      '${item.primary.server.machineIdentifier}:${item.primary.value.ratingKey}';
+                  return RememberFocus(
+                    key: ValueKey(id),
+                    id: 'search:${widget.label}:$id',
+                    child: PosterCard(
+                      imageUrl: PlexImageUrl.of(
+                        item.primary.server,
+                        item.primary.value.thumb,
+                      ),
+                      title: item.primary.value.title,
+                      subtitle: _caption(item),
+                      onClick: () => widget.onSelect(item),
                     ),
-                    imageUrl: PlexImageUrl.of(
-                      item.primary.server,
-                      item.primary.value.thumb,
-                    ),
-                    title: item.primary.value.title,
-                    subtitle: _caption(item),
-                    onClick: () => widget.onSelect(item),
                   );
                 },
               ),

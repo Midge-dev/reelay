@@ -9,6 +9,7 @@ import '../data/plex/plex_models.dart';
 import '../data/plex/plex_resources_api.dart';
 import '../data/plex/plex_server_api.dart';
 import '../focus/back_handler.dart';
+import '../focus/screen_memory.dart';
 import '../kit/text.dart';
 import '../state/app_root_controller.dart';
 import '../state/app_state.dart';
@@ -271,22 +272,27 @@ class _AppContent extends StatelessWidget {
         onDone: () => controller.goHome(ctx.servers, ctx.sectionGroups),
       ),
       Home() => _buildHome(state),
-      Library(:final ctx) => _drawer(
-        ctx: ctx,
-        child: LibraryScreen(
-          servers: ctx.servers,
-          selectedSectionGroup: ctx.selectedSectionGroup,
-          items: ctx.items,
-          onSelectItem: (item) => controller.returnTo(
-            MovieDetail(
-              ctx: ctx,
-              work: item,
-              activeCopy: item.primary,
-              returnState: Library(ctx: ctx),
+      Library(:final ctx, :final returnState) => BackHandler(
+        onBack: () => controller.returnTo(returnState),
+        child: _drawer(
+          state: state,
+          ctx: ctx,
+          child: LibraryScreen(
+            servers: ctx.servers,
+            selectedSectionGroup: ctx.selectedSectionGroup,
+            items: ctx.items,
+            onSelectItem: (item) => controller.returnTo(
+              MovieDetail(
+                ctx: ctx,
+                work: item,
+                activeCopy: item.primary,
+                returnState: state,
+              ),
             ),
+            loadCollections: () => _fetchGroupCollections(ctx),
+            onSelectCollection: (collection) =>
+                _openCollection(ctx, collection, state),
           ),
-          loadCollections: () => _fetchGroupCollections(ctx),
-          onSelectCollection: (collection) => _openCollection(ctx, collection),
         ),
       ),
       LoadingSection(
@@ -334,6 +340,7 @@ class _AppContent extends StatelessWidget {
         child: const HomeLoadingSkeleton(),
       ),
       Settings(:final ctx, :final returnState, :final relayHint) => _drawer(
+        state: state,
         ctx: ctx,
         child: SettingsScreen(
           accountToken: controller.accountTokenOrEmpty,
@@ -352,6 +359,7 @@ class _AppContent extends StatelessWidget {
         ),
       ),
       Search(:final ctx, :final returnState) => _drawer(
+        state: state,
         ctx: ctx,
         child: SearchScreen(
           servers: ctx.servers,
@@ -375,19 +383,23 @@ class _AppContent extends StatelessWidget {
           onBack: () => controller.returnTo(returnState),
         ),
       ),
-      Watchlist(:final ctx) => _drawer(
-        ctx: ctx,
-        child: WatchlistScreen(
-          items: controller.watchlist,
-          onSelectItem: (entry) => controller.openWatchlistItem(
-            servers: ctx.servers,
-            sectionGroups: ctx.sectionGroups,
-            entry: entry,
-            returnState: state,
+      Watchlist(:final ctx, :final returnState) => BackHandler(
+        onBack: () => controller.returnTo(returnState),
+        child: _drawer(
+          state: state,
+          ctx: ctx,
+          child: WatchlistScreen(
+            items: controller.watchlist,
+            onSelectItem: (entry) => controller.openWatchlistItem(
+              servers: ctx.servers,
+              sectionGroups: ctx.sectionGroups,
+              entry: entry,
+              returnState: state,
+            ),
+            onRemove: controller.removeFromWatchlist,
+            accountName: controller.localAccount?.username,
+            availability: controller.watchlistAvailability,
           ),
-          onRemove: controller.removeFromWatchlist,
-          accountName: controller.localAccount?.username,
-          availability: controller.watchlistAvailability,
         ),
       ),
       MovieDetail(
@@ -398,6 +410,7 @@ class _AppContent extends StatelessWidget {
       )
           when ctx.selectedSectionGroup.type == _sectionTypeShow =>
         _drawer(
+          state: state,
           ctx: ctx,
           child: ShowDetailScreen(
             server: activeCopy.server,
@@ -478,6 +491,7 @@ class _AppContent extends StatelessWidget {
         :final returnState,
       ) =>
         _drawer(
+          state: state,
           ctx: ctx,
           child: MovieDetailScreen(
             server: activeCopy.server,
@@ -593,6 +607,7 @@ class _AppContent extends StatelessWidget {
         :final returnState,
       ) =>
         _drawer(
+          state: state,
           ctx: ctx,
           child: PersonFilmographyScreen(
             server: server,
@@ -622,6 +637,7 @@ class _AppContent extends StatelessWidget {
         :final returnState,
       ) =>
         _drawer(
+          state: state,
           ctx: ctx,
           child: CollectionDetailScreen(
             server: collection.server,
@@ -650,6 +666,7 @@ class _AppContent extends StatelessWidget {
         :final returnState,
       ) =>
         _drawer(
+          state: state,
           ctx: ctx,
           child: EpisodeDetailScreen(
             server: activeCopy.server,
@@ -851,7 +868,7 @@ class _AppContent extends StatelessWidget {
         Search(ctx: emptyCtx(home.sectionGroups.first), returnState: home),
       ),
       onOpenWatchlist: () => controller.returnTo(
-        Watchlist(ctx: emptyCtx(home.sectionGroups.first)),
+        Watchlist(ctx: emptyCtx(home.sectionGroups.first), returnState: home),
       ),
       // Clicking Home while already on Home used to be a pure no-op —
       // no state change at all means nothing ever reclaims focus from the
@@ -869,38 +886,41 @@ class _AppContent extends StatelessWidget {
       probeServer: _probeServer,
       loadLibraryCount: _loadLibraryCount,
       onToggleServer: _toggleServer,
-      child: HomeScreen(
-        servers: home.servers,
-        unreachableResources: home.unreachableResources,
-        onDeck: home.onDeck,
-        recentlyAdded: home.recentlyAdded,
-        recentActivity: home.recentActivity,
-        suggestions: home.suggestions,
-        watchlist: controller.watchlist,
-        liveRooms: controller.liveRooms,
-        myRoomId: controller.myRoomId,
-        hostedRoomIds: controller.hostedRoomIds,
-        onEndSession: controller.closeHostedRoom,
-        onSelectRoom: (merged) =>
-            controller.joinRoom(home, home.servers, merged),
-        onOpenRooms: () => roomsPanelOpen.value = true,
-        onResume: (item) => controller.resumeOnDeckItem(home, item),
-        onRemove: (item) => controller.removeFromContinueWatching(home, item),
-        onSelectWatchlistItem: (entry) =>
-            controller.selectWatchlistItem(home, entry),
-        onRemoveFromWatchlist: controller.removeFromWatchlist,
-        onSelectRecentlyAdded: (item) =>
-            controller.selectRecentlyAdded(home, item),
-        onSelectRecentActivity: (item) =>
-            controller.selectOnDeckLike(home, item),
-        onSelectSuggestion: (item) => controller.selectOnDeckLike(home, item),
-        onHeroWatchTogether: (item) => controller.openWatchTogetherStart(
-          ctx: emptyCtx(sectionGroupFor(home.sectionGroups, item.value.type)),
-          server: item.server,
-          returnState: home,
-          roomTitle: _episodeRoomTitleFromOnDeck(item.value),
-          thumb: item.value.thumb,
-          targetRatingKey: item.value.ratingKey,
+      child: _remembering(
+        home,
+        HomeScreen(
+          servers: home.servers,
+          unreachableResources: home.unreachableResources,
+          onDeck: home.onDeck,
+          recentlyAdded: home.recentlyAdded,
+          recentActivity: home.recentActivity,
+          suggestions: home.suggestions,
+          watchlist: controller.watchlist,
+          liveRooms: controller.liveRooms,
+          myRoomId: controller.myRoomId,
+          hostedRoomIds: controller.hostedRoomIds,
+          onEndSession: controller.closeHostedRoom,
+          onSelectRoom: (merged) =>
+              controller.joinRoom(home, home.servers, merged),
+          onOpenRooms: () => roomsPanelOpen.value = true,
+          onResume: (item) => controller.resumeOnDeckItem(home, item),
+          onRemove: (item) => controller.removeFromContinueWatching(home, item),
+          onSelectWatchlistItem: (entry) =>
+              controller.selectWatchlistItem(home, entry),
+          onRemoveFromWatchlist: controller.removeFromWatchlist,
+          onSelectRecentlyAdded: (item) =>
+              controller.selectRecentlyAdded(home, item),
+          onSelectRecentActivity: (item) =>
+              controller.selectOnDeckLike(home, item),
+          onSelectSuggestion: (item) => controller.selectOnDeckLike(home, item),
+          onHeroWatchTogether: (item) => controller.openWatchTogetherStart(
+            ctx: emptyCtx(sectionGroupFor(home.sectionGroups, item.value.type)),
+            server: item.server,
+            returnState: home,
+            roomTitle: _episodeRoomTitleFromOnDeck(item.value),
+            thumb: item.value.thumb,
+            targetRatingKey: item.value.ratingKey,
+          ),
         ),
       ),
     );
@@ -915,8 +935,14 @@ class _AppContent extends StatelessWidget {
     return item.title;
   }
 
-  Widget _drawer({required LibraryContext ctx, required Widget child}) {
-    final state = controller.state;
+  /// [state] is the screen being drawn — not necessarily
+  /// `controller.state`, which is the dialog when this is the page drawn
+  /// underneath one.
+  Widget _drawer({
+    required AppState state,
+    required LibraryContext ctx,
+    required Widget child,
+  }) {
     return AppNavigationDrawer(
       sectionGroups: ctx.sectionGroups,
       selectedSectionGroupKey: ctx.selectedSectionGroup.key,
@@ -924,20 +950,16 @@ class _AppContent extends StatelessWidget {
       rooms: _roomsData(state, ctx.servers),
       roomsPanelOpen: roomsPanelOpen,
       onSelectSection: (group) => controller.selectSection(ctx, group),
-      onOpenSettings: () => controller.returnTo(
-        Settings(
-          ctx: ctx,
-          returnState: Library(ctx: ctx),
-        ),
-      ),
+      // Back from a rail destination returns to the screen it was opened
+      // from — not a made-up Library, which is what these used to return
+      // to even from a detail page or Search.
+      onOpenSettings: () =>
+          controller.returnTo(Settings(ctx: ctx, returnState: state)),
       onOpenHome: () => controller.goHome(ctx.servers, ctx.sectionGroups),
-      onOpenSearch: () => controller.returnTo(
-        Search(
-          ctx: ctx,
-          returnState: Library(ctx: ctx),
-        ),
-      ),
-      onOpenWatchlist: () => controller.returnTo(Watchlist(ctx: ctx)),
+      onOpenSearch: () =>
+          controller.returnTo(Search(ctx: ctx, returnState: state)),
+      onOpenWatchlist: () =>
+          controller.returnTo(Watchlist(ctx: ctx, returnState: state)),
       account: controller.localAccount,
       versionName: _appVersionName,
       connectedServers: controller.connectedServers,
@@ -946,7 +968,18 @@ class _AppContent extends StatelessWidget {
       probeServer: _probeServer,
       loadLibraryCount: _loadLibraryCount,
       onToggleServer: _toggleServer,
-      child: child,
+      child: _remembering(state, child),
+    );
+  }
+
+  /// Back hands a screen its own AppState object again; this gives the
+  /// screen that object's [ScreenMemory], so it comes back as it was left.
+  static Widget _remembering(AppState state, Widget screen) {
+    final memory = ScreenMemory.of(state);
+    return ScreenMemoryScope(
+      key: ObjectKey(memory),
+      memory: memory,
+      child: screen,
     );
   }
 
@@ -1042,6 +1075,7 @@ class _AppContent extends StatelessWidget {
   void _openCollection(
     LibraryContext ctx,
     Sourced<PlexCollection> collection,
+    AppState returnState,
   ) async {
     try {
       final items = await PlexServerApi(
@@ -1053,7 +1087,7 @@ class _AppContent extends StatelessWidget {
           ctx: ctx,
           collection: collection,
           items: items,
-          returnState: Library(ctx: ctx),
+          returnState: returnState,
         ),
       );
     } catch (_) {
@@ -1062,7 +1096,7 @@ class _AppContent extends StatelessWidget {
           ctx: ctx,
           collection: collection,
           items: const [],
-          returnState: Library(ctx: ctx),
+          returnState: returnState,
         ),
       );
     }

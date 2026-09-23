@@ -1,3 +1,4 @@
+import 'package:collection/collection.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 
@@ -6,6 +7,7 @@ import '../../theme/phosphor_icons.dart';
 import '../../data/plex/plex_image_url.dart';
 import '../../data/plex/plex_models.dart';
 import '../../focus/back_handler.dart';
+import '../../focus/screen_memory.dart';
 import '../../kit/button.dart';
 import '../../kit/card.dart';
 import '../../kit/filter_chip.dart';
@@ -98,8 +100,33 @@ class _ShowDetailScreenState extends State<ShowDetailScreen> {
   @override
   void initState() {
     super.initState();
-    _load();
+    // Coming back from an episode: the same season, episodes and focused
+    // row at once, then a quiet refresh that keeps that season.
+    final kept = ScreenMemory.read<_ShowLoaded>(context, 'show.loaded');
+    if (kept != null) {
+      _nextEpisode = kept.nextEpisode;
+      _detail = kept.detail;
+      _seasons = kept.seasons;
+      _selectedSeason = kept.selectedSeason;
+      _episodes = kept.episodes;
+      _episodesLoading = false;
+      _initialFocusEpisodeKey = kept.initialFocusEpisodeKey;
+    }
+    _load(keepSeason: kept != null);
   }
+
+  void _remember() => ScreenMemory.write(
+    context,
+    'show.loaded',
+    _ShowLoaded(
+      nextEpisode: _nextEpisode,
+      detail: _detail,
+      seasons: _seasons,
+      selectedSeason: _selectedSeason,
+      episodes: _episodes,
+      initialFocusEpisodeKey: _initialFocusEpisodeKey,
+    ),
+  );
 
   @override
   void didUpdateWidget(covariant ShowDetailScreen oldWidget) {
@@ -128,7 +155,7 @@ class _ShowDetailScreenState extends State<ShowDetailScreen> {
     super.dispose();
   }
 
-  Future<void> _load() async {
+  Future<void> _load({bool keepSeason = false}) async {
     final results = await Future.wait([
       widget.resolveNextEpisode(),
       widget.loadDetail(),
@@ -138,7 +165,12 @@ class _ShowDetailScreenState extends State<ShowDetailScreen> {
     final next = results[0] as PlexOnDeckItem?;
     final detail = results[1] as PlexMovieDetail?;
     final seasons = results[2] as List<PlexSeason>;
-    final target = _pickInitialSeason(seasons, next);
+    final kept = keepSeason
+        ? seasons.firstWhereOrNull(
+            (s) => s.ratingKey == _selectedSeason?.ratingKey,
+          )
+        : null;
+    final target = kept ?? _pickInitialSeason(seasons, next);
 
     setState(() {
       _nextEpisode = next;
@@ -155,7 +187,8 @@ class _ShowDetailScreenState extends State<ShowDetailScreen> {
     if (!mounted) return;
 
     final focusKey = _nextUpIn(episodes, next)?.ratingKey;
-    if (focusKey != null) {
+    // Landing on the next episode is for arriving, not for coming back.
+    if (focusKey != null && kept == null) {
       _initialFocusNode = FocusNode(
         debugLabel: 'show-detail-episode-$focusKey',
       );
@@ -229,6 +262,7 @@ class _ShowDetailScreenState extends State<ShowDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
+    _remember();
     final detail = _detail;
     // The episode Play targets: the one focus lands on (in progress or
     // next unwatched), falling back to Plex's on-deck pick before episodes
@@ -278,14 +312,17 @@ class _ShowDetailScreenState extends State<ShowDetailScreen> {
           children: [
             for (final (i, episode) in _episodes.indexed) ...[
               if (i > 0) SizedBox(height: _episodeGap.du(context)),
-              _EpisodeRow(
+              RememberFocus(
                 key: ValueKey(episode.ratingKey),
-                server: widget.server,
-                episode: episode,
-                focusNode: episode.ratingKey == _initialFocusEpisodeKey
-                    ? _initialFocusNode
-                    : null,
-                onClick: () => widget.onSelectEpisode(episode),
+                id: 'episode:${episode.ratingKey}',
+                child: _EpisodeRow(
+                  server: widget.server,
+                  episode: episode,
+                  focusNode: episode.ratingKey == _initialFocusEpisodeKey
+                      ? _initialFocusNode
+                      : null,
+                  onClick: () => widget.onSelectEpisode(episode),
+                ),
               ),
             ],
           ],
@@ -329,6 +366,7 @@ class _ShowDetailScreenState extends State<ShowDetailScreen> {
               ),
             ),
             ListView.separated(
+              key: const PageStorageKey('show-detail'),
               controller: _scrollController,
               // Focused rows scale 1.03 — keep them clear of the edges.
               clipBehavior: Clip.none,
@@ -463,51 +501,60 @@ class _ShowHero extends StatelessWidget {
                       spacing: _heroBlockGap.du(context),
                       runSpacing: _heroBlockGap.du(context),
                       children: [
-                        AppOutlinedButton(
-                          onClick: onPlay ?? () {},
-                          enabled: onPlay != null,
-                          focusNode: playFocus,
-                          onFocusChange: _onFocus,
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              const AppIcon(
-                                PhosphorIconsRegular.play,
-                                size: 22,
-                              ),
-                              SizedBox(width: AppSpacing.md.du(context)),
-                              AppText(
-                                playLabel,
-                                style: AppTypography.label,
-                                color: null,
-                              ),
-                            ],
+                        RememberFocus(
+                          id: 'play',
+                          child: AppOutlinedButton(
+                            onClick: onPlay ?? () {},
+                            enabled: onPlay != null,
+                            focusNode: playFocus,
+                            onFocusChange: _onFocus,
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const AppIcon(
+                                  PhosphorIconsRegular.play,
+                                  size: 22,
+                                ),
+                                SizedBox(width: AppSpacing.md.du(context)),
+                                AppText(
+                                  playLabel,
+                                  style: AppTypography.label,
+                                  color: null,
+                                ),
+                              ],
+                            ),
                           ),
                         ),
-                        AppOutlinedButton(
-                          onClick: onWatchTogether ?? () {},
-                          enabled: onWatchTogether != null,
-                          onFocusChange: _onFocus,
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              const AppIcon(
-                                PhosphorIconsRegular.usersThree,
-                                size: 22,
-                              ),
-                              SizedBox(width: AppSpacing.md.du(context)),
-                              AppText(
-                                'Watch Together',
-                                style: AppTypography.label,
-                                color: null,
-                              ),
-                            ],
+                        RememberFocus(
+                          id: 'watch-together',
+                          child: AppOutlinedButton(
+                            onClick: onWatchTogether ?? () {},
+                            enabled: onWatchTogether != null,
+                            onFocusChange: _onFocus,
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const AppIcon(
+                                  PhosphorIconsRegular.usersThree,
+                                  size: 22,
+                                ),
+                                SizedBox(width: AppSpacing.md.du(context)),
+                                AppText(
+                                  'Watch Together',
+                                  style: AppTypography.label,
+                                  color: null,
+                                ),
+                              ],
+                            ),
                           ),
                         ),
-                        WatchlistButton(
-                          isOnWatchlist: isOnWatchlist,
-                          onClick: onToggleWatchlist,
-                          onFocusChange: _onFocus,
+                        RememberFocus(
+                          id: 'watchlist',
+                          child: WatchlistButton(
+                            isOnWatchlist: isOnWatchlist,
+                            onClick: onToggleWatchlist,
+                            onFocusChange: _onFocus,
+                          ),
                         ),
                       ],
                     ),
@@ -540,6 +587,25 @@ class _ShowHero extends StatelessWidget {
   }
 }
 
+/// What the show page keeps in its ScreenMemory besides focus and scroll.
+class _ShowLoaded {
+  final PlexOnDeckItem? nextEpisode;
+  final PlexMovieDetail? detail;
+  final List<PlexSeason> seasons;
+  final PlexSeason? selectedSeason;
+  final List<PlexEpisode> episodes;
+  final String? initialFocusEpisodeKey;
+
+  const _ShowLoaded({
+    required this.nextEpisode,
+    required this.detail,
+    required this.seasons,
+    required this.selectedSeason,
+    required this.episodes,
+    required this.initialFocusEpisodeKey,
+  });
+}
+
 class _SeasonChipsRow extends StatelessWidget {
   final List<PlexSeason> seasons;
   final PlexSeason? selected;
@@ -568,14 +634,17 @@ class _SeasonChipsRow extends StatelessWidget {
       runSpacing: AppSpacing.md.du(context),
       children: [
         for (final season in sorted)
-          AppFilterChip(
+          RememberFocus(
             key: ValueKey(season.ratingKey),
-            selected: season.ratingKey == selected?.ratingKey,
-            onClick: () => onSelect(season),
-            child: AppText(
-              season.title,
-              style: AppTypography.caption,
-              color: null,
+            id: 'season:${season.ratingKey}',
+            child: AppFilterChip(
+              selected: season.ratingKey == selected?.ratingKey,
+              onClick: () => onSelect(season),
+              child: AppText(
+                season.title,
+                style: AppTypography.caption,
+                color: null,
+              ),
             ),
           ),
       ],
@@ -590,7 +659,6 @@ class _EpisodeRow extends StatefulWidget {
   final VoidCallback onClick;
 
   const _EpisodeRow({
-    super.key,
     required this.server,
     required this.episode,
     this.focusNode,

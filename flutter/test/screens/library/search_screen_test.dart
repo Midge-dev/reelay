@@ -3,6 +3,7 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:reelay/data/plex/plex_models.dart';
 import 'package:reelay/data/plex/plex_resources_api.dart';
+import 'package:reelay/focus/screen_memory.dart';
 import 'package:reelay/kit/card.dart';
 import 'package:reelay/screens/library/search_screen.dart';
 import 'package:reelay/state/duplicate_fold.dart';
@@ -15,6 +16,7 @@ Future<void> _pump(
   WidgetTester tester, {
   required Future<List<PlexOnDeckItem>> Function(String query) search,
   ValueChanged<PlexOnDeckItem>? onSelectResult,
+  ScreenMemory? memory,
 }) async {
   tester.view.physicalSize = const Size(1920, 1080);
   tester.view.devicePixelRatio = 1.0;
@@ -24,14 +26,18 @@ Future<void> _pump(
   await tester.pumpWidget(
     Directionality(
       textDirection: TextDirection.ltr,
-      child: SearchScreen(
-        servers: _connectedServers,
-        search: (q) async {
-          final results = await search(q);
-          return results.map((i) => FoldedWork(i.guid, [Sourced(i, _server, ServerReachability.local)])).toList();
-        },
-        onSelectResult: (item) => (onSelectResult ?? (_) {})(item.primary.value),
-        onBack: () {},
+      child: ScreenMemoryScope(
+        key: ObjectKey(memory),
+        memory: memory ?? ScreenMemory(),
+        child: SearchScreen(
+          servers: _connectedServers,
+          search: (q) async {
+            final results = await search(q);
+            return results.map((i) => FoldedWork(i.guid, [Sourced(i, _server, ServerReachability.local)])).toList();
+          },
+          onSelectResult: (item) => (onSelectResult ?? (_) {})(item.primary.value),
+          onBack: () {},
+        ),
       ),
     ),
   );
@@ -138,6 +144,33 @@ void main() {
 
     final focused = FocusManager.instance.primaryFocus;
     expect(focused, isNot(same(keyboardFocus)));
+    expect(
+      find.ancestor(of: find.byWidgetPredicate((w) => w is Focus && w.focusNode == focused), matching: find.byType(AppCard)),
+      findsWidgets,
+    );
+  });
+
+  // The reported bug: Back from a result came back to an empty Search.
+  testWidgets('coming back from a result keeps the query, the results and the focused result', (tester) async {
+    final memory = ScreenMemory();
+    Future<List<PlexOnDeckItem>> search(String _) async => const [
+      PlexOnDeckItem(ratingKey: 'm1', type: 'movie', title: 'Bordeaux'),
+    ];
+    await _pump(tester, search: search, memory: memory);
+    await tester.tap(find.text('B'));
+    await tester.pump(_debounceSettle);
+    await tester.pump();
+    await tester.tap(find.byType(AppCard));
+    await tester.pump();
+
+    // Off to the detail page, then Back.
+    await tester.pumpWidget(const SizedBox());
+    await _pump(tester, search: search, memory: memory);
+    await tester.pump();
+
+    expect(find.text('B'), findsNWidgets(2), reason: 'the query field and the B key');
+    expect(find.text('Bordeaux'), findsOneWidget);
+    final focused = FocusManager.instance.primaryFocus;
     expect(
       find.ancestor(of: find.byWidgetPredicate((w) => w is Focus && w.focusNode == focused), matching: find.byType(AppCard)),
       findsWidgets,

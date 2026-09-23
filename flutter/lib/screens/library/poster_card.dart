@@ -99,11 +99,16 @@ class PosterGrid extends StatefulWidget {
   final IndexedWidgetBuilder itemBuilder;
   final ScrollController? controller;
 
+  /// Names this grid's scroll offset in the screen's ScreenMemory, so Back
+  /// returns to the same place. Unique per screen.
+  final String storageId;
+
   const PosterGrid({
     super.key,
     required this.itemCount,
     required this.itemBuilder,
     this.controller,
+    this.storageId = 'poster-grid',
   });
 
   @override
@@ -149,6 +154,7 @@ class _PosterGridState extends State<PosterGrid> {
                 width:
                     columns * posterWidth.du(context) + (columns - 1) * spacing,
                 child: GridView.builder(
+                  key: PageStorageKey(widget.storageId),
                   controller: controller,
                   padding: EdgeInsets.only(
                     top: (AppSpacing.rowHeadroom / 2).du(context),

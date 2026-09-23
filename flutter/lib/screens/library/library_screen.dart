@@ -5,6 +5,7 @@ import 'package:flutter/widgets.dart';
 import '../../data/plex/plex_image_url.dart';
 import '../../data/plex/plex_models.dart';
 import '../../data/plex/plex_resources_api.dart' show ReachableServer;
+import '../../focus/screen_memory.dart';
 import '../../kit/button.dart';
 import '../../kit/focusable_surface.dart';
 import '../../kit/icon.dart';
@@ -30,6 +31,29 @@ const _chipHeight = 58.0;
 const _narrowFieldWidth = 320.0;
 
 enum _ViewMode { titles, collections }
+
+/// What Library keeps in its ScreenMemory besides focus and scroll.
+class _LibraryView {
+  final String sectionKey;
+  final _ViewMode viewMode;
+  final String? genre;
+  final int? decade;
+  final DateAddedBucket? dateAdded;
+  final SortMode sortMode;
+  final List<Sourced<PlexCollection>>? collections;
+  final String query;
+
+  const _LibraryView({
+    required this.sectionKey,
+    required this.viewMode,
+    required this.genre,
+    required this.decade,
+    required this.dateAdded,
+    required this.sortMode,
+    required this.collections,
+    required this.query,
+  });
+}
 
 enum _FilterKind { genre, decade, added, sort }
 
@@ -94,6 +118,38 @@ class _LibraryScreenState extends State<LibraryScreen> {
   final _addedChipKey = GlobalKey();
   final _sortChipKey = GlobalKey();
   Offset? _panelAnchor;
+
+  @override
+  void initState() {
+    super.initState();
+    // Back from a title comes back to the same mode, filters and narrowing
+    // it left (focus and scroll are ScreenMemory's own).
+    final kept = ScreenMemory.read<_LibraryView>(context, 'library.view');
+    if (kept != null && kept.sectionKey == widget.selectedSectionGroup.key) {
+      _viewMode = kept.viewMode;
+      _genreFilter = kept.genre;
+      _decadeFilter = kept.decade;
+      _dateAddedFilter = kept.dateAdded;
+      _sortMode = kept.sortMode;
+      _collections = kept.collections;
+      _searchQuery = kept.query;
+    }
+  }
+
+  void _rememberView() => ScreenMemory.write(
+    context,
+    'library.view',
+    _LibraryView(
+      sectionKey: widget.selectedSectionGroup.key,
+      viewMode: _viewMode,
+      genre: _genreFilter,
+      decade: _decadeFilter,
+      dateAdded: _dateAddedFilter,
+      sortMode: _sortMode,
+      collections: _collections,
+      query: _searchQuery,
+    ),
+  );
 
   @override
   void didUpdateWidget(covariant LibraryScreen oldWidget) {
@@ -233,6 +289,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
 
   @override
   Widget build(BuildContext context) {
+    _rememberView();
     final bareItems = widget.items.map((s) => s.primary.value).toList();
     final availableGenres =
         bareItems.expand((i) => i.genres.map((g) => g.tag)).toSet().toList()
@@ -561,23 +618,28 @@ class _LibraryScreenState extends State<LibraryScreen> {
     if (results.isEmpty) {
       return _buildEmptyResultsState();
     }
+    final restoring = ScreenMemory.restoringOf(context);
     return PosterGrid(
+      storageId: 'library-titles',
       controller: _gridScrollController,
       itemCount: results.length,
       itemBuilder: (context, index) {
         final item = results[index];
-        return PosterCard(
-          key: ValueKey(
-            '${item.primary.server.machineIdentifier}:${item.primary.value.ratingKey}',
+        final id =
+            '${item.primary.server.machineIdentifier}:${item.primary.value.ratingKey}';
+        return RememberFocus(
+          key: ValueKey(id),
+          id: 'library:$id',
+          child: PosterCard(
+            imageUrl: PlexImageUrl.of(
+              item.primary.server,
+              item.primary.value.thumb,
+            ),
+            title: item.primary.value.title,
+            subtitle: item.primary.value.year?.toString(),
+            autofocus: index == 0 && !restoring,
+            onClick: () => widget.onSelectItem(item),
           ),
-          imageUrl: PlexImageUrl.of(
-            item.primary.server,
-            item.primary.value.thumb,
-          ),
-          title: item.primary.value.title,
-          subtitle: item.primary.value.year?.toString(),
-          autofocus: index == 0,
-          onClick: () => widget.onSelectItem(item),
         );
       },
     );
@@ -743,24 +805,32 @@ class _LibraryScreenState extends State<LibraryScreen> {
         child: const AppText('No collections found'),
       );
     }
+    final restoring = ScreenMemory.restoringOf(context);
     return PosterGrid(
+      storageId: 'library-collections',
       controller: _collectionsScrollController,
       itemCount: results.length,
       itemBuilder: (context, index) {
         final collection = results[index];
         final childCount = collection.value.childCount;
-        return PosterCard(
-          stacked: true,
-          key: ValueKey(
-            '${collection.server.machineIdentifier}:${collection.value.ratingKey}',
+        final id =
+            '${collection.server.machineIdentifier}:${collection.value.ratingKey}';
+        return RememberFocus(
+          key: ValueKey(id),
+          id: 'collection:$id',
+          child: PosterCard(
+            stacked: true,
+            imageUrl: PlexImageUrl.of(
+              collection.server,
+              collection.value.thumb,
+            ),
+            title: collection.value.title,
+            subtitle: childCount != null
+                ? '$childCount title${childCount == 1 ? '' : 's'}'
+                : null,
+            autofocus: index == 0 && !restoring,
+            onClick: () => widget.onSelectCollection(collection),
           ),
-          imageUrl: PlexImageUrl.of(collection.server, collection.value.thumb),
-          title: collection.value.title,
-          subtitle: childCount != null
-              ? '$childCount title${childCount == 1 ? '' : 's'}'
-              : null,
-          autofocus: index == 0,
-          onClick: () => widget.onSelectCollection(collection),
         );
       },
     );

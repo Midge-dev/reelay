@@ -113,22 +113,36 @@ class _RemoveConfirmOverlayState extends State<RemoveConfirmOverlay> {
     return escaping ? KeyEventResult.handled : KeyEventResult.ignored;
   }
 
-  KeyEventResult _trapFirstEdge(FocusNode node, KeyEvent event) {
-    if (event is! KeyDownEvent) return KeyEventResult.ignored;
-    final key = widget.compact
-        ? LogicalKeyboardKey.arrowUp
-        : LogicalKeyboardKey.arrowLeft;
-    return event.logicalKey == key
+  // Remove <-> Cancel is moved explicitly rather than left to directional
+  // traversal: the host card's own focus node wraps this overlay and spans
+  // the whole card, so geometrically it's a candidate "to the right of"
+  // Remove — traversal picked it, focus left the overlay, and the
+  // auto-dismiss above closed the confirm on a plain Right press.
+  LogicalKeyboardKey get _nextKey => widget.compact
+      ? LogicalKeyboardKey.arrowDown
+      : LogicalKeyboardKey.arrowRight;
+  LogicalKeyboardKey get _previousKey => widget.compact
+      ? LogicalKeyboardKey.arrowUp
+      : LogicalKeyboardKey.arrowLeft;
+
+  KeyEventResult _onRemoveKey(FocusNode node, KeyEvent event) {
+    if (event is KeyUpEvent) return KeyEventResult.ignored;
+    if (event.logicalKey == _nextKey) {
+      _cancelFocus.requestFocus();
+      return KeyEventResult.handled;
+    }
+    return event.logicalKey == _previousKey
         ? KeyEventResult.handled
         : KeyEventResult.ignored;
   }
 
-  KeyEventResult _trapLastEdge(FocusNode node, KeyEvent event) {
-    if (event is! KeyDownEvent) return KeyEventResult.ignored;
-    final key = widget.compact
-        ? LogicalKeyboardKey.arrowDown
-        : LogicalKeyboardKey.arrowRight;
-    return event.logicalKey == key
+  KeyEventResult _onCancelKey(FocusNode node, KeyEvent event) {
+    if (event is KeyUpEvent) return KeyEventResult.ignored;
+    if (event.logicalKey == _previousKey) {
+      _removeFocus.requestFocus();
+      return KeyEventResult.handled;
+    }
+    return event.logicalKey == _nextKey
         ? KeyEventResult.handled
         : KeyEventResult.ignored;
   }
@@ -138,7 +152,7 @@ class _RemoveConfirmOverlayState extends State<RemoveConfirmOverlay> {
     final buttons = [
       Focus(
         canRequestFocus: false,
-        onKeyEvent: _trapFirstEdge,
+        onKeyEvent: _onRemoveKey,
         child: AppButton(
           onClick: _guardedConfirm,
           compact: true,
@@ -149,7 +163,7 @@ class _RemoveConfirmOverlayState extends State<RemoveConfirmOverlay> {
       SizedBox(width: 16.du(context), height: 8.du(context)),
       Focus(
         canRequestFocus: false,
-        onKeyEvent: _trapLastEdge,
+        onKeyEvent: _onCancelKey,
         child: AppButton(
           onClick: _guardedCancel,
           compact: true,

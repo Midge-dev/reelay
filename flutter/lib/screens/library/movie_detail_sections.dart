@@ -2,6 +2,7 @@ import 'package:flutter/widgets.dart';
 
 import '../../data/plex/plex_image_url.dart';
 import '../../data/plex/plex_models.dart';
+import '../../focus/screen_memory.dart';
 import '../../kit/card.dart';
 import '../../kit/edge_fade_row.dart';
 import '../../kit/surface_style.dart';
@@ -134,12 +135,15 @@ class CastCrewRow extends StatelessWidget {
     if (cast.isEmpty && crewEntries.isEmpty) return const SizedBox.shrink();
     final entries = <Widget>[
       for (final person in cast)
-        _CastMemberAvatar(
+        RememberFocus(
           key: ValueKey('cast-${person.id ?? person.tag}'),
-          server: server,
-          person: person,
-          subtitle: person.role,
-          onClick: () => onSelectPerson(person),
+          id: 'cast-${person.id ?? person.tag}',
+          child: _CastMemberAvatar(
+            server: server,
+            person: person,
+            subtitle: person.role,
+            onClick: () => onSelectPerson(person),
+          ),
         ),
       if (cast.isNotEmpty && crewEntries.isNotEmpty)
         Padding(
@@ -154,12 +158,15 @@ class CastCrewRow extends StatelessWidget {
           ),
         ),
       for (final (person, job) in crewEntries)
-        _CastMemberAvatar(
+        RememberFocus(
           key: ValueKey('crew-${person.id ?? person.tag}'),
-          server: server,
-          person: person,
-          subtitle: job,
-          onClick: () => onSelectPerson(person),
+          id: 'crew-${person.id ?? person.tag}',
+          child: _CastMemberAvatar(
+            server: server,
+            person: person,
+            subtitle: job,
+            onClick: () => onSelectPerson(person),
+          ),
         ),
     ];
 
@@ -181,6 +188,7 @@ class CastCrewRow extends StatelessWidget {
               .du(context),
           child: EdgeFadeRow(
             child: ListView.separated(
+              key: const PageStorageKey('cast-crew'),
               scrollDirection: Axis.horizontal,
               clipBehavior: Clip.none,
               padding: EdgeInsets.symmetric(
@@ -218,7 +226,6 @@ class _CastMemberAvatar extends StatefulWidget {
   final VoidCallback onClick;
 
   const _CastMemberAvatar({
-    super.key,
     required this.server,
     required this.person,
     this.subtitle,

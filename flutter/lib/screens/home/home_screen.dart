@@ -4,6 +4,7 @@ import 'package:flutter/widgets.dart';
 import '../../data/plex/plex_image_url.dart';
 import '../../data/plex/plex_models.dart';
 import '../../data/plex/plex_resources_api.dart' show ReachableServer;
+import '../../focus/screen_memory.dart';
 import '../../kit/edge_fade_row.dart';
 import '../../kit/icon.dart';
 import '../../kit/text.dart';
@@ -105,6 +106,10 @@ class _HomeScreenState extends State<HomeScreen> {
     _prevLiveRoomsCount = widget.liveRooms.length;
     _prevWatchlistCount = widget.watchlist.length;
     _prevOnDeckCount = widget.onDeck.length;
+    // Rooms already live at mount are covered by the default focus; only
+    // rooms appearing later pull the page to the top. Otherwise coming
+    // back to Home with a room live yanked it off the remembered card.
+    _hasScrolledToTopForWatchTogether = widget.liveRooms.isNotEmpty;
     HardwareKeyboard.instance.addHandler(_recordInput);
   }
 
@@ -189,26 +194,32 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     // Screen 01: Home opens on the resume hero's Resume — "real data, the
     // top in-progress item" — whenever there is one. Otherwise the first
-    // row that exists, top to bottom.
-    final continueWatchingGetsFocus = widget.onDeck.isNotEmpty;
+    // row that exists, top to bottom. Coming back to Home, the card that
+    // was left focused gets it instead (ScreenMemory).
+    final restoring = ScreenMemory.restoringOf(context);
+    final continueWatchingGetsFocus = !restoring && widget.onDeck.isNotEmpty;
     final watchTogetherGetsFocus =
-        !continueWatchingGetsFocus && widget.liveRooms.isNotEmpty;
+        !restoring && !continueWatchingGetsFocus && widget.liveRooms.isNotEmpty;
     final watchlistGetsFocus =
+        !restoring &&
         !continueWatchingGetsFocus &&
         !watchTogetherGetsFocus &&
         widget.watchlist.isNotEmpty;
     final recentActivityGetsFocus =
+        !restoring &&
         !watchTogetherGetsFocus &&
         !watchlistGetsFocus &&
         !continueWatchingGetsFocus &&
         widget.recentActivity.isNotEmpty;
     final recentlyAddedGetsFocus =
+        !restoring &&
         !watchTogetherGetsFocus &&
         !watchlistGetsFocus &&
         !continueWatchingGetsFocus &&
         !recentActivityGetsFocus &&
         widget.recentlyAdded.isNotEmpty;
     final suggestionsGetsFocus =
+        !restoring &&
         !watchTogetherGetsFocus &&
         !watchlistGetsFocus &&
         !continueWatchingGetsFocus &&
@@ -240,6 +251,7 @@ class _HomeScreenState extends State<HomeScreen> {
       color: AppColors.background,
       child: LayoutBuilder(
         builder: (context, constraints) => ListView(
+          key: const PageStorageKey('home'),
           controller: _homeScrollController,
           padding: EdgeInsets.only(bottom: AppSpacing.safeY.du(context)),
           children: [
@@ -261,6 +273,7 @@ class _HomeScreenState extends State<HomeScreen> {
             _HomeRow<PlexWatchlistItem>(
               title: 'Watchlist',
               items: watchlistReversed,
+              idOf: (entry) => entry.ratingKey,
               itemBuilder: (entry, index) => WatchlistPoster(
                 key: ValueKey(entry.ratingKey),
                 server: widget.servers.first.server,
@@ -274,6 +287,7 @@ class _HomeScreenState extends State<HomeScreen> {
             _HomeRow<FoldedWork<PlexOnDeckItem>>(
               title: 'Recently Finished Watching',
               items: widget.recentActivity,
+              idOf: _workId,
               itemBuilder: (item, index) => PosterCard(
                 key: ValueKey(
                   '${item.primary.server.machineIdentifier}:${item.primary.value.ratingKey}',
@@ -290,6 +304,7 @@ class _HomeScreenState extends State<HomeScreen> {
             _HomeRow<FoldedWork<PlexLibraryItem>>(
               title: 'Recently Added',
               items: widget.recentlyAdded,
+              idOf: _workId,
               itemBuilder: (item, index) => PosterCard(
                 key: ValueKey(
                   '${item.primary.server.machineIdentifier}:${item.primary.value.ratingKey}',
@@ -306,6 +321,7 @@ class _HomeScreenState extends State<HomeScreen> {
             _HomeRow<FoldedWork<PlexOnDeckItem>>(
               title: 'Suggestions',
               items: widget.suggestions,
+              idOf: _workId,
               itemBuilder: (item, index) => PosterCard(
                 key: ValueKey(
                   '${item.primary.server.machineIdentifier}:${item.primary.value.ratingKey}',
@@ -430,6 +446,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     .du(context),
                 child: EdgeFadeRow(
                   child: ListView.separated(
+                    key: const PageStorageKey('home-row-in-progress'),
                     scrollDirection: Axis.horizontal,
                     clipBehavior: Clip.none,
                     padding: EdgeInsets.symmetric(
@@ -441,16 +458,17 @@ class _HomeScreenState extends State<HomeScreen> {
                         SizedBox(width: AppSpacing.cardGap.du(context)),
                     itemBuilder: (context, index) {
                       final item = moreInProgress[index];
-                      return ContinueWatchingPoster(
-                        key: ValueKey(
-                          '${item.primary.server.machineIdentifier}:${item.primary.value.ratingKey}',
+                      return RememberFocus(
+                        key: ValueKey(_workId(item)),
+                        id: 'home:in-progress:${_workId(item)}',
+                        child: ContinueWatchingPoster(
+                          item: item,
+                          onResume: () => widget.onResume(item),
+                          onRemove: () => widget.onRemove(item),
+                          focusNode: index == 0
+                              ? _continueWatchingRowFocus
+                              : null,
                         ),
-                        item: item,
-                        onResume: () => widget.onResume(item),
-                        onRemove: () => widget.onRemove(item),
-                        focusNode: index == 0
-                            ? _continueWatchingRowFocus
-                            : null,
                       );
                     },
                   ),
@@ -463,17 +481,29 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 }
 
+String _workId(FoldedWork<Object> work) {
+  final primary = work.primary;
+  final key = switch (primary.value) {
+    PlexOnDeckItem(:final ratingKey) => ratingKey,
+    PlexLibraryItem(:final ratingKey) => ratingKey,
+    _ => '${primary.value.hashCode}',
+  };
+  return '${primary.server.machineIdentifier}:$key';
+}
+
 /// Ports HomeScreen.kt's generic `HomeRow` — a titled horizontal row that
 /// renders nothing at all when empty (distinct from Continue Watching,
 /// which always shows its title + an explicit empty-state message).
 class _HomeRow<T> extends StatelessWidget {
   final String title;
   final List<T> items;
+  final String Function(T item) idOf;
   final Widget Function(T item, int index) itemBuilder;
 
   const _HomeRow({
     required this.title,
     required this.items,
+    required this.idOf,
     required this.itemBuilder,
   });
 
@@ -500,6 +530,7 @@ class _HomeRow<T> extends StatelessWidget {
             height: (posterCardExtent + AppSpacing.rowHeadroom).du(context),
             child: EdgeFadeRow(
               child: ListView.separated(
+                key: PageStorageKey('home-row-$title'),
                 scrollDirection: Axis.horizontal,
                 clipBehavior: Clip.none,
                 padding: EdgeInsets.symmetric(
@@ -509,8 +540,16 @@ class _HomeRow<T> extends StatelessWidget {
                 itemCount: items.length,
                 separatorBuilder: (context, index) =>
                     SizedBox(width: AppSpacing.cardGap.du(context)),
-                itemBuilder: (context, index) =>
-                    itemBuilder(items[index], index),
+                itemBuilder: (context, index) {
+                  final id = idOf(items[index]);
+                  // The same title can sit in two rows, so the row is
+                  // part of what's remembered.
+                  return RememberFocus(
+                    key: ValueKey(id),
+                    id: 'home:$title:$id',
+                    child: itemBuilder(items[index], index),
+                  );
+                },
               ),
             ),
           ),

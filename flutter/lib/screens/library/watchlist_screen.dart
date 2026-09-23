@@ -4,6 +4,7 @@ import 'package:flutter/widgets.dart';
 
 import '../../data/plex/plex_models.dart';
 import '../../focus/back_handler.dart';
+import '../../focus/screen_memory.dart';
 import '../../kit/focusable_surface.dart';
 import '../../kit/surface_style.dart';
 import '../../kit/icon.dart';
@@ -259,7 +260,9 @@ class _WatchlistScreenState extends State<WatchlistScreen> {
   }
 
   Widget _buildGrid(List<PlexWatchlistItem> items) {
+    final restoring = ScreenMemory.restoringOf(context);
     return PosterGrid(
+      storageId: 'watchlist',
       controller: _scrollController,
       itemCount: items.length,
       itemBuilder: (context, index) {
@@ -267,42 +270,45 @@ class _WatchlistScreenState extends State<WatchlistScreen> {
         final known = widget.availability.containsKey(item.ratingKey);
         final holder = widget.availability[item.ratingKey];
         final unavailable = known && holder == null;
-        return PosterCard(
+        return RememberFocus(
           key: ValueKey(item.ratingKey),
-          imageUrl: (item.thumb?.startsWith('http') ?? false)
-              ? item.thumb
-              : null,
-          title: item.title,
-          subtitle: [
-            if (known) holder ?? 'Plex Discover',
-            if (item.year != null) '${item.year}',
-          ].join(' · '),
-          muted: unavailable,
-          marker: unavailable
-              ? Row(
-                  children: [
-                    AppIcon(
-                      PhosphorIconsRegular.cloudSlash,
-                      size: 18,
-                      tint: AppColors.warning,
-                    ),
-                    SizedBox(width: AppSpacing.sm.du(context)),
-                    Flexible(
-                      child: AppText(
-                        'Not on your servers',
-                        style: AppTypography.caption,
-                        color: AppColors.warning,
-                        maxLines: 1,
+          id: 'item:${item.ratingKey}',
+          child: PosterCard(
+            imageUrl: (item.thumb?.startsWith('http') ?? false)
+                ? item.thumb
+                : null,
+            title: item.title,
+            subtitle: [
+              if (known) holder ?? 'Plex Discover',
+              if (item.year != null) '${item.year}',
+            ].join(' · '),
+            muted: unavailable,
+            marker: unavailable
+                ? Row(
+                    children: [
+                      AppIcon(
+                        PhosphorIconsRegular.cloudSlash,
+                        size: 18,
+                        tint: AppColors.warning,
                       ),
-                    ),
-                  ],
-                )
-              : null,
-          autofocus: index == 0 && _pendingRemoval == null,
-          // Nothing to open for a title none of your servers hold — the
-          // marker says so; holding still takes it off the list.
-          onClick: unavailable ? () {} : () => widget.onSelectItem(item),
-          onLongClick: () => _startRemoval(item),
+                      SizedBox(width: AppSpacing.sm.du(context)),
+                      Flexible(
+                        child: AppText(
+                          'Not on your servers',
+                          style: AppTypography.caption,
+                          color: AppColors.warning,
+                          maxLines: 1,
+                        ),
+                      ),
+                    ],
+                  )
+                : null,
+            autofocus: index == 0 && _pendingRemoval == null && !restoring,
+            // Nothing to open for a title none of your servers hold — the
+            // marker says so; holding still takes it off the list.
+            onClick: unavailable ? () {} : () => widget.onSelectItem(item),
+            onLongClick: () => _startRemoval(item),
+          ),
         );
       },
     );

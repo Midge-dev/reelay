@@ -259,10 +259,13 @@ class Home extends AppState {
   );
 }
 
+/// [returnState] is wherever the section was opened from — Back goes there
+/// (it used to fall through to Android and leave the app).
 class Library extends AppState {
   final LibraryContext ctx;
+  final AppState returnState;
 
-  const Library({required this.ctx});
+  const Library({required this.ctx, required this.returnState});
 }
 
 class LoadingSection extends AppState {
@@ -311,8 +314,8 @@ class Search extends AppState {
   const Search({required this.ctx, required this.returnState});
 }
 
-/// Screen 20 — a rail-level peer destination like Library, not reached via
-/// a back-stack (same shape as Library: no returnState). It "belongs to
+/// Screen 20 — a rail-level peer destination like Library; Back returns to
+/// wherever it was opened from, same as Library. It "belongs to
 /// the Plex account rather than to a server, so it spans every library at
 /// once" (screen 20's own note) — [ctx] is only used for its
 /// servers/sections, to resolve a tapped item the same way Home's existing
@@ -320,8 +323,9 @@ class Search extends AppState {
 /// irrelevant here.
 class Watchlist extends AppState {
   final LibraryContext ctx;
+  final AppState returnState;
 
-  const Watchlist({required this.ctx});
+  const Watchlist({required this.ctx, required this.returnState});
 }
 
 /// [work] is every known copy of this title across connected servers;

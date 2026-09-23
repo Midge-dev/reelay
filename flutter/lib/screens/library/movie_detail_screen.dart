@@ -4,6 +4,7 @@ import 'package:flutter/widgets.dart';
 import '../../data/plex/plex_image_url.dart';
 import '../../data/plex/plex_models.dart';
 import '../../focus/back_handler.dart';
+import '../../focus/screen_memory.dart';
 import '../../kit/button.dart';
 import '../../kit/card.dart';
 import '../../kit/edge_fade_row.dart';
@@ -105,9 +106,23 @@ class _MovieDetailScreenState extends State<MovieDetailScreen> {
   void initState() {
     super.initState();
     _scrollController.addListener(_onScroll);
-    WidgetsBinding.instance.addPostFrameCallback(
-      (_) => _playFocus.requestFocus(),
+    // Coming back (from a cast member, a related title, the player) the
+    // page draws what it had at once, so the remembered scroll position
+    // and focused item exist on the first frame; _load still refreshes
+    // it (the resume point has usually moved).
+    final kept = ScreenMemory.read<(PlexMovieDetail?, List<PlexOnDeckItem>)>(
+      context,
+      'movie.loaded',
     );
+    if (kept != null) {
+      _detail = kept.$1;
+      _moreLikeThis = kept.$2;
+    }
+    if (!ScreenMemory.restoringOf(context)) {
+      WidgetsBinding.instance.addPostFrameCallback(
+        (_) => _playFocus.requestFocus(),
+      );
+    }
     _load();
   }
 
@@ -156,6 +171,7 @@ class _MovieDetailScreenState extends State<MovieDetailScreen> {
       _detail = results[0] as PlexMovieDetail?;
       _moreLikeThis = _mergeRelated(hubs);
     });
+    ScreenMemory.write(context, 'movie.loaded', (_detail, _moreLikeThis));
   }
 
   /// One "More like this" row out of Plex's related hubs — similar titles
@@ -214,6 +230,7 @@ class _MovieDetailScreenState extends State<MovieDetailScreen> {
           children: [
             LayoutBuilder(
               builder: (context, constraints) => ListView(
+                key: const PageStorageKey('movie-detail'),
                 controller: _scrollController,
                 clipBehavior: Clip.none,
                 padding: EdgeInsets.only(bottom: AppSpacing.safeY.du(context)),
@@ -572,69 +589,84 @@ class _Hero extends StatelessWidget {
                       spacing: AppSpacing.lg.du(context),
                       runSpacing: AppSpacing.lg.du(context),
                       children: [
-                        AppButton(
-                          onClick: onPlay,
-                          focusNode: playFocus,
-                          onFocusChange: _onFocus,
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              const AppIcon(PhosphorIconsFill.play, size: 22),
-                              SizedBox(width: AppSpacing.md.du(context)),
-                              AppText(
-                                hasResume ? 'Resume' : 'Play',
-                                style: AppTypography.label,
-                                color: null,
-                              ),
-                            ],
+                        RememberFocus(
+                          id: 'play',
+                          child: AppButton(
+                            onClick: onPlay,
+                            focusNode: playFocus,
+                            onFocusChange: _onFocus,
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const AppIcon(PhosphorIconsFill.play, size: 22),
+                                SizedBox(width: AppSpacing.md.du(context)),
+                                AppText(
+                                  hasResume ? 'Resume' : 'Play',
+                                  style: AppTypography.label,
+                                  color: null,
+                                ),
+                              ],
+                            ),
                           ),
                         ),
-                        AppOutlinedButton(
-                          onClick: onWatchTogether,
-                          onFocusChange: _onFocus,
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              const AppIcon(
-                                PhosphorIconsRegular.usersThree,
-                                size: 22,
-                              ),
-                              SizedBox(width: AppSpacing.md.du(context)),
-                              AppText(
-                                'Watch Together',
-                                style: AppTypography.label,
-                                color: null,
-                              ),
-                            ],
+                        RememberFocus(
+                          id: 'watch-together',
+                          child: AppOutlinedButton(
+                            onClick: onWatchTogether,
+                            onFocusChange: _onFocus,
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const AppIcon(
+                                  PhosphorIconsRegular.usersThree,
+                                  size: 22,
+                                ),
+                                SizedBox(width: AppSpacing.md.du(context)),
+                                AppText(
+                                  'Watch Together',
+                                  style: AppTypography.label,
+                                  color: null,
+                                ),
+                              ],
+                            ),
                           ),
                         ),
                         if (hasResume)
-                          AppIconButton(
-                            onClick: onRestartSolo,
-                            border: _restartButtonBorder,
-                            onFocusChange: _onFocus,
-                            child: const AppIcon(
-                              PhosphorIconsRegular.arrowCounterClockwise,
+                          RememberFocus(
+                            id: 'restart',
+                            child: AppIconButton(
+                              onClick: onRestartSolo,
+                              border: _restartButtonBorder,
+                              onFocusChange: _onFocus,
+                              child: const AppIcon(
+                                PhosphorIconsRegular.arrowCounterClockwise,
+                              ),
                             ),
                           ),
-                        WatchlistButton(
-                          isOnWatchlist: isOnWatchlist,
-                          onClick: onToggleWatchlist,
-                          onFocusChange: _onFocus,
+                        RememberFocus(
+                          id: 'watchlist',
+                          child: WatchlistButton(
+                            isOnWatchlist: isOnWatchlist,
+                            onClick: onToggleWatchlist,
+                            onFocusChange: _onFocus,
+                          ),
                         ),
                       ],
                     ),
                   ),
                   SizedBox(height: _blockGap.du(context)),
-                  _SourceChip(
-                    serverName: server.name,
-                    facts: [
-                      ?media?.picture,
-                      if (media?.media.videoCodec != null)
-                        media!.media.videoCodec!.toUpperCase(),
-                    ],
-                    copyCount: copyCount,
-                    onClick: onOpenSourcePicker,
+                  RememberFocus(
+                    id: 'source',
+                    child: _SourceChip(
+                      serverName: server.name,
+                      facts: [
+                        ?media?.picture,
+                        if (media?.media.videoCodec != null)
+                          media!.media.videoCodec!.toUpperCase(),
+                      ],
+                      copyCount: copyCount,
+                      onClick: onOpenSourcePicker,
+                    ),
                   ),
                   if (facts.isNotEmpty) ...[
                     SizedBox(height: 14.du(context)),
@@ -804,6 +836,7 @@ class _MoreLikeThis extends StatelessWidget {
           height: (posterCardExtent + AppSpacing.rowHeadroom).du(context),
           child: EdgeFadeRow(
             child: ListView.separated(
+              key: const PageStorageKey('more-like-this'),
               scrollDirection: Axis.horizontal,
               clipBehavior: Clip.none,
               padding: EdgeInsets.symmetric(
@@ -815,12 +848,15 @@ class _MoreLikeThis extends StatelessWidget {
                   SizedBox(width: AppSpacing.xl.du(context)),
               itemBuilder: (context, index) {
                 final item = items[index];
-                return PosterCard(
+                return RememberFocus(
                   key: ValueKey(item.ratingKey),
-                  imageUrl: PlexImageUrl.of(server, item.thumb),
-                  title: item.title,
-                  subtitle: serverName,
-                  onClick: () => onSelect(item),
+                  id: 'related:${item.ratingKey}',
+                  child: PosterCard(
+                    imageUrl: PlexImageUrl.of(server, item.thumb),
+                    title: item.title,
+                    subtitle: serverName,
+                    onClick: () => onSelect(item),
+                  ),
                 );
               },
             ),
