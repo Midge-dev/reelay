@@ -13,6 +13,12 @@ import 'package:flutter/widgets.dart';
 class PhosphorIconsRegular {
   const PhosphorIconsRegular._();
 
+  static const backspace = IconData(
+    0xe0ae,
+    fontFamily: 'PhosphorRegular',
+    fontPackage: 'phosphor_flutter',
+    matchTextDirection: true,
+  );
   static const arrowRight = IconData(
     0xe06c,
     fontFamily: 'PhosphorRegular',

@@ -4,6 +4,7 @@ import 'package:reelay/theme/phosphor_icons.dart';
 import 'package:reelay/data/plex/plex_models.dart';
 import 'package:reelay/data/plex/plex_resources_api.dart';
 import 'package:reelay/screens/library/movie_detail_screen.dart';
+import 'package:reelay/screens/library/source_picker_dialog.dart';
 import 'package:reelay/state/duplicate_fold.dart';
 
 const _server = PlexServer(name: 'Home', baseUrl: 'http://192.168.1.5:32400', accessToken: 'tok', machineIdentifier: 'home-id');
@@ -37,7 +38,6 @@ Future<void> _pump(
         onToggleWatchlist: (_) {},
         loadDetail: () async => null,
         loadRelatedHubs: () async => const [],
-        loadByActor: (_) async => const [],
         onSelectRelated: (_) {},
         onSelectPerson: (_) {},
       ),
@@ -106,9 +106,11 @@ void main() {
       await tester.pump();
 
       expect(find.text('${_movie.title} is on 2 of your servers'), findsOneWidget);
-      expect(find.text('Home'), findsOneWidget);
-      expect(find.text('Loft'), findsOneWidget);
-      expect(find.text('Chosen'), findsOneWidget);
+      // "Home" is also in the page's own "Playing from" chip.
+      Finder inPicker(String text) => find.descendant(of: find.byType(SourcePickerDialog), matching: find.text(text));
+      expect(inPicker('Home'), findsOneWidget);
+      expect(inPicker('Loft'), findsOneWidget);
+      expect(inPicker('Chosen'), findsOneWidget);
     });
 
     testWidgets('selecting a reachable alternate invokes onSwitchSource and closes the dialog', (tester) async {

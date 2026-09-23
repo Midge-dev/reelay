@@ -41,8 +41,8 @@ void main() {
   testWidgets('shows the placeholder and no results panel with an empty query', (tester) async {
     await _pump(tester, search: (_) async => const []);
 
-    expect(find.text('Type a title…'), findsOneWidget);
-    expect(find.text('No matches for "".'), findsNothing);
+    expect(find.text('Type a title'), findsOneWidget);
+    expect(find.text('Nothing on your servers matches that.'), findsNothing);
   });
 
   testWidgets('typing a letter queries and shows grouped results', (tester) async {
@@ -77,7 +77,7 @@ void main() {
     await tester.pump(_debounceSettle);
     await tester.pump();
 
-    expect(find.text('No matches for "B".'), findsOneWidget);
+    expect(find.text('Nothing on your servers matches that.'), findsOneWidget, reason: 'verbatim handoff copy');
   });
 
   testWidgets('tapping a result invokes onSelectResult', (tester) async {
@@ -109,10 +109,10 @@ void main() {
     await tester.pump();
     expect(find.text('Bordeaux'), findsOneWidget);
 
-    await tester.tap(find.text('CLEAR'));
+    await tester.tap(find.text('clear'));
     await tester.pump();
 
-    expect(find.text('Type a title…'), findsOneWidget);
+    expect(find.text('Type a title'), findsOneWidget);
     expect(find.text('Bordeaux'), findsNothing);
   });
 }

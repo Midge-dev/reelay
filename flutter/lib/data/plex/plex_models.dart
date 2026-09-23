@@ -268,9 +268,16 @@ class PlexStream {
   final bool selected;
   final bool forced;
 
+  /// Plex's own summary, e.g. "4K DoVi/HDR10 (HEVC Main 10)" or "English
+  /// (TRUEHD 7.1)" — what screen 03's media chips read HDR from.
+  final String? displayTitle;
+  final int? channels;
+
   const PlexStream({
     this.id = 0,
     required this.streamType,
+    this.displayTitle,
+    this.channels,
     this.codec,
     this.language,
     this.languageCode,
@@ -291,12 +298,16 @@ class PlexPart {
   final String? container;
   final int? duration;
 
+  /// File size in bytes.
+  final int? size;
+
   @JsonKey(name: 'Stream', defaultValue: [])
   final List<PlexStream> streams;
 
   const PlexPart({
     required this.id,
     required this.key,
+    this.size,
     this.container,
     this.duration,
     this.streams = const [],
@@ -312,11 +323,13 @@ class PlexMedia {
   final String? audioCodec;
   final String? container;
   final String? videoResolution;
+  final int? audioChannels;
 
   @JsonKey(name: 'Part', defaultValue: [])
   final List<PlexPart> parts;
 
   const PlexMedia({
+    this.audioChannels,
     this.videoCodec,
     this.audioCodec,
     this.container,
@@ -364,6 +377,8 @@ class PlexMovieDetail {
   final String? summary;
   final int? duration;
   final int? viewOffset;
+  final String? studio;
+  final String? contentRating;
 
   @JsonKey(name: 'Media', defaultValue: [])
   final List<PlexMedia> media;
@@ -394,6 +409,8 @@ class PlexMovieDetail {
     this.summary,
     this.duration,
     this.viewOffset,
+    this.studio,
+    this.contentRating,
     this.media = const [],
     this.rating,
     this.audienceRating,
@@ -419,6 +436,8 @@ class PlexMovieDetail {
         summary: summary,
         duration: duration,
         viewOffset: viewOffset ?? this.viewOffset,
+        studio: studio,
+        contentRating: contentRating,
         media: media,
         rating: rating,
         audienceRating: audienceRating,
@@ -448,6 +467,11 @@ class PlexOnDeckItem {
   /// Episode or movie synopsis — the hero's body line (screen 01).
   final String? summary;
 
+  /// Search results' caption ("Attic · 2021", "Loft · 3 seasons" —
+  /// screen 05): a movie's year, a show's season count.
+  final int? year;
+  final int? childCount;
+
   @JsonKey(name: 'Guid', defaultValue: [])
   final List<PlexGuid> guids;
 
@@ -464,6 +488,8 @@ class PlexOnDeckItem {
     this.index,
     this.guid,
     this.summary,
+    this.year,
+    this.childCount,
     this.guids = const [],
   });
 

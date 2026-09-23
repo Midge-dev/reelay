@@ -13,17 +13,20 @@ import '../../state/duplicate_fold.dart';
 import '../../theme/scale.dart';
 import '../../theme/tokens.dart';
 import '../../theme/typography.dart';
-import 'movie_detail_sections.dart';
+import '../../data/plex/plex_image_url.dart';
+import '../../kit/edge_fade_row.dart';
+import '../common/time_format.dart';
+import 'poster_card.dart';
 import 'search_keyboard.dart';
 
 const _leftColumnWidth = 560.0;
 const _queryFieldHeight = 76.0;
 const _searchDebounce = Duration(milliseconds: 350);
 
-/// Ports screen 05 of the Nocturne handoff. The on-screen keyboard sits
-/// where the D-pad already is and never loses focus to the results —
-/// results only ever reflow as a side effect of typing. Scoped to the
-/// current server (no multi-server fan-out yet — see NOTES.md).
+/// Screen 05 — Search, global across every connected server. The on-screen
+/// keyboard sits where the D-pad already is and never loses focus to the
+/// results; results reflow as a side effect of typing, grouped by kind,
+/// each labelled with the server it lives on.
 class SearchScreen extends StatefulWidget {
   final List<ReachableServer> servers;
   final Future<List<FoldedWork<PlexOnDeckItem>>> Function(String query) search;
@@ -111,11 +114,13 @@ class _SearchScreenState extends State<SearchScreen> {
       child: ColoredBox(
         color: AppColors.background,
         child: Padding(
+          // Screen 05: 64 du from the top, 48 from the rail; keyboard
+          // column 560, 56 from the results.
           padding: EdgeInsets.fromLTRB(
-            AppSpacing.xxxl.du(context),
-            AppSpacing.xxl.du(context),
-            AppSpacing.xxxl.du(context),
-            AppSpacing.xl.du(context),
+            AppSpacing.safeX.du(context),
+            64.du(context),
+            0,
+            AppSpacing.safeY.du(context),
           ),
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -127,7 +132,7 @@ class _SearchScreenState extends State<SearchScreen> {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     _QueryField(query: _query),
-                    SizedBox(height: AppSpacing.md.du(context)),
+                    SizedBox(height: AppSpacing.xl.du(context)),
                     SearchKeyboard(
                       onChar: _onChar,
                       onBackspace: _onBackspace,
@@ -137,7 +142,7 @@ class _SearchScreenState extends State<SearchScreen> {
                   ],
                 ),
               ),
-              SizedBox(width: AppSpacing.xxxl.du(context)),
+              SizedBox(width: 56.du(context)),
               Expanded(
                 child: _ResultsPanel(
                   servers: widget.servers,
@@ -168,7 +173,7 @@ class _QueryField extends StatelessWidget {
       padding: EdgeInsets.symmetric(horizontal: AppSpacing.xl.du(context)),
       decoration: BoxDecoration(
         color: AppColors.surface,
-        border: Border.all(color: AppColors.line),
+        border: Border.all(color: AppColors.line, width: AppShape.borderWidth.du(context)),
         borderRadius: BorderRadius.circular(AppShape.radiusMd.du(context)),
       ),
       child: Row(
@@ -178,17 +183,19 @@ class _QueryField extends StatelessWidget {
             size: 24,
             tint: AppColors.ink3,
           ),
-          SizedBox(width: AppSpacing.md.du(context)),
-          Expanded(
+          SizedBox(width: 14.du(context)),
+          Flexible(
             child: AppText(
-              query.isEmpty ? 'Type a title…' : query,
+              query.isEmpty ? 'Type a title' : query,
+              style: AppTypography.rowLabel.copyWith(fontWeight: FontWeight.w400),
               color: query.isEmpty ? AppColors.ink3 : AppColors.ink,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
             ),
           ),
-          if (query.isNotEmpty)
-            Container(width: 2.du(context), height: 30.du(context), color: AppColors.accent),
+          // The caret sits right after the text, where the next letter goes.
+          SizedBox(width: AppSpacing.xs.du(context)),
+          Container(width: 2.du(context), height: 30.du(context), color: AppColors.accent),
         ],
       ),
     );
@@ -212,15 +219,11 @@ class _ResultsPanel extends StatelessWidget {
     required this.onSelect,
   });
 
-  /// Screen 05's per-result server labelling is real design intent, not
-  /// yet built here — this line is the interim, whole-row summary version
-  /// (same simplification as library_screen.dart's _serverLabel), until
-  /// per-card server badges land alongside duplicate folding.
+  /// "across Attic and Loft" / "on Attic".
   String get _serverLabel {
-    final names = {
-      for (final item in [...shows, ...movies]) item.primary.server.name,
-    }.toList();
+    final names = {for (final item in [...shows, ...movies]) item.primary.server.name}.toList();
     if (names.length == 1) return 'on ${names.single}';
+    if (names.length == 2) return 'across ${names[0]} and ${names[1]}';
     return 'across ${names.length} servers';
   }
 
@@ -230,16 +233,12 @@ class _ResultsPanel extends StatelessWidget {
 
     final total = shows.length + movies.length;
     if (!searching && total == 0) {
-      return Padding(
-        padding: EdgeInsets.only(top: AppSpacing.sm.du(context)),
-        child: AppText('No matches for "$query".', color: AppColors.ink2),
-      );
+      // Verbatim from the handoff's copy list.
+      return AppText('Nothing on your servers matches that.', style: AppTypography.body);
     }
 
     return SingleChildScrollView(
-      // A results header plus two fixed-height PosterRows can exceed the
-      // viewport once there's enough of each kind — scrolling degrades
-      // gracefully where a fixed Column would just overflow the bottom.
+      clipBehavior: Clip.none,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
@@ -248,41 +247,94 @@ class _ResultsPanel extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.baseline,
             textBaseline: TextBaseline.alphabetic,
             children: [
-              AppText(
-                searching
-                    ? 'Searching…'
-                    : '$total result${total == 1 ? '' : 's'}',
-                style: AppTypography.rowLabel,
-              ),
+              AppText(searching ? 'Searching…' : '${formatCount(total)} result${total == 1 ? '' : 's'}', style: AppTypography.rowLabel),
               if (!searching) ...[
-                SizedBox(width: AppSpacing.md.du(context)),
-                // Flexible, not a bare child — a long server name can
-                // otherwise reach all the way to the rail's clock overlay,
-                // which ignores this screen's own right-edge padding.
-                Flexible(
-                  child: AppText(
-                    _serverLabel,
-                    color: AppColors.ink3,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
+                SizedBox(width: AppSpacing.lg.du(context)),
+                Flexible(child: AppText(_serverLabel, style: AppTypography.caption, maxLines: 1, overflow: TextOverflow.ellipsis)),
               ],
             ],
           ),
-          SizedBox(height: AppSpacing.lg.du(context)),
-          if (shows.isNotEmpty)
-            PosterRow(
-              title: 'SERIES',
-              items: shows,
-              onClick: onSelect,
+          if (shows.isNotEmpty) _ResultGroup(label: 'SERIES', items: shows, onSelect: onSelect),
+          if (movies.isNotEmpty) _ResultGroup(label: 'MOVIES', items: movies, onSelect: onSelect),
+        ],
+      ),
+    );
+  }
+}
+
+/// One kind of result: a micro kicker, then a row of full-size posters
+/// captioned with where each lives and a year or season count.
+class _ResultGroup extends StatefulWidget {
+  final String label;
+  final List<FoldedWork<PlexOnDeckItem>> items;
+  final ValueChanged<FoldedWork<PlexOnDeckItem>> onSelect;
+
+  const _ResultGroup({required this.label, required this.items, required this.onSelect});
+
+  @override
+  State<_ResultGroup> createState() => _ResultGroupState();
+}
+
+class _ResultGroupState extends State<_ResultGroup> {
+  // The row starts flush against the keyboard column, so its leading edge
+  // only fades once it has actually scrolled.
+  final _scroll = ScrollController();
+
+  @override
+  void dispose() {
+    _scroll.dispose();
+    super.dispose();
+  }
+
+  static String _caption(FoldedWork<PlexOnDeckItem> work) {
+    final v = work.primary.value;
+    final detail = switch (v.type) {
+      'show' when v.childCount != null => '${v.childCount} season${v.childCount == 1 ? '' : 's'}',
+      _ when v.year != null => '${v.year}',
+      _ => null,
+    };
+    return [work.primary.server.name, ?detail].join(' · ');
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: EdgeInsets.only(top: AppSpacing.lg.du(context)),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          AppText(widget.label, style: AppTypography.micro),
+          SizedBox(height: (14 - AppSpacing.rowHeadroom / 2).du(context)),
+          SizedBox(
+            height: (posterCardExtent + AppSpacing.rowHeadroom).du(context),
+            child: AnimatedBuilder(
+              animation: _scroll,
+              builder: (context, child) => EdgeFadeRow(fadeStart: _scroll.hasClients && _scroll.offset > 0, child: child!),
+              child: ListView.separated(
+                controller: _scroll,
+                scrollDirection: Axis.horizontal,
+                clipBehavior: Clip.none,
+                padding: EdgeInsets.only(
+                  right: AppSpacing.safeX.du(context),
+                  top: (AppSpacing.rowHeadroom / 2).du(context),
+                  bottom: (AppSpacing.rowHeadroom / 2).du(context),
+                ),
+                itemCount: widget.items.length,
+                separatorBuilder: (context, index) => SizedBox(width: AppSpacing.cardGap.du(context)),
+                itemBuilder: (context, index) {
+                  final item = widget.items[index];
+                  return PosterCard(
+                    key: ValueKey('${item.primary.server.machineIdentifier}:${item.primary.value.ratingKey}'),
+                    imageUrl: PlexImageUrl.of(item.primary.server, item.primary.value.thumb),
+                    title: item.primary.value.title,
+                    subtitle: _caption(item),
+                    onClick: () => widget.onSelect(item),
+                  );
+                },
+              ),
             ),
-          if (movies.isNotEmpty)
-            PosterRow(
-              title: 'MOVIES',
-              items: movies,
-              onClick: onSelect,
-            ),
+          ),
         ],
       ),
     );

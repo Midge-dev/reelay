@@ -6,71 +6,157 @@ import '../../kit/card.dart';
 import '../../kit/edge_fade_row.dart';
 import '../../kit/surface_style.dart';
 import '../../kit/text.dart';
-import '../../state/duplicate_fold.dart';
 import '../../theme/scale.dart';
 import '../../theme/tokens.dart';
 import '../../theme/typography.dart';
 import '../common/artwork.dart';
 
-/// Ports ui/library/MovieDetailSections.kt's `CastCrewRow`.
+/// "2025 · 1h 58m · Drama [PG-13] [4K HDR] [TrueHD 7.1]" — 19 du ink2 with
+/// ink4 separators, and the rating and media facts each in an outlined
+/// chip (screens 03/04).
+class MetaRow extends StatelessWidget {
+  final List<String> parts;
+  final List<String> chips;
+
+  const MetaRow({super.key, required this.parts, this.chips = const []});
+
+  @override
+  Widget build(BuildContext context) {
+    final gap = SizedBox(width: AppSpacing.lg.du(context));
+    return Wrap(
+      crossAxisAlignment: WrapCrossAlignment.center,
+      runSpacing: AppSpacing.sm.du(context),
+      children: [
+        for (final (i, part) in parts.indexed) ...[
+          if (i > 0) ...[gap, AppText('·', style: AppTypography.caption, color: AppColors.ink4), gap],
+          AppText(part, style: AppTypography.caption, color: AppColors.ink2),
+        ],
+        for (final chip in chips) ...[
+          gap,
+          Container(
+            padding: EdgeInsets.symmetric(horizontal: 9.du(context), vertical: 3.du(context)),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(AppShape.radiusSm.du(context)),
+              border: Border.all(color: AppColors.lineStrong, width: 1.du(context)),
+            ),
+            child: AppText(chip, style: AppTypography.micro.copyWith(letterSpacing: 0), color: AppColors.ink2),
+          ),
+        ],
+      ],
+    );
+  }
+}
+
+/// A row's heading with its one-line hint beside it on the baseline —
+/// "Cast & crew · Select a name for everything they are in on your
+/// servers" (screen 03).
+class RowHeading extends StatelessWidget {
+  final String title;
+  final String? hint;
+
+  const RowHeading({super.key, required this.title, this.hint});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: EdgeInsets.symmetric(horizontal: AppSpacing.safeX.du(context)),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.baseline,
+        textBaseline: TextBaseline.alphabetic,
+        children: [
+          AppText(title, style: AppTypography.rowLabel),
+          if (hint != null) ...[
+            SizedBox(width: 22.du(context)),
+            Flexible(child: AppText(hint!, style: AppTypography.caption, maxLines: 1, overflow: TextOverflow.ellipsis)),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+const _personCircle = 130.0;
+const _personWidth = 150.0;
+const _personGap = 40.0;
+
+/// Screen 03's Cast & crew: 130 du circles 40 apart, name and role under
+/// each, and the crew after a hairline divider. Selecting a name opens
+/// everything they are in on your servers (03c).
 class CastCrewRow extends StatelessWidget {
   final PlexServer server;
   final List<PlexPerson> cast;
-  final List<PlexPerson> crew;
+  final List<PlexPerson> directors;
+  final List<PlexPerson> writers;
   final ValueChanged<PlexPerson> onSelectPerson;
 
   const CastCrewRow({
     super.key,
     required this.server,
     required this.cast,
-    required this.crew,
+    this.directors = const [],
+    this.writers = const [],
     required this.onSelectPerson,
   });
 
   @override
   Widget build(BuildContext context) {
-    final people = [...cast, ...crew];
-    if (people.isEmpty) return const SizedBox.shrink();
+    // Someone who both directed and wrote appears once, as director.
+    final seenCrew = <String>{};
+    final crewEntries = <(PlexPerson, String)>[
+      for (final p in directors)
+        if (seenCrew.add(p.tag)) (p, 'Director'),
+      for (final p in writers)
+        if (seenCrew.add(p.tag)) (p, 'Writer'),
+    ];
+    if (cast.isEmpty && crewEntries.isEmpty) return const SizedBox.shrink();
+    final entries = <Widget>[
+      for (final person in cast)
+        _CastMemberAvatar(
+          key: ValueKey('cast-${person.id ?? person.tag}'),
+          server: server,
+          person: person,
+          subtitle: person.role,
+          onClick: () => onSelectPerson(person),
+        ),
+      if (cast.isNotEmpty && crewEntries.isNotEmpty)
+        Padding(
+          padding: EdgeInsets.symmetric(horizontal: AppSpacing.xs.du(context)),
+          child: Align(
+            alignment: Alignment.topCenter,
+            child: Container(width: 1.du(context), height: _personCircle.du(context), color: AppColors.line),
+          ),
+        ),
+      for (final (person, job) in crewEntries)
+        _CastMemberAvatar(
+          key: ValueKey('crew-${person.id ?? person.tag}'),
+          server: server,
+          person: person,
+          subtitle: job,
+          onClick: () => onSelectPerson(person),
+        ),
+    ];
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
       children: [
-        Padding(
-          padding: EdgeInsets.only(
-            left: AppSpacing.xxxl.du(context),
-            bottom: AppSpacing.lg.du(context),
-          ),
-          child: AppText('Cast & Crew', style: AppTypography.rowLabel),
-        ),
+        const RowHeading(title: 'Cast & crew', hint: 'Select a name for everything they are in on your servers'),
+        SizedBox(height: (AppSpacing.lg - AppSpacing.rowHeadroom / 2).du(context)),
         SizedBox(
-          // See the matching comment on Continue Watching's SizedBox in
-          // home_screen.dart — headroom for EdgeFadeRow's ShaderMask bounds.
-          // Content height: 130 avatar + 10 padding + a label line (26) +
-          // a 3px gap + a caption line (24), +24 headroom.
-          height: 217.du(context),
+          // 130 circle + 10 + name 26 + role 24, +8 for text rounding at
+          // fractional scales, + rowHeadroom for the focused circle.
+          height: (_personCircle + 10 + 26 + 24 + 8 + AppSpacing.rowHeadroom).du(context),
           child: EdgeFadeRow(
             child: ListView.separated(
               scrollDirection: Axis.horizontal,
-              // Flutter's ListView clips its children by default where
-              // Compose's LazyRow doesn't — matters once a card's focus-scale
-              // can bleed past this SizedBox's fixed height.
               clipBehavior: Clip.none,
-              padding: EdgeInsets.symmetric(horizontal: 48.du(context), vertical: 12.du(context)),
-              itemCount: people.length,
-              separatorBuilder: (context, index) => SizedBox(width: 18.du(context)),
-              itemBuilder: (context, index) {
-                final person = people[index];
-                final subtitle =
-                    person.role ?? (crew.contains(person) ? 'Crew' : null);
-                return _CastMemberAvatar(
-                  key: ValueKey(person.id ?? person.tag),
-                  server: server,
-                  person: person,
-                  subtitle: subtitle,
-                  onClick: () => onSelectPerson(person),
-                );
-              },
+              padding: EdgeInsets.symmetric(
+                horizontal: AppSpacing.safeX.du(context),
+                vertical: (AppSpacing.rowHeadroom / 2).du(context),
+              ),
+              itemCount: entries.length,
+              separatorBuilder: (context, index) => SizedBox(width: (_personGap - (_personWidth - _personCircle)).du(context)),
+              itemBuilder: (context, index) => entries[index],
             ),
           ),
         ),
@@ -79,7 +165,13 @@ class CastCrewRow extends StatelessWidget {
   }
 }
 
-class _CastMemberAvatar extends StatelessWidget {
+SurfaceBorder get _personBorder => SurfaceBorder(
+  idle: SurfaceBorderSide.solid(AppColors.lineStrong, width: 1),
+  focused: SurfaceBorderSide.solid(AppColors.accent, width: AppShape.artFrameWidth),
+  noSpine: true,
+);
+
+class _CastMemberAvatar extends StatefulWidget {
   final PlexServer server;
   final PlexPerson person;
   final String? subtitle;
@@ -94,181 +186,59 @@ class _CastMemberAvatar extends StatelessWidget {
   });
 
   @override
+  State<_CastMemberAvatar> createState() => _CastMemberAvatarState();
+}
+
+class _CastMemberAvatarState extends State<_CastMemberAvatar> {
+  bool _focused = false;
+
+  @override
   Widget build(BuildContext context) {
-    // Person circle 130 per DESIGN.md's geometry — label for the name,
-    // caption/ink3 for the role, matching every other card's two-line
-    // caption convention.
+    final person = widget.person;
     return SizedBox(
-      width: 150.du(context),
+      width: _personWidth.du(context),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.center,
         mainAxisSize: MainAxisSize.min,
         children: [
-          SizedBox(
-            width: 130.du(context),
-            height: 130.du(context),
+          SizedBox.square(
+            dimension: _personCircle.du(context),
             child: AppCard(
-              onClick: onClick,
+              onClick: widget.onClick,
               shape: const CircleBorder(),
+              border: _personBorder,
+              onFocusChange: (f) => setState(() => _focused = f),
               child: person.thumb != null
-                  ? SizedBox.expand(
-                      child: Artwork(
-                        imageUrl: PlexImageUrl.of(server, person.thumb),
-                      ),
-                    )
+                  ? SizedBox.expand(child: Artwork(imageUrl: PlexImageUrl.of(widget.server, person.thumb)))
                   : ColoredBox(
                       color: AppColors.surface,
                       child: Center(
                         child: AppText(
-                          person.tag.isNotEmpty
-                              ? person.tag[0].toUpperCase()
-                              : '?',
+                          person.tag.isNotEmpty ? person.tag[0].toUpperCase() : '?',
                           style: AppTypography.title2,
-                          color: AppColors.inkOnArt,
+                          color: AppColors.ink2,
                         ),
                       ),
                     ),
             ),
           ),
-          Padding(
-            padding: EdgeInsets.only(top: 10.du(context)),
-            child: AppText(
-              person.tag,
-              style: AppTypography.label,
+          SizedBox(height: 10.du(context)),
+          AppText(
+            person.tag,
+            style: AppTypography.label.copyWith(fontWeight: _focused ? FontWeight.w500 : FontWeight.w400),
+            color: _focused ? AppColors.ink : AppColors.ink2,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            textAlign: TextAlign.center,
+          ),
+          if (widget.subtitle != null)
+            AppText(
+              widget.subtitle!,
+              style: AppTypography.caption,
+              color: _focused ? AppColors.ink2 : AppColors.ink3,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               textAlign: TextAlign.center,
             ),
-          ),
-          if (subtitle != null)
-            Padding(
-              padding: EdgeInsets.only(top: 3.du(context)),
-              child: AppText(
-                subtitle!,
-                style: AppTypography.caption,
-                color: AppColors.ink3,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                textAlign: TextAlign.center,
-              ),
-            ),
-        ],
-      ),
-    );
-  }
-}
-
-/// Ports ui/library/MovieDetailSections.kt's `PosterRow` — reused for
-/// related-hub rows, co-star rows, and (multi-server, folded) search
-/// results, so items carry their own server rather than the row taking one
-/// for all of them — single-server callers just wrap each item in a
-/// singleton [FoldedWork] with a constant reachability, since it's
-/// display-only here.
-class PosterRow extends StatelessWidget {
-  final String title;
-  final List<FoldedWork<PlexOnDeckItem>> items;
-  final ValueChanged<FoldedWork<PlexOnDeckItem>> onClick;
-
-  const PosterRow({
-    super.key,
-    required this.title,
-    required this.items,
-    required this.onClick,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    if (items.isEmpty) return const SizedBox.shrink();
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Padding(
-          padding: EdgeInsets.only(
-            left: AppSpacing.xxxl.du(context),
-            top: AppSpacing.xs.du(context),
-            bottom: AppSpacing.lg.du(context),
-          ),
-          child: AppText(title, style: AppTypography.rowLabel),
-        ),
-        SizedBox(
-          // Content height: 198 poster (132 wide, 2:3) + 10 padding + a
-          // label line (26), +24 headroom.
-          height: 258.du(context),
-          child: EdgeFadeRow(
-            child: ListView.separated(
-              scrollDirection: Axis.horizontal,
-              // See the matching comment on CastCrewRow above.
-              clipBehavior: Clip.none,
-              padding: EdgeInsets.symmetric(horizontal: 48.du(context), vertical: 12.du(context)),
-              itemCount: items.length,
-              separatorBuilder: (context, index) => SizedBox(width: 18.du(context)),
-              itemBuilder: (context, index) {
-                final item = items[index];
-                return _RelatedPoster(
-                  key: ValueKey('${item.primary.server.machineIdentifier}:${item.primary.value.ratingKey}'),
-                  item: item,
-                  onClick: () => onClick(item),
-                );
-              },
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-SurfaceBorder get _relatedPosterBorder => SurfaceBorder(
-  idle: SurfaceBorderSide.solid(AppColors.line),
-  focused: SurfaceBorderSide.solid(
-    AppColors.accent,
-    width: AppShape.artFrameWidth,
-  ),
-  noSpine: true,
-);
-
-class _RelatedPoster extends StatelessWidget {
-  final FoldedWork<PlexOnDeckItem> item;
-  final VoidCallback onClick;
-
-  const _RelatedPoster({
-    super.key,
-    required this.item,
-    required this.onClick,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final active = item.primary;
-    return SizedBox(
-      width: 132.du(context),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          AspectRatio(
-            aspectRatio: 2 / 3,
-            // Artwork takes a frame all the way round instead of a spine —
-            // a spine would cover the poster. DESIGN.md #3.
-            child: AppCard(
-              onClick: onClick,
-              border: _relatedPosterBorder,
-              child: SizedBox.expand(
-                child: Artwork(imageUrl: PlexImageUrl.of(active.server, active.value.thumb)),
-              ),
-            ),
-          ),
-          Padding(
-            padding: EdgeInsets.only(top: 10.du(context)),
-            child: AppText(
-              active.value.title,
-              style: AppTypography.label,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ),
         ],
       ),
     );

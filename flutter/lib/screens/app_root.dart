@@ -372,15 +372,6 @@ class _AppContent extends StatelessWidget {
                 return const [];
               }
             },
-            loadByActor: (actorId) async {
-              final section = ctx.selectedSectionGroup.sectionOn(activeCopy.server.machineIdentifier);
-              if (section == null) return const [];
-              try {
-                return await PlexServerApi(activeCopy.server, controller.clientIdentifier).fetchLibraryItemsByActor(section.key, actorId);
-              } catch (_) {
-                return const [];
-              }
-            },
             onSelectRelated: (item) {
               final newWork = FoldedWork<PlexLibraryItem>(item.guid, [Sourced(libraryItemFrom(item), activeCopy.server, activeCopy.reachability)]);
               controller.returnTo(

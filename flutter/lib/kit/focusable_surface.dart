@@ -70,6 +70,10 @@ class _FocusableSurfaceState extends State<FocusableSurface> {
     _ownsFocusNode = widget.focusNode == null;
     _focusNode = widget.focusNode ?? FocusNode();
     _focusNode.addListener(_handleFocusChange);
+    // A surface rebuilt around a node that already has focus (content
+    // arriving above it re-creates the element) must start focused, or the
+    // focused element shows no signal until focus moves.
+    _focused = _focusNode.hasFocus;
     if (widget.onLongClick != null) {
       _longPress = DpadLongPressDetector(onLongPress: widget.onLongClick!);
     }

@@ -17,6 +17,7 @@ import '../../theme/typography.dart';
 import '../common/artwork.dart';
 import '../common/time_format.dart';
 import '../common/watchlist_button.dart';
+import 'movie_detail_sections.dart';
 
 // Screen 04: content from 80 du down, 48 du from the rail, 80 du from the
 // right edge; 30 du between hero, season chips and episodes; hero column
@@ -439,7 +440,7 @@ class _ShowHero extends StatelessWidget {
                     overflow: TextOverflow.ellipsis,
                   ),
                   gap,
-                  _MetaRow(parts: meta, rating: show.contentRating),
+                  MetaRow(parts: meta, chips: [?show.contentRating]),
                   if (summary != null && summary!.trim().isNotEmpty) ...[
                     gap,
                     ConstrainedBox(
@@ -534,58 +535,6 @@ class _ShowHero extends StatelessWidget {
             child: Artwork(imageUrl: PlexImageUrl.of(server, show.thumb)),
           ),
         ),
-      ],
-    );
-  }
-}
-
-/// "2022–2025 · 3 seasons · 24 episodes · Drama [TV-MA]" — 19 du ink2 with
-/// ink4 separators and the rating in its own outlined chip (screen 04).
-class _MetaRow extends StatelessWidget {
-  final List<String> parts;
-  final String? rating;
-
-  const _MetaRow({required this.parts, this.rating});
-
-  @override
-  Widget build(BuildContext context) {
-    final gap = SizedBox(width: AppSpacing.lg.du(context));
-    return Wrap(
-      crossAxisAlignment: WrapCrossAlignment.center,
-      spacing: 0,
-      runSpacing: AppSpacing.xs.du(context),
-      children: [
-        for (final (i, part) in parts.indexed) ...[
-          if (i > 0) ...[
-            gap,
-            AppText('·', style: AppTypography.caption, color: AppColors.ink4),
-            gap,
-          ],
-          AppText(part, style: AppTypography.caption, color: AppColors.ink2),
-        ],
-        if (rating != null) ...[
-          gap,
-          Container(
-            padding: EdgeInsets.symmetric(
-              horizontal: 9.du(context),
-              vertical: 3.du(context),
-            ),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(
-                AppShape.radiusSm.du(context),
-              ),
-              border: Border.all(
-                color: AppColors.lineStrong,
-                width: 1.du(context),
-              ),
-            ),
-            child: AppText(
-              rating!,
-              style: AppTypography.micro.copyWith(letterSpacing: 0),
-              color: AppColors.ink2,
-            ),
-          ),
-        ],
       ],
     );
   }
