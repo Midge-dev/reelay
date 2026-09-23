@@ -1,3 +1,4 @@
+import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:reelay/data/plex/plex_models.dart';
@@ -114,5 +115,32 @@ void main() {
 
     expect(find.text('Type a title'), findsOneWidget);
     expect(find.text('Bordeaux'), findsNothing);
+  });
+
+  testWidgets('Right off the keyboard edge moves focus to the results', (tester) async {
+    await _pump(
+      tester,
+      search: (q) async => const [
+        PlexOnDeckItem(ratingKey: 'm1', type: 'movie', title: 'Bordeaux'),
+      ],
+    );
+    await tester.tap(find.text('B'));
+    await tester.pump(_debounceSettle);
+    await tester.pump();
+
+    // F is the top row's rightmost key.
+    await tester.tap(find.text('F'));
+    await tester.pump(_debounceSettle);
+    await tester.pump();
+    final keyboardFocus = FocusManager.instance.primaryFocus;
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
+    await tester.pump();
+
+    final focused = FocusManager.instance.primaryFocus;
+    expect(focused, isNot(same(keyboardFocus)));
+    expect(
+      find.ancestor(of: find.byWidgetPredicate((w) => w is Focus && w.focusNode == focused), matching: find.byType(AppCard)),
+      findsWidgets,
+    );
   });
 }

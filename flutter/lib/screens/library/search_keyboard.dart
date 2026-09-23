@@ -57,8 +57,10 @@ List<List<SearchKey>> searchKeyRows({required bool symbols}) {
   ];
 }
 
-const _keyHeight = 76.0;
-const _keyGap = 10.0;
+// Smaller than screen 05's 76 / 10 — the full-size keyboard dominated the
+// screen; the column it fills narrows with it (see search_screen.dart).
+const _keyHeight = 60.0;
+const _keyGap = 8.0;
 RoundedRectangleBorder _keyShape(BuildContext context) =>
     RoundedRectangleBorder(
       borderRadius: BorderRadius.circular(AppShape.radiusSm.du(context)),
@@ -203,7 +205,12 @@ class _SearchKeyboardState extends State<SearchKeyboard> {
         if (c == 0) return KeyEventResult.ignored;
         target = _nodeAt(r, c - 1);
       } else if (k == LogicalKeyboardKey.arrowRight) {
-        if (end >= _columns - 1) return KeyEventResult.handled;
+        // Off the right edge: on to the results beside the keyboard when
+        // there are any; with none, stay put rather than lose focus.
+        if (end >= _columns - 1) {
+          node.focusInDirection(TraversalDirection.right);
+          return KeyEventResult.handled;
+        }
         target = _nodeAt(r, end + 1);
       } else {
         return KeyEventResult.ignored;

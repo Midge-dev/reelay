@@ -19,8 +19,8 @@ import '../common/time_format.dart';
 import 'poster_card.dart';
 import 'search_keyboard.dart';
 
-const _leftColumnWidth = 560.0;
-const _queryFieldHeight = 76.0;
+const _leftColumnWidth = 440.0;
+const _queryFieldHeight = 64.0;
 const _searchDebounce = Duration(milliseconds: 350);
 
 /// Screen 05 — Search, global across every connected server. The on-screen
@@ -118,8 +118,9 @@ class _SearchScreenState extends State<SearchScreen> {
       child: ColoredBox(
         color: AppColors.background,
         child: Padding(
-          // Screen 05: 64 du from the top, 48 from the rail; keyboard
-          // column 560, 56 from the results.
+          // Screen 05: 64 du from the top, 48 from the rail, 56 from the
+          // results. The keyboard column is narrower than the design's 560
+          // — at full size it dominated the screen.
           padding: EdgeInsets.fromLTRB(
             AppSpacing.safeX.du(context),
             64.du(context),
