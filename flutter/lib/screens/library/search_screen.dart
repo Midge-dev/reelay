@@ -347,44 +347,46 @@ class _ResultGroupState extends State<_ResultGroup> {
           SizedBox(
             height: (posterCardExtent + AppSpacing.rowHeadroom).du(context),
             // Clip at the row's leading edge — scrolled-away cards used to
-            // paint over the keyboard — leaving a sliver for a focused
-            // first card's scale and frame. Vertically nothing is clipped.
-            child: ClipRect(
-              clipper: _LeadingEdgeClipper(12.du(context)),
-              child: AnimatedBuilder(
-                animation: _scroll,
-                builder: (context, child) => EdgeFadeRow(
-                  fadeStart: _scroll.hasClients && _scroll.offset > 0,
-                  child: child!,
+            // paint over the keyboard. Unscrolled, a sliver is left for the
+            // first card's focus scale and frame; once scrolled the clip is
+            // exact, so a part-hidden card ends in the edge fade rather than
+            // a hard cut outside it. Vertically nothing is clipped.
+            child: AnimatedBuilder(
+              animation: _scroll,
+              builder: (context, child) {
+                final scrolled = _scroll.hasClients && _scroll.offset > 0;
+                return ClipRect(
+                  clipper: _LeadingEdgeClipper(scrolled ? 0 : 12.du(context)),
+                  child: EdgeFadeRow(fadeStart: scrolled, child: child!),
+                );
+              },
+              child: ListView.separated(
+                controller: _scroll,
+                scrollDirection: Axis.horizontal,
+                clipBehavior: Clip.none,
+                padding: EdgeInsets.only(
+                  right: AppSpacing.safeX.du(context),
+                  top: (AppSpacing.rowHeadroom / 2).du(context),
+                  bottom: (AppSpacing.rowHeadroom / 2).du(context),
                 ),
-                child: ListView.separated(
-                  controller: _scroll,
-                  scrollDirection: Axis.horizontal,
-                  clipBehavior: Clip.none,
-                  padding: EdgeInsets.only(
-                    right: AppSpacing.safeX.du(context),
-                    top: (AppSpacing.rowHeadroom / 2).du(context),
-                    bottom: (AppSpacing.rowHeadroom / 2).du(context),
-                  ),
-                  itemCount: widget.items.length,
-                  separatorBuilder: (context, index) =>
-                      SizedBox(width: AppSpacing.cardGap.du(context)),
-                  itemBuilder: (context, index) {
-                    final item = widget.items[index];
-                    return PosterCard(
-                      key: ValueKey(
-                        '${item.primary.server.machineIdentifier}:${item.primary.value.ratingKey}',
-                      ),
-                      imageUrl: PlexImageUrl.of(
-                        item.primary.server,
-                        item.primary.value.thumb,
-                      ),
-                      title: item.primary.value.title,
-                      subtitle: _caption(item),
-                      onClick: () => widget.onSelect(item),
-                    );
-                  },
-                ),
+                itemCount: widget.items.length,
+                separatorBuilder: (context, index) =>
+                    SizedBox(width: AppSpacing.cardGap.du(context)),
+                itemBuilder: (context, index) {
+                  final item = widget.items[index];
+                  return PosterCard(
+                    key: ValueKey(
+                      '${item.primary.server.machineIdentifier}:${item.primary.value.ratingKey}',
+                    ),
+                    imageUrl: PlexImageUrl.of(
+                      item.primary.server,
+                      item.primary.value.thumb,
+                    ),
+                    title: item.primary.value.title,
+                    subtitle: _caption(item),
+                    onClick: () => widget.onSelect(item),
+                  );
+                },
               ),
             ),
           ),
