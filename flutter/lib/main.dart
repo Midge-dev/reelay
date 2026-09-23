@@ -1,14 +1,28 @@
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
-import 'data/settings/app_settings.dart';
+import 'data/settings/settings_store.dart';
 import 'screens/app_root.dart';
 import 'state/data_providers.dart';
 import 'theme/scale.dart';
 import 'theme/tokens.dart';
 
-void main() {
-  runApp(const ProviderScope(child: ReelayApp()));
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  // Splash spec §1.4 — the saved theme is known before the first frame, so
+  // the splash never paints Nocturne and then switches. The native window
+  // is already the canvas colour meanwhile (android res/values/styles.xml).
+  final appearance = await SettingsStore.loadAppearance(
+    SharedPreferencesAsync(),
+  );
+  AppColors.applyTheme(appearance.$1);
+  runApp(
+    ProviderScope(
+      overrides: [bootAppearanceProvider.overrideWithValue(appearance)],
+      child: const ReelayApp(),
+    ),
+  );
 }
 
 class ReelayApp extends ConsumerWidget {
@@ -22,15 +36,13 @@ class ReelayApp extends ConsumerWidget {
     // reads it. A build-time mutation of a plain static field, not
     // setState — the whole point is that nothing downstream needs its own
     // subscription to notice.
-    final themeId =
-        ref.watch(settingsStreamProvider).value?.themeId ?? ThemeId.nocturne;
+    final boot = ref.watch(bootAppearanceProvider);
+    final themeId = ref.watch(settingsStreamProvider).value?.themeId ?? boot.$1;
     AppColors.applyTheme(themeId);
     // Screen 22's "UI Size" stepper — a manual multiplier on top of the
     // screenHeight/1080 factor, since no API tells a set-top box its
     // panel's real physical size (see AppSettings.uiScale's doc comment).
-    final uiScale =
-        ref.watch(settingsStreamProvider).value?.uiScale ??
-        AppSettings.defaultUiScale;
+    final uiScale = ref.watch(settingsStreamProvider).value?.uiScale ?? boot.$2;
     return WidgetsApp(
       title: 'Reelay',
       color: AppColors.accent,

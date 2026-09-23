@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Splash spec §6: Nocturne's canvas. Every theme's canvas is within a
+         few % luminance of it, and the Flutter splash's 240 ms ground fade
+         covers the difference. Never white — that was the long white
+         screen before Flutter's first frame. -->
+    <color name="reelay_canvas">#12141F</color>
+</resources>

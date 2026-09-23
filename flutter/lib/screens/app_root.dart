@@ -1,4 +1,7 @@
+import 'dart:async';
+
 import 'package:collection/collection.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -41,13 +44,8 @@ import 'splash/splash_screen.dart';
 const _sectionTypeShow = 'show';
 const _appVersionName = '0.3.0';
 
-const _splashMinHoldMs = 1400;
-const _splashCrossfadeDuration = Duration(milliseconds: 200);
-
-/// Renders whichever AppState is current, plus the splash-hold shell logic
-/// ported from MainActivity.kt's AppRoot: splash stays up at minimum
-/// SPLASH_MIN_HOLD_MS regardless of how fast the initial auth check
-/// resolves, decoupled from it via a separate timer, then crossfades out.
+/// Renders whichever AppState is current, with the splash drawn over it on
+/// cold start until the app underneath is ready (see [SplashScreen]).
 /// Every screen and callback below is wired to [AppRootController] — see
 /// that file for the actual business logic (each method there is a direct
 /// port of one of MainActivity.kt's local closures).
@@ -59,24 +57,31 @@ class AppRoot extends ConsumerStatefulWidget {
 }
 
 class _AppRootState extends ConsumerState<AppRoot> {
+  /// Cold start only: this state lives for the process, so resuming from
+  /// the background never shows the splash again.
   bool _showSplash = true;
-  final int _splashStartMs = DateTime.now().millisecondsSinceEpoch;
+  final _ready = Completer<void>();
   bool _startedOnce = false;
   // Screen 12 opens over whatever screen is showing, so its open state
   // outlives any one screen's drawer.
   final _roomsPanelOpen = ValueNotifier<bool>(false);
 
   @override
+  void initState() {
+    super.initState();
+    // Nothing hidden under the splash should react to the remote.
+    HardwareKeyboard.instance.addHandler(_swallowKeysDuringSplash);
+    WidgetsBinding.instance.addPostFrameCallback((_) => _start());
+  }
+
+  @override
   void dispose() {
+    HardwareKeyboard.instance.removeHandler(_swallowKeysDuringSplash);
     _roomsPanelOpen.dispose();
     super.dispose();
   }
 
-  @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) => _start());
-  }
+  bool _swallowKeysDuringSplash(KeyEvent event) => _showSplash;
 
   void _start() {
     if (_startedOnce) return;
@@ -84,48 +89,45 @@ class _AppRootState extends ConsumerState<AppRoot> {
     ref.read(appRootControllerProvider).start();
   }
 
-  void _maybeHideSplash(AppState state) {
-    if (!_showSplash) return;
+  /// Splash spec: ready once startup has resolved to a real screen — Home
+  /// with its rows, first-run setup, the no-servers screen. Checking and
+  /// connecting are what the splash covers.
+  void _noteReady(AppState state) {
+    if (_ready.isCompleted) return;
     if (state is Checking || state is ConnectingToServer) return;
+    _ready.complete();
+  }
 
-    final elapsed = DateTime.now().millisecondsSinceEpoch - _splashStartMs;
-    final remaining = _splashMinHoldMs - elapsed;
-    // Always defer, even when remaining <= 0 — this runs inside
-    // ListenableBuilder's builder callback (i.e. during AppRoot's own
-    // build), and calling setState synchronously there throws
-    // "setState() or markNeedsBuild() called during build".
-    Future.delayed(
-      remaining > 0 ? Duration(milliseconds: remaining) : Duration.zero,
-      () {
-        if (mounted) setState(() => _showSplash = false);
-      },
-    );
+  void _splashDone() {
+    HardwareKeyboard.instance.removeHandler(_swallowKeysDuringSplash);
+    setState(() => _showSplash = false);
   }
 
   @override
   Widget build(BuildContext context) {
     final controller = ref.watch(appRootControllerProvider);
 
-    return ColoredBox(
-      color: AppColors.background,
-      child: ListenableBuilder(
-        listenable: controller,
-        builder: (context, _) {
-          _maybeHideSplash(controller.state);
-          return AnimatedSwitcher(
-            duration: _splashCrossfadeDuration,
-            child: _showSplash
-                ? const SplashScreen(key: ValueKey('splash'))
-                : KeyedSubtree(
-                    key: const ValueKey('content'),
-                    child: _AppContent(
-                      controller: controller,
-                      roomsPanelOpen: _roomsPanelOpen,
-                    ),
-                  ),
-          );
-        },
-      ),
+    // The app is built underneath from the first frame, so its data loads
+    // during the intro and the exit reveals an already-painted screen.
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        ColoredBox(
+          color: AppColors.background,
+          child: ListenableBuilder(
+            listenable: controller,
+            builder: (context, _) {
+              _noteReady(controller.state);
+              return _AppContent(
+                controller: controller,
+                roomsPanelOpen: _roomsPanelOpen,
+              );
+            },
+          ),
+        ),
+        if (_showSplash)
+          SplashScreen(ready: _ready.future, onDone: _splashDone),
+      ],
     );
   }
 }

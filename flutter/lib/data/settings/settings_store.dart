@@ -37,6 +37,16 @@ class SettingsStore {
     _load();
   }
 
+  /// Just the saved theme and UI size, read before the first frame (splash
+  /// spec §1.4: theme-aware from frame 1, never a Nocturne flash). The full
+  /// [observe] stream arrives a moment later.
+  static Future<(ThemeId, double)> loadAppearance(
+    SharedPreferencesAsync prefs,
+  ) async => (
+    _decodeThemeId(await prefs.getString(_themeIdKey)),
+    await prefs.getDouble(_uiScaleKey) ?? AppSettings.defaultUiScale,
+  );
+
   Stream<AppSettings> observe() => _subject.stream;
 
   AppSettings? get current => _subject.valueOrNull;
@@ -62,7 +72,8 @@ class SettingsStore {
       ),
       profiles: _decodeProfiles(profilesJson),
       themeId: _decodeThemeId(await _prefs.getString(_themeIdKey)),
-      uiScale: await _prefs.getDouble(_uiScaleKey) ?? AppSettings.defaultUiScale,
+      uiScale:
+          await _prefs.getDouble(_uiScaleKey) ?? AppSettings.defaultUiScale,
       setupComplete: await _prefs.getBool(_setupCompleteKey) ?? false,
     );
     _subject.add(await _migrateLegacyRelayUrlIfNeeded(settings));
@@ -109,7 +120,7 @@ class SettingsStore {
     return ChatOverlayCorner.bottomEnd;
   }
 
-  ThemeId _decodeThemeId(String? name) {
+  static ThemeId _decodeThemeId(String? name) {
     for (final id in ThemeId.values) {
       if (id.name == name) return id;
     }

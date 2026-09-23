@@ -6,6 +6,7 @@ import '../data/plex/secure_token_store.dart';
 import '../data/settings/app_settings.dart';
 import '../data/settings/relay_identity_store.dart';
 import '../data/settings/settings_store.dart';
+import '../theme/tokens.dart';
 import 'app_root_controller.dart';
 
 /// Foundational DI wiring for the Phase 1 data layer — screens read these
@@ -36,6 +37,12 @@ final relayIdentityStoreProvider = Provider<RelayIdentityStore>(
 /// from this stream (see `ReelayApp` in `main.dart`), so picking a new one
 /// on the Appearance screen and saving it takes effect everywhere at once,
 /// with no per-screen wiring.
+/// The theme and UI size [main] read before the first frame — what the app
+/// paints with until [settingsStreamProvider] emits. Overridden in main.
+final bootAppearanceProvider = Provider<(ThemeId, double)>(
+  (ref) => (ThemeId.nocturne, AppSettings.defaultUiScale),
+);
+
 final settingsStreamProvider = StreamProvider<AppSettings>(
   (ref) => ref.watch(settingsStoreProvider).observe(),
 );

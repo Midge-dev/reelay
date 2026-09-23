@@ -215,6 +215,12 @@ class AppColors {
   /// responsible for triggering a rebuild afterward (see
   /// `settingsStreamProvider` in `state/data_providers.dart`, which reapplies
   /// the persisted theme on every app-root build).
+  /// The splash mark's lower bar (splash spec §3): ink, except Projection,
+  /// whose accent and ink are both near-white — there it takes ink3 so the
+  /// two bars stay distinct.
+  static Color get splashInkBar =>
+      currentTheme == ThemeId.projection ? ink3 : ink;
+
   static void applyTheme(ThemeId id) {
     final p = _nocturnePalettes[id]!;
     currentTheme = id;

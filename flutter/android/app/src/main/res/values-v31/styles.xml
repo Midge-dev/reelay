@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Splash spec §6, API 31+: the system splash Android always draws
+         before Flutter's first frame can't read the user's theme, so it is
+         made invisible — canvas colour, transparent icon. No custom
+         animation duration. -->
+    <style name="LaunchTheme" parent="@android:style/Theme.Black.NoTitleBar">
+        <item name="android:windowBackground">@color/reelay_canvas</item>
+        <item name="android:windowSplashScreenBackground">@color/reelay_canvas</item>
+        <item name="android:windowSplashScreenAnimatedIcon">@drawable/transparent</item>
+    </style>
+    <style name="NormalTheme" parent="@android:style/Theme.Black.NoTitleBar">
+        <item name="android:windowBackground">@color/reelay_canvas</item>
+    </style>
+</resources>
