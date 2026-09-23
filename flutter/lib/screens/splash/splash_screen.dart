@@ -314,6 +314,13 @@ class _Wordmark extends StatelessWidget {
           fontFamily: 'Inter',
           fontSize: 100.du(context),
           fontWeight: FontWeight.w500,
+          // The handoff renders in a browser, which sets Inter's optical
+          // size from the font size (clamped to 32) — match it, so the
+          // splash wordmark and the TV banner's are the same letterforms.
+          fontVariations: const [
+            FontVariation.weight(500),
+            FontVariation.opticalSize(32),
+          ],
           height: 1.0,
           letterSpacing: -3.du(context),
           color: AppColors.ink,
