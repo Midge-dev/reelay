@@ -20,11 +20,13 @@ import '../../sync/playback_state.dart';
 import '../../sync/relay_client.dart';
 import '../../sync/relay_protocol.dart';
 import '../../sync/relay_urls.dart';
+import '../../sync/room_roster.dart';
 import '../../sync/sync_view_model.dart';
 import '../../theme/scale.dart';
 import '../../theme/tokens.dart';
 import '../../theme/typography.dart';
 import '../common/app_loading_indicator.dart';
+import '../common/artwork.dart';
 import '../common/chat_overlay.dart';
 import '../library/media_facts.dart';
 import 'chat_qr_overlay.dart';
@@ -68,6 +70,10 @@ class PlayerScreen extends StatefulWidget {
   final Future<PlexOnDeckItem?> Function()? loadNextEpisode;
   final ValueChanged<PlexOnDeckItem>? onPlayNext;
 
+  /// Who this television is in a Watch Together room (its presence).
+  final String localName;
+  final String? localAvatarUrl;
+
   const PlayerScreen({
     super.key,
     required this.server,
@@ -79,6 +85,8 @@ class PlayerScreen extends StatefulWidget {
     required this.onExit,
     this.loadNextEpisode,
     this.onPlayNext,
+    this.localName = 'You',
+    this.localAvatarUrl,
   });
 
   @override
@@ -108,6 +116,9 @@ class _PlayerScreenState extends State<PlayerScreen> {
   ConnectionState _connectionState = ConnectionState.disconnected;
   PlaybackPhase? _phase;
   List<String> _waitingOn = const [];
+  RoomRoster? _roster;
+  StreamSubscription<List<RoomPerson>>? _rosterSub;
+  List<RoomPerson> _people = const [];
   String? _roomId;
 
   bool _controlsVisible = true;
@@ -205,6 +216,15 @@ class _PlayerScreenState extends State<PlayerScreen> {
     unawaited(_initPlayer(startPositionMs: widget.detail.viewOffset ?? 0));
 
     if (widget.relay != null) {
+      final roster = RoomRoster(
+        relay: widget.relay!,
+        localName: widget.localName,
+        localAvatarUrl: widget.localAvatarUrl,
+      )..start();
+      _roster = roster;
+      _rosterSub = roster.people.listen(
+        (people) => setState(() => _people = people),
+      );
       _connectionSub = widget.relay!.connectionState.listen(
         (state) => setState(() => _connectionState = state),
       );
@@ -216,6 +236,8 @@ class _PlayerScreenState extends State<PlayerScreen> {
 
   @override
   void dispose() {
+    _rosterSub?.cancel();
+    _roster?.dispose();
     HardwareKeyboard.instance.removeHandler(_recordInteraction);
     _controlsHideTimer?.cancel();
     _reportTimer?.cancel();
@@ -690,7 +712,15 @@ class _PlayerScreenState extends State<PlayerScreen> {
                   _waitingOn.isNotEmpty)
                 // Screen 15: the one moment Watch Together is allowed to be
                 // loud — the reason the room paused takes the centre.
-                Center(child: _RoomPausedCard(waitingCount: _waitingOn.length)),
+                Center(
+                  child: _RoomPausedCard(
+                    who: waitingOnPhrase(
+                      _waitingOn,
+                      (id) => _roster?.nameOf(id),
+                    ),
+                    count: _waitingOn.length,
+                  ),
+                ),
               if (widget.settings.showChatOverlay && _sync != null)
                 Align(
                   alignment: _chatAlignment(),
@@ -724,21 +754,13 @@ class _PlayerScreenState extends State<PlayerScreen> {
                             child: _TitleBar(
                               kicker: _kicker,
                               title: widget.detail.title,
-                              chips: _infoChips,
+                              // In a room the top-right belongs to the
+                              // room (screen 15), not to how it's playing.
+                              chips: widget.relay != null
+                                  ? const []
+                                  : _infoChips,
                             ),
                           ),
-                          if (widget.relay != null &&
-                              _connectionState != ConnectionState.connected)
-                            Positioned(
-                              right: 24.du(context),
-                              top: 24.du(context),
-                              child: _Chip(
-                                child: AppText(
-                                  _syncStatusLabel(),
-                                  color: AppColors.inkOnArt,
-                                ),
-                              ),
-                            ),
                           Positioned(
                             left: 0,
                             right: 0,
@@ -779,6 +801,20 @@ class _PlayerScreenState extends State<PlayerScreen> {
                   ),
                 ),
               ),
+              // Screen 15: who's here and whether the room is together —
+              // permanent while in a room, not part of the fading controls.
+              if (widget.relay != null && !_chatQrOpen)
+                Positioned(
+                  right: 64.du(context),
+                  top: 56.du(context),
+                  child: _RoomStrip(
+                    people: [
+                      for (final p in _people) (p.name, p.avatarUrl),
+                      (widget.localName, widget.localAvatarUrl),
+                    ],
+                    status: _roomStatus(),
+                  ),
+                ),
               if (_chatQrOpen && _chatUrl != null)
                 Positioned(
                   right: 24.du(context),
@@ -835,6 +871,19 @@ class _PlayerScreenState extends State<PlayerScreen> {
     ChatOverlayCorner.bottomStart => Alignment.bottomLeft,
     ChatOverlayCorner.bottomEnd => Alignment.bottomRight,
   };
+
+  (String, Color) _roomStatus() {
+    if (_connectionState != ConnectionState.connected) {
+      return (_syncStatusLabel(), AppColors.warning);
+    }
+    if (_phase == PlaybackPhase.waitingForPeers && _waitingOn.isNotEmpty) {
+      return (
+        'Holding for ${waitingOnPhrase(_waitingOn, (id) => _roster?.nameOf(id))}',
+        AppColors.warning,
+      );
+    }
+    return ('In sync', AppColors.success);
+  }
 
   String _syncStatusLabel() => switch (_connectionState) {
     ConnectionState.connecting => 'Sync: connecting…',
@@ -941,9 +990,11 @@ class _TitleBar extends StatelessWidget {
 }
 
 class _RoomPausedCard extends StatelessWidget {
-  final int waitingCount;
+  /// "Marcus", "Marcus and Sam", "3 people".
+  final String who;
+  final int count;
 
-  const _RoomPausedCard({required this.waitingCount});
+  const _RoomPausedCard({required this.who, required this.count});
 
   @override
   Widget build(BuildContext context) {
@@ -982,9 +1033,7 @@ class _RoomPausedCard extends StatelessWidget {
           ),
           SizedBox(height: 14.du(context)),
           AppText(
-            waitingCount == 1
-                ? 'Someone is buffering'
-                : '$waitingCount people are buffering',
+            '$who ${count == 1 ? 'is' : 'are'} buffering',
             style: AppTypography.title2.copyWith(fontSize: 34),
             color: AppColors.inkOnArt,
           ),
@@ -995,6 +1044,94 @@ class _RoomPausedCard extends StatelessWidget {
             color: AppColors.ink2,
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// Screen 15's top-right: the room's faces, overlapping, and one line on
+/// whether it is together, on the chip scrim.
+class _RoomStrip extends StatelessWidget {
+  final List<(String, String?)> people;
+  final (String, Color) status;
+
+  const _RoomStrip({required this.people, required this.status});
+
+  static const _face = 44.0;
+  static const _overlap = 14.0;
+  static const _shown = 5;
+
+  @override
+  Widget build(BuildContext context) {
+    final (label, dot) = status;
+    final shown = people.take(_shown).toList();
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        SizedBox(
+          width: (_face + (shown.length - 1) * (_face - _overlap)).du(context),
+          height: _face.du(context),
+          child: Stack(
+            children: [
+              for (final (i, (name, avatar)) in shown.indexed)
+                Positioned(
+                  left: (i * (_face - _overlap)).du(context),
+                  child: _Face(name: name, avatarUrl: avatar),
+                ),
+            ],
+          ),
+        ),
+        SizedBox(width: 14.du(context)),
+        _Chip(
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 8.du(context),
+                height: 8.du(context),
+                decoration: BoxDecoration(shape: BoxShape.circle, color: dot),
+              ),
+              SizedBox(width: 10.du(context)),
+              AppText(
+                label,
+                style: AppTypography.caption,
+                color: AppColors.inkOnArt,
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _Face extends StatelessWidget {
+  final String name;
+  final String? avatarUrl;
+
+  const _Face({required this.name, this.avatarUrl});
+
+  @override
+  Widget build(BuildContext context) {
+    final url = avatarUrl;
+    return Container(
+      width: _RoomStrip._face.du(context),
+      height: _RoomStrip._face.du(context),
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        color: AppColors.surfaceOverlay,
+        border: Border.all(color: AppColors.canvas, width: 2.du(context)),
+      ),
+      child: ClipOval(
+        child: url != null && url.isNotEmpty
+            ? Artwork(imageUrl: url)
+            : Center(
+                child: AppText(
+                  name.isNotEmpty ? name[0].toUpperCase() : '?',
+                  style: AppTypography.caption,
+                  color: AppColors.ink2,
+                ),
+              ),
       ),
     );
   }

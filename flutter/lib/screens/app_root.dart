@@ -832,6 +832,8 @@ class _AppContent extends StatelessWidget {
           detail: detail,
           clientIdentifier: controller.clientIdentifier,
           relay: relay,
+          localName: controller.localAccount?.username ?? 'You',
+          localAvatarUrl: controller.localAccount?.thumb,
           settings: controller.currentSettings,
           onBitrateChanged: controller.saveBitratePreference,
           onExit: () {
