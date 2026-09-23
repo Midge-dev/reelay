@@ -151,14 +151,29 @@ class OnboardingFrame extends StatelessWidget {
                 child: ConstrainedBox(
                   constraints: BoxConstraints(
                     minHeight:
-                        constraints.maxHeight -
-                        (contentTop * 2).du(context),
+                        constraints.maxHeight - (contentTop * 2).du(context),
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      child,
+                      // Focus moving back up into the step shows as much of
+                      // its top (the heading) as fits with the focused item
+                      // still on screen — the default only scrolled to the
+                      // focused button, leaving the heading off the top.
+                      Builder(
+                        builder: (context) => Focus(
+                          canRequestFocus: false,
+                          skipTraversal: true,
+                          onFocusChange: (focused) {
+                            if (!focused) return;
+                            WidgetsBinding.instance.addPostFrameCallback(
+                              (_) => _revealTop(context),
+                            );
+                          },
+                          child: child,
+                        ),
+                      ),
                       if (footer != null)
                         Padding(
                           padding: EdgeInsets.only(
@@ -178,9 +193,8 @@ class OnboardingFrame extends StatelessWidget {
                                   _,
                                 ) {
                                   if (!context.mounted) return;
-                                  final position = Scrollable.of(
-                                    context,
-                                  ).position;
+                                  final position = Scrollable.of(context)
+                                      .position;
                                   position.animateTo(
                                     position.maxScrollExtent,
                                     duration: AppMotion.rowScroll,
@@ -328,4 +342,30 @@ class StepHeading extends StatelessWidget {
       ],
     );
   }
+}
+
+/// Scrolls the step's column as far up as it can go while the focused item
+/// stays fully on screen.
+void _revealTop(BuildContext context) {
+  if (!context.mounted) return;
+  final scrollable = Scrollable.maybeOf(context);
+  final focused = FocusManager.instance.primaryFocus?.context
+      ?.findRenderObject();
+  final viewport = scrollable?.context.findRenderObject();
+  if (scrollable == null || focused is! RenderBox || viewport is! RenderBox) {
+    return;
+  }
+  final position = scrollable.position;
+  final bottomInViewport = focused
+      .localToGlobal(Offset(0, focused.size.height), ancestor: viewport)
+      .dy;
+  final bottomInContent = position.pixels + bottomInViewport;
+  final target = (bottomInContent - position.viewportDimension + 24.du(context))
+      .clamp(0.0, position.maxScrollExtent);
+  if ((target - position.pixels).abs() < 1) return;
+  position.animateTo(
+    target,
+    duration: AppMotion.rowScroll,
+    curve: AppMotion.enter,
+  );
 }

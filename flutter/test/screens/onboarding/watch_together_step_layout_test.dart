@@ -66,4 +66,20 @@ void main() {
     expect(tester.getRect(bar).bottom, lessThanOrEqualTo(540), reason: 'the bar is fully on screen');
     expect(notNow, findsOneWidget);
   });
+
+  testWidgets('going back up from Not now brings the heading back into view at 130%', (tester) async {
+    await _pump(tester, const Size(960, 540), 540 / 1080 * 1.3);
+    Focus.of(tester.element(find.text('Not now'))).requestFocus();
+    await tester.pumpAndSettle();
+    Focus.of(tester.element(find.text('Set it up from my phone'))).requestFocus();
+    await tester.pumpAndSettle();
+    // As far up as the focused card allows: the heading is on screen, or
+    // the card sits at the bottom edge with nothing more to reveal.
+    final headingTop = tester.getRect(find.text('STEP 3 OF 4 · OPTIONAL')).top;
+    final card = find.ancestor(of: find.text('Set it up from my phone'), matching: find.byType(FocusableSurface)).first;
+    final cardBottom = tester.getRect(card).bottom;
+    expect(headingTop >= 0 || cardBottom > 540 - 24 * 0.65 - 2, isTrue,
+        reason: 'heading top $headingTop, card bottom $cardBottom');
+    expect(cardBottom, lessThanOrEqualTo(540));
+  });
 }

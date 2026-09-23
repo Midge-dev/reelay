@@ -257,9 +257,11 @@ class _WatchTogetherStepState extends ConsumerState<WatchTogetherStep> {
         border: Border.all(color: AppColors.line, width: 1.du(context)),
         borderRadius: BorderRadius.circular(AppShape.radiusMd.du(context)),
       ),
-      child: Wrap(
-        spacing: AppSpacing.xxl.du(context),
-        runSpacing: AppSpacing.xl.du(context),
+      // QR beside the instructions, as on the link step — stacked, the
+      // panel ran past the screen at large UI sizes.
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
         children: [
           Container(
             width: 220.du(context),
@@ -276,38 +278,41 @@ class _WatchTogetherStepState extends ConsumerState<WatchTogetherStep> {
               backgroundColor: AppColors.inkOnArt,
             ),
           ),
-          ConstrainedBox(
-            constraints: BoxConstraints(maxWidth: 560.du(context)),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                AppText(
-                  'Scan with a phone on the same Wi-Fi as this TV, or open',
-                  style: AppTypography.body,
-                ),
-                SizedBox(height: AppSpacing.sm.du(context)),
-                AppText(
-                  _pairingUrl!,
-                  style: AppTypography.label,
-                  color: AppColors.ink,
-                ),
-                SizedBox(height: AppSpacing.md.du(context)),
-                AppText(
-                  'Paste your relay’s address there and this step finishes on its own.',
-                  style: AppTypography.caption,
-                ),
-                SizedBox(height: AppSpacing.xl.du(context)),
-                AppOutlinedButton(
-                  onClick: _cancelPairing,
-                  focusNode: _cancelPairingFocus,
-                  child: AppText(
-                    'Cancel',
-                    style: AppTypography.label,
-                    color: null,
+          SizedBox(width: AppSpacing.xxl.du(context)),
+          Flexible(
+            child: ConstrainedBox(
+              constraints: BoxConstraints(maxWidth: 560.du(context)),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  AppText(
+                    'Scan with a phone on the same Wi-Fi as this TV, or open',
+                    style: AppTypography.body,
                   ),
-                ),
-              ],
+                  SizedBox(height: AppSpacing.sm.du(context)),
+                  AppText(
+                    _pairingUrl!,
+                    style: AppTypography.label,
+                    color: AppColors.ink,
+                  ),
+                  SizedBox(height: AppSpacing.md.du(context)),
+                  AppText(
+                    'Paste your relay’s address there and this step finishes on its own.',
+                    style: AppTypography.caption,
+                  ),
+                  SizedBox(height: AppSpacing.xl.du(context)),
+                  AppOutlinedButton(
+                    onClick: _cancelPairing,
+                    focusNode: _cancelPairingFocus,
+                    child: AppText(
+                      'Cancel',
+                      style: AppTypography.label,
+                      color: null,
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
         ],
