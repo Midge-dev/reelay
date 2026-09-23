@@ -301,7 +301,7 @@ class _ResultsPanelState extends State<_ResultsPanel> {
           clipper: _TopEdgeClipper(clip: scrolled),
           child: EdgeFadeRow(
             axis: Axis.vertical,
-            fadeStart: scrolled,
+            startStrength: EdgeFadeRow.strengthFor(context, _scroll),
             fadeEnd: false,
             child: child!,
           ),
@@ -419,7 +419,10 @@ class _ResultGroupState extends State<_ResultGroup> {
                 final scrolled = _scroll.hasClients && _scroll.offset > 0;
                 return ClipRect(
                   clipper: _LeadingEdgeClipper(scrolled ? 0 : 12.du(context)),
-                  child: EdgeFadeRow(fadeStart: scrolled, child: child!),
+                  child: EdgeFadeRow(
+                    startStrength: EdgeFadeRow.strengthFor(context, _scroll),
+                    child: child!,
+                  ),
                 );
               },
               child: RowEndStop(

@@ -12,6 +12,8 @@ import '../../theme/typography.dart';
 import '../common/neon_scrollbar.dart';
 import '../common/relay_status.dart';
 
+const _dotGap = 20.0;
+
 /// A (reachable, room-count) pair, or null while still probing — mirrors
 /// Kotlin's `Pair<Boolean, Int>?`.
 class RelayReachability {
@@ -239,39 +241,57 @@ class RelayRow extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          RelayStatusDot(
-            status: status?.reachable == true
-                ? RelayStatus.dotOnly
-                : RelayStatus.silent,
-          ),
-          SizedBox(width: 20.du(context)),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
               children: [
+                // The dot belongs to the name line, not the whole row — on
+                // the row it sat halfway down, below the name.
                 Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
+                    RelayStatusDot(
+                      status: status?.reachable == true
+                          ? RelayStatus.dotOnly
+                          : RelayStatus.silent,
+                    ),
+                    SizedBox(width: _dotGap.du(context)),
                     AppText(entry.nickname),
                     if (entry.isDefault) ...[
                       SizedBox(width: 12.du(context)),
                       Container(
                         padding: EdgeInsets.symmetric(
-                          horizontal: 12.du(context),
-                          vertical: 5.du(context),
+                          horizontal: 14.du(context),
+                          vertical: 7.du(context),
                         ),
                         decoration: BoxDecoration(
                           color: AppColors.accent.withValues(alpha: 0.9),
                           borderRadius: BorderRadius.circular(50.du(context)),
                         ),
-                        child: AppText('Default', color: AppColors.inkOnArt),
+                        // A tight, evenly split line box: the body style's
+                        // tall line height put its extra leading mostly
+                        // above the word, so it sat off-centre in the pill.
+                        child: AppText(
+                          'Default',
+                          style: AppTypography.caption.copyWith(
+                            height: 1,
+                            leadingDistribution: TextLeadingDistribution.even,
+                          ),
+                          color: AppColors.inkOnArt,
+                        ),
                       ),
                     ],
                   ],
                 ),
                 SizedBox(height: 6.du(context)),
-                AppText(relayStatusLabel(status), color: AppColors.ink3),
+                Padding(
+                  padding: EdgeInsets.only(left: (8 + _dotGap).du(context)),
+                  child: AppText(
+                    relayStatusLabel(status),
+                    color: AppColors.ink3,
+                  ),
+                ),
               ],
             ),
           ),

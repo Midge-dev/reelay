@@ -144,7 +144,11 @@ class _PosterGridState extends State<PosterGrid> {
             animation: controller,
             builder: (context, child) => EdgeFadeRow(
               axis: Axis.vertical,
-              fadeStart: controller.hasClients && controller.offset > 0,
+              startStrength: EdgeFadeRow.strengthFor(
+                context,
+                controller,
+                fadeWidth: posterRowPeekExtent,
+              ),
               fadeWidth: posterRowPeekExtent,
               child: child!,
             ),
