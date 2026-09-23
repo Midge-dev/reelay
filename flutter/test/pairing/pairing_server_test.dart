@@ -1,4 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:reelay/pairing/pairing_page.dart';
+import 'package:reelay/theme/tokens.dart';
 import 'package:http/http.dart' as http;
 import 'package:reelay/pairing/pairing_server.dart';
 
@@ -19,7 +21,7 @@ void main() {
         headers: {'content-type': 'application/x-www-form-urlencoded'},
         body: 'nickname=&url=',
       );
-      expect(postResponse.body, contains('Paste a URL first'));
+      expect(postResponse.body, contains("Paste the relay's address first."));
     } finally {
       await server.stop();
     }
@@ -77,5 +79,31 @@ void main() {
     } finally {
       await server.stop();
     }
+  });
+
+  group('the phone page (Nocturne)', () {
+    test('uses the TV\'s current theme', () {
+      final html = pairingFormPage(theme: ThemeId.horror, action: '/1/submit', nickname: '', url: '', editing: false);
+      expect(html, contains('--accent:#A8363D'));
+      expect(html, contains('<meta name="theme-color" content="#110B0C">'));
+      expect(html, contains('Add a relay'));
+    });
+
+    test('says Update when a relay is being edited', () {
+      final html = pairingFormPage(theme: ThemeId.nocturne, action: '/1/submit', nickname: 'Home', url: 'wss://a', editing: true);
+      expect(html, contains('Update this relay'));
+    });
+
+    test('never puts a prefilled value into the page unescaped', () {
+      final html = pairingFormPage(
+        theme: ThemeId.nocturne,
+        action: '/1/submit',
+        nickname: '"><script>alert(1)</script>',
+        url: '',
+        editing: false,
+      );
+      expect(html, isNot(contains('<script>alert(1)')));
+      expect(html, contains('&quot;&gt;&lt;script&gt;'));
+    });
   });
 }
