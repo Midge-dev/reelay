@@ -347,25 +347,19 @@ class MovieDetail extends AppState {
   });
 }
 
-/// [server] is whichever server [person] (and the movie/show they were
-/// found on) actually came from — an actor's ratingKey is only meaningful
-/// on the one server it was resolved against, so this drill-down stays
-/// single-server rather than fanning out across the hub (v1 scope: the
-/// hub unifies Home/Library/Search/Watchlist; a detail page's own
-/// neighborhood — cast, collections, related — stays scoped to whichever
-/// copy you're actually looking at, same simplification as episodes).
+/// Screen 03c. [server] is the server [person] was picked on — their tag
+/// id there is where the search across every connected server starts
+/// (PersonCredits); the page gathers its own titles.
 class PersonFilmography extends AppState {
   final LibraryContext ctx;
   final PlexServer server;
   final PlexPerson person;
-  final List<PlexLibraryItem> items;
   final AppState returnState;
 
   const PersonFilmography({
     required this.ctx,
     required this.server,
     required this.person,
-    required this.items,
     required this.returnState,
   });
 }

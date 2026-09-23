@@ -129,6 +129,9 @@ class PlexLibraryItem {
   /// show detail screen has actually loaded them.
   final int? leafCount;
 
+  /// Season count on a show item.
+  final int? childCount;
+
   @JsonKey(name: 'Genre', defaultValue: [])
   final List<PlexTag> genres;
 
@@ -153,6 +156,7 @@ class PlexLibraryItem {
     this.guid,
     this.contentRating,
     this.leafCount,
+    this.childCount,
     this.guids = const [],
     this.genres = const [],
     this.collections = const [],
@@ -348,7 +352,11 @@ class PlexPerson {
   final String? role;
   final String? thumb;
 
-  const PlexPerson({this.id, required this.tag, this.role, this.thumb});
+  /// Plex's own id for the person, the same on every server — [id] is only
+  /// this server's tag id.
+  final String? tagKey;
+
+  const PlexPerson({this.id, required this.tag, this.role, this.thumb, this.tagKey});
 
   factory PlexPerson.fromJson(Map<String, dynamic> json) => _$PlexPersonFromJson(json);
   Map<String, dynamic> toJson() => _$PlexPersonToJson(this);

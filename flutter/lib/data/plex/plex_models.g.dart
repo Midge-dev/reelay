@@ -88,6 +88,7 @@ PlexLibraryItem _$PlexLibraryItemFromJson(Map<String, dynamic> json) =>
       guid: json['guid'] as String?,
       contentRating: json['contentRating'] as String?,
       leafCount: (json['leafCount'] as num?)?.toInt(),
+      childCount: (json['childCount'] as num?)?.toInt(),
       guids:
           (json['Guid'] as List<dynamic>?)
               ?.map((e) => PlexGuid.fromJson(e as Map<String, dynamic>))
@@ -121,6 +122,7 @@ Map<String, dynamic> _$PlexLibraryItemToJson(PlexLibraryItem instance) =>
       'guid': instance.guid,
       'contentRating': instance.contentRating,
       'leafCount': instance.leafCount,
+      'childCount': instance.childCount,
       'Genre': instance.genres,
       'Collection': instance.collections,
       'Guid': instance.guids,
@@ -288,6 +290,7 @@ PlexPerson _$PlexPersonFromJson(Map<String, dynamic> json) => PlexPerson(
   tag: json['tag'] as String,
   role: json['role'] as String?,
   thumb: json['thumb'] as String?,
+  tagKey: json['tagKey'] as String?,
 );
 
 Map<String, dynamic> _$PlexPersonToJson(PlexPerson instance) =>
@@ -296,6 +299,7 @@ Map<String, dynamic> _$PlexPersonToJson(PlexPerson instance) =>
       'tag': instance.tag,
       'role': instance.role,
       'thumb': instance.thumb,
+      'tagKey': instance.tagKey,
     };
 
 PlexReview _$PlexReviewFromJson(Map<String, dynamic> json) => PlexReview(

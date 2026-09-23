@@ -84,6 +84,36 @@ class PlexServerApi {
     return hubs.expand((hub) => hub.items).toList();
   }
 
+  /// Everything [personId] (this server's tag id) is credited on, across
+  /// every section — acting, directing or writing. Each item's `Role` list
+  /// is only the first three names, without characters; the detail has
+  /// the credit itself.
+  Future<List<PlexLibraryItem>> fetchPersonMedia(int personId) async {
+    final json = await _get('${server.baseUrl}/library/people/$personId/media');
+    return extractMediaContainerList(json, 'Metadata', PlexLibraryItem.fromJson);
+  }
+
+  /// People matching [name] on this server, from search's actor hub —
+  /// each with this server's tag id and Plex's global `tagKey`, which is
+  /// how the same person is recognised on another server.
+  Future<List<PlexPerson>> searchPeople(String name) async {
+    final json = await _get('${server.baseUrl}/hubs/search?query=${Uri.encodeQueryComponent(name)}&limit=10');
+    final hubs = (json['MediaContainer']?['Hub'] as List?) ?? const [];
+    final seen = <int>{};
+    return [
+      for (final hub in hubs.cast<Map<String, dynamic>>())
+        if (hub['type'] == 'actor')
+          for (final entry in ((hub['Directory'] as List?) ?? const []).cast<Map<String, dynamic>>())
+            if (entry['id'] is int && seen.add(entry['id'] as int))
+              PlexPerson(
+                id: entry['id'] as int,
+                tag: '${entry['tag'] ?? ''}',
+                thumb: entry['thumb'] as String?,
+                tagKey: entry['tagKey'] as String?,
+              ),
+    ];
+  }
+
   Future<List<PlexLibraryItem>> fetchLibraryItemsByActor(String sectionKey, int actorId) async {
     final json = await _get('${server.baseUrl}/library/sections/$sectionKey/all?actor=$actorId');
     return extractMediaContainerList(json, 'Metadata', PlexLibraryItem.fromJson);

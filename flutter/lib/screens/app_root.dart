@@ -15,6 +15,7 @@ import '../state/app_root_controller.dart';
 import '../state/app_state.dart';
 import '../state/data_providers.dart';
 import '../state/duplicate_fold.dart';
+import '../state/person_credits.dart';
 import '../sync/relay_directory_api.dart';
 import '../theme/tokens.dart';
 import '../theme/typography.dart';
@@ -550,31 +551,14 @@ class _AppContent extends StatelessWidget {
                 ),
               );
             },
-            onSelectPerson: (person) async {
-              final actorId = person.id;
-              final section = ctx.selectedSectionGroup.sectionOn(
-                activeCopy.server.machineIdentifier,
-              );
-              try {
-                final items = actorId == null || section == null
-                    ? const <PlexLibraryItem>[]
-                    : await PlexServerApi(
-                        activeCopy.server,
-                        controller.clientIdentifier,
-                      ).fetchLibraryItemsByActor(section.key, actorId);
-                controller.returnTo(
-                  PersonFilmography(
-                    ctx: ctx,
-                    server: activeCopy.server,
-                    person: person,
-                    items: items,
-                    returnState: state,
-                  ),
-                );
-              } catch (e) {
-                controller.returnTo(AppError(message: '$e', retryState: state));
-              }
-            },
+            onSelectPerson: (person) => controller.returnTo(
+              PersonFilmography(
+                ctx: ctx,
+                server: activeCopy.server,
+                person: person,
+                returnState: state,
+              ),
+            ),
             onPlay: (targetRatingKey) => controller.playMovie(
               ctx,
               activeCopy.server,
@@ -603,30 +587,32 @@ class _AppContent extends StatelessWidget {
         :final ctx,
         :final server,
         :final person,
-        :final items,
         :final returnState,
       ) =>
         _drawer(
           state: state,
           ctx: ctx,
           child: PersonFilmographyScreen(
-            server: server,
-            personName: person.tag,
-            personThumb: person.thumb,
-            items: items,
-            onSelectItem: (item) {
-              final work = FoldedWork<PlexLibraryItem>(item.guid, [
-                Sourced(item, server, _reachabilityOf(ctx, server)),
-              ]);
-              controller.returnTo(
-                MovieDetail(
-                  ctx: ctx,
-                  work: work,
-                  activeCopy: work.primary,
-                  returnState: state,
+            servers: ctx.servers,
+            originServer: server,
+            person: person,
+            loadWorks: () => _creditsFor(state).gather(),
+            loadCredit: (work) => _creditsFor(state).creditOn(work),
+            // A person's titles are movies and shows alike, so the detail
+            // page is picked by the title's own type, as Search does.
+            onSelectItem: (work) => controller.returnTo(
+              MovieDetail(
+                ctx: ctx.copyWith(
+                  selectedSectionGroup: sectionGroupFor(
+                    ctx.sectionGroups,
+                    work.primary.value.type ?? '',
+                  ),
                 ),
-              );
-            },
+                work: work,
+                activeCopy: work.primary,
+                returnState: state,
+              ),
+            ),
             onBack: () => controller.returnTo(returnState),
           ),
         ),
@@ -1109,19 +1095,6 @@ class _AppContent extends StatelessWidget {
     return show.title;
   }
 
-  /// Looks a bare [PlexServer] (e.g. from a single-server drill-down state
-  /// like [PersonFilmography]) back up in [ctx]'s connected-server list for
-  /// its reachability, defaulting to [ServerReachability.local] if it's
-  /// somehow no longer present — best-effort, since the server was already
-  /// known reachable enough to have gotten this far.
-  ServerReachability _reachabilityOf(LibraryContext ctx, PlexServer server) =>
-      ctx.servers
-          .firstWhereOrNull(
-            (s) => s.server.machineIdentifier == server.machineIdentifier,
-          )
-          ?.reachability ??
-      ServerReachability.local;
-
   /// Screen 25's "Play from Loft" offer — the next reachable copy of the
   /// same work, excluding whichever server just failed. Only movies carry
   /// a [FoldedWork] wide enough to answer this today (an episode's alternate
@@ -1141,4 +1114,16 @@ class _AppContent extends StatelessWidget {
           c.server.machineIdentifier != failedServer.machineIdentifier,
     );
   }
+
+  /// One loader per 03c page, so the tag ids it resolves on each server
+  /// while gathering are still there when each title's credit is read.
+  static final _personCredits = Expando<PersonCredits>('person-credits');
+
+  PersonCredits _creditsFor(PersonFilmography page) =>
+      _personCredits[page] ??= PersonCredits(
+        servers: page.ctx.servers,
+        clientIdentifier: controller.clientIdentifier,
+        origin: page.server,
+        person: page.person,
+      );
 }
