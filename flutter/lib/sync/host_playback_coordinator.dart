@@ -5,14 +5,10 @@ import 'synced_player.dart';
 import 'time_utils.dart';
 
 /// Host-side state machine for watch-together playback — not just a relay,
-/// a real coordinator. Ports HostPlaybackCoordinator.kt with every timing
-/// constant unchanged (guests, and any other host implementation, must
-/// agree on these to interoperate). Kotlin gets "every scheduled callback
-/// stops firing once this is torn down" for free from structured
-/// concurrency (cancelling `scope` cancels every child job, tracked or
-/// not); Dart Timers don't have that, so every scheduled callback here
-/// checks `_disposed` even where the Kotlin source doesn't explicitly —
-/// that's restoring behavioral parity, not added scope.
+/// a real coordinator. Its timing constants are part of the protocol:
+/// guests, and any other host implementation, must agree on them. Dart
+/// Timers don't stop on their own when this is torn down, so every
+/// scheduled callback checks `_disposed`.
 class HostPlaybackCoordinator {
   static const _stallGraceMs = 2500;
   static const _recoveryHysteresisMs = 800;

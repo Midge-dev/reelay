@@ -66,10 +66,11 @@ void main() {
     );
 
     await tester.tap(find.text('B'));
+    await tester.tap(find.text('O'));
     await tester.pump(_debounceSettle);
     await tester.pump();
 
-    expect(queried, 'B');
+    expect(queried, 'BO');
     expect(find.text('SERIES'), findsOneWidget);
     expect(find.text('MOVIES'), findsOneWidget);
     expect(find.text('Borderland'), findsOneWidget);
@@ -81,6 +82,7 @@ void main() {
     await _pump(tester, search: (_) async => const []);
 
     await tester.tap(find.text('B'));
+    await tester.tap(find.text('O'));
     await tester.pump(_debounceSettle);
     await tester.pump();
 
@@ -96,6 +98,7 @@ void main() {
     );
 
     await tester.tap(find.text('B'));
+    await tester.tap(find.text('O'));
     await tester.pump(_debounceSettle);
     await tester.pump();
 
@@ -112,6 +115,7 @@ void main() {
     );
 
     await tester.tap(find.text('B'));
+    await tester.tap(find.text('O'));
     await tester.pump(_debounceSettle);
     await tester.pump();
     expect(find.text('Bordeaux'), findsOneWidget);
@@ -131,6 +135,7 @@ void main() {
       ],
     );
     await tester.tap(find.text('B'));
+    await tester.tap(find.text('O'));
     await tester.pump(_debounceSettle);
     await tester.pump();
 
@@ -158,6 +163,7 @@ void main() {
     ];
     await _pump(tester, search: search, memory: memory);
     await tester.tap(find.text('B'));
+    await tester.tap(find.text('O'));
     await tester.pump(_debounceSettle);
     await tester.pump();
     await tester.tap(find.byType(AppCard));
@@ -168,12 +174,30 @@ void main() {
     await _pump(tester, search: search, memory: memory);
     await tester.pump();
 
-    expect(find.text('B'), findsNWidgets(2), reason: 'the query field and the B key');
+    expect(find.text('BO'), findsOneWidget, reason: 'the query field');
     expect(find.text('Bordeaux'), findsOneWidget);
     final focused = FocusManager.instance.primaryFocus;
     expect(
       find.ancestor(of: find.byWidgetPredicate((w) => w is Focus && w.focusNode == focused), matching: find.byType(AppCard)),
       findsWidgets,
     );
+  });
+
+  testWidgets('one letter asks for more instead of saying nothing matches', (tester) async {
+    var searched = false;
+    await _pump(
+      tester,
+      search: (_) async {
+        searched = true;
+        return const [];
+      },
+    );
+    await tester.tap(find.text('A'));
+    await tester.pump(_debounceSettle);
+    await tester.pump();
+
+    expect(searched, isFalse, reason: 'Plex does not search one character');
+    expect(find.text('Keep typing — search starts at two letters.'), findsOneWidget);
+    expect(find.text('Nothing on your servers matches that.'), findsNothing);
   });
 }

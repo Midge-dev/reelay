@@ -22,7 +22,7 @@ void main() {
 
   test('report() never throws even if the request fails (fire-and-forget)', () async {
     // No real server at this address — the request will fail; report()
-    // must swallow it, matching Kotlin's runCatching {}.
+    // must swallow it.
     final reporter = TimelineReporter(const PlexServer(name: 'x', baseUrl: 'http://127.0.0.1:1', accessToken: 't'), 'client-id');
     await expectLater(reporter.report('1', 'playing', 0, 1000), completes);
   });

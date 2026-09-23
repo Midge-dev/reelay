@@ -13,8 +13,8 @@ import 'time_utils.dart';
 
 /// Wires RelayClient <-> HostPlaybackCoordinator/GuestPlaybackReconciler,
 /// picking a role exactly once per session off the first non-null
-/// seatIndex. Ports SyncViewModel.kt including the wire-format mapping
-/// functions at the bottom of that file.
+/// seatIndex. The wire-format mapping functions are at the bottom of this
+/// file.
 class SyncViewModel {
   final SyncedPlayer player;
   final RelayClient? relay;

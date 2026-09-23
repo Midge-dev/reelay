@@ -64,8 +64,8 @@ class PlexResourcesApi {
         .toList();
   }
 
-  /// Mirrors Kotlin's `sortedBy { it.owned }`: false sorts before true, so
-  /// non-owned (shared) servers are tried first.
+  /// Owned sorts after shared, so non-owned (shared) servers are tried
+  /// first.
   Future<PlexServer?> findReachableServer(
     String accountToken, {
     String? preferredMachineIdentifier,

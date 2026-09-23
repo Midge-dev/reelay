@@ -12,7 +12,7 @@ const _messageVisibleMs = 6000;
 const _fadeOutMs = 300;
 const _maxVisible = 4;
 
-/// Ports ui/common/ChatOverlay.kt — a stack of transient chat bubbles that
+/// A stack of transient chat bubbles that
 /// each fade out on their own timer, newest message pushing the oldest out
 /// once [_maxVisible] is exceeded.
 class ChatOverlay extends StatefulWidget {

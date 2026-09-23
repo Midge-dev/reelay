@@ -25,10 +25,8 @@ String _profileTokenKey(String profileId) => 'plex_token_$profileId';
 // single-app token. iOS/Android are unaffected — this option is macOS-only.
 const _macOsOptions = MacOsOptions(usesDataProtectionKeychain: false);
 
-/// Ports AndroidTokenStore.kt's role, but not its implementation — that
-/// file hand-rolls Android Keystore AES-GCM encryption plus manual IV
-/// handling; flutter_secure_storage already does equivalent per-platform
-/// key management (Keystore on Android, Keychain on iOS/macOS) internally,
+/// Plex tokens in platform secure storage: flutter_secure_storage does the
+/// per-platform key management (Keystore on Android, Keychain on iOS/macOS),
 /// so none of that crypto needs porting.
 class FlutterSecureTokenStore implements SecureTokenStore {
   final FlutterSecureStorage _storage;

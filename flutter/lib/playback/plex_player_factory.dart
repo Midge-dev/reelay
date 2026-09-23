@@ -5,11 +5,9 @@ import 'playback_decision.dart';
 
 const _uuid = Uuid();
 
-/// Ports PlexPlayerFactory.kt's URL-building formulas exactly — everything
-/// except the ExoPlayer-specific `create`/`applySubtitleSelection` methods,
-/// which have no Flutter equivalent (see [VideoPlayerSyncedPlayer] and
-/// `resolveSubtitleSource` in playback_decision.dart for how subtitle
-/// attachment is actually handled on this platform).
+/// Builds Plex's direct-play and transcode URLs. Subtitle attachment lives
+/// elsewhere — see [VideoPlayerSyncedPlayer] and `resolveSubtitleSource` in
+/// playback_decision.dart.
 class PlexPlayerFactory {
   const PlexPlayerFactory._();
 

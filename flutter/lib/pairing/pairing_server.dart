@@ -33,13 +33,11 @@ const _pairingPageCss = '''
     .error { color: #FF8A8A; font-size: 13px; margin: -8px 0 16px; }
 ''';
 
-/// Ports data/pairing/PairingServer.kt — a tiny LAN HTTP server the TV
+/// A tiny LAN HTTP server the TV
 /// spins up so a phone on the same network can scan a QR code / visit a
 /// URL and push relay-connection info to the TV without typing on a
-/// remote. Unlike the Kotlin version (a hand-rolled raw-socket HTTP
-/// parser, explicitly excluded from the shared module since it's
-/// Android-only anyway), this uses a real HTTP server package (shelf)
-/// instead of re-implementing header/body parsing by hand.
+/// remote. Uses a real HTTP server package (shelf) rather than parsing
+/// headers and bodies by hand.
 class PairingServer {
   final String prefillNickname;
   final String prefillUrl;

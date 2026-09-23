@@ -23,7 +23,7 @@ SurfaceBorder get _restartButtonBorder => SurfaceBorder(
   focused: SurfaceBorderSide.solid(AppColors.accent),
 );
 
-/// Ports ui/library/EpisodeDetailScreen.kt.
+/// One episode's page: play, resume, Watch Together.
 class EpisodeDetailScreen extends StatefulWidget {
   final PlexServer server;
   final String showTitle;

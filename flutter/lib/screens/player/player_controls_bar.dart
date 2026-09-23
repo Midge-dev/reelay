@@ -19,7 +19,7 @@ class _RowButton {
   const _RowButton(this.focusNode, this.enabled);
 }
 
-/// Ports PlayerScreen.kt's `PlayerControlsBar` — the bottom overlay bar: a
+/// The bottom overlay bar: a
 /// played/buffered/unplayed progress track, the position/duration label,
 /// and the button row.
 ///
@@ -28,9 +28,7 @@ class _RowButton {
 /// [onSeekKeyEvent] rather than [onRewind]/[onForward], so a held key
 /// accelerates the jump size the same way the hidden-controls D-pad
 /// shortcut does (see seekIncrementForHold), instead of repeating the
-/// rewind/forward buttons' fixed per-press increment. This deviates from
-/// Kotlin's `DefaultTimeBar`, which wasn't independently focusable there
-/// either, but was requested directly for this port.
+/// rewind/forward buttons' fixed per-press increment.
 ///
 /// Every button in the row (and the progress track) gets an explicit
 /// edge-trap: directions with nothing to reach are swallowed here, and

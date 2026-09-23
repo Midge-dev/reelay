@@ -3,7 +3,8 @@
 A custom Android TV Plex client with real synchronized "watch together"
 playback — built for two people on separate Plex accounts/servers/houses to
 watch the same movie in sync. Not on the Play Store; installed by sideloading
-the APK. See `NOTES.md` for technical/architecture details.
+the APK. See `ARCHITECTURE.md` for how it works and `NOTES.md` for setup
+details.
 
 ## Building from source (for developers)
 
@@ -12,9 +13,7 @@ automatically on every push, see
 [Installing the app](#installing-the-app-for-whoever-is-joining-you) below.
 This section is only for making your own changes to the code.
 
-The app (`flutter/`) is a Flutter project targeting Android TV. (An earlier
-native Kotlin/Compose implementation was retired in favor of this one once
-it reached parity — see git history before this point if you need it.)
+The app (`flutter/`) is a Flutter project targeting Android TV.
 
 ### Prerequisites
 

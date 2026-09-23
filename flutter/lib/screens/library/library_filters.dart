@@ -52,7 +52,7 @@ bool matchesDateAddedBucket(
   };
 }
 
-/// Ports ui/library/LibraryFilters.kt's `applyLibraryFilters`.
+/// A library's titles narrowed by query, genre, decade and date added, then sorted.
 List<PlexLibraryItem> applyLibraryFilters({
   required List<PlexLibraryItem> items,
   required String query,

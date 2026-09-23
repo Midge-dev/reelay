@@ -6,7 +6,7 @@ import '../../kit/icon.dart';
 import '../../theme/tokens.dart';
 import '../../theme/phosphor_icons.dart';
 
-/// Ports ui/common/WatchlistButton.kt. Square, not round — this sits in the
+/// The add-to-watchlist toggle. Square, not round — this sits in the
 /// detail-page action row alongside the other icon-only buttons (restart,
 /// more), so it takes the same 62x62 frame-only treatment as AppIconButton
 /// rather than a circular badge.

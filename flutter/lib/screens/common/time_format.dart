@@ -20,7 +20,7 @@ String formatRuntime(int ms) {
   return hours > 0 ? '${hours}h ${minutes}m' : '${minutes}m';
 }
 
-/// Ports ui/common/TimeFormat.kt's `formatTimecode`.
+/// "1:11:07", or "46:12" under an hour.
 String formatTimecode(int ms) {
   final totalSeconds = ms ~/ 1000;
   final hours = totalSeconds ~/ 3600;

@@ -33,13 +33,9 @@ class _FriendlyError implements Exception {
   String toString() => message;
 }
 
-/// Ports MainActivity.kt's `AppRoot` composable — every local `remember`ed
-/// var there becomes a field here, every local `suspend fun`/closure
-/// becomes a method. Kotlin's whole-composable-scope recomposition (any
-/// `mutableStateOf` write triggers every reader to rebuild) is matched by
-/// a single ChangeNotifier: everything above (state, account, watchlist,
-/// live rooms) is one reactive surface here too, not split across several
-/// Riverpod providers, since several screens (MovieDetail/EpisodeDetail's
+/// The app's state and everything that changes it. One ChangeNotifier:
+/// state, account, watchlist and live rooms are one reactive surface, not
+/// split across several Riverpod providers, since several screens (MovieDetail/EpisodeDetail's
 /// watchlist star, Home's WatchTogetherRow, Lobby/Player's relay) all need
 /// pieces of it independently of which AppState is current.
 class AppRootController extends ChangeNotifier {
@@ -515,7 +511,7 @@ class AppRootController extends ChangeNotifier {
           .fetchWatchlist(token);
       notifyListeners();
     } catch (_) {
-      // keep the last-known list, matching Kotlin's `.getOrNull() ?: watchlistItems`
+      // keep the last-known list
     }
     unawaited(_resolveWatchlistAvailability());
   }
@@ -1145,7 +1141,7 @@ class AppRootController extends ChangeNotifier {
     }
   }
 
-  // ---- Home row navigation (ports MainActivity.kt's inline HomeScreen callbacks) ----
+  // ---- Home row navigation ----
 
   /// A Watch Together room only carries a ratingKey, never which server
   /// hosted it, so this is the one place content still has to be looked
@@ -1413,9 +1409,8 @@ FoldedWork<PlexLibraryItem> _libraryWorkFrom(
 );
 
 /// Builds a `PlexLibraryItem`/show-typed placeholder from an on-deck-shaped
-/// item — ports the manual reconstruction MainActivity.kt does at several
-/// onSelect callbacks (recently-added, suggestions, recent-activity,
-/// resume) so a MovieDetail/EpisodeDetail navigation has something to
+/// item (recently-added, suggestions, recent-activity, resume) so a
+/// MovieDetail/EpisodeDetail navigation has something to
 /// render immediately while the real detail loads.
 PlexLibraryItem libraryItemFrom(
   PlexOnDeckItem item, {
@@ -1443,8 +1438,7 @@ PlexEpisode episodeFrom(PlexOnDeckItem item) => PlexEpisode(
 );
 
 /// Picks the section group matching an item's type, falling back to the
-/// first group — mirrors the `sections.firstOrNull { it.type == X } ?:
-/// sections.first()` pattern repeated throughout MainActivity.kt.
+/// first group.
 SectionGroup sectionGroupFor(List<SectionGroup> groups, String type) =>
     groups.firstWhereOrNull((g) => g.type == type) ?? groups.first;
 

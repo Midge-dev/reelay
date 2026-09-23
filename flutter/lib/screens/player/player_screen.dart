@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart' hide ConnectionState;
 import 'package:video_player/video_player.dart';
 
+import '../../data/plex/media_facts.dart';
 import '../../data/plex/plex_http_client.dart';
 import '../../data/plex/plex_models.dart';
 import '../../data/settings/app_settings.dart';
@@ -28,7 +29,6 @@ import '../../theme/typography.dart';
 import '../common/app_loading_indicator.dart';
 import '../common/artwork.dart';
 import '../common/chat_overlay.dart';
-import '../library/media_facts.dart';
 import 'chat_qr_overlay.dart';
 import 'player_controls_bar.dart';
 import 'player_menu_panel.dart';
@@ -39,22 +39,16 @@ const _controlsHideDelayMs = 3000;
 const _skipIncrementMs = 10000;
 const _controlsFadeDuration = Duration(milliseconds: 200);
 
-/// Ports ui/player/PlayerScreen.kt — the biggest platform-boundary piece of
-/// this conversion. See project_flutter_full_conversion.md for the two
-/// spiked risks this resolved (no play/pause reason codes, no seek-
-/// discontinuity event — both handled fine by [VideoPlayerSyncedPlayer]).
-/// Unlike Kotlin/ExoPlayer, this player has no API for selecting a
-/// subtitle track muxed into the video container, so [subtitleOptions]
+/// Playback, solo or in a Watch Together room. `video_player` has no
+/// play/pause reason codes and no seek-discontinuity event — both handled
+/// in [VideoPlayerSyncedPlayer] — and no API for selecting a subtitle
+/// track muxed into the video container, so [subtitleOptions]
 /// marks every embedded track as burn-required — selecting one forces a
 /// transcode with the subtitles baked in, rather than direct-playing.
 ///
-/// Kotlin recreates the whole player (a fresh ExoPlayer) via
-/// `key(playerIdentity) { PlayerSession(...) }` whenever bitrate changes,
-/// but reuses the same player for a subtitle-only change while staying
-/// DirectPlay (mutating ExoPlayer's TrackSelectionParameters in place).
-/// This port keeps that same distinction — [_identityFor] mirrors
-/// `playerIdentity` — but for a different reason: `video_player` has no
-/// media-source-swap API at all (a new HLS bitrate means a new URL means a
+/// A bitrate change recreates the whole player, while a subtitle-only
+/// change while direct-playing reuses it ([_identityFor]): `video_player`
+/// has no media-source-swap API at all (a new HLS bitrate means a new URL means a
 /// new `VideoPlayerController`), while a subtitle change only means
 /// re-attaching a `ClosedCaptionFile` on the *existing* controller.
 class PlayerScreen extends StatefulWidget {
@@ -454,7 +448,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
   // Passive "was any key pressed" signal (HomeScreen uses the same
   // HardwareKeyboard.addHandler pattern for its own debounce timing) —
   // resets the controls auto-hide countdown on any interaction while
-  // controls are visible, matching Kotlin's `interactionTick` counter.
+  // controls are visible.
   // Never consumes: Flutter's bubbling key dispatch means a focused
   // button already got first crack at the event through its own
   // onKeyEvent; this only observes.

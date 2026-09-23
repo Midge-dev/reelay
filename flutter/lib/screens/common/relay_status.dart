@@ -9,11 +9,8 @@ import '../../sync/relay_protocol.dart';
 import '../../theme/scale.dart';
 import '../../theme/tokens.dart';
 
-/// Ports ui/common/RelayStatus.kt's `RelayStatus` sealed interface. Only
-/// the display widgets (RelayStatusDot/RelayStatusLine) are ported here —
-/// `rememberRelayStatus` (driving this off a live RelayClient's
-/// ConnectionState, ported below as [RelayStatusTracker]) belongs to the
-/// Lobby/Player screens, not Settings, which drives `RelayStatus` itself
+/// What a relay's status line shows. The Lobby/Player drive it off a live
+/// RelayClient's ConnectionState ([RelayStatusTracker]); Settings drives it
 /// off a one-shot local timer while testing a newly paired relay.
 enum RelayStatus {
   silent,
@@ -30,15 +27,10 @@ const _wakingAtMs = 2000;
 const _failedAtMs = 75000;
 const _connectedConfirmVisibleMs = 2000;
 
-/// Ports `rememberRelayStatus` — a small stateful derivation of
-/// [RelayStatus] from a live [ConnectionState] stream. Compose expresses
-/// this as two `LaunchedEffect`s keyed on different inputs, each
-/// automatically cancelled and relaunched when its key changes; ported
-/// here as one handler per connectionState event that runs the same two
-/// pieces of logic in sequence (effect 2's write to `_everConnected`
-/// happens first, so effect 1's key naturally sees the up-to-date value —
-/// same ordering the two LaunchedEffects settle into in the same
-/// recomposition).
+/// A small stateful derivation of [RelayStatus] from a live
+/// [ConnectionState] stream: one handler per connectionState event runs two
+/// pieces of logic in sequence — the write to `_everConnected` first, so
+/// the status logic after it sees the up-to-date value.
 class RelayStatusTracker {
   RelayStatusTracker(
     Stream<ConnectionState> connectionState, {

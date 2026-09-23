@@ -13,8 +13,8 @@ class _Sample {
 /// every 5s; the host echoes its own timestamp in a pong. Offset is
 /// estimated as remoteTimestamp - sentAt - rtt/2 (assumes symmetric
 /// latency); the lowest-RTT sample of the last 8 wins, not a rolling
-/// average. Timing constants copied exactly from ClockSync.kt — any other
-/// client (Kotlin or Dart) talking to the same host must agree on these.
+/// average. Any other client talking to the same host must agree on these
+/// timing constants.
 class ClockSync {
   static const _windowSize = 8;
   static const _maxAcceptedRttMs = 5000;

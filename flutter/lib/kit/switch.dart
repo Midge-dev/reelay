@@ -19,7 +19,7 @@ SurfaceBorder get _switchBorder => SurfaceBorder(
   noSpine: true,
 );
 
-/// Ports ui/kit/Switch.kt — the track color already carries on/off state,
+/// The track color already carries on/off state,
 /// so press feedback shrinks the thumb instead.
 class AppSwitch extends StatefulWidget {
   final bool checked;

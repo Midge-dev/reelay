@@ -6,7 +6,7 @@ import '../../theme/tokens.dart';
 const _width = 4.0;
 const _minThumbHeight = 24.0;
 
-/// Ports ui/common/NeonScrollbar.kt — a hand-drawn vertical scroll
+/// A hand-drawn vertical scroll
 /// indicator (no native TV scrollbar widget existed on Android either).
 class NeonScrollbar extends StatelessWidget {
   final ScrollController controller;

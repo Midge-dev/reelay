@@ -9,13 +9,12 @@ import '../../theme/scale.dart';
 import '../../theme/tokens.dart';
 import '../common/neon_scrollbar.dart';
 
-/// Ports ui/settings/SettingsScreen.kt's `MaxSeatsMenu` — a scrollable
+/// A scrollable
 /// dropdown. Checklist item #8 (a menu's own internal navigation must not
-/// be misread as the user backing out): the Kotlin source pins every row's
-/// left/right to `FocusRequester.Cancel` always, and up/down to Cancel at
-/// the first/last row, so arrow keys never let focus escape the menu.
-/// Ported here by tracking which row is highlighted and swallowing any
-/// arrow key that would otherwise carry focus past the menu's own bounds.
+/// be misread as the user backing out): Left/Right never leave the menu,
+/// and Up/Down stop at the first/last row — it tracks which row is
+/// highlighted and swallows any arrow key that would carry focus past the
+/// menu's own bounds.
 class MaxSeatsMenu extends StatefulWidget {
   final int selected;
   final ValueChanged<int> onSelect;

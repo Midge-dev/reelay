@@ -88,8 +88,7 @@ String normalizeLibraryTitle(String raw) {
   return title;
 }
 
-/// Ports MainActivity.kt's private `LibraryContext` data class — the
-/// servers/sections/selected-section/items bundle threaded through every
+/// The servers/sections/selected-section/items bundle threaded through every
 /// library-adjacent AppState. Widened for the multi-server hub: [servers]
 /// is every connected server (not one), [sectionGroups]/[selectedSectionGroup]
 /// union same-named libraries across them (see [SectionGroup]), and [items]
@@ -119,11 +118,10 @@ class LibraryContext {
   );
 }
 
-/// Ports MainActivity.kt's `sealed interface AppState` (the Kotlin app has
-/// no Jetpack Navigation / nav-graph — one hand-rolled sealed state drives
-/// a single `when`/switch). `returnState` mirrors the Kotlin back-stack
-/// pattern: back navigation restores the captured state and re-fetches
-/// fresh data for it, rather than using a URL-based router.
+/// Every screen the app can be on. There is no Navigator or router — one
+/// sealed state drives a single switch in AppRoot. `returnState` is the
+/// back stack: Back restores the captured state (and re-fetches fresh data
+/// for it); ScreenMemory restores how it was left.
 sealed class AppState {
   const AppState();
 }
@@ -169,11 +167,9 @@ class ConnectingToServer extends AppState {
   });
 }
 
-/// Kotlin's `Error` state has no way back at all (just a bare `Text`, no
-/// BackHandler) — a genuine dead end there. This port adds [retryState] so
-/// AppRoot can wire a back action, since every other screen in this app
-/// supports back and a true dead end would be a jarring regression, not a
-/// deliberate design choice worth preserving.
+/// An error screen with a way back: [retryState] is where Back (or retry)
+/// goes, since every other screen supports Back and a dead end would be
+/// jarring.
 class AppError extends AppState {
   final String message;
   final AppState retryState;

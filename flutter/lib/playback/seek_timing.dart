@@ -1,4 +1,4 @@
-/// Ports PlayerScreen.kt's `seekIncrementForHold` — a D-pad left/right hold
+/// A D-pad left/right hold
 /// accelerates the seek jump size the longer it's held, keyed off the
 /// platform's own key-repeat count.
 int seekIncrementForHold(int repeatCount) {

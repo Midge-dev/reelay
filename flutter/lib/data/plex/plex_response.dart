@@ -1,7 +1,6 @@
 /// Plex wraps every list response as `{"MediaContainer": {"<Key>": [...]}}`
-/// (Directory/Metadata/Hub depending on endpoint) — this replaces the
-/// per-endpoint private wrapper data classes the Kotlin client declares one
-/// of for each shape (SectionsResponse, LibraryItemsResponse, etc).
+/// (Directory/Metadata/Hub depending on endpoint) — one helper instead of
+/// a wrapper class per response shape.
 List<T> extractMediaContainerList<T>(
   Map<String, dynamic> json,
   String key,

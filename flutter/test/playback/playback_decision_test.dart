@@ -121,7 +121,7 @@ void main() {
     });
   });
 
-  group('resolveSubtitleSource — the ported bug fix', () {
+  group('resolveSubtitleSource selects by stream, never by language', () {
     test('null subtitleStreamId -> NoSubtitle', () {
       final part = _partWith([const PlexStream(id: 1, streamType: 3)]);
       expect(resolveSubtitleSource(part, null), isA<NoSubtitle>());

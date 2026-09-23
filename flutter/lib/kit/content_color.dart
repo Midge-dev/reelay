@@ -2,9 +2,9 @@ import 'package:flutter/widgets.dart';
 
 import '../theme/tokens.dart';
 
-/// Ports ui/kit/Theme.kt's `LocalContentColor` — the ambient color that
+/// The ambient color that
 /// Text/Icon resolve against, overridden by FocusableSurface per focus
-/// state the same way Compose's CompositionLocalProvider does.
+/// state.
 class ContentColor extends InheritedWidget {
   final Color color;
 

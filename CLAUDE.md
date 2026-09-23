@@ -39,7 +39,7 @@ adb shell input keyevent KEYCODE_DPAD_UP   # etc — never `adb shell input tap`
 ```
 
 `com.reelay.tv` is the applicationId (changed from `com.reelay.tv.dev` at the 2026-09-20 production
-cutover); `com.reelay.reelay.MainActivity` is the Kotlin embedding package under
+cutover); `com.reelay.reelay.MainActivity` is Flutter's Android embedding under
 `android/app/src/main/kotlin/`, which intentionally doesn't match the applicationId — see the
 comment in `android/app/build.gradle.kts`.
 
@@ -47,8 +47,8 @@ Target device and ADB connection details are in `NOTES.md`.
 
 ## Repo layout
 
-- `flutter/lib/` — the app (this is what ships; the old Kotlin/Compose
-  implementation has been retired, see `NOTES.md`)
+- `flutter/lib/` — the app
+- `ARCHITECTURE.md` — why the sync, relay and Plex code work the way they do
 - `relay/` — the watch-together WebSocket relay (Node.js)
 - `docs/tokens.json` — canonical Nocturne token values
 - `docs/focus-navigation-qa-checklist.md` — regression checklist for D-pad/focus work

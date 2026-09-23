@@ -34,9 +34,8 @@ class RelayRoomSummary {
 
 /// The fixed wire contract for every app-level relay message — a flat
 /// struct carrying every possible field as nullable, discriminated by
-/// [kind]. Deliberately "kitchen sink"-shaped to match RelayProtocol.kt
-/// exactly; preserve this shape for wire compatibility with any other
-/// client (Kotlin or otherwise) talking to the same relay server.
+/// [kind]. Deliberately "kitchen sink"-shaped; preserve this shape for wire
+/// compatibility with any other client talking to the same relay.
 class RelayEvent {
   final String kind;
   final String? username;

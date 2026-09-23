@@ -1,9 +1,8 @@
 import 'package:flutter/widgets.dart';
 
-/// Ports Compose's `BackHandler(onBack)` — intercepts the system back
-/// button/gesture (Android TV remote's back/menu key) via PopScope, since
-/// this app has no real Navigator route stack to pop (AppRoot switches on
-/// AppState directly, same as MainActivity.kt's approach).
+/// Intercepts the system back button/gesture (the Android TV remote's
+/// back/menu key) via PopScope, since this app has no Navigator route stack
+/// to pop — AppRoot switches on AppState directly.
 ///
 /// Exactly one handler answers each Back press. PopScope alone notifies
 /// *every* mounted scope, so a panel over a screen (the rooms panel, the
@@ -11,7 +10,7 @@ import 'package:flutter/widgets.dart';
 /// screen underneath back a level. The one that answers is the innermost
 /// enabled handler around the focused widget — the panel you are in, not
 /// the page behind it — or, when none contains focus, the most recently
-/// mounted enabled one (Compose's "last registered wins").
+/// mounted enabled one ("last registered wins").
 class BackHandler extends StatefulWidget {
   final bool enabled;
   final VoidCallback onBack;
