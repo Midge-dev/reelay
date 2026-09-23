@@ -12,6 +12,7 @@ import '../../theme/phosphor_icons.dart';
 import '../../theme/scale.dart';
 import '../../theme/tokens.dart';
 import '../../theme/typography.dart';
+import '../common/time_format.dart';
 import 'poster_card.dart';
 
 const _undoSeconds = 8;
@@ -50,12 +51,17 @@ class WatchlistScreen extends StatefulWidget {
   /// The Plex account the list belongs to — "Plex account · name".
   final String? accountName;
 
+  /// ratingKey -> the connected server holding it, or null when none does
+  /// (absent while still being looked up).
+  final Map<String, String?> availability;
+
   const WatchlistScreen({
     super.key,
     required this.items,
     required this.onSelectItem,
     required this.onRemove,
     this.accountName,
+    this.availability = const {},
   });
 
   @override
@@ -139,7 +145,11 @@ class _WatchlistScreenState extends State<WatchlistScreen> {
   @override
   Widget build(BuildContext context) {
     final items = _sorted;
-    final count = '${_items.length} title${_items.length == 1 ? '' : 's'}';
+    final missing = _items.where((i) => widget.availability.containsKey(i.ratingKey) && widget.availability[i.ratingKey] == null).length;
+    final count = [
+      '${formatCount(_items.length)} title${_items.length == 1 ? '' : 's'}',
+      if (missing > 0) '$missing not on your servers',
+    ].join(' · ');
     return ColoredBox(
       color: AppColors.background,
       child: Padding(
@@ -248,15 +258,44 @@ class _WatchlistScreenState extends State<WatchlistScreen> {
       itemCount: items.length,
       itemBuilder: (context, index) {
         final item = items[index];
+        final known = widget.availability.containsKey(item.ratingKey);
+        final holder = widget.availability[item.ratingKey];
+        final unavailable = known && holder == null;
         return PosterCard(
           key: ValueKey(item.ratingKey),
           imageUrl: (item.thumb?.startsWith('http') ?? false)
               ? item.thumb
               : null,
           title: item.title,
-          subtitle: item.year?.toString(),
+          subtitle: [
+            if (known) holder ?? 'Plex Discover',
+            if (item.year != null) '${item.year}',
+          ].join(' · '),
+          muted: unavailable,
+          marker: unavailable
+              ? Row(
+                  children: [
+                    AppIcon(
+                      PhosphorIconsRegular.cloudSlash,
+                      size: 18,
+                      tint: AppColors.warning,
+                    ),
+                    SizedBox(width: AppSpacing.sm.du(context)),
+                    Flexible(
+                      child: AppText(
+                        'Not on your servers',
+                        style: AppTypography.caption,
+                        color: AppColors.warning,
+                        maxLines: 1,
+                      ),
+                    ),
+                  ],
+                )
+              : null,
           autofocus: index == 0 && _pendingRemoval == null,
-          onClick: () => widget.onSelectItem(item),
+          // Nothing to open for a title none of your servers hold — the
+          // marker says so; holding still takes it off the list.
+          onClick: unavailable ? () {} : () => widget.onSelectItem(item),
           onLongClick: () => _startRemoval(item),
         );
       },

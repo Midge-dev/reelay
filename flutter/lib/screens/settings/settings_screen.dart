@@ -71,7 +71,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   String? _sourcesError;
 
   bool _showingRelaySettings = false;
-  bool _showingAppearance = false;
   bool _maxSeatsMenuExpanded = false;
   bool _showingAddProfile = false;
   late _Group _group = widget.hint != null
@@ -100,7 +99,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   );
   final _relaySettingsBackFocus = FocusNode(debugLabel: 'relay-settings-back');
   final _appearanceEntryFocus = FocusNode(debugLabel: 'appearance-entry');
-  final _appearanceBackFocus = FocusNode(debugLabel: 'appearance-back');
   final _maxHostSeatsFocus = FocusNode(debugLabel: 'max-host-seats');
   final _addRelayFocus = FocusNode(debugLabel: 'add-relay');
   final _cancelPairingFocus = FocusNode(debugLabel: 'cancel-pairing');
@@ -174,7 +172,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     _relaySettingsEntryFocus.dispose();
     _relaySettingsBackFocus.dispose();
     _appearanceEntryFocus.dispose();
-    _appearanceBackFocus.dispose();
     _maxHostSeatsFocus.dispose();
     _addRelayFocus.dispose();
     _cancelPairingFocus.dispose();
@@ -182,6 +179,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     for (final node in _groupFocus.values) {
       node.dispose();
     }
+    _paneNode.dispose();
     super.dispose();
   }
 
@@ -375,22 +373,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       );
     }
 
-    if (_showingAppearance) {
-      return AppearanceScreen(
-        current: _settings.themeId,
-        onSelect: _selectTheme,
-        uiScale: _settings.uiScale,
-        onSelectUiScale: _selectUiScale,
-        backFocus: _appearanceBackFocus,
-        onBack: () {
-          setState(() => _showingAppearance = false);
-          WidgetsBinding.instance.addPostFrameCallback(
-            (_) => _appearanceEntryFocus.requestFocus(),
-          );
-        },
-      );
-    }
-
     return BackHandler(
       onBack: _leave,
       child: ColoredBox(
@@ -411,14 +393,22 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    SizedBox(width: 380.du(context), child: _buildGroups()),
+                    SizedBox(
+                      width: 380.du(context),
+                      child: Focus(
+                        canRequestFocus: false,
+                        skipTraversal: true,
+                        onKeyEvent: _groupsKey,
+                        child: _buildGroups(),
+                      ),
+                    ),
                     SizedBox(width: 56.du(context)),
                     Expanded(
                       child: Focus(
                         canRequestFocus: false,
                         skipTraversal: true,
                         onKeyEvent: _paneKey,
-                        child: _buildPane(),
+                        child: Focus(focusNode: _paneNode, child: _buildPane()),
                       ),
                     ),
                   ],
@@ -476,6 +466,31 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     await store.save(change(persisted));
   }
 
+  final _paneNode = FocusNode(debugLabel: 'settings-pane', canRequestFocus: false, skipTraversal: true);
+
+  KeyEventResult _groupsKey(FocusNode node, KeyEvent event) {
+    if (event is KeyDownEvent && event.logicalKey == LogicalKeyboardKey.arrowRight) {
+      _enterPane();
+      return KeyEventResult.handled;
+    }
+    return KeyEventResult.ignored;
+  }
+
+  /// Crossing into the pane lands somewhere deliberate — the current theme
+  /// on Appearance, the pane's first row everywhere else — rather than on
+  /// whichever row happens to sit level with the group you were on.
+  void _enterPane() {
+    if (_group == _Group.appearance && _appearanceEntryFocus.context != null) {
+      _appearanceEntryFocus.requestFocus();
+      return;
+    }
+    final nodes = _paneNode.traversalDescendants
+        .where((n) => n.canRequestFocus && !n.skipTraversal && n.context != null)
+        .toList()
+      ..sort((a, b) => a.rect.top.compareTo(b.rect.top));
+    if (nodes.isNotEmpty) nodes.first.requestFocus();
+  }
+
   // Left out of the pane returns to the group that owns it, not whichever
   // group row happens to be geometrically nearest.
   KeyEventResult _paneKey(FocusNode node, KeyEvent event) {
@@ -509,7 +524,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     selected: g == _group,
                     focusNode: _groupFocus[g]!,
                     onFocused: () => setState(() => _group = g),
-                    onClick: () => FocusScope.of(context).focusInDirection(TraversalDirection.right),
+                    onClick: _enterPane,
                   ),
                 ],
                 SizedBox(height: AppSpacing.xxl.du(context)),
@@ -544,7 +559,17 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          AppText(_group.label, style: AppTypography.title2),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.baseline,
+            textBaseline: TextBaseline.alphabetic,
+            children: [
+              AppText(_group == _Group.appearance ? 'Theme' : _group.label, style: AppTypography.title2),
+              if (_group == _Group.appearance) ...[
+                const Spacer(),
+                AppText('Applies to every screen · takes effect at once', style: AppTypography.caption),
+              ],
+            ],
+          ),
           SizedBox(height: (AppSpacing.sm + 14).du(context)),
           for (final (i, row) in rows.indexed) ...[
             if (i > 0) SizedBox(height: 14.du(context)),
@@ -712,30 +737,15 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     ];
   }
 
-  void _openAppearance() {
-    setState(() => _showingAppearance = true);
-    WidgetsBinding.instance.addPostFrameCallback(
-      (_) => _appearanceBackFocus.requestFocus(),
-    );
-  }
-
   List<Widget> _appearanceRows() => [
-    _SettingRow(
-      label: 'Theme',
-      description: 'Seven palettes · takes effect at once',
-      value: _settings.themeId.label,
-      focusNode: _appearanceEntryFocus,
-      onClick: _openAppearance,
-    ),
+    ThemeList(current: _settings.themeId, onSelect: _selectTheme, currentFocus: _appearanceEntryFocus),
   ];
 
   List<Widget> _displayRows() => [
     _SettingRow(
       label: 'UI size',
-      description:
-          'Scales the whole interface for your screen and how far away you sit',
-      value: '${(_settings.uiScale * 100).round()}%',
-      onClick: _openAppearance,
+      description: 'Scales the whole interface. Turn it up if things look small from where you sit — a TV can’t report its own screen size.',
+      trailing: UiScaleStepper(value: _settings.uiScale, onChanged: _selectUiScale),
     ),
   ];
 

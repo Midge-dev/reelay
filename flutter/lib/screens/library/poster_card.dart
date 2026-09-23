@@ -160,6 +160,13 @@ class PosterCard extends StatefulWidget {
   final FocusNode? focusNode;
   final bool autofocus;
 
+  /// A short label along the poster's foot, on a scrim (DESIGN.md #2) —
+  /// screen 20's "Not on your servers".
+  final Widget? marker;
+
+  /// Captions a step dimmer — a title you can see but not play here.
+  final bool muted;
+
   const PosterCard({
     super.key,
     this.imageUrl,
@@ -169,6 +176,8 @@ class PosterCard extends StatefulWidget {
     this.onLongClick,
     this.focusNode,
     this.autofocus = false,
+    this.marker,
+    this.muted = false,
   });
 
   @override
@@ -239,10 +248,22 @@ class _PosterCardState extends State<PosterCard> {
                 // (same focus notification, later-registered listener) and
                 // win, undoing the more precise target.
                 ensureVisibleOnFocus: false,
-                child: SizedBox.expand(
-                  child: Artwork(
-                    imageUrl: widget.imageUrl,
-                  ),
+                child: Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    Artwork(imageUrl: widget.imageUrl),
+                    if (widget.marker != null)
+                      Positioned(
+                        left: 0,
+                        right: 0,
+                        bottom: 0,
+                        child: Container(
+                          color: AppScrims.dialog,
+                          padding: EdgeInsets.symmetric(horizontal: 14.du(context), vertical: AppSpacing.md.du(context)),
+                          child: widget.marker,
+                        ),
+                      ),
+                  ],
                 ),
               ),
             ),
@@ -260,7 +281,7 @@ class _PosterCardState extends State<PosterCard> {
                             fontWeight: FontWeight.w500,
                           )
                         : AppTypography.label,
-                    color: _focused ? AppColors.ink : AppColors.ink2,
+                    color: _focused ? AppColors.ink : (widget.muted ? AppColors.ink3 : AppColors.ink2),
                   ),
                   if (widget.subtitle != null)
                     Padding(
@@ -268,7 +289,7 @@ class _PosterCardState extends State<PosterCard> {
                       child: AppText(
                         widget.subtitle!,
                         style: AppTypography.caption,
-                        color: _focused ? AppColors.ink2 : AppColors.ink3,
+                        color: _focused ? AppColors.ink2 : (widget.muted ? AppColors.ink4 : AppColors.ink3),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),

@@ -11,7 +11,6 @@ Future<void> _pump(
   ValueChanged<ThemeId>? onSelect,
   double uiScale = AppSettings.defaultUiScale,
   ValueChanged<double>? onSelectUiScale,
-  VoidCallback? onBack,
 }) async {
   tester.view.physicalSize = const Size(1920, 1080);
   tester.view.devicePixelRatio = 1.0;
@@ -21,13 +20,13 @@ Future<void> _pump(
   await tester.pumpWidget(
     Directionality(
       textDirection: TextDirection.ltr,
-      child: AppearanceScreen(
-        current: current,
-        onSelect: onSelect ?? (_) {},
-        uiScale: uiScale,
-        onSelectUiScale: onSelectUiScale ?? (_) {},
-        onBack: onBack ?? () {},
-        backFocus: FocusNode(),
+      child: SingleChildScrollView(
+        child: Column(
+          children: [
+            UiScaleStepper(value: uiScale, onChanged: onSelectUiScale ?? (_) {}),
+            ThemeList(current: current, onSelect: onSelect ?? (_) {}),
+          ],
+        ),
       ),
     ),
   );
@@ -62,16 +61,6 @@ void main() {
       expect(selected, ThemeId.ember);
     },
   );
-
-  testWidgets('tapping the back pill invokes onBack', (tester) async {
-    var backTapped = false;
-    await _pump(tester, onBack: () => backTapped = true);
-
-    await tester.tap(find.text('‹ Settings'));
-    await tester.pump();
-
-    expect(backTapped, isTrue);
-  });
 
   testWidgets(
     'shows exactly one selected indicator, matching the current theme',

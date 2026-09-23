@@ -141,7 +141,8 @@ class _AppContent extends StatelessWidget {
         MovieDetail(:final returnState) ||
         PersonFilmography(:final returnState) ||
         CollectionDetail(:final returnState) ||
-        EpisodeDetail(:final returnState) =>
+        EpisodeDetail(:final returnState) ||
+        WatchTogetherStart(:final returnState) =>
           _destinationFor(returnState),
         _ => RailDestination.none,
       };
@@ -157,8 +158,11 @@ class _AppContent extends StatelessWidget {
       );
 
   @override
-  Widget build(BuildContext context) {
-    final state = controller.state;
+  Widget build(BuildContext context) => _screenFor(context, controller.state);
+
+  /// The screen for [state]. Also used to draw the page a dialog state was
+  /// opened from underneath it (screen 09).
+  Widget _screenFor(BuildContext context, AppState state) {
     return switch (state) {
       Checking() => const LoadingScreen(),
       ConnectingToServer(:final firstRun, :final done, :final current, :final headline) when firstRun =>
@@ -298,6 +302,7 @@ class _AppContent extends StatelessWidget {
             ),
             onRemove: controller.removeFromWatchlist,
             accountName: controller.localAccount?.username,
+            availability: controller.watchlistAvailability,
           ),
         ),
       MovieDetail(:final ctx, :final work, :final activeCopy, :final returnState) when ctx.selectedSectionGroup.type == _sectionTypeShow => _drawer(
@@ -474,7 +479,14 @@ class _AppContent extends StatelessWidget {
       // BackHandler: without it Back fell through to Android and closed
       // the app instead of cancelling the dialog.
       WatchTogetherStart(:final ctx, :final server, :final returnState, :final roomTitle, :final thumb, :final targetRatingKey, :final defaultRestart) =>
-        BackHandler(
+        Stack(
+          fit: StackFit.expand,
+          children: [
+            // Screen 09: a dialog over the page it was opened from, so the
+            // feature stays attached to what you are watching. The page is
+            // drawn but inert — no focus, no pointer.
+            ExcludeFocus(child: IgnorePointer(child: _screenFor(context, returnState))),
+            BackHandler(
         onBack: () => controller.returnTo(returnState),
         child: WatchTogetherStartScreen(
           roomTitle: roomTitle,
@@ -495,6 +507,8 @@ class _AppContent extends StatelessWidget {
           ),
           onCancel: () => controller.returnTo(returnState),
         ),
+        ),
+          ],
         ),
       Lobby(:final detail, :final returnState, :final relay, :final hostName, :final relayNickname, :final isHost) => LobbyScreen(
           key: ValueKey('lobby-${detail.ratingKey}'),

@@ -81,8 +81,10 @@ class _WatchTogetherStartScreenState extends State<WatchTogetherStartScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // A dialog over the page it came from (screen 09): scrim.dialog, flat,
+    // never a blur.
     return ColoredBox(
-      color: AppColors.background,
+      color: AppScrims.dialog,
       child: Center(
         child: Container(
           width: 860.du(context),

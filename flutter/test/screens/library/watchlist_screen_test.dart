@@ -14,6 +14,7 @@ Future<void> _pump(
   List<PlexWatchlistItem> items = _items,
   ValueChanged<PlexWatchlistItem>? onSelectItem,
   ValueChanged<PlexWatchlistItem>? onRemove,
+  Map<String, String?> availability = const {},
 }) async {
   tester.view.physicalSize = const Size(1920, 1080);
   tester.view.devicePixelRatio = 1.0;
@@ -27,6 +28,7 @@ Future<void> _pump(
         items: items,
         onSelectItem: onSelectItem ?? (_) {},
         onRemove: onRemove ?? (_) {},
+        availability: availability,
       ),
     ),
   );
@@ -97,5 +99,19 @@ void main() {
 
     expect(removedEntry?.ratingKey, '2');
     expect(find.textContaining('Undo'), findsNothing);
+  });
+
+  testWidgets('a title on none of your servers stays in the grid, marked, and counted (screen 20)', (tester) async {
+    PlexWatchlistItem? opened;
+    await _pump(tester, availability: const {'1': 'Attic', '2': null}, onSelectItem: (e) => opened = e);
+
+    expect(find.text('Not on your servers'), findsOneWidget);
+    expect(find.text('2 titles · 1 not on your servers'), findsOneWidget);
+    expect(find.text('Plex Discover · 2024'), findsOneWidget);
+    expect(find.text('Attic · 2016'), findsOneWidget);
+
+    await tester.tap(find.text('Aftershow'));
+    await tester.pump();
+    expect(opened, isNull, reason: 'nothing to open when no server holds it');
   });
 }

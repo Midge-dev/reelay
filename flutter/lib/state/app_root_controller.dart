@@ -93,6 +93,12 @@ class AppRootController extends ChangeNotifier {
   List<PlexWatchlistItem>? _watchlistItems;
   List<PlexWatchlistItem> get watchlist => _watchlistItems ?? const [];
 
+  // ratingKey -> the name of a connected server holding that watchlist
+  // title, or null when none does. A key that's absent hasn't been looked
+  // up yet.
+  Map<String, String?> _watchlistAvailability = {};
+  Map<String, String?> get watchlistAvailability => _watchlistAvailability;
+
   // Multi-server hub: every reachable, non-disabled server the account can
   // see, probed concurrently at connect time — see
   // PlexResourcesApi.connectToAllServers. Home/Library content is now
@@ -408,6 +414,38 @@ class AppRootController extends ChangeNotifier {
     } catch (_) {
       // keep the last-known list, matching Kotlin's `.getOrNull() ?: watchlistItems`
     }
+    unawaited(_resolveWatchlistAvailability());
+  }
+
+  /// Screen 20: the watchlist belongs to the account, so it can hold titles
+  /// on none of your servers — those stay in the grid, marked, rather than
+  /// hidden or silently unplayable. Looks each entry up by guid on every
+  /// connected server (the same lookup opening one uses).
+  Future<void> _resolveWatchlistAvailability() async {
+    final items = _watchlistItems ?? const <PlexWatchlistItem>[];
+    final servers = _connectedServers;
+    if (items.isEmpty || servers.isEmpty) return;
+    final resolved = <String, String?>{};
+    await Future.wait(items.map((entry) async {
+      final guid = entry.guid;
+      String? holder;
+      if (guid != null) {
+        for (final cs in servers) {
+          try {
+            final found = await PlexServerApi(cs.server, _clientIdentifier).fetchLibraryItemsByGuid(guid);
+            if (found.isNotEmpty) {
+              holder = cs.server.name;
+              break;
+            }
+          } catch (_) {
+            // An unanswering server just doesn't count as holding it.
+          }
+        }
+      }
+      resolved[entry.ratingKey] = holder;
+    }));
+    _watchlistAvailability = resolved;
+    notifyListeners();
   }
 
   bool isOnWatchlist(String? guid) => guid != null && (_watchlistItems?.any((i) => i.guid == guid) ?? false);
