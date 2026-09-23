@@ -3,6 +3,7 @@ import 'package:flutter/widgets.dart';
 
 import '../../data/settings/app_settings.dart' show RelayEntry;
 import '../../focus/back_handler.dart';
+import '../../kit/soft_edge_shadow.dart';
 import '../../kit/button.dart';
 import '../../kit/focusable_surface.dart';
 import '../../kit/surface_style.dart';
@@ -124,6 +125,12 @@ class _RoomsPanelState extends State<RoomsPanel> {
           ),
         ),
         Positioned(
+          left: (_railWidth + _panelWidth).du(context),
+          top: 0,
+          bottom: 0,
+          child: const SoftEdgeShadow(),
+        ),
+        Positioned(
           left: _railWidth.du(context),
           top: 0,
           bottom: 0,
@@ -137,7 +144,6 @@ class _RoomsPanelState extends State<RoomsPanel> {
                 decoration: BoxDecoration(
                   color: AppColors.background,
                   border: Border(right: BorderSide(color: AppColors.line)),
-                  boxShadow: AppElevation.overlay,
                 ),
                 child: Padding(
                   padding: EdgeInsets.symmetric(

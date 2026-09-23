@@ -42,7 +42,7 @@ class EdgeFadeRow extends StatelessWidget {
         final fraction = extent > 0 ? (scaledFadeWidth / extent).clamp(0.0, 0.5) : 0.0;
         final startColor = fadeStart ? AppColors.transparent : AppColors.ink;
         final endColor = fadeEnd ? AppColors.transparent : AppColors.ink;
-        return LinearGradient(
+        return AppGradients.linear(
           begin: axis == Axis.horizontal ? Alignment.centerLeft : Alignment.topCenter,
           end: axis == Axis.horizontal ? Alignment.centerRight : Alignment.bottomCenter,
           colors: [startColor, AppColors.ink, AppColors.ink, endColor],

@@ -282,7 +282,7 @@ class _LobbyScreenState extends State<LobbyScreen> {
           ),
           DecoratedBox(
             decoration: BoxDecoration(
-              gradient: LinearGradient(
+              gradient: AppGradients.linear(
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
                 colors: [

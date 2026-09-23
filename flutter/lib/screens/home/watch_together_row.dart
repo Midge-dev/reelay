@@ -288,9 +288,9 @@ class _RoomCardState extends State<RoomCard>
                     Artwork(
                       imageUrl: PlexImageUrl.of(widget.server, room.thumb),
                     ),
-                    const DecoratedBox(
+                    DecoratedBox(
                       decoration: BoxDecoration(
-                        gradient: LinearGradient(
+                        gradient: AppGradients.linear(
                           begin: Alignment.topCenter,
                           end: Alignment.bottomCenter,
                           colors: [AppColors.transparent, Color(0xD9000000)],

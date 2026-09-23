@@ -180,7 +180,7 @@ class PlayerControlsBar extends StatelessWidget {
       // Screen 13's bottom scrim: clear at the top, near-solid ground by
       // 78% down, so the controls read over any frame.
       decoration: BoxDecoration(
-        gradient: LinearGradient(
+        gradient: AppGradients.linear(
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
           stops: const [0, 0.78],

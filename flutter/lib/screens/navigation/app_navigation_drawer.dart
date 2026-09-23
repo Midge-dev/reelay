@@ -9,6 +9,7 @@ import '../../data/plex/plex_resources_api.dart' show ReachableServer;
 import '../../data/settings/app_settings.dart' show RelayEntry;
 import '../../kit/focusable_surface.dart';
 import '../../kit/icon.dart';
+import '../../kit/soft_edge_shadow.dart';
 import '../../kit/surface_style.dart';
 import '../../kit/text.dart';
 import '../../state/app_state.dart' show SectionGroup;
@@ -416,135 +417,160 @@ class _AppNavigationDrawerState extends State<AppNavigationDrawer> {
               border: Border(
                 right: BorderSide(color: AppColors.line, width: 1.du(context)),
               ),
-              boxShadow: expanded ? AppElevation.overlay : AppElevation.surface,
             ),
-            child: FocusScope(
-              node: _railScope,
-              onKeyEvent: _handleRailKeyEvent,
-              child: Padding(
-                // (80 - 52) / 2 = 14 either side, so a collapsed item sits
-                // centred in the rail and its icon centred in the item.
-                padding: EdgeInsets.symmetric(
-                  vertical: _railPaddingY.du(context),
-                  horizontal: ((_collapsedRailWidth - _railItemSize) / 2).du(
-                    context,
+            child: Stack(
+              clipBehavior: Clip.none,
+              children: [
+                // The expanded drawer's shadow over the page: an eased
+                // strip, not a BoxShadow (see SoftEdgeShadow).
+                Positioned(
+                  top: 0,
+                  bottom: 0,
+                  right: -SoftEdgeShadow.extent.du(context),
+                  child: AnimatedOpacity(
+                    opacity: expanded ? 1 : 0,
+                    duration: AppMotion.railSlide,
+                    curve: AppMotion.enter,
+                    child: const SoftEdgeShadow(),
                   ),
                 ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    const Center(child: ReelayMark(size: _logoSize)),
-                    SizedBox(height: _logoGap.du(context)),
-                    Expanded(
-                      // Scrollable so a household with many libraries
-                      // degrades gracefully instead of overflowing.
-                      child: SingleChildScrollView(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            for (final item in [
-                              _SidebarItem(
-                                icon: PhosphorIconsRegular.house,
-                                selectedIcon: PhosphorIconsFill.house,
-                                label: 'Home',
-                                selected: _isSelected(RailDestination.home),
-                                expanded: expanded,
-                                onClick: () => _handleSelect(widget.onOpenHome),
-                                focusNode: _homeItemFocusNode,
-                              ),
-                              _SidebarItem(
-                                icon: PhosphorIconsRegular.magnifyingGlass,
-                                selectedIcon: PhosphorIconsFill.magnifyingGlass,
-                                label: 'Search',
-                                selected: _isSelected(RailDestination.search),
-                                expanded: expanded,
-                                onClick: () =>
-                                    _handleSelect(widget.onOpenSearch),
-                                focusNode: _searchItemFocusNode,
-                              ),
-                              _SidebarItem(
-                                icon: PhosphorIconsRegular.bookmarkSimple,
-                                selectedIcon: PhosphorIconsFill.bookmarkSimple,
-                                label: 'Watchlist',
-                                selected: _isSelected(
-                                  RailDestination.watchlist,
-                                ),
-                                expanded: expanded,
-                                onClick: () {
-                                  final open = widget.onOpenWatchlist;
-                                  if (open != null) _handleSelect(open);
-                                },
-                                focusNode: _watchlistItemFocusNode,
-                              ),
-                              for (final section in widget.sectionGroups)
-                                _SidebarItem(
-                                  key: ValueKey(section.key),
-                                  icon: section.type == _sectionTypeShow
-                                      ? PhosphorIconsRegular.televisionSimple
-                                      : PhosphorIconsRegular.filmSlate,
-                                  selectedIcon: section.type == _sectionTypeShow
-                                      ? PhosphorIconsFill.televisionSimple
-                                      : PhosphorIconsFill.filmSlate,
-                                  label: section.title,
-                                  selected:
-                                      _isSelected(RailDestination.section) &&
-                                      section.key ==
-                                          widget.selectedSectionGroupKey,
-                                  expanded: expanded,
-                                  onClick: () => _handleSelect(
-                                    () => widget.onSelectSection(section),
+                FocusScope(
+                  node: _railScope,
+                  onKeyEvent: _handleRailKeyEvent,
+                  child: Padding(
+                    // (80 - 52) / 2 = 14 either side, so a collapsed item sits
+                    // centred in the rail and its icon centred in the item.
+                    padding: EdgeInsets.symmetric(
+                      vertical: _railPaddingY.du(context),
+                      horizontal: ((_collapsedRailWidth - _railItemSize) / 2)
+                          .du(context),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        const Center(child: ReelayMark(size: _logoSize)),
+                        SizedBox(height: _logoGap.du(context)),
+                        Expanded(
+                          // Scrollable so a household with many libraries
+                          // degrades gracefully instead of overflowing.
+                          child: SingleChildScrollView(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
+                                for (final item in [
+                                  _SidebarItem(
+                                    icon: PhosphorIconsRegular.house,
+                                    selectedIcon: PhosphorIconsFill.house,
+                                    label: 'Home',
+                                    selected: _isSelected(RailDestination.home),
+                                    expanded: expanded,
+                                    onClick: () =>
+                                        _handleSelect(widget.onOpenHome),
+                                    focusNode: _homeItemFocusNode,
                                   ),
-                                  focusNode: _sectionNode(section),
-                                ),
-                              _SidebarItem(
-                                icon: PhosphorIconsRegular.usersThree,
-                                selectedIcon: PhosphorIconsFill.usersThree,
-                                label: 'Watch Together',
-                                selected: _roomsOpen,
-                                expanded: expanded,
-                                enabled: rooms != null,
-                                onClick: _openRooms,
-                                focusNode: _roomsItemFocusNode,
-                              ),
-                            ]) ...[
-                              item,
-                              SizedBox(height: _railItemGap.du(context)),
-                            ],
-                          ],
+                                  _SidebarItem(
+                                    icon: PhosphorIconsRegular.magnifyingGlass,
+                                    selectedIcon:
+                                        PhosphorIconsFill.magnifyingGlass,
+                                    label: 'Search',
+                                    selected: _isSelected(
+                                      RailDestination.search,
+                                    ),
+                                    expanded: expanded,
+                                    onClick: () =>
+                                        _handleSelect(widget.onOpenSearch),
+                                    focusNode: _searchItemFocusNode,
+                                  ),
+                                  _SidebarItem(
+                                    icon: PhosphorIconsRegular.bookmarkSimple,
+                                    selectedIcon:
+                                        PhosphorIconsFill.bookmarkSimple,
+                                    label: 'Watchlist',
+                                    selected: _isSelected(
+                                      RailDestination.watchlist,
+                                    ),
+                                    expanded: expanded,
+                                    onClick: () {
+                                      final open = widget.onOpenWatchlist;
+                                      if (open != null) _handleSelect(open);
+                                    },
+                                    focusNode: _watchlistItemFocusNode,
+                                  ),
+                                  for (final section in widget.sectionGroups)
+                                    _SidebarItem(
+                                      key: ValueKey(section.key),
+                                      icon: section.type == _sectionTypeShow
+                                          ? PhosphorIconsRegular
+                                                .televisionSimple
+                                          : PhosphorIconsRegular.filmSlate,
+                                      selectedIcon:
+                                          section.type == _sectionTypeShow
+                                          ? PhosphorIconsFill.televisionSimple
+                                          : PhosphorIconsFill.filmSlate,
+                                      label: section.title,
+                                      selected:
+                                          _isSelected(
+                                            RailDestination.section,
+                                          ) &&
+                                          section.key ==
+                                              widget.selectedSectionGroupKey,
+                                      expanded: expanded,
+                                      onClick: () => _handleSelect(
+                                        () => widget.onSelectSection(section),
+                                      ),
+                                      focusNode: _sectionNode(section),
+                                    ),
+                                  _SidebarItem(
+                                    icon: PhosphorIconsRegular.usersThree,
+                                    selectedIcon: PhosphorIconsFill.usersThree,
+                                    label: 'Watch Together',
+                                    selected: _roomsOpen,
+                                    expanded: expanded,
+                                    enabled: rooms != null,
+                                    onClick: _openRooms,
+                                    focusNode: _roomsItemFocusNode,
+                                  ),
+                                ]) ...[
+                                  item,
+                                  SizedBox(height: _railItemGap.du(context)),
+                                ],
+                              ],
+                            ),
+                          ),
                         ),
-                      ),
+                        // A hairline above Settings: with enough libraries the
+                        // list scrolls behind it, and this marks the edge gently.
+                        Padding(
+                          padding: EdgeInsets.symmetric(
+                            vertical: AppSpacing.md.du(context),
+                          ),
+                          child: Container(
+                            height: 1.du(context),
+                            color: AppColors.line,
+                          ),
+                        ),
+                        _SidebarItem(
+                          icon: PhosphorIconsRegular.gear,
+                          selectedIcon: PhosphorIconsFill.gear,
+                          label: 'Settings',
+                          selected: _isSelected(RailDestination.settings),
+                          expanded: expanded,
+                          onClick: () => _handleSelect(widget.onOpenSettings),
+                          focusNode: _settingsItemFocusNode,
+                        ),
+                        SizedBox(height: 10.du(context)),
+                        _UserAvatarItem(
+                          account: widget.account,
+                          expanded: expanded,
+                          selected: _showServerSwitcher,
+                          focusNode: _avatarFocusNode,
+                          onClick: _openServerSwitcher,
+                        ),
+                      ],
                     ),
-                    // A hairline above Settings: with enough libraries the
-                    // list scrolls behind it, and this marks the edge gently.
-                    Padding(
-                      padding: EdgeInsets.symmetric(
-                        vertical: AppSpacing.md.du(context),
-                      ),
-                      child: Container(
-                        height: 1.du(context),
-                        color: AppColors.line,
-                      ),
-                    ),
-                    _SidebarItem(
-                      icon: PhosphorIconsRegular.gear,
-                      selectedIcon: PhosphorIconsFill.gear,
-                      label: 'Settings',
-                      selected: _isSelected(RailDestination.settings),
-                      expanded: expanded,
-                      onClick: () => _handleSelect(widget.onOpenSettings),
-                      focusNode: _settingsItemFocusNode,
-                    ),
-                    SizedBox(height: 10.du(context)),
-                    _UserAvatarItem(
-                      account: widget.account,
-                      expanded: expanded,
-                      selected: _showServerSwitcher,
-                      focusNode: _avatarFocusNode,
-                      onClick: _openServerSwitcher,
-                    ),
-                  ],
+                  ),
                 ),
-              ),
+              ],
             ),
           ),
         ),

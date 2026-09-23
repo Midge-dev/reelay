@@ -896,7 +896,7 @@ class _TitleBar extends StatelessWidget {
         72.du(context),
       ),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
+        gradient: AppGradients.linear(
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
           colors: [

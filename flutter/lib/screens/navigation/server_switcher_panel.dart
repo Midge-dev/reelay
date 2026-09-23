@@ -9,6 +9,7 @@ import '../../data/plex/plex_models.dart';
 import '../../data/plex/plex_resources_api.dart'
     show ReachableServer, ServerReachability;
 import '../../focus/back_handler.dart';
+import '../../kit/soft_edge_shadow.dart';
 import '../../kit/card.dart';
 import '../../kit/filter_chip.dart';
 import '../../kit/icon.dart';
@@ -206,6 +207,12 @@ class _ServerSwitcherPanelState extends State<ServerSwitcherPanel> {
           ),
         ),
         Positioned(
+          left: (_railWidth + _panelWidth).du(context),
+          top: 0,
+          bottom: 0,
+          child: const SoftEdgeShadow(),
+        ),
+        Positioned(
           left: _railWidth.du(context),
           top: 0,
           bottom: 0,
@@ -216,7 +223,6 @@ class _ServerSwitcherPanelState extends State<ServerSwitcherPanel> {
               decoration: BoxDecoration(
                 color: AppColors.background,
                 border: Border(right: BorderSide(color: AppColors.line)),
-                boxShadow: AppElevation.overlay,
               ),
               child: Padding(
                 padding: EdgeInsets.all(AppSpacing.xxxl.du(context)),

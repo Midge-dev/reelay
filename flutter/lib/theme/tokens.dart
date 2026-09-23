@@ -345,6 +345,91 @@ class AppColors {
 /// text element over a poster, backdrop or video frame sits on one of these,
 /// sized so the ground is at least 78% opaque directly behind the glyphs.
 /// All three are gradient or flat fills — never a blur.
+/// Gentle gradients. A plain two- or three-stop gradient changes slope
+/// sharply where it meets a stop — most visibly where a fade meets solid
+/// colour or clear — and on a TV's dark grounds the eye picks that out as
+/// a line. [smooth] keeps the design's colours and positions but joins them
+/// with a curve that is flat at both ends and monotone between (no
+/// overshoot), sampled finely enough that it reads as one continuous fade.
+class AppGradients {
+  AppGradients._();
+
+  static const _perSegment = 16;
+
+  /// [colors] at [stops] (evenly spaced when omitted), resampled onto the
+  /// smooth curve. Outside the first/last stop the gradient holds those
+  /// colours, exactly as before.
+  static (List<Color>, List<double>) smooth(
+    List<Color> colors, [
+    List<double>? stops,
+  ]) {
+    final n = colors.length;
+    final xs =
+        stops ?? [for (var i = 0; i < n; i++) n == 1 ? 0.0 : i / (n - 1)];
+    if (n < 2) return (colors, xs);
+    double ch(Color c, int k) => switch (k) {
+      0 => c.a,
+      1 => c.r,
+      2 => c.g,
+      _ => c.b,
+    };
+    // Monotone cubic Hermite (Fritsch–Carlson) per channel, with zero
+    // tangents at both ends so the fade eases in and out of flat colour.
+    final tangents = List.generate(4, (k) {
+      final d = [
+        for (var i = 0; i < n - 1; i++)
+          xs[i + 1] > xs[i]
+              ? (ch(colors[i + 1], k) - ch(colors[i], k)) / (xs[i + 1] - xs[i])
+              : 0.0,
+      ];
+      final m = List<double>.filled(n, 0);
+      for (var i = 1; i < n - 1; i++) {
+        if (d[i - 1] * d[i] > 0) {
+          final a = d[i - 1], b = d[i];
+          // Harmonic-style mean keeps the curve inside each segment.
+          m[i] = 2 * a * b / (a + b);
+        }
+      }
+      return m;
+    });
+    final outColors = <Color>[];
+    final outStops = <double>[];
+    for (var i = 0; i < n - 1; i++) {
+      final x0 = xs[i], x1 = xs[i + 1], h = x1 - x0;
+      for (var j = i == 0 ? 0 : 1; j <= _perSegment; j++) {
+        final t = j / _perSegment;
+        final t2 = t * t, t3 = t2 * t;
+        final h00 = 2 * t3 - 3 * t2 + 1;
+        final h10 = t3 - 2 * t2 + t;
+        final h01 = -2 * t3 + 3 * t2;
+        final h11 = t3 - t2;
+        double v(int k) =>
+            (h00 * ch(colors[i], k) +
+                    h10 * h * tangents[k][i] +
+                    h01 * ch(colors[i + 1], k) +
+                    h11 * h * tangents[k][i + 1])
+                .clamp(0.0, 1.0);
+        outColors.add(
+          Color.from(alpha: v(0), red: v(1), green: v(2), blue: v(3)),
+        );
+        outStops.add(x0 + h * t);
+      }
+    }
+    return (outColors, outStops);
+  }
+
+  /// A [LinearGradient] whose stops are joined by [smooth].
+  static LinearGradient linear({
+    AlignmentGeometry begin = Alignment.centerLeft,
+    AlignmentGeometry end = Alignment.centerRight,
+    required List<Color> colors,
+    List<double>? stops,
+  }) {
+    final (c, s) = smooth(colors, stops);
+    return LinearGradient(begin: begin, end: end, colors: c, stops: s);
+  }
+}
+
 class AppScrims {
   AppScrims._();
 
@@ -352,7 +437,7 @@ class AppScrims {
   /// Built from the active theme's ground so the fade meets the screen
   /// background exactly — a fixed Nocturne ground would leave a blue seam
   /// under every other theme.
-  static LinearGradient get edge => LinearGradient(
+  static LinearGradient get edge => AppGradients.linear(
     begin: Alignment.centerLeft,
     end: Alignment.centerRight,
     colors: [
@@ -364,7 +449,7 @@ class AppScrims {
   );
 
   /// Card captions and player controls.
-  static LinearGradient get bottom => LinearGradient(
+  static LinearGradient get bottom => AppGradients.linear(
     begin: Alignment.topCenter,
     end: Alignment.bottomCenter,
     colors: [

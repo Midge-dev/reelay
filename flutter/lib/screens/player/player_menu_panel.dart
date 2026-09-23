@@ -3,6 +3,7 @@ import 'package:flutter/widgets.dart';
 
 import '../../data/settings/app_settings.dart';
 import '../../focus/back_handler.dart';
+import '../../kit/soft_edge_shadow.dart';
 import '../../kit/focusable_surface.dart';
 import '../../kit/icon.dart';
 import '../../kit/surface_style.dart';
@@ -90,6 +91,12 @@ class _PlayerMenuPanelState extends State<PlayerMenuPanel> {
             Positioned(
               top: 0,
               bottom: 0,
+              right: 360.du(context),
+              child: const SoftEdgeShadow(toward: AxisDirection.left),
+            ),
+            Positioned(
+              top: 0,
+              bottom: 0,
               right: 0,
               // Half the handoff's 680: the tracks are short labels, and a
               // narrower panel leaves more of the picture in view.
@@ -98,7 +105,6 @@ class _PlayerMenuPanelState extends State<PlayerMenuPanel> {
                 decoration: BoxDecoration(
                   color: AppColors.canvas,
                   border: Border(left: BorderSide(color: AppColors.line)),
-                  boxShadow: AppElevation.overlay,
                 ),
                 child: Padding(
                   padding: EdgeInsets.symmetric(

@@ -357,7 +357,7 @@ class _HeroViewport extends StatelessWidget {
             height: _bottomFadeHeight.du(context),
             child: DecoratedBox(
               decoration: BoxDecoration(
-                gradient: LinearGradient(
+                gradient: AppGradients.linear(
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
                   colors: [
