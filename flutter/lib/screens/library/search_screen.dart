@@ -346,39 +346,45 @@ class _ResultGroupState extends State<_ResultGroup> {
           SizedBox(height: (14 - AppSpacing.rowHeadroom / 2).du(context)),
           SizedBox(
             height: (posterCardExtent + AppSpacing.rowHeadroom).du(context),
-            child: AnimatedBuilder(
-              animation: _scroll,
-              builder: (context, child) => EdgeFadeRow(
-                fadeStart: _scroll.hasClients && _scroll.offset > 0,
-                child: child!,
-              ),
-              child: ListView.separated(
-                controller: _scroll,
-                scrollDirection: Axis.horizontal,
-                clipBehavior: Clip.none,
-                padding: EdgeInsets.only(
-                  right: AppSpacing.safeX.du(context),
-                  top: (AppSpacing.rowHeadroom / 2).du(context),
-                  bottom: (AppSpacing.rowHeadroom / 2).du(context),
+            // Clip at the row's leading edge — scrolled-away cards used to
+            // paint over the keyboard — leaving a sliver for a focused
+            // first card's scale and frame. Vertically nothing is clipped.
+            child: ClipRect(
+              clipper: _LeadingEdgeClipper(12.du(context)),
+              child: AnimatedBuilder(
+                animation: _scroll,
+                builder: (context, child) => EdgeFadeRow(
+                  fadeStart: _scroll.hasClients && _scroll.offset > 0,
+                  child: child!,
                 ),
-                itemCount: widget.items.length,
-                separatorBuilder: (context, index) =>
-                    SizedBox(width: AppSpacing.cardGap.du(context)),
-                itemBuilder: (context, index) {
-                  final item = widget.items[index];
-                  return PosterCard(
-                    key: ValueKey(
-                      '${item.primary.server.machineIdentifier}:${item.primary.value.ratingKey}',
-                    ),
-                    imageUrl: PlexImageUrl.of(
-                      item.primary.server,
-                      item.primary.value.thumb,
-                    ),
-                    title: item.primary.value.title,
-                    subtitle: _caption(item),
-                    onClick: () => widget.onSelect(item),
-                  );
-                },
+                child: ListView.separated(
+                  controller: _scroll,
+                  scrollDirection: Axis.horizontal,
+                  clipBehavior: Clip.none,
+                  padding: EdgeInsets.only(
+                    right: AppSpacing.safeX.du(context),
+                    top: (AppSpacing.rowHeadroom / 2).du(context),
+                    bottom: (AppSpacing.rowHeadroom / 2).du(context),
+                  ),
+                  itemCount: widget.items.length,
+                  separatorBuilder: (context, index) =>
+                      SizedBox(width: AppSpacing.cardGap.du(context)),
+                  itemBuilder: (context, index) {
+                    final item = widget.items[index];
+                    return PosterCard(
+                      key: ValueKey(
+                        '${item.primary.server.machineIdentifier}:${item.primary.value.ratingKey}',
+                      ),
+                      imageUrl: PlexImageUrl.of(
+                        item.primary.server,
+                        item.primary.value.thumb,
+                      ),
+                      title: item.primary.value.title,
+                      subtitle: _caption(item),
+                      onClick: () => widget.onSelect(item),
+                    );
+                  },
+                ),
               ),
             ),
           ),
@@ -386,4 +392,22 @@ class _ResultGroupState extends State<_ResultGroup> {
       ),
     );
   }
+}
+
+/// Clips only the leading edge (less [bleed]); every other side is open.
+class _LeadingEdgeClipper extends CustomClipper<Rect> {
+  final double bleed;
+
+  const _LeadingEdgeClipper(this.bleed);
+
+  @override
+  Rect getClip(Size size) => Rect.fromLTRB(
+    -bleed,
+    -size.height,
+    size.width + size.width,
+    size.height * 2,
+  );
+
+  @override
+  bool shouldReclip(_LeadingEdgeClipper old) => old.bleed != bleed;
 }
