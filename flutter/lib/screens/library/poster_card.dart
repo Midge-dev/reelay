@@ -1,6 +1,9 @@
+import 'dart:math' as math;
+
 import 'package:flutter/widgets.dart';
 
 import '../../kit/card.dart';
+import '../../kit/edge_fade_row.dart';
 import '../../kit/marquee_text.dart';
 import '../../kit/scroll_peek.dart';
 import '../../kit/surface_style.dart';
@@ -10,8 +13,16 @@ import '../../theme/tokens.dart';
 import '../../theme/typography.dart';
 import '../common/artwork.dart';
 
-const _posterWidth = 160.0;
-const _posterAspectRatio = 2 / 3;
+/// Portrait card geometry (DESIGN.md "Card geometry is fixed"): 220x330,
+/// caption 12 below, a label line and an optional caption line.
+const posterWidth = 220.0;
+const posterHeight = 330.0;
+const _captionGap = 12.0;
+
+/// Card height including its caption block — what a grid or row reserves
+/// per card. Label 26 + 2 + caption 24, +8 because text line boxes round
+/// up at fractional scales.
+const posterCardExtent = posterHeight + _captionGap + 26 + 2 + 24 + 8;
 
 /// Artwork cards take a frame all the way round instead of a spine — a
 /// spine would cover the poster — and the caption steps ink3 -> ink on
@@ -25,6 +36,110 @@ SurfaceBorder get _posterBorder => SurfaceBorder(
   ),
   noSpine: true,
 );
+
+/// Grid columns for [contentWidth] logical px: counts follow remaining
+/// width, sizes follow height (DESIGN.md #5) — computed from the *scaled*
+/// card and gutter so a larger UI scale yields fewer columns of the same
+/// 220 du poster rather than the same seven columns of shrunken ones.
+int posterGridColumns(BuildContext context, double contentWidth) {
+  final gutter = AppSpacing.xl.du(context);
+  final card = posterWidth.du(context);
+  return math.max(1, ((contentWidth + gutter) / (card + gutter)).floor());
+}
+
+/// The grid width those columns actually occupy, so a grid can hug its
+/// cards from the leading edge (screen 17's wrap) instead of stretching.
+double posterGridWidth(BuildContext context, int columns) =>
+    columns * posterWidth.du(context) + (columns - 1) * AppSpacing.xl.du(context);
+
+SliverGridDelegate posterGridDelegate(BuildContext context, int columns) =>
+    SliverGridDelegateWithFixedCrossAxisCount(
+      crossAxisCount: columns,
+      mainAxisSpacing: AppSpacing.xl.du(context),
+      crossAxisSpacing: AppSpacing.xl.du(context),
+      mainAxisExtent: posterCardExtent.du(context),
+    );
+
+/// A clip that lets a focused card's 1.03x scale and 3 du frame spill
+/// sideways past the grid's own bounds (the cards sit flush with the
+/// header above) while still clipping the scrolled-away rows vertically.
+class GridSideBleedClipper extends CustomClipper<Rect> {
+  final double bleed;
+
+  const GridSideBleedClipper(this.bleed);
+
+  @override
+  Rect getClip(Size size) => Rect.fromLTRB(-bleed, 0, size.width + bleed, size.height);
+
+  @override
+  bool shouldReclip(covariant GridSideBleedClipper old) => old.bleed != bleed;
+}
+
+/// The one poster grid every grid screen uses (library, watchlist,
+/// collection, filmography): as many 220 du columns as the width holds,
+/// hugging the leading edge, rowHeadroom/2 above the first row so a
+/// focused card's scale isn't clipped, and the scrolled-away edge faded.
+class PosterGrid extends StatefulWidget {
+  final int itemCount;
+  final IndexedWidgetBuilder itemBuilder;
+  final ScrollController? controller;
+
+  const PosterGrid({super.key, required this.itemCount, required this.itemBuilder, this.controller});
+
+  @override
+  State<PosterGrid> createState() => _PosterGridState();
+}
+
+class _PosterGridState extends State<PosterGrid> {
+  ScrollController? _ownController;
+
+  ScrollController get _controller => widget.controller ?? (_ownController ??= ScrollController());
+
+  @override
+  void dispose() {
+    _ownController?.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final controller = _controller;
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final columns = posterGridColumns(context, constraints.maxWidth);
+        return ClipRect(
+          clipper: GridSideBleedClipper(AppSpacing.safeX.du(context)),
+          child: AnimatedBuilder(
+            animation: controller,
+            builder: (context, child) => EdgeFadeRow(
+              axis: Axis.vertical,
+              fadeStart: controller.hasClients && controller.offset > 0,
+              fadeWidth: posterRowPeekExtent,
+              child: child!,
+            ),
+            child: Align(
+              alignment: AlignmentDirectional.topStart,
+              child: SizedBox(
+                width: posterGridWidth(context, columns),
+                child: GridView.builder(
+                  controller: controller,
+                  padding: EdgeInsets.only(
+                    top: (AppSpacing.rowHeadroom / 2).du(context),
+                    bottom: AppSpacing.safeY.du(context),
+                  ),
+                  clipBehavior: Clip.none,
+                  gridDelegate: posterGridDelegate(context, columns),
+                  itemCount: widget.itemCount,
+                  itemBuilder: widget.itemBuilder,
+                ),
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
 
 /// How much of the next row a focused card's grid should leave peeking
 /// (and fading) below it — shared with the grid's own EdgeFadeRow so the
@@ -105,13 +220,13 @@ class _PosterCardState extends State<PosterCard> {
     return Align(
       alignment: Alignment.topCenter,
       child: SizedBox(
-        width: _posterWidth.du(context),
+        width: posterWidth.du(context),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           mainAxisSize: MainAxisSize.min,
           children: [
-            AspectRatio(
-              aspectRatio: _posterAspectRatio,
+            SizedBox(
+              height: posterHeight.du(context),
               child: AppCard(
                 onClick: widget.onClick,
                 onLongClick: widget.onLongClick,
@@ -132,7 +247,7 @@ class _PosterCardState extends State<PosterCard> {
               ),
             ),
             Padding(
-              padding: EdgeInsets.only(top: 16.du(context)),
+              padding: EdgeInsets.only(top: _captionGap.du(context)),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisSize: MainAxisSize.min,
@@ -148,10 +263,15 @@ class _PosterCardState extends State<PosterCard> {
                     color: _focused ? AppColors.ink : AppColors.ink2,
                   ),
                   if (widget.subtitle != null)
-                    AppText(
-                      widget.subtitle!,
-                      style: AppTypography.caption,
-                      color: _focused ? AppColors.ink : AppColors.ink3,
+                    Padding(
+                      padding: EdgeInsets.only(top: 2.du(context)),
+                      child: AppText(
+                        widget.subtitle!,
+                        style: AppTypography.caption,
+                        color: _focused ? AppColors.ink2 : AppColors.ink3,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
                     ),
                 ],
               ),

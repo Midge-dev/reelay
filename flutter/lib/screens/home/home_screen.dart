@@ -22,9 +22,9 @@ const _watchTogetherFocusQuietMs = 1200;
 const _watchTogetherScrollDurationMs = 1100;
 
 /// Ports ui/home/HomeScreen.kt — the most complex screen in the app.
-/// Cascading "which row gets initial focus" priority (only the first
-/// non-empty row among Watch Together > Watchlist > Continue Watching >
-/// Recently Finished > Recently Added > Suggestions), a debounced
+/// Cascading "which row gets initial focus" priority (the resume hero, else
+/// the first non-empty row among Watch Together > Watchlist > Recently
+/// Finished > Recently Added > Suggestions), a debounced
 /// scroll-to-top for Watch Together once D-pad input goes quiet, and
 /// checklist item #2 (removing a focused list item must reclaim focus
 /// *within that row*) via [_ReclaimFocusOnRemoval] — the one checklist
@@ -187,13 +187,16 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final watchTogetherGetsFocus = widget.liveRooms.isNotEmpty;
+    // Screen 01: Home opens on the resume hero's Resume — "real data, the
+    // top in-progress item" — whenever there is one. Otherwise the first
+    // row that exists, top to bottom.
+    final continueWatchingGetsFocus = widget.onDeck.isNotEmpty;
+    final watchTogetherGetsFocus =
+        !continueWatchingGetsFocus && widget.liveRooms.isNotEmpty;
     final watchlistGetsFocus =
-        !watchTogetherGetsFocus && widget.watchlist.isNotEmpty;
-    final continueWatchingGetsFocus =
+        !continueWatchingGetsFocus &&
         !watchTogetherGetsFocus &&
-        !watchlistGetsFocus &&
-        widget.onDeck.isNotEmpty;
+        widget.watchlist.isNotEmpty;
     final recentActivityGetsFocus =
         !watchTogetherGetsFocus &&
         !watchlistGetsFocus &&
@@ -215,80 +218,109 @@ class _HomeScreenState extends State<HomeScreen> {
 
     final watchlistReversed = widget.watchlist.reversed.toList();
 
+    final watchTogetherBar = widget.liveRooms.isEmpty
+        ? null
+        : Padding(
+            padding: EdgeInsets.symmetric(
+              horizontal: AppSpacing.safeX.du(context),
+            ),
+            child: WatchTogetherBar(
+              rooms: widget.liveRooms,
+              myRoomId: widget.myRoomId,
+              hostedRoomIds: widget.hostedRoomIds,
+              onEndSession: widget.onEndSession,
+              onSelectRoom: widget.onSelectRoom,
+              onMoreRooms: widget.onOpenRooms,
+              focusNode: _watchTogetherRowFocus,
+              autofocus: watchTogetherGetsFocus,
+            ),
+          );
+
     return ColoredBox(
       color: AppColors.background,
-      child: ListView(
-        controller: _homeScrollController,
-        padding: EdgeInsets.only(bottom: 48.du(context)),
-        children: [
-          if (widget.unreachableResources.isNotEmpty) _buildPartialOutageBanner(),
-          _buildContinueWatchingSection(continueWatchingGetsFocus),
-          if (widget.liveRooms.isNotEmpty)
-            Padding(
-              padding: EdgeInsets.fromLTRB(
-                AppSpacing.xxxl.du(context),
-                0,
-                AppSpacing.xxxl.du(context),
-                AppSpacing.xl.du(context),
+      child: LayoutBuilder(
+        builder: (context, constraints) => ListView(
+          controller: _homeScrollController,
+          padding: EdgeInsets.only(bottom: AppSpacing.safeY.du(context)),
+          children: [
+            if (widget.unreachableResources.isNotEmpty)
+              _buildPartialOutageBanner(),
+            if (widget.onDeck.isNotEmpty)
+              _buildHeroViewport(
+                constraints.maxHeight,
+                continueWatchingGetsFocus,
+                watchTogetherBar,
+              )
+            else if (watchTogetherBar != null)
+              // First-run empty: no hero and no message (DESIGN.md) — home
+              // opens on its rows, with the bar above them when a room is live.
+              Padding(
+                padding: EdgeInsets.only(top: AppSpacing.safeY.du(context)),
+                child: watchTogetherBar,
               ),
-              child: WatchTogetherBar(
-                rooms: widget.liveRooms,
-                myRoomId: widget.myRoomId,
-                hostedRoomIds: widget.hostedRoomIds,
-                onEndSession: widget.onEndSession,
-                onSelectRoom: widget.onSelectRoom,
-                onMoreRooms: widget.onOpenRooms,
-                focusNode: _watchTogetherRowFocus,
-                autofocus: watchTogetherGetsFocus,
+            _HomeRow<PlexWatchlistItem>(
+              title: 'Watchlist',
+              items: watchlistReversed,
+              itemBuilder: (entry, index) => WatchlistPoster(
+                key: ValueKey(entry.ratingKey),
+                server: widget.servers.first.server,
+                entry: entry,
+                onClick: () => widget.onSelectWatchlistItem(entry),
+                onRemove: () => widget.onRemoveFromWatchlist(entry),
+                focusNode: index == 0 ? _watchlistRowFocus : null,
+                autofocus: index == 0 && watchlistGetsFocus,
               ),
             ),
-          _HomeRow<PlexWatchlistItem>(
-            title: 'Watchlist',
-            items: watchlistReversed,
-            itemBuilder: (entry, index) => WatchlistPoster(
-              key: ValueKey(entry.ratingKey),
-              server: widget.servers.first.server,
-              entry: entry,
-              onClick: () => widget.onSelectWatchlistItem(entry),
-              onRemove: () => widget.onRemoveFromWatchlist(entry),
-              focusNode: index == 0 ? _watchlistRowFocus : null,
-              autofocus: index == 0 && watchlistGetsFocus,
+            _HomeRow<FoldedWork<PlexOnDeckItem>>(
+              title: 'Recently Finished Watching',
+              items: widget.recentActivity,
+              itemBuilder: (item, index) => PosterCard(
+                key: ValueKey(
+                  '${item.primary.server.machineIdentifier}:${item.primary.value.ratingKey}',
+                ),
+                imageUrl: PlexImageUrl.of(
+                  item.primary.server,
+                  item.primary.value.thumb,
+                ),
+                title: continueWatchingLabel(item.primary.value),
+                onClick: () => widget.onSelectRecentActivity(item),
+                autofocus: index == 0 && recentActivityGetsFocus,
+              ),
             ),
-          ),
-          _HomeRow<FoldedWork<PlexOnDeckItem>>(
-            title: 'Recently Finished Watching',
-            items: widget.recentActivity,
-            itemBuilder: (item, index) => PosterCard(
-              key: ValueKey('${item.primary.server.machineIdentifier}:${item.primary.value.ratingKey}'),
-              imageUrl: PlexImageUrl.of(item.primary.server, item.primary.value.thumb),
-              title: continueWatchingLabel(item.primary.value),
-              onClick: () => widget.onSelectRecentActivity(item),
-              autofocus: index == 0 && recentActivityGetsFocus,
+            _HomeRow<FoldedWork<PlexLibraryItem>>(
+              title: 'Recently Added',
+              items: widget.recentlyAdded,
+              itemBuilder: (item, index) => PosterCard(
+                key: ValueKey(
+                  '${item.primary.server.machineIdentifier}:${item.primary.value.ratingKey}',
+                ),
+                imageUrl: PlexImageUrl.of(
+                  item.primary.server,
+                  item.primary.value.thumb,
+                ),
+                title: recentlyAddedLabel(item.primary.value),
+                onClick: () => widget.onSelectRecentlyAdded(item),
+                autofocus: index == 0 && recentlyAddedGetsFocus,
+              ),
             ),
-          ),
-          _HomeRow<FoldedWork<PlexLibraryItem>>(
-            title: 'Recently Added',
-            items: widget.recentlyAdded,
-            itemBuilder: (item, index) => PosterCard(
-              key: ValueKey('${item.primary.server.machineIdentifier}:${item.primary.value.ratingKey}'),
-              imageUrl: PlexImageUrl.of(item.primary.server, item.primary.value.thumb),
-              title: recentlyAddedLabel(item.primary.value),
-              onClick: () => widget.onSelectRecentlyAdded(item),
-              autofocus: index == 0 && recentlyAddedGetsFocus,
+            _HomeRow<FoldedWork<PlexOnDeckItem>>(
+              title: 'Suggestions',
+              items: widget.suggestions,
+              itemBuilder: (item, index) => PosterCard(
+                key: ValueKey(
+                  '${item.primary.server.machineIdentifier}:${item.primary.value.ratingKey}',
+                ),
+                imageUrl: PlexImageUrl.of(
+                  item.primary.server,
+                  item.primary.value.thumb,
+                ),
+                title: continueWatchingLabel(item.primary.value),
+                onClick: () => widget.onSelectSuggestion(item),
+                autofocus: index == 0 && suggestionsGetsFocus,
+              ),
             ),
-          ),
-          _HomeRow<FoldedWork<PlexOnDeckItem>>(
-            title: 'Suggestions',
-            items: widget.suggestions,
-            itemBuilder: (item, index) => PosterCard(
-              key: ValueKey('${item.primary.server.machineIdentifier}:${item.primary.value.ratingKey}'),
-              imageUrl: PlexImageUrl.of(item.primary.server, item.primary.value.thumb),
-              title: continueWatchingLabel(item.primary.value),
-              onClick: () => widget.onSelectSuggestion(item),
-              autofocus: index == 0 && suggestionsGetsFocus,
-            ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -310,7 +342,11 @@ class _HomeScreenState extends State<HomeScreen> {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          AppIcon(PhosphorIconsRegular.warning, size: 20, tint: AppColors.warning),
+          AppIcon(
+            PhosphorIconsRegular.warning,
+            size: 20,
+            tint: AppColors.warning,
+          ),
           SizedBox(width: AppSpacing.sm.du(context)),
           Flexible(
             child: AppText(
@@ -325,117 +361,102 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  /// Empty: the old "Continue Watching" row, kept verbatim — a first-run
-  /// empty is a fact, not a failure (DESIGN.md's empty/error section), so
-  /// it's a plain heading and one sentence, not a hero with nothing to show.
-  /// Non-empty: the top item is promoted to [HomeHero] — real data, no
-  /// invented curation — and whatever's left becomes the "More in
-  /// progress" row, per the Nocturne redesign's screen 01.
-  Widget _buildContinueWatchingSection(bool continueWatchingGetsFocus) {
-    if (widget.onDeck.isEmpty) {
-      return Padding(
-        padding: EdgeInsets.only(
-          left: AppSpacing.xxxl.du(context),
-          top: AppSpacing.xxxl.du(context),
-          bottom: AppSpacing.lg.du(context),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            AppText('Continue Watching', style: AppTypography.rowLabel),
-            SizedBox(height: AppSpacing.md.du(context)),
-            const AppText('Nothing in progress right now.'),
-          ],
-        ),
-      );
-    }
-
+  /// Screen 01's first viewport: the top in-progress item promoted to the
+  /// resume hero, with the Watch Together bar and whatever else is in
+  /// progress pinned to its foot. Focus reaching the hero's own actions
+  /// scrolls Home back to the very top, so coming up from a row below
+  /// always reveals the whole hero rather than just the button.
+  Widget _buildHeroViewport(
+    double viewportHeight,
+    bool continueWatchingGetsFocus,
+    Widget? watchTogetherBar,
+  ) {
     final hero = widget.onDeck.first;
     final moreInProgress = widget.onDeck.length > 1
         ? widget.onDeck.sublist(1)
         : const <FoldedWork<PlexOnDeckItem>>[];
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        HomeHero(
-          item: hero,
-          onResume: () => widget.onResume(hero),
-          onWatchTogether: widget.onHeroWatchTogether,
-          resumeFocusNode: moreInProgress.isEmpty
-              ? _continueWatchingRowFocus
-              : null,
-          autofocus: continueWatchingGetsFocus,
-        ),
+    return HomeHero(
+      item: hero,
+      height: viewportHeight,
+      onResume: () => widget.onResume(hero),
+      onWatchTogether: widget.onHeroWatchTogether,
+      resumeFocusNode: moreInProgress.isEmpty
+          ? _continueWatchingRowFocus
+          : null,
+      autofocus: continueWatchingGetsFocus,
+      onActionsFocused: () {
+        // After the traversal's own ensureVisible has started, so this
+        // animation replaces it rather than racing it.
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted &&
+              _homeScrollController.hasClients &&
+              _homeScrollController.offset > 0) {
+            _homeScrollController.animateTo(
+              0,
+              duration: AppMotion.rowScroll,
+              curve: AppMotion.enter,
+            );
+          }
+        });
+      },
+      footer: [
+        ?watchTogetherBar,
         if (moreInProgress.isNotEmpty)
-          _ScrollSectionIntoView(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Padding(
-                  padding: EdgeInsets.only(
-                    left: AppSpacing.xxxl.du(context),
-                    top: AppSpacing.xl.du(context),
-                    bottom: AppSpacing.lg.du(context),
-                  ),
-                  child: AppText(
-                    'More in progress',
-                    style: AppTypography.rowLabel,
-                  ),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Padding(
+                padding: EdgeInsets.only(left: AppSpacing.safeX.du(context)),
+                child: AppText(
+                  'More in progress',
+                  style: AppTypography.rowLabel,
                 ),
-                SizedBox(
-                  // +24 over the card's own content height: EdgeFadeRow's
-                  // ShaderMask only fades within its own layout bounds, and
-                  // a focused card's scale overflow (let through by
-                  // Clip.none below) painted outside a tightly-fit box
-                  // escapes the mask entirely — the top of a focused card
-                  // looked unfaded. Real vertical headroom, not just
-                  // Clip.none, keeps the whole scaled card inside the
-                  // mask's bounds. Content height: 209 image + 12 padding +
-                  // a label line (26) + a 3px gap + a caption line (24),
-                  // +24 headroom. Confirmed on-device (Shield): 296 clipped
-                  // by ~2px, so this carries a few extra for safety.
-                  height: 304.du(context),
-                  child: EdgeFadeRow(
-                    child: ListView.separated(
-                      scrollDirection: Axis.horizontal,
-                      // Compose doesn't clip a Row's children to its own
-                      // bounds by default; Flutter's ListView does. Without
-                      // this, a card's focus-scale grows past this
-                      // SizedBox's fixed height and gets hard-clipped at
-                      // the top/bottom edge.
-                      clipBehavior: Clip.none,
-                      // 48, not 32: the focused card's scale/glow needs
-                      // headroom against the screen edge itself, not just
-                      // the row's own bounds. Vertical 12 matches the +24
-                      // SizedBox headroom above.
-                      padding: EdgeInsets.symmetric(
-                        horizontal: 48.du(context),
-                        vertical: 12.du(context),
-                      ),
-                      itemCount: moreInProgress.length,
-                      separatorBuilder: (context, index) =>
-                          SizedBox(width: 24.du(context)),
-                      itemBuilder: (context, index) {
-                        final item = moreInProgress[index];
-                        return ContinueWatchingPoster(
-                          key: ValueKey('${item.primary.server.machineIdentifier}:${item.primary.value.ratingKey}'),
-                          item: item,
-                          onResume: () => widget.onResume(item),
-                          onRemove: () => widget.onRemove(item),
-                          focusNode: index == 0
-                              ? _continueWatchingRowFocus
-                              : null,
-                        );
-                      },
+              ),
+              // Row label → cards is 16; the ListView's own 12 du top
+              // headroom (rowHeadroom / 2) makes up the rest.
+              SizedBox(
+                height: (AppSpacing.lg - AppSpacing.rowHeadroom / 2).du(
+                  context,
+                ),
+              ),
+              SizedBox(
+                // 209 card + 12 + 26 title + 3 + 24 caption, +8 for
+                // 16:9's 209.25 and text line boxes rounding up at
+                // fractional scales, plus rowHeadroom so a focused
+                // card's scale and frame are never clipped.
+                height: (209 + 12 + 26 + 3 + 24 + 8 + AppSpacing.rowHeadroom)
+                    .du(context),
+                child: EdgeFadeRow(
+                  child: ListView.separated(
+                    scrollDirection: Axis.horizontal,
+                    clipBehavior: Clip.none,
+                    padding: EdgeInsets.symmetric(
+                      horizontal: AppSpacing.safeX.du(context),
+                      vertical: (AppSpacing.rowHeadroom / 2).du(context),
                     ),
+                    itemCount: moreInProgress.length,
+                    separatorBuilder: (context, index) =>
+                        SizedBox(width: AppSpacing.cardGap.du(context)),
+                    itemBuilder: (context, index) {
+                      final item = moreInProgress[index];
+                      return ContinueWatchingPoster(
+                        key: ValueKey(
+                          '${item.primary.server.machineIdentifier}:${item.primary.value.ratingKey}',
+                        ),
+                        item: item,
+                        onResume: () => widget.onResume(item),
+                        onRemove: () => widget.onRemove(item),
+                        focusNode: index == 0
+                            ? _continueWatchingRowFocus
+                            : null,
+                      );
+                    },
                   ),
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
       ],
     );
@@ -466,28 +487,28 @@ class _HomeRow<T> extends StatelessWidget {
         children: [
           Padding(
             padding: EdgeInsets.only(
-              left: AppSpacing.xxxl.du(context),
-              top: AppSpacing.xxl.du(context),
-              bottom: AppSpacing.xl.du(context),
+              left: AppSpacing.safeX.du(context),
+              top: AppSpacing.xxxl.du(context),
             ),
             child: AppText(title, style: AppTypography.rowLabel),
           ),
+          // Label → cards is 16; the row's rowHeadroom/2 makes up the rest.
           SizedBox(
-            // See the matching comment on Continue Watching's SizedBox above.
-            // Content height 288 (240 poster + 16 padding + a Nocturne body
-            // line at ~32) + 24 headroom.
-            height: 316.du(context),
+            height: (AppSpacing.lg - AppSpacing.rowHeadroom / 2).du(context),
+          ),
+          SizedBox(
+            height: (posterCardExtent + AppSpacing.rowHeadroom).du(context),
             child: EdgeFadeRow(
               child: ListView.separated(
                 scrollDirection: Axis.horizontal,
-                // See the matching comment on Continue Watching's ListView above.
                 clipBehavior: Clip.none,
                 padding: EdgeInsets.symmetric(
-                  horizontal: 48.du(context),
-                  vertical: 12.du(context),
+                  horizontal: AppSpacing.safeX.du(context),
+                  vertical: (AppSpacing.rowHeadroom / 2).du(context),
                 ),
                 itemCount: items.length,
-                separatorBuilder: (context, index) => SizedBox(width: 24.du(context)),
+                separatorBuilder: (context, index) =>
+                    SizedBox(width: AppSpacing.cardGap.du(context)),
                 itemBuilder: (context, index) =>
                     itemBuilder(items[index], index),
               ),

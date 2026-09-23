@@ -10,9 +10,6 @@ import '../../theme/typography.dart';
 import '../common/artwork.dart';
 import 'poster_card.dart';
 
-const _gridColumns = 5;
-const _posterCardHeight = 310.0; // 160w*3/2 image (240) + 16 padding + label line (26) + optional caption line (24)
-
 /// Ports ui/library/PersonFilmographyScreen.kt.
 class PersonFilmographyScreen extends StatelessWidget {
   final PlexServer server;
@@ -34,7 +31,9 @@ class PersonFilmographyScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final thumbUrl = personThumb != null ? PlexImageUrl.of(server, personThumb) : null;
+    final thumbUrl = personThumb != null
+        ? PlexImageUrl.of(server, personThumb)
+        : null;
 
     return BackHandler(
       onBack: onBack,
@@ -44,7 +43,11 @@ class PersonFilmographyScreen extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Padding(
-              padding: EdgeInsets.only(left: 32.du(context), top: 32.du(context), right: 32.du(context)),
+              padding: EdgeInsets.only(
+                left: 32.du(context),
+                top: 32.du(context),
+                right: 32.du(context),
+              ),
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.center,
                 mainAxisSize: MainAxisSize.min,
@@ -59,7 +62,9 @@ class PersonFilmographyScreen extends StatelessWidget {
                               color: AppColors.accent.withValues(alpha: 0.35),
                               child: Center(
                                 child: AppText(
-                                  personName.isNotEmpty ? personName[0].toUpperCase() : '?',
+                                  personName.isNotEmpty
+                                      ? personName[0].toUpperCase()
+                                      : '?',
                                   style: AppTypography.title1,
                                   color: AppColors.inkOnArt,
                                 ),
@@ -73,7 +78,12 @@ class PersonFilmographyScreen extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        AppText(personName, style: AppTypography.title1, maxLines: 1, overflow: TextOverflow.ellipsis),
+                        AppText(
+                          personName,
+                          style: AppTypography.title1,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
                         SizedBox(height: 4.du(context)),
                         AppText(
                           '${items.length} title${items.length == 1 ? '' : 's'} in your library',
@@ -86,27 +96,23 @@ class PersonFilmographyScreen extends StatelessWidget {
               ),
             ),
             Expanded(
-              child: GridView.builder(
-                padding: EdgeInsets.all(32.du(context)),
-                // See the matching comment in collection_detail_screen.dart.
-                clipBehavior: Clip.none,
-                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: _gridColumns,
-                  mainAxisSpacing: 24.du(context),
-                  crossAxisSpacing: 24.du(context),
-                  mainAxisExtent: _posterCardHeight.du(context),
+              child: Padding(
+                padding: EdgeInsets.symmetric(
+                  horizontal: AppSpacing.safeX.du(context),
                 ),
-                itemCount: items.length,
-                itemBuilder: (context, index) {
-                  final item = items[index];
-                  return PosterCard(
-                    key: ValueKey(item.ratingKey),
-                    imageUrl: PlexImageUrl.of(server, item.thumb),
-                    title: item.title,
-                    autofocus: index == 0,
-                    onClick: () => onSelectItem(item),
-                  );
-                },
+                child: PosterGrid(
+                  itemCount: items.length,
+                  itemBuilder: (context, index) {
+                    final item = items[index];
+                    return PosterCard(
+                      key: ValueKey(item.ratingKey),
+                      imageUrl: PlexImageUrl.of(server, item.thumb),
+                      title: item.title,
+                      autofocus: index == 0,
+                      onClick: () => onSelectItem(item),
+                    );
+                  },
+                ),
               ),
             ),
           ],

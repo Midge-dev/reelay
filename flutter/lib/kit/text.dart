@@ -4,8 +4,10 @@ import '../theme/scale.dart';
 import '../theme/typography.dart';
 import 'content_color.dart';
 
-/// Ports ui/kit/Text.kt — resolves color against the ambient ContentColor
-/// unless one is passed explicitly.
+/// Ports ui/kit/Text.kt. Colour resolves: an explicit [color]; else the
+/// ambient ContentColor when inside a surface (so a focused row's label
+/// follows its focus state); else the type role's own colour (caption is
+/// ink3, micro is accent, body is ink2 — typography.dart); else ink.
 class AppText extends StatelessWidget {
   final String text;
   final Color? color;
@@ -30,8 +32,8 @@ class AppText extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final resolvedColor = color ?? ContentColor.of(context);
     final base = style ?? AppTypography.body;
+    final resolvedColor = color ?? ContentColor.maybeOf(context) ?? base.color ?? ContentColor.of(context);
     return Text(
       text,
       style: base.copyWith(

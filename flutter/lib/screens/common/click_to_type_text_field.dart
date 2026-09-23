@@ -4,6 +4,7 @@ import 'package:flutter/widgets.dart';
 import '../../focus/back_handler.dart';
 import '../../theme/scale.dart';
 import '../../theme/tokens.dart';
+import '../../theme/typography.dart';
 
 const _borderWidth = 3.0;
 
@@ -36,6 +37,12 @@ class ClickToTypeTextField extends StatefulWidget {
   // opt-in since most callers (e.g. profile name fields) want a blank box.
   final String? hintText;
 
+  /// False when the caller frames the field itself (the library's filter
+  /// bar draws it as a chip) — the caller then reads focus from
+  /// [onFocusChange] to paint its own focus signal.
+  final bool showBorder;
+  final ValueChanged<bool>? onFocusChange;
+
   const ClickToTypeTextField({
     super.key,
     required this.value,
@@ -44,6 +51,8 @@ class ClickToTypeTextField extends StatefulWidget {
     this.onNavigateRight,
     this.focusNode,
     this.hintText,
+    this.showBorder = true,
+    this.onFocusChange,
   });
 
   @override
@@ -84,10 +93,12 @@ class _ClickToTypeTextFieldState extends State<ClickToTypeTextField> {
   void _handleDisplayFocusChange() {
     if (!mounted) return;
     setState(() => _isFocused = _displayFocusNode.hasFocus);
+    widget.onFocusChange?.call(_isFocused || _editFocusNode.hasFocus);
   }
 
   void _handleEditFocusChange() {
     if (!mounted) return;
+    widget.onFocusChange?.call(_displayFocusNode.hasFocus || _editFocusNode.hasFocus);
     if (!_editFocusNode.hasFocus && _editingEnabled) {
       setState(() => _editingEnabled = false);
     }
@@ -130,9 +141,9 @@ class _ClickToTypeTextFieldState extends State<ClickToTypeTextField> {
 
   @override
   Widget build(BuildContext context) {
-    final baseStyle =
-        widget.textStyle ??
-        TextStyle(fontFamily: 'Inter', color: AppColors.ink);
+    // Always a role from the type scale — an unsized TextStyle falls back
+    // to the framework's 14 logical px, which is neither a role nor scaled.
+    final baseStyle = widget.textStyle ?? AppTypography.label;
     final style = baseStyle.copyWith(
       fontSize: baseStyle.fontSize?.du(context),
       letterSpacing: baseStyle.letterSpacing?.du(context),
@@ -142,9 +153,9 @@ class _ClickToTypeTextFieldState extends State<ClickToTypeTextField> {
         : AppColors.line;
 
     return Container(
-      decoration: BoxDecoration(
-        border: Border.all(color: borderColor, width: _borderWidth.du(context)),
-      ),
+      decoration: widget.showBorder
+          ? BoxDecoration(border: Border.all(color: borderColor, width: _borderWidth.du(context)))
+          : null,
       child: _editingEnabled
           ? BackHandler(
               onBack: _stopEditing,

@@ -369,11 +369,15 @@ class _AppNavigationDrawerState extends State<AppNavigationDrawer> {
             ),
           ),
         ),
-        Positioned(
-          top: 20.du(context),
-          right: AppSpacing.xxl.du(context),
-          child: const DigitalClock(),
-        ),
+        // Home only: every other screen's header carries its own summary
+        // in that corner (library counts, watchlist totals), and the
+        // design draws no clock at all.
+        if (widget.destination == RailDestination.home)
+          Positioned(
+            top: 20.du(context),
+            right: AppSpacing.xxl.du(context),
+            child: const DigitalClock(),
+          ),
         Positioned(
           top: 0,
           bottom: 0,

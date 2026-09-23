@@ -440,6 +440,9 @@ class PlexOnDeckItem {
   final int? index;
   final String? guid;
 
+  /// Episode or movie synopsis — the hero's body line (screen 01).
+  final String? summary;
+
   @JsonKey(name: 'Guid', defaultValue: [])
   final List<PlexGuid> guids;
 
@@ -455,6 +458,7 @@ class PlexOnDeckItem {
     this.parentIndex,
     this.index,
     this.guid,
+    this.summary,
     this.guids = const [],
   });
 

@@ -366,8 +366,9 @@ class _ContinueWatchingPosterState extends State<ContinueWatchingPoster> {
                                 alignment: Alignment.centerLeft,
                                 child: FractionallySizedBox(
                                   widthFactor: progress,
-                                  // Flat fill, not a gradient — DESIGN.md #4/#8.
-                                  child: ColoredBox(color: AppColors.accent),
+                                  // Flat ink3 fill: screens 01/11 keep the
+                                  // accent for the hero's bar only.
+                                  child: ColoredBox(color: AppColors.ink3),
                                 ),
                               ),
                             ),

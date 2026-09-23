@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/widgets.dart';
 
 import '../../kit/text.dart';
+import '../../theme/scale.dart';
 import '../../theme/tokens.dart';
 import '../../theme/typography.dart';
 
@@ -45,7 +46,22 @@ class _DigitalClockState extends State<DigitalClock> {
   @override
   Widget build(BuildContext context) {
     final use24Hour = MediaQuery.maybeOf(context)?.alwaysUse24HourFormat ?? false;
-    return AppText(_format(_now, use24Hour), style: AppTypography.body, color: AppColors.ink3);
+    // Home's clock sits over the hero backdrop, so it gets scrim.chip
+    // (DESIGN.md #2: no glyph touches raw artwork).
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: AppScrims.chip,
+        borderRadius: BorderRadius.circular(AppShape.radiusSm.du(context)),
+      ),
+      child: Padding(
+        padding: EdgeInsets.symmetric(horizontal: AppSpacing.md.du(context), vertical: AppSpacing.xs.du(context)),
+        child: AppText(
+          _format(_now, use24Hour),
+          style: AppTypography.caption.copyWith(fontFeatures: AppTypography.tabular),
+          color: AppColors.inkOnArt,
+        ),
+      ),
+    );
   }
 
   String _format(DateTime time, bool use24Hour) {

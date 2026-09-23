@@ -29,3 +29,14 @@ String formatTimecode(int ms) {
   }
   return '$minutes:${seconds.toString().padLeft(2, '0')}';
 }
+
+/// A count as the design writes it: "1,284", not "1284".
+String formatCount(int n) {
+  final digits = n.abs().toString();
+  final buffer = StringBuffer(n < 0 ? '-' : '');
+  for (var i = 0; i < digits.length; i++) {
+    if (i > 0 && (digits.length - i) % 3 == 0) buffer.write(',');
+    buffer.write(digits[i]);
+  }
+  return buffer.toString();
+}

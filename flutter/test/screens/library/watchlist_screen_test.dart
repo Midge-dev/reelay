@@ -48,14 +48,14 @@ void main() {
     expect(find.text('Nothing saved yet — press + on anything to keep it here.'), findsOneWidget);
   });
 
-  testWidgets('tapping a title invokes onSelectItem', (tester) async {
+  testWidgets('tapping a title invokes onSelectItem, newest first', (tester) async {
     PlexWatchlistItem? selected;
     await _pump(tester, onSelectItem: (e) => selected = e);
 
     await tester.tap(find.byType(PosterCard).first);
     await tester.pump();
 
-    expect(selected?.ratingKey, '1');
+    expect(selected?.ratingKey, '2', reason: 'Recently added sorts the newest (last in the account list) first');
   });
 
   testWidgets('holding a card removes it immediately and shows an undo chip, without calling onRemove yet', (tester) async {
@@ -65,8 +65,9 @@ void main() {
     await tester.longPress(find.byType(PosterCard).first);
     await tester.pump();
 
-    expect(find.text('Arrival'), findsNothing, reason: 'destructive-but-reversible acts immediately');
-    expect(find.text('Aftershow'), findsOneWidget);
+    // The first card is the newest entry, Aftershow.
+    expect(find.text('Aftershow'), findsNothing, reason: 'destructive-but-reversible acts immediately');
+    expect(find.text('Arrival'), findsOneWidget);
     expect(find.textContaining('Undo'), findsOneWidget);
     expect(removed, isFalse, reason: 'onRemove only fires once the undo window expires');
   });
@@ -80,7 +81,7 @@ void main() {
     await tester.tap(find.textContaining('Undo'));
     await tester.pump();
 
-    expect(find.text('Arrival'), findsOneWidget);
+    expect(find.text('Aftershow'), findsOneWidget);
     expect(find.textContaining('Undo'), findsNothing);
     expect(removed, isFalse);
   });
@@ -94,7 +95,7 @@ void main() {
 
     await tester.pump(const Duration(seconds: 8));
 
-    expect(removedEntry?.ratingKey, '1');
+    expect(removedEntry?.ratingKey, '2');
     expect(find.textContaining('Undo'), findsNothing);
   });
 }

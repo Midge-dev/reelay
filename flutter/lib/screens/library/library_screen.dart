@@ -6,7 +6,6 @@ import '../../data/plex/plex_image_url.dart';
 import '../../data/plex/plex_models.dart';
 import '../../data/plex/plex_resources_api.dart' show ReachableServer;
 import '../../kit/button.dart';
-import '../../kit/edge_fade_row.dart';
 import '../../kit/focusable_surface.dart';
 import '../../kit/icon.dart';
 import '../../kit/surface_style.dart';
@@ -19,17 +18,16 @@ import '../../theme/tokens.dart';
 import '../../theme/typography.dart';
 import '../common/click_to_type_text_field.dart';
 import '../common/loading_screen.dart';
+import '../common/time_format.dart';
 import 'genre_filter_panel.dart';
 import 'library_filters.dart';
 import 'poster_card.dart';
 
-const _gridColumns = 7; // Foundations §03/tokens.json geometry.referenceColumns
-// 160w*3/2 image (240) + 16 padding + label line (26) + optional caption
-// line (24) = 306 in theory, but PosterCard's real measured height with a
-// subtitle present (e.g. collection card counts) runs closer to 330 — the
-// pre-existing constant undershot this, previously invisible only because
-// the old Collections tab's widget test never exercised a real childCount.
-const _posterCardHeight = 334.0;
+// Screen 17: 22 du between header, filter bar and grid; filter bar items
+// 22 apart; chips 58 tall.
+const _blockGap = 22.0;
+const _chipHeight = 58.0;
+const _narrowFieldWidth = 320.0;
 
 enum _ViewMode { titles, collections }
 
@@ -189,24 +187,6 @@ class _LibraryScreenState extends State<LibraryScreen> {
   /// through into whatever sits above it (the filter row) once they
   /// scroll behind it. The top fade only shows once actually scrolled, so
   /// it doesn't just dim the first row for no reason at rest.
-  Widget _fadingGrid({
-    required ScrollController controller,
-    required Widget grid,
-  }) {
-    return ClipRect(
-      child: AnimatedBuilder(
-        animation: controller,
-        builder: (context, child) => EdgeFadeRow(
-          axis: Axis.vertical,
-          fadeStart: controller.hasClients && controller.offset > 0,
-          fadeWidth: posterRowPeekExtent,
-          child: child!,
-        ),
-        child: grid,
-      ),
-    );
-  }
-
   KeyEventResult _trapUpAboveFilterRow(FocusNode node, KeyEvent event) {
     if (event is KeyDownEvent &&
         event.logicalKey == LogicalKeyboardKey.arrowUp) {
@@ -233,12 +213,18 @@ class _LibraryScreenState extends State<LibraryScreen> {
     return bareResults.map((i) => byIdentity[i]!).toList();
   }
 
-  List<PlexLibraryItem> get _bareItems => widget.items.map((s) => s.primary.value).toList();
+  List<PlexLibraryItem> get _bareItems =>
+      widget.items.map((s) => s.primary.value).toList();
 
   String get _serverLabel {
     final ids = widget.selectedSectionGroup.sectionsByServerId.keys;
     final names = ids
-        .map((id) => widget.servers.firstWhereOrNull((s) => s.server.machineIdentifier == id)?.server.name)
+        .map(
+          (id) => widget.servers
+              .firstWhereOrNull((s) => s.server.machineIdentifier == id)
+              ?.server
+              .name,
+        )
         .whereType<String>()
         .toList();
     if (names.length == 1) return 'Plex · ${names.single}';
@@ -274,7 +260,12 @@ class _LibraryScreenState extends State<LibraryScreen> {
         key: _stackKey,
         children: [
           Padding(
-            padding: EdgeInsets.fromLTRB(32.du(context), 24.du(context), 32.du(context), 0),
+            padding: EdgeInsets.fromLTRB(
+              AppSpacing.safeX.du(context),
+              AppSpacing.safeY.du(context),
+              AppSpacing.safeX.du(context),
+              0,
+            ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
@@ -287,27 +278,29 @@ class _LibraryScreenState extends State<LibraryScreen> {
                       style: AppTypography.title1,
                     ),
                     SizedBox(width: 18.du(context)),
-                    AppText(
-                      _serverLabel,
-                      color: AppColors.ink3,
-                    ),
+                    AppText(_serverLabel, style: AppTypography.caption),
                     const Spacer(),
                     AppText(
                       _summaryText(
                         titleResults.length,
                         collectionResults?.length,
                       ),
-                      color: AppColors.ink3,
+                      style: AppTypography.caption,
                     ),
                   ],
                 ),
-                SizedBox(height: 22.du(context)),
+                SizedBox(height: _blockGap.du(context)),
                 Focus(
                   canRequestFocus: false,
                   onKeyEvent: _trapUpAboveFilterRow,
                   child: _buildFilterRow(availableGenres, availableDecades),
                 ),
-                SizedBox(height: 22.du(context)),
+                // The grid carries rowHeadroom/2 of its own top padding so a
+                // focused first-row card's scale isn't clipped; together
+                // they make the design's 22.
+                SizedBox(
+                  height: (_blockGap - AppSpacing.rowHeadroom / 2).du(context),
+                ),
                 Expanded(
                   child: _viewMode == _ViewMode.titles
                       ? _buildTitlesGrid(titleResults)
@@ -330,13 +323,13 @@ class _LibraryScreenState extends State<LibraryScreen> {
   String _summaryText(int titleCount, int? collectionCount) {
     if (_viewMode == _ViewMode.collections) {
       final count = collectionCount ?? 0;
-      return '$count collection${count == 1 ? '' : 's'} · sorted by title';
+      return '${formatCount(count)} collection${count == 1 ? '' : 's'} · sorted by title';
     }
     final total = widget.items.length;
     final filtered = titleCount != total;
     final countText = filtered
-        ? '$titleCount of $total titles'
-        : '$total titles';
+        ? '${formatCount(titleCount)} of ${formatCount(total)} titles'
+        : '${formatCount(total)} titles';
     return '$countText · sorted by ${_sortMode.label.toLowerCase()}';
   }
 
@@ -345,7 +338,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
     List<int> availableDecades,
   ) {
     return SizedBox(
-      height: 58.du(context),
+      height: _chipHeight.du(context),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
@@ -356,7 +349,11 @@ class _LibraryScreenState extends State<LibraryScreen> {
             collectionsFocusNode: _collectionsModeFocus,
           ),
           SizedBox(width: 22.du(context)),
-          Container(width: 1.du(context), height: 36.du(context), color: AppColors.line),
+          Container(
+            width: 1.du(context),
+            height: 36.du(context),
+            color: AppColors.line,
+          ),
           SizedBox(width: 22.du(context)),
           // The filter-chip cluster scrolls horizontally rather than
           // overflowing — a library with every filter applied plus a long
@@ -374,30 +371,14 @@ class _LibraryScreenState extends State<LibraryScreen> {
               ),
             ),
           ),
-          SizedBox(width: 22.du(context)),
-          SizedBox(
-            width: 260.du(context),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                AppIcon(
-                  PhosphorIconsRegular.magnifyingGlass,
-                  size: 20,
-                  tint: AppColors.ink3,
-                ),
-                SizedBox(width: 12.du(context)),
-                Expanded(
-                  child: ClickToTypeTextField(
-                    value: _searchQuery,
-                    onValueChange: (v) => setState(() => _searchQuery = v),
-                    focusNode: _searchFieldFocus,
-                    hintText: _viewMode == _ViewMode.titles
-                        ? 'Narrow this library'
-                        : 'Narrow collections',
-                  ),
-                ),
-              ],
-            ),
+          SizedBox(width: _blockGap.du(context)),
+          _NarrowField(
+            value: _searchQuery,
+            hintText: _viewMode == _ViewMode.titles
+                ? 'Narrow this library'
+                : 'Narrow collections',
+            focusNode: _searchFieldFocus,
+            onValueChange: (v) => setState(() => _searchQuery = v),
           ),
         ],
       ),
@@ -417,7 +398,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
           focusNode: _genreChipFocus,
           onClick: () => _toggleFilter(_FilterKind.genre),
         ),
-        SizedBox(width: 12.du(context)),
+        SizedBox(width: _blockGap.du(context)),
         _FilterChip(
           key: _decadeChipKey,
           label: 'Decade',
@@ -426,7 +407,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
           focusNode: _decadeChipFocus,
           onClick: () => _toggleFilter(_FilterKind.decade),
         ),
-        SizedBox(width: 12.du(context)),
+        SizedBox(width: _blockGap.du(context)),
         _FilterChip(
           key: _addedChipKey,
           label: 'Added',
@@ -435,7 +416,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
           focusNode: _addedChipFocus,
           onClick: () => _toggleFilter(_FilterKind.added),
         ),
-        SizedBox(width: 12.du(context)),
+        SizedBox(width: _blockGap.du(context)),
       ],
       _FilterChip(
         key: _sortChipKey,
@@ -447,7 +428,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
         onClick: () => _toggleFilter(_FilterKind.sort),
       ),
       if (_viewMode == _ViewMode.titles && anyFilterApplied) ...[
-        SizedBox(width: 12.du(context)),
+        SizedBox(width: _blockGap.du(context)),
         _ClearAllChip(
           focusNode: _clearAllFocus,
           onClick: () => setState(() {
@@ -580,30 +561,25 @@ class _LibraryScreenState extends State<LibraryScreen> {
     if (results.isEmpty) {
       return _buildEmptyResultsState();
     }
-    return _fadingGrid(
+    return PosterGrid(
       controller: _gridScrollController,
-      grid: GridView.builder(
-        controller: _gridScrollController,
-        padding: EdgeInsets.only(bottom: 48.du(context)),
-        clipBehavior: Clip.none,
-        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: _gridColumns,
-          mainAxisSpacing: 24.du(context),
-          crossAxisSpacing: 24.du(context),
-          mainAxisExtent: _posterCardHeight.du(context),
-        ),
-        itemCount: results.length,
-        itemBuilder: (context, index) {
-          final item = results[index];
-          return PosterCard(
-            key: ValueKey('${item.primary.server.machineIdentifier}:${item.primary.value.ratingKey}'),
-            imageUrl: PlexImageUrl.of(item.primary.server, item.primary.value.thumb),
-            title: item.primary.value.title,
-            autofocus: index == 0,
-            onClick: () => widget.onSelectItem(item),
-          );
-        },
-      ),
+      itemCount: results.length,
+      itemBuilder: (context, index) {
+        final item = results[index];
+        return PosterCard(
+          key: ValueKey(
+            '${item.primary.server.machineIdentifier}:${item.primary.value.ratingKey}',
+          ),
+          imageUrl: PlexImageUrl.of(
+            item.primary.server,
+            item.primary.value.thumb,
+          ),
+          title: item.primary.value.title,
+          subtitle: item.primary.value.year?.toString(),
+          autofocus: index == 0,
+          onClick: () => widget.onSelectItem(item),
+        );
+      },
     );
   }
 
@@ -729,7 +705,11 @@ class _LibraryScreenState extends State<LibraryScreen> {
                           _dateAddedFilter = null;
                           _searchQuery = '';
                         }),
-                        child: const AppText('Clear all'),
+                        child: AppText(
+                          'Clear all',
+                          style: AppTypography.caption,
+                          color: null,
+                        ),
                       ),
                   ],
                 ),
@@ -751,34 +731,25 @@ class _LibraryScreenState extends State<LibraryScreen> {
         child: const AppText('No collections found'),
       );
     }
-    return _fadingGrid(
+    return PosterGrid(
       controller: _collectionsScrollController,
-      grid: GridView.builder(
-        controller: _collectionsScrollController,
-        padding: EdgeInsets.only(bottom: 48.du(context)),
-        clipBehavior: Clip.none,
-        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: _gridColumns,
-          mainAxisSpacing: 24.du(context),
-          crossAxisSpacing: 24.du(context),
-          mainAxisExtent: _posterCardHeight.du(context),
-        ),
-        itemCount: results.length,
-        itemBuilder: (context, index) {
-          final collection = results[index];
-          final childCount = collection.value.childCount;
-          return PosterCard(
-            key: ValueKey('${collection.server.machineIdentifier}:${collection.value.ratingKey}'),
-            imageUrl: PlexImageUrl.of(collection.server, collection.value.thumb),
-            title: collection.value.title,
-            subtitle: childCount != null
-                ? '$childCount title${childCount == 1 ? '' : 's'}'
-                : null,
-            autofocus: index == 0,
-            onClick: () => widget.onSelectCollection(collection),
-          );
-        },
-      ),
+      itemCount: results.length,
+      itemBuilder: (context, index) {
+        final collection = results[index];
+        final childCount = collection.value.childCount;
+        return PosterCard(
+          key: ValueKey(
+            '${collection.server.machineIdentifier}:${collection.value.ratingKey}',
+          ),
+          imageUrl: PlexImageUrl.of(collection.server, collection.value.thumb),
+          title: collection.value.title,
+          subtitle: childCount != null
+              ? '$childCount title${childCount == 1 ? '' : 's'}'
+              : null,
+          autofocus: index == 0,
+          onClick: () => widget.onSelectCollection(collection),
+        );
+      },
     );
   }
 }
@@ -795,9 +766,8 @@ SurfaceColors get _segmentColors => SurfaceColors(
   selectedContainer: AppColors.surfaceRaised,
   selectedContent: AppColors.ink,
 );
-SurfaceBorder get _segmentBorder => SurfaceBorder(
-  focused: SurfaceBorderSide.solid(AppColors.accent),
-);
+SurfaceBorder get _segmentBorder =>
+    SurfaceBorder(focused: SurfaceBorderSide.solid(AppColors.accent));
 
 /// The Titles/Collections view switch (screens 17-19: "a view switch...
 /// two options in one segmented control at the head of the filter bar, not
@@ -865,7 +835,7 @@ class _ModeSwitch extends StatelessWidget {
         border: _segmentBorder,
         child: Padding(
           padding: EdgeInsets.symmetric(horizontal: 22.du(context)),
-          child: AppText(label),
+          child: AppText(label, style: AppTypography.caption, color: null),
         ),
       ),
     );
@@ -874,7 +844,7 @@ class _ModeSwitch extends StatelessWidget {
 
 RoundedRectangleBorder _filterChipShape(BuildContext context) =>
     RoundedRectangleBorder(
-      borderRadius: BorderRadius.circular(AppShape.radiusMd.du(context)),
+      borderRadius: BorderRadius.circular(AppShape.radiusSm.du(context)),
     );
 SurfaceColors get _filterChipColors => SurfaceColors(
   container: AppColors.transparent,
@@ -919,7 +889,7 @@ class _FilterChip extends StatelessWidget {
         ? (open || alwaysShowValue ? '$label · $valueLabel' : valueLabel!)
         : label;
     return SizedBox(
-      height: 58.du(context),
+      height: _chipHeight.du(context),
       child: FocusableSurface(
         onClick: onClick,
         selected: applied && !alwaysShowValue,
@@ -932,8 +902,8 @@ class _FilterChip extends StatelessWidget {
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              AppText(text),
-              SizedBox(width: 12.du(context)),
+              AppText(text, style: AppTypography.caption, color: null),
+              SizedBox(width: AppSpacing.md.du(context)),
               AppIcon(
                 open
                     ? PhosphorIconsRegular.caretUp
@@ -958,13 +928,11 @@ class _ClearAllChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      height: 58.du(context),
+      height: _chipHeight.du(context),
       child: FocusableSurface(
         onClick: onClick,
         focusNode: focusNode,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(AppShape.radiusMd.du(context)),
-        ),
+        shape: _filterChipShape(context),
         colors: SurfaceColors(
           container: AppColors.transparent,
           content: AppColors.ink2,
@@ -979,9 +947,99 @@ class _ClearAllChip extends StatelessWidget {
         ),
         child: Padding(
           padding: EdgeInsets.symmetric(horizontal: 20.du(context)),
-          child: const AppText('Clear all'),
+          child: AppText(
+            'Clear all',
+            style: AppTypography.caption,
+            color: null,
+          ),
         ),
       ),
+    );
+  }
+}
+
+/// "Narrow this library" — screen 17 draws it as one more chip at the end
+/// of the filter bar (58 tall, radius 6, 2 du line border, 19 du ink3 text
+/// behind a 20 du glass), not a bare text field; focus is the standard
+/// signal, painted here because the field itself is not a FocusableSurface.
+class _NarrowField extends StatefulWidget {
+  final String value;
+  final String hintText;
+  final FocusNode focusNode;
+  final ValueChanged<String> onValueChange;
+
+  const _NarrowField({
+    required this.value,
+    required this.hintText,
+    required this.focusNode,
+    required this.onValueChange,
+  });
+
+  @override
+  State<_NarrowField> createState() => _NarrowFieldState();
+}
+
+class _NarrowFieldState extends State<_NarrowField> {
+  bool _focused = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final shape = _filterChipShape(context);
+    final field = AnimatedContainer(
+      duration: _focused ? AppMotion.focusEnter : AppMotion.focusExit,
+      curve: _focused ? AppMotion.enter : AppMotion.exit,
+      width: _narrowFieldWidth.du(context),
+      height: _chipHeight.du(context),
+      padding: EdgeInsets.symmetric(horizontal: 20.du(context)),
+      decoration: ShapeDecoration(
+        color: _focused ? AppColors.surfaceRaised : AppColors.transparent,
+        shape: shape.copyWith(
+          side: BorderSide(
+            color: _focused ? AppColors.accent : AppColors.line,
+            width: AppShape.borderWidth.du(context),
+          ),
+        ),
+        shadows: _focused && AppMotion.scaleOnFocus
+            ? AppElevation.raised
+            : AppElevation.surface,
+      ),
+      child: Row(
+        children: [
+          AppIcon(
+            PhosphorIconsRegular.magnifyingGlass,
+            size: 20,
+            tint: _focused ? AppColors.ink : AppColors.ink3,
+          ),
+          SizedBox(width: AppSpacing.md.du(context)),
+          Expanded(
+            child: ClickToTypeTextField(
+              value: widget.value,
+              onValueChange: widget.onValueChange,
+              focusNode: widget.focusNode,
+              hintText: widget.hintText,
+              showBorder: false,
+              textStyle: AppTypography.caption.copyWith(color: AppColors.ink),
+              onFocusChange: (f) => setState(() => _focused = f),
+            ),
+          ),
+        ],
+      ),
+    );
+    return AnimatedScale(
+      scale: _focused && AppMotion.scaleOnFocus
+          ? AppFocusTreatment.focusScale
+          : 1,
+      duration: _focused ? AppMotion.focusEnter : AppMotion.focusExit,
+      child: _focused
+          ? CustomPaint(
+              foregroundPainter: LeadingSpinePainter(
+                shape: shape,
+                color: AppColors.accent,
+                width: AppShape.spineWidth.du(context),
+              ),
+              child: field,
+            )
+          : field,
     );
   }
 }

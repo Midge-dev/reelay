@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:reelay/data/plex/plex_models.dart';
 import 'package:reelay/data/plex/plex_resources_api.dart';
 import 'package:reelay/data/settings/app_settings.dart';
+import 'package:reelay/screens/home/home_hero.dart';
 import 'package:reelay/screens/home/home_posters.dart';
 import 'package:reelay/screens/home/home_screen.dart';
 import 'package:reelay/screens/home/watch_together_bar.dart';
@@ -92,8 +93,7 @@ void main() {
       expect(find.text('Recently Finished Watching'), findsNothing);
       expect(find.text('Recently Added'), findsNothing);
       expect(find.text('Suggestions'), findsNothing);
-      expect(find.text('Continue Watching'), findsOneWidget, reason: 'always shown, even empty');
-      expect(find.text('Nothing in progress right now.'), findsOneWidget);
+      expect(find.text('RESUME'), findsNothing, reason: 'first-run empty: no hero and no message (DESIGN.md)');
     });
 
     testWidgets('only rows with data render, in order', (tester) async {
@@ -113,7 +113,7 @@ void main() {
   });
 
   group('initial-focus priority cascade', () {
-    testWidgets('Watch Together wins over every other row when live', (tester) async {
+    testWidgets('the resume hero wins whenever something is in progress, even with a live room (screen 01)', (tester) async {
       await _pump(
         tester,
         _buildHome(
@@ -123,28 +123,28 @@ void main() {
         ),
       );
 
+      expect(_focusIsWithin(HomeHero), isTrue);
+    });
+
+    testWidgets('Watch Together wins when nothing is in progress', (tester) async {
+      await _pump(
+        tester,
+        _buildHome(liveRooms: [MergedRoom(_relay, _room('a'))], watchlist: [_watchlistItem('1')]),
+      );
+
       expect(_focusIsWithin(WatchTogetherBar), isTrue);
     });
 
-    testWidgets('Watchlist wins when Watch Together is empty', (tester) async {
-      await _pump(
-        tester,
-        _buildHome(watchlist: [_watchlistItem('1')], onDeck: [_onDeckItem('1')]),
-      );
-
-      expect(_focusIsWithin(WatchTogetherBar), isFalse);
-    });
-
-    testWidgets('Continue Watching wins when Watch Together and Watchlist are both empty', (tester) async {
+    testWidgets('Watchlist wins when nothing is in progress and no room is live', (tester) async {
       await _pump(
         tester,
         _buildHome(
-          onDeck: [_onDeckItem('1')],
+          watchlist: [_watchlistItem('1')],
           recentlyAdded: const [PlexLibraryItem(ratingKey: '1', title: 'Arrival', type: 'movie')],
         ),
       );
 
-      expect(_focusIsWithin(WatchTogetherBar), isFalse);
+      expect(_focusIsWithin(WatchlistPoster), isTrue);
     });
   });
 

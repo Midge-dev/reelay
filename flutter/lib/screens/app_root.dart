@@ -291,6 +291,7 @@ class _AppContent extends StatelessWidget {
               returnState: state,
             ),
             onRemove: controller.removeFromWatchlist,
+            accountName: controller.localAccount?.username,
           ),
         ),
       MovieDetail(:final ctx, :final work, :final activeCopy, :final returnState) when ctx.selectedSectionGroup.type == _sectionTypeShow => _drawer(
