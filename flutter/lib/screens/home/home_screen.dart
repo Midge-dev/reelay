@@ -229,6 +229,14 @@ class _HomeScreenState extends State<HomeScreen> {
         widget.suggestions.isNotEmpty;
 
     final watchlistReversed = widget.watchlist.reversed.toList();
+    // Which row sits directly under the hero (see _HomeRow.afterHero).
+    final rowsFilled = [
+      watchlistReversed.isNotEmpty,
+      widget.recentActivity.isNotEmpty,
+      widget.recentlyAdded.isNotEmpty,
+      widget.suggestions.isNotEmpty,
+    ];
+    final firstRow = widget.onDeck.isEmpty ? -1 : rowsFilled.indexOf(true);
 
     final watchTogetherBar = widget.liveRooms.isEmpty
         ? null
@@ -274,6 +282,7 @@ class _HomeScreenState extends State<HomeScreen> {
             _HomeRow<PlexWatchlistItem>(
               title: 'Watchlist',
               items: watchlistReversed,
+              afterHero: firstRow == 0,
               idOf: (entry) => entry.ratingKey,
               itemBuilder: (entry, index) => WatchlistPoster(
                 key: ValueKey(entry.ratingKey),
@@ -288,6 +297,7 @@ class _HomeScreenState extends State<HomeScreen> {
             _HomeRow<FoldedWork<PlexOnDeckItem>>(
               title: 'Recently Finished Watching',
               items: widget.recentActivity,
+              afterHero: firstRow == 1,
               idOf: _workId,
               itemBuilder: (item, index) => PosterCard(
                 key: ValueKey(
@@ -305,6 +315,7 @@ class _HomeScreenState extends State<HomeScreen> {
             _HomeRow<FoldedWork<PlexLibraryItem>>(
               title: 'Recently Added',
               items: widget.recentlyAdded,
+              afterHero: firstRow == 2,
               idOf: _workId,
               itemBuilder: (item, index) => PosterCard(
                 key: ValueKey(
@@ -322,6 +333,7 @@ class _HomeScreenState extends State<HomeScreen> {
             _HomeRow<FoldedWork<PlexOnDeckItem>>(
               title: 'Suggestions',
               items: widget.suggestions,
+              afterHero: firstRow == 3,
               idOf: _workId,
               itemBuilder: (item, index) => PosterCard(
                 key: ValueKey(
@@ -500,6 +512,11 @@ String _workId(FoldedWork<Object> work) {
 class _HomeRow<T> extends StatelessWidget {
   final String title;
   final List<T> items;
+
+  /// The first row under the hero: the hero already leaves its bottom
+  /// margin, so this row adds none of its own above its title — the two
+  /// together doubled the gap.
+  final bool afterHero;
   final String Function(T item) idOf;
   final Widget Function(T item, int index) itemBuilder;
 
@@ -508,6 +525,7 @@ class _HomeRow<T> extends StatelessWidget {
     required this.items,
     required this.idOf,
     required this.itemBuilder,
+    this.afterHero = false,
   });
 
   @override
@@ -521,7 +539,7 @@ class _HomeRow<T> extends StatelessWidget {
           Padding(
             padding: EdgeInsets.only(
               left: AppSpacing.safeX.du(context),
-              top: AppSpacing.xxxl.du(context),
+              top: afterHero ? 0 : AppSpacing.xxxl.du(context),
             ),
             child: AppText(title, style: AppTypography.rowLabel),
           ),

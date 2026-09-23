@@ -9,6 +9,7 @@ import '../../kit/text.dart';
 import '../../state/duplicate_fold.dart';
 import '../../theme/scale.dart';
 import '../../theme/tokens.dart';
+import '../library/poster_card.dart' show posterWidth;
 import '../../theme/typography.dart';
 import '../common/artwork.dart';
 import '../common/remove_confirm_overlay.dart';
@@ -146,7 +147,9 @@ class _WatchlistPosterState extends State<WatchlistPoster> {
       enabled: _confirmingRemove,
       onBack: _closeConfirm,
       child: SizedBox(
-        width: 160.du(context),
+        // The system's 220x330 poster, like every other row — at 160 the
+        // row (sized for 220x330) left a band of empty space under it.
+        width: posterWidth.du(context),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           mainAxisSize: MainAxisSize.min,
@@ -202,7 +205,7 @@ class _WatchlistPosterState extends State<WatchlistPoster> {
               ),
             ),
             Padding(
-              padding: EdgeInsets.only(top: 16.du(context)),
+              padding: EdgeInsets.only(top: 12.du(context)),
               child: AppText(
                 widget.entry.title,
                 maxLines: 1,
