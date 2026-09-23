@@ -332,16 +332,15 @@ class _ShowHero extends StatelessWidget {
         children: [
           Artwork(
             imageUrl: PlexImageUrl.of(server, show.art ?? show.thumb),
-            noiseOpacity: 0.3,
           ),
           // scrim.edge — the ground colour holds solid under the text
           // column and fades away toward the artwork. DESIGN.md #2.
-          const Positioned.fill(
+          Positioned.fill(
             child: DecoratedBox(
               decoration: BoxDecoration(gradient: AppScrims.edge),
             ),
           ),
-          const Positioned.fill(
+          Positioned.fill(
             child: DecoratedBox(
               decoration: BoxDecoration(gradient: AppScrims.bottom),
             ),

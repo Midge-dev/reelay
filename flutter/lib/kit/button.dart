@@ -11,19 +11,31 @@ const _buttonContentPaddingHorizontal = AppSpacing.xxl;
 const _buttonCompactHeight = 52.0;
 const _buttonCompactContentPaddingHorizontal = AppSpacing.lg;
 
-RoundedRectangleBorder _buttonShape(BuildContext context) =>
-    RoundedRectangleBorder(
-      borderRadius: BorderRadius.circular(AppShape.radiusMd.du(context)),
+// The in-bar size (screen 01/11's Watch Together bar: 40 tall, radius 6,
+// 18 padding-x) — the only place a button sits inside another surface's
+// 68 du slot.
+const _buttonDenseHeight = 40.0;
+const _buttonDenseContentPaddingHorizontal = 18.0;
+
+double _heightFor({required bool compact, required bool dense}) =>
+    dense ? _buttonDenseHeight : (compact ? _buttonCompactHeight : _buttonHeight);
+
+double _paddingFor({required bool compact, required bool dense}) => dense
+    ? _buttonDenseContentPaddingHorizontal
+    : (compact ? _buttonCompactContentPaddingHorizontal : _buttonContentPaddingHorizontal);
+
+RoundedRectangleBorder _shapeFor(BuildContext context, {required bool dense}) => RoundedRectangleBorder(
+      borderRadius: BorderRadius.circular((dense ? AppShape.radiusSm : AppShape.radiusMd).du(context)),
     );
 
-final _filledColors = SurfaceColors(
+SurfaceColors get _filledColors => SurfaceColors(
   container: AppColors.surface,
   content: AppColors.ink2,
   focusedContent: AppColors.ink,
   pressedContainer: AppColors.accent900,
   pressedContent: AppColors.ink2,
 );
-final _filledBorder = SurfaceBorder(
+SurfaceBorder get _filledBorder => SurfaceBorder(
   idle: SurfaceBorderSide.solid(AppColors.line),
   focused: SurfaceBorderSide.solid(AppColors.accent),
 );
@@ -34,6 +46,7 @@ class AppButton extends StatelessWidget {
   final VoidCallback onClick;
   final bool enabled;
   final bool compact;
+  final bool dense;
   final FocusNode? focusNode;
   final bool autofocus;
   final ValueChanged<bool>? onFocusChange;
@@ -44,6 +57,7 @@ class AppButton extends StatelessWidget {
     required this.onClick,
     this.enabled = true,
     this.compact = false,
+    this.dense = false,
     this.focusNode,
     this.autofocus = false,
     this.onFocusChange,
@@ -58,17 +72,14 @@ class AppButton extends StatelessWidget {
       focusNode: focusNode,
       autofocus: autofocus,
       onFocusChange: onFocusChange,
-      shape: _buttonShape(context),
+      shape: _shapeFor(context, dense: dense),
       colors: _filledColors,
       border: _filledBorder,
       child: SizedBox(
-        height: (compact ? _buttonCompactHeight : _buttonHeight).du(context),
+        height: _heightFor(compact: compact, dense: dense).du(context),
         child: Padding(
           padding: EdgeInsets.symmetric(
-            horizontal: (compact
-                    ? _buttonCompactContentPaddingHorizontal
-                    : _buttonContentPaddingHorizontal)
-                .du(context),
+            horizontal: _paddingFor(compact: compact, dense: dense).du(context),
           ),
           child: Row(
             mainAxisSize: MainAxisSize.min,
@@ -81,7 +92,7 @@ class AppButton extends StatelessWidget {
   }
 }
 
-final _outlinedColors = SurfaceColors(
+SurfaceColors get _outlinedColors => SurfaceColors(
   container: AppColors.transparent,
   content: AppColors.ink2,
   focusedContainer: AppColors.surfaceRaised,
@@ -89,7 +100,7 @@ final _outlinedColors = SurfaceColors(
   pressedContainer: AppColors.accent900,
   pressedContent: AppColors.ink2,
 );
-final _outlinedBorder = SurfaceBorder(
+SurfaceBorder get _outlinedBorder => SurfaceBorder(
   idle: SurfaceBorderSide.solid(AppColors.lineStrong),
   focused: SurfaceBorderSide.solid(AppColors.accent),
 );
@@ -99,6 +110,7 @@ class AppOutlinedButton extends StatelessWidget {
   final VoidCallback onClick;
   final bool enabled;
   final bool compact;
+  final bool dense;
   final FocusNode? focusNode;
   final bool autofocus;
   final ValueChanged<bool>? onFocusChange;
@@ -109,6 +121,7 @@ class AppOutlinedButton extends StatelessWidget {
     required this.onClick,
     this.enabled = true,
     this.compact = false,
+    this.dense = false,
     this.focusNode,
     this.autofocus = false,
     this.onFocusChange,
@@ -123,23 +136,61 @@ class AppOutlinedButton extends StatelessWidget {
       focusNode: focusNode,
       autofocus: autofocus,
       onFocusChange: onFocusChange,
-      shape: _buttonShape(context),
+      shape: _shapeFor(context, dense: dense),
       colors: _outlinedColors,
       border: _outlinedBorder,
       child: SizedBox(
-        height: (compact ? _buttonCompactHeight : _buttonHeight).du(context),
+        height: _heightFor(compact: compact, dense: dense).du(context),
         child: Padding(
           padding: EdgeInsets.symmetric(
-            horizontal: (compact
-                    ? _buttonCompactContentPaddingHorizontal
-                    : _buttonContentPaddingHorizontal)
-                .du(context),
+            horizontal: _paddingFor(compact: compact, dense: dense).du(context),
           ),
           child: Row(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [child],
           ),
+        ),
+      ),
+    );
+  }
+}
+
+SurfaceColors get _ghostColors => SurfaceColors(
+  container: AppColors.transparent,
+  content: AppColors.accent300,
+  focusedContainer: AppColors.surfaceRaised,
+  focusedContent: AppColors.ink,
+  pressedContainer: AppColors.accent900,
+);
+SurfaceBorder get _ghostBorder => SurfaceBorder(
+  focused: SurfaceBorderSide.solid(AppColors.accent),
+);
+
+/// A borderless text action in accent300 — screen 11's "2 more rooms ›"
+/// segment. No idle border or fill (it reads as a link inside the bar it
+/// sits in); focus is the full signal like every other surface.
+class AppGhostButton extends StatelessWidget {
+  final VoidCallback onClick;
+  final bool dense;
+  final FocusNode? focusNode;
+  final Widget child;
+
+  const AppGhostButton({super.key, required this.onClick, this.dense = false, this.focusNode, required this.child});
+
+  @override
+  Widget build(BuildContext context) {
+    return FocusableSurface(
+      onClick: onClick,
+      focusNode: focusNode,
+      shape: _shapeFor(context, dense: dense),
+      colors: _ghostColors,
+      border: _ghostBorder,
+      child: SizedBox(
+        height: _heightFor(compact: true, dense: dense).du(context),
+        child: Padding(
+          padding: EdgeInsets.symmetric(horizontal: AppSpacing.lg.du(context)),
+          child: Row(mainAxisSize: MainAxisSize.min, children: [child]),
         ),
       ),
     );

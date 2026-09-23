@@ -62,7 +62,7 @@ const _keyGap = AppSpacing.xs;
 RoundedRectangleBorder _keyShape(BuildContext context) => RoundedRectangleBorder(
   borderRadius: BorderRadius.circular(AppShape.radiusSm.du(context)),
 );
-final _keyColors = SurfaceColors(
+SurfaceColors get _keyColors => SurfaceColors(
   container: AppColors.surface,
   content: AppColors.ink2,
   focusedContainer: AppColors.surfaceRaised,
@@ -70,7 +70,7 @@ final _keyColors = SurfaceColors(
 );
 // noSpine — a key is a small, icon-like glyph target (DESIGN.md #3), not a
 // card; a leading spine would read as a sliver on something this square.
-final _keyBorder = SurfaceBorder(
+SurfaceBorder get _keyBorder => SurfaceBorder(
   idle: SurfaceBorderSide.solid(AppColors.line),
   focused: SurfaceBorderSide.solid(AppColors.accent),
   noSpine: true,

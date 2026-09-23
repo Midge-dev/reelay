@@ -12,11 +12,11 @@ import 'tokens.dart';
 class AppTypography {
   AppTypography._();
 
-  static final _ink = AppColors.ink;
+  static Color get _ink => AppColors.ink;
   static const _family = 'Inter';
 
   /// Hero titles.
-  static final display = TextStyle(
+  static TextStyle get display => TextStyle(
     fontFamily: _family,
     fontSize: 62,
     height: 65 / 62,
@@ -26,7 +26,7 @@ class AppTypography {
   );
 
   /// Screen and detail titles.
-  static final title1 = TextStyle(
+  static TextStyle get title1 => TextStyle(
     fontFamily: _family,
     fontSize: 44,
     height: 48 / 44,
@@ -36,7 +36,7 @@ class AppTypography {
   );
 
   /// Dialog titles, settings group headers.
-  static final title2 = TextStyle(
+  static TextStyle get title2 => TextStyle(
     fontFamily: _family,
     fontSize: 30,
     height: 36 / 30,
@@ -45,7 +45,7 @@ class AppTypography {
   );
 
   /// Row headings.
-  static final rowLabel = TextStyle(
+  static TextStyle get rowLabel => TextStyle(
     fontFamily: _family,
     fontSize: 22,
     height: 28 / 22,
@@ -54,7 +54,7 @@ class AppTypography {
   );
 
   /// Synopsis and body copy. Clamp to 3 lines outside a detail page.
-  static final body = TextStyle(
+  static TextStyle get body => TextStyle(
     fontFamily: _family,
     fontSize: 21,
     height: 1.55,
@@ -63,7 +63,7 @@ class AppTypography {
   );
 
   /// Card titles, list rows, button labels. w500 when focused.
-  static final label = TextStyle(
+  static TextStyle get label => TextStyle(
     fontFamily: _family,
     fontSize: 20,
     height: 26 / 20,
@@ -72,7 +72,7 @@ class AppTypography {
   );
 
   /// Metadata and secondary lines.
-  static final caption = TextStyle(
+  static TextStyle get caption => TextStyle(
     fontFamily: _family,
     fontSize: 19,
     height: 24 / 19,
@@ -81,7 +81,7 @@ class AppTypography {
   );
 
   /// Kickers and status. Uppercase, 0.1em tracking.
-  static final micro = TextStyle(
+  static TextStyle get micro => TextStyle(
     fontFamily: _family,
     fontSize: 17,
     height: 22 / 17,

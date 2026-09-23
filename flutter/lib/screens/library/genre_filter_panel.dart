@@ -69,7 +69,7 @@ RoundedRectangleBorder _menuShape(BuildContext context) =>
     RoundedRectangleBorder(
       borderRadius: BorderRadius.circular(AppShape.radiusMd.du(context)),
     );
-final _menuRowColors = SurfaceColors(
+SurfaceColors get _menuRowColors => SurfaceColors(
   container: AppColors.transparent,
   content: AppColors.ink2,
   focusedContainer: AppColors.surfaceRaised,
@@ -77,7 +77,7 @@ final _menuRowColors = SurfaceColors(
   selectedContainer: AppColors.surface,
   selectedContent: AppColors.ink,
 );
-final _menuRowBorder = SurfaceBorder(
+SurfaceBorder get _menuRowBorder => SurfaceBorder(
   focused: SurfaceBorderSide.solid(AppColors.accent),
 );
 

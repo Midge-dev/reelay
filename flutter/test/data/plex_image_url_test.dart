@@ -20,4 +20,26 @@ void main() {
       'http://192.168.1.5:32400/library/metadata/1/thumb?X-Plex-Token=tok123',
     );
   });
+
+  group('sized', () {
+    const local = 'http://192.168.1.5:32400/library/metadata/1/thumb/1690000000?X-Plex-Token=tok123';
+
+    test('routes a tokenised server path through the photo transcoder', () {
+      final uri = Uri.parse(PlexImageUrl.sized(local, width: 448, height: 640));
+      expect(uri.origin, 'http://192.168.1.5:32400');
+      expect(uri.path, '/photo/:/transcode');
+      expect(uri.queryParameters['width'], '448');
+      expect(uri.queryParameters['height'], '640');
+      expect(uri.queryParameters['url'], '/library/metadata/1/thumb/1690000000');
+      expect(uri.queryParameters['X-Plex-Token'], 'tok123');
+    });
+
+    test('leaves external, already-transcoded and unsized URLs alone', () {
+      const cdn = 'https://cdn.example.com/poster.jpg';
+      expect(PlexImageUrl.sized(cdn, width: 448, height: 640), cdn);
+      final once = PlexImageUrl.sized(local, width: 448, height: 640);
+      expect(PlexImageUrl.sized(once, width: 64, height: 64), once);
+      expect(PlexImageUrl.sized(local, width: null, height: 640), local);
+    });
+  });
 }

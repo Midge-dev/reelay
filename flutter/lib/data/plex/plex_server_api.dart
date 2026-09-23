@@ -32,7 +32,7 @@ class PlexServerApi {
   Future<List<PlexSection>> fetchSections() async {
     final json = await _get('${server.baseUrl}/library/sections');
     final all = extractMediaContainerList(json, 'Directory', PlexSection.fromJson);
-    return all.where((s) => s.type == 'movie' || s.type == 'show').toList();
+    return all.where((s) => s.isBrowsable).toList();
   }
 
   Future<List<PlexLibraryItem>> fetchLibraryItems(String sectionKey) async {

@@ -16,13 +16,13 @@ RoundedRectangleBorder _rowShape(BuildContext context) =>
     RoundedRectangleBorder(
       borderRadius: BorderRadius.circular(AppShape.radiusMd.du(context)),
     );
-final _rowColors = SurfaceColors(
+SurfaceColors get _rowColors => SurfaceColors(
   container: AppColors.surface,
   content: AppColors.ink2,
   focusedContainer: AppColors.surfaceRaised,
   focusedContent: AppColors.ink,
 );
-final _rowBorder = SurfaceBorder(
+SurfaceBorder get _rowBorder => SurfaceBorder(
   idle: SurfaceBorderSide.solid(AppColors.line),
   focused: SurfaceBorderSide.solid(AppColors.accent),
 );
@@ -172,7 +172,7 @@ class _UiScaleStepper extends StatelessWidget {
               content: AppColors.ink3,
               focusedContent: AppColors.ink,
             ),
-            child: const AppText('Reset to 100%'),
+            child: AppText('Reset to ${(AppSettings.defaultUiScale * 100).round()}%'),
           ),
         ],
       ],

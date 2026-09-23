@@ -11,7 +11,7 @@ RoundedRectangleBorder _iconButtonShape(BuildContext context) =>
     );
 const _iconButtonSize = 62.0;
 
-final _iconButtonColors = SurfaceColors(
+SurfaceColors get _iconButtonColors => SurfaceColors(
   container: AppColors.transparent,
   content: AppColors.ink2,
   focusedContainer: AppColors.surfaceRaised,
@@ -22,7 +22,7 @@ final _iconButtonColors = SurfaceColors(
 
 /// A spine would eat a quarter of a 62x62 square, so icon-only buttons take
 /// the hairline frame alone — DESIGN.md non-negotiable #3.
-final _defaultIconButtonBorder = SurfaceBorder(
+SurfaceBorder get _defaultIconButtonBorder => SurfaceBorder(
   idle: SurfaceBorderSide.solid(AppColors.lineStrong),
   focused: SurfaceBorderSide.solid(AppColors.accent),
   noSpine: true,

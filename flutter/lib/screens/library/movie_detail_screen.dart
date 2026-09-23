@@ -27,7 +27,7 @@ import 'source_picker_dialog.dart';
 const _heroHeight = 680.0;
 const _posterWidth = 280.0;
 const _posterHeight = 420.0;
-final _restartButtonBorder = SurfaceBorder(
+SurfaceBorder get _restartButtonBorder => SurfaceBorder(
   idle: SurfaceBorderSide.solid(AppColors.line),
   focused: SurfaceBorderSide.solid(AppColors.accent),
 );
@@ -391,16 +391,15 @@ class _MovieHero extends StatelessWidget {
         children: [
           Artwork(
             imageUrl: PlexImageUrl.of(server, movie.art ?? movie.thumb),
-            noiseOpacity: 0.3,
           ),
           // scrim.edge — the ground colour holds solid under the text
           // column and fades away toward the artwork. DESIGN.md #2.
-          const Positioned.fill(
+          Positioned.fill(
             child: DecoratedBox(
               decoration: BoxDecoration(gradient: AppScrims.edge),
             ),
           ),
-          const Positioned.fill(
+          Positioned.fill(
             child: DecoratedBox(
               decoration: BoxDecoration(gradient: AppScrims.bottom),
             ),
@@ -598,7 +597,7 @@ class _MovieHero extends StatelessWidget {
   }
 }
 
-final _sourceChipBorder = SurfaceBorder(
+SurfaceBorder get _sourceChipBorder => SurfaceBorder(
   idle: SurfaceBorderSide.solid(AppColors.line),
   focused: SurfaceBorderSide.solid(AppColors.accent),
 );

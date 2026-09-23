@@ -16,12 +16,12 @@ RoundedRectangleBorder _rowShape(BuildContext context) =>
     RoundedRectangleBorder(
       borderRadius: BorderRadius.all(Radius.circular(8.du(context))),
     );
-final _rowColors = SurfaceColors(
+SurfaceColors get _rowColors => SurfaceColors(
   container: AppColors.background,
   content: AppColors.ink3,
   focusedContent: AppColors.inkOnArt,
 );
-final _rowBorder = SurfaceBorder(
+SurfaceBorder get _rowBorder => SurfaceBorder(
   idle: SurfaceBorderSide.solid(AppColors.line),
   focused: SurfaceBorderSide.solid(AppColors.accent),
 );

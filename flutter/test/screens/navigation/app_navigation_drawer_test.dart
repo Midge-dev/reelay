@@ -29,8 +29,7 @@ void main() {
       tester,
       AppNavigationDrawer(
         sectionGroups: _sections,
-        isSettingsSelected: false,
-        isHomeSelected: true,
+        destination: RailDestination.home,
         onSelectSection: (_) {},
         onOpenSettings: () {},
         onOpenHome: () {},
@@ -60,8 +59,7 @@ void main() {
       tester,
       AppNavigationDrawer(
         sectionGroups: _sections,
-        isSettingsSelected: false,
-        isHomeSelected: true,
+        destination: RailDestination.home,
         onSelectSection: (_) {},
         onOpenSettings: () {},
         onOpenHome: () {},
@@ -91,8 +89,7 @@ void main() {
       tester,
       AppNavigationDrawer(
         sectionGroups: _sections,
-        isSettingsSelected: false,
-        isHomeSelected: true,
+        destination: RailDestination.home,
         onSelectSection: (s) => selected = s,
         onOpenSettings: () {},
         onOpenHome: () {},
@@ -119,8 +116,7 @@ void main() {
       tester,
       AppNavigationDrawer(
         sectionGroups: _sections,
-        isSettingsSelected: false,
-        isHomeSelected: true,
+        destination: RailDestination.home,
         onSelectSection: (_) {},
         onOpenSettings: () => opened = true,
         onOpenHome: () {},

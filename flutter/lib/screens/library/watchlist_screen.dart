@@ -175,7 +175,6 @@ class _WatchlistScreenState extends State<WatchlistScreen> {
               title: item.title,
               subtitle: item.year?.toString(),
               autofocus: index == 0,
-              staggerDelayMs: (index % _gridColumns) * 120,
               onClick: () => widget.onSelectItem(item),
               onLongClick: () => _startRemoval(item),
             );

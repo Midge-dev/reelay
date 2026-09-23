@@ -61,6 +61,15 @@ class _AppRootState extends ConsumerState<AppRoot> {
   bool _showSplash = true;
   final int _splashStartMs = DateTime.now().millisecondsSinceEpoch;
   bool _startedOnce = false;
+  // Screen 12 opens over whatever screen is showing, so its open state
+  // outlives any one screen's drawer.
+  final _roomsPanelOpen = ValueNotifier<bool>(false);
+
+  @override
+  void dispose() {
+    _roomsPanelOpen.dispose();
+    super.dispose();
+  }
 
   @override
   void initState() {
@@ -103,7 +112,7 @@ class _AppRootState extends ConsumerState<AppRoot> {
             duration: _splashCrossfadeDuration,
             child: _showSplash
                 ? const SplashScreen(key: ValueKey('splash'))
-                : KeyedSubtree(key: const ValueKey('content'), child: _AppContent(controller: controller)),
+                : KeyedSubtree(key: const ValueKey('content'), child: _AppContent(controller: controller, roomsPanelOpen: _roomsPanelOpen)),
           );
         },
       ),
@@ -115,8 +124,36 @@ class _AppRootState extends ConsumerState<AppRoot> {
 /// doesn't get lost in the size of the state switch below.
 class _AppContent extends StatelessWidget {
   final AppRootController controller;
+  final ValueNotifier<bool> roomsPanelOpen;
 
-  const _AppContent({required this.controller});
+  const _AppContent({required this.controller, required this.roomsPanelOpen});
+
+  /// The rail item a screen belongs to: its own for a rail destination,
+  /// otherwise whichever destination it was opened from (a detail page
+  /// reached from Home keeps Home lit, not the library its title lives in).
+  static RailDestination _destinationFor(AppState state) => switch (state) {
+        Home() || LoadingHome() => RailDestination.home,
+        Library() || LoadingSection() => RailDestination.section,
+        Search() => RailDestination.search,
+        Watchlist() => RailDestination.watchlist,
+        Settings() => RailDestination.settings,
+        MovieDetail(:final returnState) ||
+        PersonFilmography(:final returnState) ||
+        CollectionDetail(:final returnState) ||
+        EpisodeDetail(:final returnState) =>
+          _destinationFor(returnState),
+        _ => RailDestination.none,
+      };
+
+  RoomsPanelData _roomsData(AppState current, List<ReachableServer> servers) => RoomsPanelData(
+        relays: controller.liveRelays,
+        relayHealth: controller.relayHealth,
+        rooms: controller.liveRooms,
+        myRoomId: controller.myRoomId,
+        hostedRoomIds: controller.hostedRoomIds,
+        onJoin: (room) => controller.joinRoom(current, servers, room),
+        onRetry: controller.retryRelays,
+      );
 
   @override
   Widget build(BuildContext context) {
@@ -159,7 +196,6 @@ class _AppContent extends StatelessWidget {
       Home() => _buildHome(state),
       Library(:final ctx) => _drawer(
           ctx: ctx,
-          isHomeSelected: false,
           child: LibraryScreen(
             servers: ctx.servers,
             selectedSectionGroup: ctx.selectedSectionGroup,
@@ -174,8 +210,7 @@ class _AppContent extends StatelessWidget {
           child: AppNavigationDrawer(
             sectionGroups: sectionGroups,
             selectedSectionGroupKey: selectedSectionGroupKey,
-            isSettingsSelected: false,
-            isHomeSelected: false,
+            destination: RailDestination.section,
             onSelectSection: (_) {},
             onOpenSettings: () {},
             onOpenHome: () {},
@@ -194,8 +229,7 @@ class _AppContent extends StatelessWidget {
       LoadingHome(:final sectionGroups) => AppNavigationDrawer(
           sectionGroups: sectionGroups,
           selectedSectionGroupKey: null,
-          isSettingsSelected: false,
-          isHomeSelected: true,
+          destination: RailDestination.home,
           onSelectSection: (_) {},
           onOpenSettings: () {},
           onOpenHome: () {},
@@ -212,8 +246,6 @@ class _AppContent extends StatelessWidget {
         ),
       Settings(:final ctx, :final returnState, :final relayHint) => _drawer(
           ctx: ctx,
-          isHomeSelected: false,
-          isSettingsSelected: true,
           child: SettingsScreen(
             accountToken: controller.accountTokenOrEmpty,
             clientIdentifier: controller.clientIdentifier,
@@ -231,8 +263,6 @@ class _AppContent extends StatelessWidget {
         ),
       Search(:final ctx, :final returnState) => _drawer(
           ctx: ctx,
-          isHomeSelected: false,
-          isSearchSelected: true,
           child: SearchScreen(
             servers: ctx.servers,
             search: (query) => _fanOutSearch(ctx, query),
@@ -252,7 +282,6 @@ class _AppContent extends StatelessWidget {
         ),
       Watchlist(:final ctx) => _drawer(
           ctx: ctx,
-          isHomeSelected: false,
           child: WatchlistScreen(
             items: controller.watchlist,
             onSelectItem: (entry) => controller.openWatchlistItem(
@@ -266,7 +295,6 @@ class _AppContent extends StatelessWidget {
         ),
       MovieDetail(:final ctx, :final work, :final activeCopy, :final returnState) when ctx.selectedSectionGroup.type == _sectionTypeShow => _drawer(
           ctx: ctx,
-          isHomeSelected: false,
           child: ShowDetailScreen(
             server: activeCopy.server,
             show: activeCopy.value,
@@ -315,7 +343,6 @@ class _AppContent extends StatelessWidget {
         ),
       MovieDetail(:final ctx, :final work, :final activeCopy, :final returnState) => _drawer(
           ctx: ctx,
-          isHomeSelected: false,
           child: MovieDetailScreen(
             server: activeCopy.server,
             movie: activeCopy.value,
@@ -384,7 +411,6 @@ class _AppContent extends StatelessWidget {
         ),
       PersonFilmography(:final ctx, :final server, :final person, :final items, :final returnState) => _drawer(
           ctx: ctx,
-          isHomeSelected: false,
           child: PersonFilmographyScreen(
             server: server,
             personName: person.tag,
@@ -399,7 +425,6 @@ class _AppContent extends StatelessWidget {
         ),
       CollectionDetail(:final ctx, :final collection, :final items, :final returnState) => _drawer(
           ctx: ctx,
-          isHomeSelected: false,
           child: CollectionDetailScreen(
             server: collection.server,
             collection: collection.value,
@@ -413,7 +438,6 @@ class _AppContent extends StatelessWidget {
         ),
       EpisodeDetail(:final ctx, :final activeCopy, :final episode, :final returnState) => _drawer(
           ctx: ctx,
-          isHomeSelected: false,
           child: EpisodeDetailScreen(
             server: activeCopy.server,
             showTitle: activeCopy.value.title,
@@ -524,8 +548,9 @@ class _AppContent extends StatelessWidget {
 
     return AppNavigationDrawer(
       sectionGroups: home.sectionGroups,
-      isSettingsSelected: false,
-      isHomeSelected: true,
+      destination: RailDestination.home,
+      rooms: _roomsData(home, home.servers),
+      roomsPanelOpen: roomsPanelOpen,
       onSelectSection: (group) => controller.openSection(home.servers, home.sectionGroups, group),
       onOpenSettings: () => controller.returnTo(Settings(ctx: emptyCtx(home.sectionGroups.first), returnState: home)),
       onOpenSearch: () => controller.returnTo(Search(ctx: emptyCtx(home.sectionGroups.first), returnState: home)),
@@ -558,7 +583,8 @@ class _AppContent extends StatelessWidget {
         myRoomId: controller.myRoomId,
         hostedRoomIds: controller.hostedRoomIds,
         onEndSession: controller.closeHostedRoom,
-        onSelectRoom: (merged) => controller.joinRoom(home, merged),
+        onSelectRoom: (merged) => controller.joinRoom(home, home.servers, merged),
+        onOpenRooms: () => roomsPanelOpen.value = true,
         onResume: (item) => controller.resumeOnDeckItem(home, item),
         onRemove: (item) => controller.removeFromContinueWatching(home, item),
         onSelectWatchlistItem: (entry) => controller.selectWatchlistItem(home, entry),
@@ -588,17 +614,15 @@ class _AppContent extends StatelessWidget {
 
   Widget _drawer({
     required LibraryContext ctx,
-    required bool isHomeSelected,
-    bool isSettingsSelected = false,
-    bool isSearchSelected = false,
     required Widget child,
   }) {
+    final state = controller.state;
     return AppNavigationDrawer(
       sectionGroups: ctx.sectionGroups,
       selectedSectionGroupKey: ctx.selectedSectionGroup.key,
-      isSettingsSelected: isSettingsSelected,
-      isHomeSelected: isHomeSelected,
-      isSearchSelected: isSearchSelected,
+      destination: _destinationFor(state),
+      rooms: _roomsData(state, ctx.servers),
+      roomsPanelOpen: roomsPanelOpen,
       onSelectSection: (group) => controller.selectSection(ctx, group),
       onOpenSettings: () => controller.returnTo(Settings(ctx: ctx, returnState: Library(ctx: ctx))),
       onOpenHome: () => controller.goHome(ctx.servers, ctx.sectionGroups),

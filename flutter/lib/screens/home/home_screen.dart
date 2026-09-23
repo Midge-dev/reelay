@@ -18,7 +18,6 @@ import 'home_posters.dart';
 import 'watch_together_bar.dart';
 import 'watch_together_row.dart' show MergedRoom;
 
-const _rowStaggerPeriod = 6;
 const _watchTogetherFocusQuietMs = 1200;
 const _watchTogetherScrollDurationMs = 1100;
 
@@ -43,6 +42,7 @@ class HomeScreen extends StatefulWidget {
   final Set<String> hostedRoomIds;
   final Future<bool> Function(MergedRoom) onEndSession;
   final ValueChanged<MergedRoom> onSelectRoom;
+  final VoidCallback onOpenRooms;
   final ValueChanged<FoldedWork<PlexOnDeckItem>> onResume;
   final ValueChanged<FoldedWork<PlexOnDeckItem>> onRemove;
   final ValueChanged<PlexWatchlistItem> onSelectWatchlistItem;
@@ -66,6 +66,7 @@ class HomeScreen extends StatefulWidget {
     this.hostedRoomIds = const {},
     required this.onEndSession,
     required this.onSelectRoom,
+    required this.onOpenRooms,
     required this.onResume,
     required this.onRemove,
     required this.onSelectWatchlistItem,
@@ -236,6 +237,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 hostedRoomIds: widget.hostedRoomIds,
                 onEndSession: widget.onEndSession,
                 onSelectRoom: widget.onSelectRoom,
+                onMoreRooms: widget.onOpenRooms,
                 focusNode: _watchTogetherRowFocus,
                 autofocus: watchTogetherGetsFocus,
               ),
@@ -251,7 +253,6 @@ class _HomeScreenState extends State<HomeScreen> {
               onRemove: () => widget.onRemoveFromWatchlist(entry),
               focusNode: index == 0 ? _watchlistRowFocus : null,
               autofocus: index == 0 && watchlistGetsFocus,
-              staggerDelayMs: (index % _rowStaggerPeriod) * 120,
             ),
           ),
           _HomeRow<FoldedWork<PlexOnDeckItem>>(
@@ -263,7 +264,6 @@ class _HomeScreenState extends State<HomeScreen> {
               title: continueWatchingLabel(item.primary.value),
               onClick: () => widget.onSelectRecentActivity(item),
               autofocus: index == 0 && recentActivityGetsFocus,
-              staggerDelayMs: (index % _rowStaggerPeriod) * 120,
             ),
           ),
           _HomeRow<FoldedWork<PlexLibraryItem>>(
@@ -275,7 +275,6 @@ class _HomeScreenState extends State<HomeScreen> {
               title: recentlyAddedLabel(item.primary.value),
               onClick: () => widget.onSelectRecentlyAdded(item),
               autofocus: index == 0 && recentlyAddedGetsFocus,
-              staggerDelayMs: (index % _rowStaggerPeriod) * 120,
             ),
           ),
           _HomeRow<FoldedWork<PlexOnDeckItem>>(
@@ -287,7 +286,6 @@ class _HomeScreenState extends State<HomeScreen> {
               title: continueWatchingLabel(item.primary.value),
               onClick: () => widget.onSelectSuggestion(item),
               autofocus: index == 0 && suggestionsGetsFocus,
-              staggerDelayMs: (index % _rowStaggerPeriod) * 120,
             ),
           ),
         ],
@@ -431,7 +429,6 @@ class _HomeScreenState extends State<HomeScreen> {
                           focusNode: index == 0
                               ? _continueWatchingRowFocus
                               : null,
-                          staggerDelayMs: (index % _rowStaggerPeriod) * 120,
                         );
                       },
                     ),

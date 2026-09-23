@@ -79,12 +79,6 @@ flutter:
   assets:
     - assets/images/logo_mark.png
     - assets/images/logo_wordmark.png
-    - assets/images/static_noise_1.jpg
-    - assets/images/static_noise_2.jpg
-    - assets/images/static_noise_3.jpg
-    - assets/images/static_noise_4.jpg
-    - assets/images/static_noise_5.jpg
-    - assets/images/static_noise_6.jpg
 
   fonts:
     # DESIGN.md's type family. A single variable font (weight axis covers

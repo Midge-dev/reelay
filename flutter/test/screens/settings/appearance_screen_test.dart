@@ -97,22 +97,22 @@ void main() {
 
     testWidgets('tapping + steps up by one increment', (tester) async {
       double? selected;
-      await _pump(tester, uiScale: 1.0, onSelectUiScale: (v) => selected = v);
+      await _pump(tester, uiScale: 1.2, onSelectUiScale: (v) => selected = v);
 
       await tester.tap(find.byIcon(PhosphorIconsRegular.plus));
       await tester.pump();
 
-      expect(selected, closeTo(1.0 + AppSettings.uiScaleStep, 0.001));
+      expect(selected, closeTo(1.2 + AppSettings.uiScaleStep, 0.001));
     });
 
     testWidgets('tapping - steps down by one increment', (tester) async {
       double? selected;
-      await _pump(tester, uiScale: 1.0, onSelectUiScale: (v) => selected = v);
+      await _pump(tester, uiScale: 1.2, onSelectUiScale: (v) => selected = v);
 
       await tester.tap(find.byIcon(PhosphorIconsRegular.minus));
       await tester.pump();
 
-      expect(selected, closeTo(1.0 - AppSettings.uiScaleStep, 0.001));
+      expect(selected, closeTo(1.2 - AppSettings.uiScaleStep, 0.001));
     });
 
     testWidgets('- is disabled at the minimum', (tester) async {
@@ -146,14 +146,14 @@ void main() {
     testWidgets('no reset shortcut shown at the default scale', (tester) async {
       await _pump(tester, uiScale: AppSettings.defaultUiScale);
 
-      expect(find.text('Reset to 100%'), findsNothing);
+      expect(find.textContaining('Reset to'), findsNothing);
     });
 
-    testWidgets('tapping the reset shortcut returns to 100%', (tester) async {
+    testWidgets('tapping the reset shortcut returns to the default scale', (tester) async {
       double? selected;
-      await _pump(tester, uiScale: 1.3, onSelectUiScale: (v) => selected = v);
+      await _pump(tester, uiScale: AppSettings.maxUiScale, onSelectUiScale: (v) => selected = v);
 
-      await tester.tap(find.text('Reset to 100%'));
+      await tester.tap(find.text('Reset to ${(AppSettings.defaultUiScale * 100).round()}%'));
       await tester.pump();
 
       expect(selected, AppSettings.defaultUiScale);

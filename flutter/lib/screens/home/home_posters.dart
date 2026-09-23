@@ -78,7 +78,6 @@ class WatchlistPoster extends StatefulWidget {
   final VoidCallback onRemove;
   final FocusNode? focusNode;
   final bool autofocus;
-  final int staggerDelayMs;
 
   const WatchlistPoster({
     super.key,
@@ -88,7 +87,6 @@ class WatchlistPoster extends StatefulWidget {
     required this.onRemove,
     this.focusNode,
     this.autofocus = false,
-    this.staggerDelayMs = 0,
   });
 
   @override
@@ -181,7 +179,6 @@ class _WatchlistPosterState extends State<WatchlistPoster> {
                               widget.server,
                               widget.entry.thumb,
                             ),
-                            staggerDelayMs: widget.staggerDelayMs,
                           ),
                           if (_confirmingRemove)
                             RemoveConfirmOverlay(
@@ -225,7 +222,6 @@ class ContinueWatchingPoster extends StatefulWidget {
   final VoidCallback onRemove;
   final FocusNode? focusNode;
   final bool autofocus;
-  final int staggerDelayMs;
 
   const ContinueWatchingPoster({
     super.key,
@@ -234,7 +230,6 @@ class ContinueWatchingPoster extends StatefulWidget {
     required this.onRemove,
     this.focusNode,
     this.autofocus = false,
-    this.staggerDelayMs = 0,
   });
 
   @override
@@ -348,7 +343,6 @@ class _ContinueWatchingPosterState extends State<ContinueWatchingPoster> {
                                 active.server,
                                 value.thumb,
                               ),
-                              staggerDelayMs: widget.staggerDelayMs,
                             ),
                             if (_focused &&
                                 !_confirmingRemove &&

@@ -149,13 +149,13 @@ RoundedRectangleBorder _rowShape(BuildContext context) =>
     RoundedRectangleBorder(
       borderRadius: BorderRadius.all(Radius.circular(8.du(context))),
     );
-final _rowColors = SurfaceColors(
+SurfaceColors get _rowColors => SurfaceColors(
   container: AppColors.transparent,
   content: AppColors.inkOnArt,
   focusedContainer: AppColors.accent,
   selectedContainer: AppColors.accent.withValues(alpha: 0.35),
 );
-final _rowBorder = SurfaceBorder(
+SurfaceBorder get _rowBorder => SurfaceBorder(
   focused: SurfaceBorderSide.solid(AppColors.accent),
 );
 

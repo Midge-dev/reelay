@@ -38,10 +38,11 @@ List<SectionGroup> groupSections(Map<String, List<PlexSection>> sectionsByServer
   final order = <String>[];
   for (final entry in sectionsByServerId.entries) {
     for (final section in entry.value) {
-      final key = '${section.type}::${section.title.toLowerCase()}';
+      final title = normalizeLibraryTitle(section.title);
+      final key = '${section.type}::${title.toLowerCase()}';
       final existing = groups[key];
       if (existing == null) {
-        groups[key] = SectionGroup(type: section.type, title: section.title, sectionsByServerId: {entry.key: section});
+        groups[key] = SectionGroup(type: section.type, title: title, sectionsByServerId: {entry.key: section});
         order.add(key);
       } else {
         groups[key] = SectionGroup(
@@ -53,6 +54,24 @@ List<SectionGroup> groupSections(Map<String, List<PlexSection>> sectionsByServer
     }
   }
   return [for (final k in order) groups[k]!];
+}
+
+final _tvPrefix = RegExp(r'^tv\s+(shows|series)$', caseSensitive: false);
+
+/// The rail label for a server library: its own name, trimmed and with
+/// runs of whitespace collapsed, minus Plex's default "TV " prefix — "TV
+/// Shows" is Plex's stock name for a show library and reads as "Shows"
+/// beside the other one-word destinations (the design's own rail labels are
+/// all a single word). Anything else the owner named is left as they wrote
+/// it.
+String normalizeLibraryTitle(String raw) {
+  final title = raw.trim().replaceAll(RegExp(r'\s+'), ' ');
+  final tv = _tvPrefix.firstMatch(title);
+  if (tv != null) {
+    final rest = tv.group(1)!;
+    return rest[0].toUpperCase() + rest.substring(1).toLowerCase();
+  }
+  return title;
 }
 
 /// Ports MainActivity.kt's private `LibraryContext` data class — the

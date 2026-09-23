@@ -47,6 +47,7 @@ PlexSection _$PlexSectionFromJson(Map<String, dynamic> json) => PlexSection(
   key: json['key'] as String,
   title: json['title'] as String,
   type: json['type'] as String? ?? '',
+  agent: json['agent'] as String? ?? '',
 );
 
 Map<String, dynamic> _$PlexSectionToJson(PlexSection instance) =>
@@ -54,6 +55,7 @@ Map<String, dynamic> _$PlexSectionToJson(PlexSection instance) =>
       'key': instance.key,
       'title': instance.title,
       'type': instance.type,
+      'agent': instance.agent,
     };
 
 PlexTag _$PlexTagFromJson(Map<String, dynamic> json) =>

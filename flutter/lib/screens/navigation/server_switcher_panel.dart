@@ -306,7 +306,7 @@ class _ServerSwitcherPanelState extends State<ServerSwitcherPanel> {
   }
 }
 
-final _rowBorder = SurfaceBorder(
+SurfaceBorder get _rowBorder => SurfaceBorder(
   idle: SurfaceBorderSide.solid(AppColors.line),
   focused: SurfaceBorderSide.solid(AppColors.accent),
 );

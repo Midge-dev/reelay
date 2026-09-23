@@ -12,14 +12,14 @@ RoundedRectangleBorder _listItemShape(BuildContext context) =>
 const _listItemHeight = 96.0;
 const _listItemPaddingHorizontal = AppSpacing.xl;
 
-final _listItemColors = SurfaceColors(
+SurfaceColors get _listItemColors => SurfaceColors(
   container: AppColors.surface,
   content: AppColors.ink2,
   focusedContainer: AppColors.surfaceRaised,
   focusedContent: AppColors.ink,
   selectedContent: AppColors.ink,
 );
-final _listItemBorder = SurfaceBorder(
+SurfaceBorder get _listItemBorder => SurfaceBorder(
   idle: SurfaceBorderSide.solid(AppColors.line),
   focused: SurfaceBorderSide.solid(AppColors.accent),
 );

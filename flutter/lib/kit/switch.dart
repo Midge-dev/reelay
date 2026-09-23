@@ -13,7 +13,7 @@ const _thumbInset = 4.0;
 
 /// Too small for a leading spine, so focus is the border alone stepping to
 /// accent — the track's own fill already carries on/off state.
-final _switchBorder = SurfaceBorder(
+SurfaceBorder get _switchBorder => SurfaceBorder(
   idle: SurfaceBorderSide.solid(AppColors.line),
   focused: SurfaceBorderSide.solid(AppColors.accent),
   noSpine: true,

@@ -64,7 +64,17 @@ class PlexSection {
   final String title;
   final String type;
 
-  const PlexSection({required this.key, required this.title, this.type = ''});
+  /// The library's metadata agent. Plex's "Other Videos"/home-video
+  /// libraries use a `*.agents.none` agent — no matching, no posters, no
+  /// ids to fold on — which is how [isBrowsable] tells them apart from a
+  /// real Movies/Shows library without guessing from the title.
+  final String agent;
+
+  const PlexSection({required this.key, required this.title, this.type = '', this.agent = ''});
+
+  /// A movie or show library with a real metadata agent — the only kind
+  /// the rail and home rows surface.
+  bool get isBrowsable => (type == 'movie' || type == 'show') && !agent.endsWith('.none');
 
   factory PlexSection.fromJson(Map<String, dynamic> json) => _$PlexSectionFromJson(json);
   Map<String, dynamic> toJson() => _$PlexSectionToJson(this);

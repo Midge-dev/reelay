@@ -10,12 +10,12 @@ RoundedRectangleBorder _cardShape(BuildContext context) => RoundedRectangleBorde
   borderRadius: BorderRadius.circular(AppShape.radiusMd.du(context)),
 );
 
-final _cardColors = SurfaceColors(
+SurfaceColors get _cardColors => SurfaceColors(
   container: AppColors.surface,
   content: AppColors.ink2,
   focusedContent: AppColors.ink,
 );
-final _cardBorder = SurfaceBorder(
+SurfaceBorder get _cardBorder => SurfaceBorder(
   idle: SurfaceBorderSide.solid(AppColors.line),
   focused: SurfaceBorderSide.solid(AppColors.accent),
 );

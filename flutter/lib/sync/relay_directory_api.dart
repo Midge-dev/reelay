@@ -12,6 +12,21 @@ class RelayDirectoryApi {
     receiveTimeout: const Duration(milliseconds: _ambientTimeoutMs),
   ));
 
+  /// [listRooms], but null when the relay did not answer — the rooms panel
+  /// (screen 12) has to tell "no rooms here" apart from "this relay is
+  /// down", which an empty list cannot.
+  Future<List<RelayRoomSummary>?> tryListRooms(String relayUrl) async {
+    final url = relayHttpUrl(relayUrl);
+    if (url == null) return null;
+    final fullUrl = '${url.base}/rooms${url.query != null ? '?${url.query}' : ''}';
+    try {
+      final response = await _client.get<List<dynamic>>(fullUrl);
+      return (response.data ?? const []).map((e) => RelayRoomSummary.fromJson(e as Map<String, dynamic>)).toList();
+    } catch (_) {
+      return null;
+    }
+  }
+
   Future<List<RelayRoomSummary>> listRooms(String relayUrl) async {
     final url = relayHttpUrl(relayUrl);
     if (url == null) return const [];

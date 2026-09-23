@@ -600,7 +600,6 @@ class _LibraryScreenState extends State<LibraryScreen> {
             imageUrl: PlexImageUrl.of(item.primary.server, item.primary.value.thumb),
             title: item.primary.value.title,
             autofocus: index == 0,
-            staggerDelayMs: (index % _gridColumns) * 120,
             onClick: () => widget.onSelectItem(item),
           );
         },
@@ -788,7 +787,7 @@ RoundedRectangleBorder _segmentShape(BuildContext context) =>
     RoundedRectangleBorder(
       borderRadius: BorderRadius.circular(AppShape.radiusSm.du(context)),
     );
-final _segmentColors = SurfaceColors(
+SurfaceColors get _segmentColors => SurfaceColors(
   container: AppColors.transparent,
   content: AppColors.ink3,
   focusedContainer: AppColors.surfaceRaised,
@@ -796,7 +795,7 @@ final _segmentColors = SurfaceColors(
   selectedContainer: AppColors.surfaceRaised,
   selectedContent: AppColors.ink,
 );
-final _segmentBorder = SurfaceBorder(
+SurfaceBorder get _segmentBorder => SurfaceBorder(
   focused: SurfaceBorderSide.solid(AppColors.accent),
 );
 
@@ -877,7 +876,7 @@ RoundedRectangleBorder _filterChipShape(BuildContext context) =>
     RoundedRectangleBorder(
       borderRadius: BorderRadius.circular(AppShape.radiusMd.du(context)),
     );
-final _filterChipColors = SurfaceColors(
+SurfaceColors get _filterChipColors => SurfaceColors(
   container: AppColors.transparent,
   content: AppColors.ink2,
   focusedContainer: AppColors.surfaceRaised,
@@ -885,7 +884,7 @@ final _filterChipColors = SurfaceColors(
   selectedContainer: AppColors.accent900,
   selectedContent: AppColors.accent300,
 );
-final _filterChipBorder = SurfaceBorder(
+SurfaceBorder get _filterChipBorder => SurfaceBorder(
   idle: SurfaceBorderSide.solid(AppColors.line),
   focused: SurfaceBorderSide.solid(AppColors.accent),
 );

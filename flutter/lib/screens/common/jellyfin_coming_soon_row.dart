@@ -9,7 +9,7 @@ import '../../theme/tokens.dart';
 import '../../theme/typography.dart';
 
 const _rowMinHeight = 96.0;
-final _badgeBorder = Border.fromBorderSide(
+Border get _badgeBorder => Border.fromBorderSide(
   BorderSide(color: AppColors.warning),
 );
 

@@ -90,10 +90,11 @@ class AppSettings {
   // reporting the same 1920x1080 logical surface as a 32" one renders
   // identically at factor 1.0 even though it reads much smaller from a
   // couch — this is the manual compensation for that, not a replacement
-  // for it.
-  static const defaultUiScale = 1.0;
-  static const minUiScale = 0.75;
-  static const maxUiScale = 2.0;
+  // for it. Range kept at 100-150% (never below the base design size) with
+  // 130% the default, per user preference after trying the full range.
+  static const defaultUiScale = 1.3;
+  static const minUiScale = 1.0;
+  static const maxUiScale = 1.5;
   static const uiScaleStep = 0.05;
 
   static const bitratePresets = [

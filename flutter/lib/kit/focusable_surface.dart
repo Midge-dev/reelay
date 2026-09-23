@@ -145,6 +145,7 @@ class _FocusableSurfaceState extends State<FocusableSurface> {
     final SurfaceBorderSide? activeBorderSide;
     final bool showSpine;
     final Color spineColor;
+    var spineWidth = AppShape.spineWidth;
     final double targetScale;
     final List<BoxShadow> shadows;
 
@@ -185,8 +186,9 @@ class _FocusableSurfaceState extends State<FocusableSurface> {
       containerColor = colors.selectedContainer;
       contentColor = colors.selectedContent;
       activeBorderSide = border.idle;
-      showSpine = !border.noSpine;
-      spineColor = AppFocusTreatment.selectedSpineColor;
+      showSpine = !border.noSpine || border.selectedSpine != null;
+      spineColor = border.selectedSpine?.color ?? AppFocusTreatment.selectedSpineColor;
+      spineWidth = border.selectedSpine?.width ?? AppShape.spineWidth;
       targetScale = 1.0;
       shadows = const [];
     } else {
@@ -228,7 +230,7 @@ class _FocusableSurfaceState extends State<FocusableSurface> {
 
     if (showSpine) {
       surface = TweenAnimationBuilder<double>(
-        tween: Tween(begin: 0, end: AppShape.spineWidth.du(context)),
+        tween: Tween(begin: 0, end: spineWidth.du(context)),
         duration: AppMotion.focusSpineWipe,
         curve: AppMotion.enter,
         builder: (context, width, child) => CustomPaint(

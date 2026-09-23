@@ -1,7 +1,10 @@
 import 'package:flutter/widgets.dart';
 
 import '../../kit/button.dart';
+import '../../kit/focusable_surface.dart' show LeadingSpinePainter;
+import '../../kit/icon.dart';
 import '../../kit/text.dart';
+import '../../theme/phosphor_icons.dart';
 import '../../theme/scale.dart';
 import '../../theme/tokens.dart';
 import '../../theme/typography.dart';
@@ -29,6 +32,9 @@ class WatchTogetherBar extends StatefulWidget {
   final Set<String> hostedRoomIds;
   final Future<bool> Function(MergedRoom) onEndSession;
   final ValueChanged<MergedRoom> onSelectRoom;
+
+  /// Screen 11's trailing "N more rooms ›" — opens the rooms panel (12).
+  final VoidCallback onMoreRooms;
   final FocusNode? focusNode;
   final bool autofocus;
 
@@ -39,6 +45,7 @@ class WatchTogetherBar extends StatefulWidget {
     this.hostedRoomIds = const {},
     required this.onEndSession,
     required this.onSelectRoom,
+    required this.onMoreRooms,
     this.focusNode,
     this.autofocus = false,
   });
@@ -109,92 +116,131 @@ class _WatchTogetherBarState extends State<WatchTogetherBar> {
       subline = '${room.occupants} of ${room.maxSeats} seats · ${room.title}';
     }
 
+    Widget divider() => Container(
+      width: 1.du(context),
+      height: 32.du(context),
+      color: AppColors.line,
+    );
+
+    // Screens 01/11: fit-content, not full width — a 4px semantic spine
+    // plus words (DESIGN.md #9), 14/22 padding around a 40 du button, so
+    // the whole slot is 68 du.
     return Stack(
       clipBehavior: Clip.none,
       children: [
-        Container(
-          height: _barHeight.du(context),
-          width: double.infinity,
-          padding: EdgeInsets.symmetric(horizontal: AppSpacing.xl.du(context)),
-          decoration: BoxDecoration(
-            color: isSeated ? AppColors.surfaceRaised : AppColors.surface,
-            borderRadius: BorderRadius.circular(AppShape.radiusMd.du(context)),
-            border: Border.all(
-              color: isSeated ? AppColors.accent : AppColors.line,
-              width: (isSeated ? AppShape.borderWidth : 1).du(context),
+        Align(
+          alignment: AlignmentDirectional.centerStart,
+          child: CustomPaint(
+            foregroundPainter: LeadingSpinePainter(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(
+                  AppShape.radiusMd.du(context),
+                ),
+              ),
+              color: spineColor,
+              width: AppSpacing.xs.du(context),
             ),
-          ),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              Container(
-                width: AppShape.spineWidth.du(context),
-                height: 32.du(context),
-                decoration: BoxDecoration(
-                  color: spineColor,
-                  borderRadius: BorderRadius.circular(3.du(context)),
+            child: Container(
+              height: _barHeight.du(context),
+              padding: EdgeInsetsDirectional.only(
+                start: 22.du(context),
+                end: 22.du(context),
+              ),
+              decoration: BoxDecoration(
+                color: isSeated ? AppColors.surfaceRaised : AppColors.surface,
+                borderRadius: BorderRadius.circular(
+                  AppShape.radiusMd.du(context),
+                ),
+                border: Border.all(
+                  color: isSeated ? AppColors.accent : AppColors.line,
+                  width: (isSeated ? AppShape.borderWidth : 1).du(context),
                 ),
               ),
-              SizedBox(width: AppSpacing.lg.du(context)),
-              AppText(
-                headline,
-                style: AppTypography.label.copyWith(
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-              SizedBox(width: AppSpacing.md.du(context)),
-              Flexible(
-                child: AppText(
-                  subline,
-                  color: AppColors.ink3,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-              SizedBox(width: AppSpacing.lg.du(context)),
-              if (isHosting && _endFailed)
-                AppText("Can't reach relay", color: AppColors.ink3)
-              else if (isHosting) ...[
-                AppOutlinedButton(
-                  compact: true,
-                  onClick: () => widget.onSelectRoom(selected),
-                  focusNode: widget.focusNode,
-                  autofocus: widget.autofocus,
-                  child: const AppText('Go back in'),
-                ),
-                SizedBox(width: AppSpacing.md.du(context)),
-                Container(width: 1.du(context), height: 24.du(context), color: AppColors.lineStrong),
-                SizedBox(width: AppSpacing.md.du(context)),
-                // Never the first focus target — a D-pad slip must not be
-                // able to close a room full of people.
-                AppOutlinedButton(
-                  compact: true,
-                  onClick: _openEndConfirm,
-                  child: const AppText('End'),
-                ),
-              ] else
-                AppOutlinedButton(
-                  compact: true,
-                  enabled: room.occupants < room.maxSeats || isSeated,
-                  onClick: () => widget.onSelectRoom(selected),
-                  focusNode: widget.focusNode,
-                  autofocus: widget.autofocus,
-                  child: AppText(
-                    isSeated
-                        ? 'Go back in'
-                        : (room.occupants >= room.maxSeats ? 'Full' : 'Join'),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  Container(
+                    width: AppSpacing.sm.du(context),
+                    height: AppSpacing.sm.du(context),
+                    decoration: BoxDecoration(
+                      color: spineColor,
+                      shape: BoxShape.circle,
+                    ),
                   ),
-                ),
-              if (moreCount > 0) ...[
-                SizedBox(width: AppSpacing.md.du(context)),
-                Container(width: 1.du(context), height: 24.du(context), color: AppColors.lineStrong),
-                SizedBox(width: AppSpacing.md.du(context)),
-                AppText(
-                  '$moreCount more room${moreCount == 1 ? '' : 's'}',
-                  color: AppColors.accent300,
-                ),
-              ],
-            ],
+                  SizedBox(width: AppSpacing.lg.du(context)),
+                  AppText(headline, style: AppTypography.label),
+                  SizedBox(width: AppSpacing.lg.du(context)),
+                  Flexible(
+                    child: AppText(
+                      subline,
+                      style: AppTypography.label,
+                      color: AppColors.ink3,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  SizedBox(width: AppSpacing.lg.du(context)),
+                  if (isHosting && _endFailed)
+                    AppText("Can't reach relay", color: AppColors.ink3)
+                  else if (isHosting) ...[
+                    AppOutlinedButton(
+                      dense: true,
+                      onClick: () => widget.onSelectRoom(selected),
+                      focusNode: widget.focusNode,
+                      autofocus: widget.autofocus,
+                      child: const AppText('Go back in'),
+                    ),
+                    SizedBox(width: AppSpacing.lg.du(context)),
+                    divider(),
+                    SizedBox(width: AppSpacing.lg.du(context)),
+                    // Never the first focus target — a D-pad slip must not be
+                    // able to close a room full of people.
+                    AppOutlinedButton(
+                      dense: true,
+                      onClick: _openEndConfirm,
+                      child: const AppText('End'),
+                    ),
+                  ] else
+                    AppOutlinedButton(
+                      dense: true,
+                      enabled: room.occupants < room.maxSeats || isSeated,
+                      onClick: () => widget.onSelectRoom(selected),
+                      focusNode: widget.focusNode,
+                      autofocus: widget.autofocus,
+                      child: AppText(
+                        isSeated
+                            ? 'Go back in'
+                            : (room.occupants >= room.maxSeats
+                                  ? 'Full'
+                                  : 'Join'),
+                      ),
+                    ),
+                  if (moreCount > 0) ...[
+                    SizedBox(width: AppSpacing.lg.du(context)),
+                    divider(),
+                    SizedBox(width: AppSpacing.lg.du(context)),
+                    AppGhostButton(
+                      dense: true,
+                      onClick: widget.onMoreRooms,
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          AppText(
+                            '$moreCount more room${moreCount == 1 ? '' : 's'}',
+                          ),
+                          SizedBox(width: AppSpacing.sm.du(context)),
+                          const AppIcon(
+                            PhosphorIconsRegular.caretRight,
+                            size: 17,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
           ),
         ),
         if (_confirmingEnd)
@@ -233,7 +279,9 @@ class _EndSessionConfirm extends StatelessWidget {
               padding: EdgeInsets.all(AppSpacing.xxl.du(context)),
               decoration: BoxDecoration(
                 color: AppColors.surfaceOverlay,
-                borderRadius: BorderRadius.circular(AppShape.radiusLg.du(context)),
+                borderRadius: BorderRadius.circular(
+                  AppShape.radiusLg.du(context),
+                ),
                 border: Border.all(color: AppColors.lineStrong),
                 boxShadow: AppElevation.overlay,
               ),

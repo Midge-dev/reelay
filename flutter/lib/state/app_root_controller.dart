@@ -119,6 +119,21 @@ class AppRootController extends ChangeNotifier {
   String? _myRoomId;
   String? get myRoomId => _myRoomId;
 
+  Map<String, RelayHealth> _relayHealth = {};
+
+  /// Every configured relay (deduped by URL, same as polling), in settings
+  /// order — the rooms panel lists an unreachable relay's group even though
+  /// it contributes no rooms.
+  List<RelayEntry> get liveRelays => _liveRelaysById.values.toList();
+
+  /// Last poll result per relay id; absent until the first answer (or
+  /// failure) comes back.
+  Map<String, RelayHealth> get relayHealth => _relayHealth;
+
+  /// "Retry now" on screen 12 — hurries the next poll rather than waiting
+  /// for the timer.
+  void retryRelays() => unawaited(_pollRooms());
+
   List<MergedRoom> get liveRooms => [
         for (final entry in _liveRoomsByRelay.entries)
           if (_liveRelaysById[entry.key] != null)
@@ -446,6 +461,7 @@ class AppRootController extends ChangeNotifier {
     _roomPollTimer?.cancel();
     _roomPollTimer = null;
     _liveRoomsByRelay = {};
+    _relayHealth = {};
   }
 
   Future<void> _pollRooms() async {
@@ -463,9 +479,17 @@ class AppRootController extends ChangeNotifier {
     for (final entry in relays) {
       if (_pollInFlight.contains(entry.id)) continue;
       _pollInFlight.add(entry.id);
-      unawaited(_relayDirectoryApi.listRooms(entry.url).then((rooms) {
+      final stopwatch = Stopwatch()..start();
+      unawaited(_relayDirectoryApi.tryListRooms(entry.url).then((rooms) {
         _pollInFlight.remove(entry.id);
-        _liveRoomsByRelay = {..._liveRoomsByRelay, entry.id: rooms};
+        final previous = _relayHealth[entry.id];
+        _relayHealth = {
+          ..._relayHealth,
+          entry.id: rooms != null
+              ? RelayHealth.reachable(latencyMs: stopwatch.elapsedMilliseconds, at: DateTime.now())
+              : RelayHealth.unreachable(lastAnsweredAt: previous?.lastAnsweredAt),
+        };
+        _liveRoomsByRelay = {..._liveRoomsByRelay, entry.id: rooms ?? const []};
         notifyListeners();
       }));
     }
@@ -775,13 +799,16 @@ class AppRootController extends ChangeNotifier {
   /// hosted it, so this is the one place content still has to be looked
   /// up across every connected server rather than already knowing its
   /// source — see _fetchMovieDetailFromAnyServer.
-  Future<void> joinRoom(Home current, MergedRoom merged) async {
+  /// Screen 12 opens over any screen, so [current] is whatever was showing
+  /// (it becomes the error retry target and the lobby's return state) and
+  /// [servers] is the hub the room's title is looked up across.
+  Future<void> joinRoom(AppState current, List<ReachableServer> servers, MergedRoom merged) async {
     final ratingKey = merged.room.ratingKey;
     if (ratingKey == null) {
       _setState(AppError(message: 'Room has no movie reference', retryState: current));
       return;
     }
-    final found = await _fetchMovieDetailFromAnyServer(current.servers, ratingKey);
+    final found = await _fetchMovieDetailFromAnyServer(servers, ratingKey);
     if (found == null) {
       _setState(AppError(message: 'Could not find that title on any connected server', retryState: current));
       return;

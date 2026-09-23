@@ -61,5 +61,11 @@ class SurfaceBorder {
   final SurfaceBorderSide? focused;
   final bool noSpine;
 
-  const SurfaceBorder({this.idle, this.focused, this.noSpine = false});
+  /// Overrides the selected-not-focused spine (default: 6 du in
+  /// [AppFocusTreatment.selectedSpineColor]). The rail's active item is the
+  /// one user — screens 01-25 draw it as a 4 du accent spine on a raised
+  /// fill, marking "where you are" in the accent rather than ink.
+  final SurfaceBorderSide? selectedSpine;
+
+  const SurfaceBorder({this.idle, this.focused, this.noSpine = false, this.selectedSpine});
 }

@@ -205,7 +205,7 @@ RoundedRectangleBorder _choiceShape(BuildContext context) =>
     RoundedRectangleBorder(
       borderRadius: BorderRadius.circular(AppShape.radiusMd.du(context)),
     );
-final _choiceColors = SurfaceColors(
+SurfaceColors get _choiceColors => SurfaceColors(
   container: AppColors.surface,
   content: AppColors.ink2,
   focusedContainer: AppColors.surfaceRaised,
@@ -213,7 +213,7 @@ final _choiceColors = SurfaceColors(
   selectedContainer: AppColors.surfaceRaised,
   selectedContent: AppColors.ink,
 );
-final _choiceBorder = SurfaceBorder(
+SurfaceBorder get _choiceBorder => SurfaceBorder(
   focused: SurfaceBorderSide.solid(AppColors.accent),
 );
 

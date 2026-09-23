@@ -12,7 +12,7 @@ RoundedRectangleBorder _chipShape(BuildContext context) =>
 const _chipHeight = 48.0;
 const _chipContentPaddingHorizontal = 22.0;
 
-final _chipColors = SurfaceColors(
+SurfaceColors get _chipColors => SurfaceColors(
   container: AppColors.transparent,
   content: AppColors.ink3,
   focusedContainer: AppColors.surfaceRaised,
@@ -22,7 +22,7 @@ final _chipColors = SurfaceColors(
   pressedContainer: AppColors.accent900,
   pressedContent: AppColors.ink2,
 );
-final _chipBorder = SurfaceBorder(
+SurfaceBorder get _chipBorder => SurfaceBorder(
   idle: SurfaceBorderSide.solid(AppColors.line),
   focused: SurfaceBorderSide.solid(AppColors.accent),
 );

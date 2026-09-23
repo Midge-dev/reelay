@@ -11,11 +11,11 @@ RoundedRectangleBorder _tileShape(BuildContext context) =>
     RoundedRectangleBorder(
       borderRadius: BorderRadius.all(Radius.circular(8.du(context))),
     );
-final _tileColors = SurfaceColors(
+SurfaceColors get _tileColors => SurfaceColors(
   container: AppColors.background,
   content: AppColors.ink3,
 );
-final _tileBorder = SurfaceBorder(
+SurfaceBorder get _tileBorder => SurfaceBorder(
   idle: SurfaceBorderSide.solid(AppColors.line),
   focused: SurfaceBorderSide.solid(AppColors.accent),
 );

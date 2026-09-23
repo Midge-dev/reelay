@@ -220,7 +220,7 @@ class PosterRow extends StatelessWidget {
   }
 }
 
-final _relatedPosterBorder = SurfaceBorder(
+SurfaceBorder get _relatedPosterBorder => SurfaceBorder(
   idle: SurfaceBorderSide.solid(AppColors.line),
   focused: SurfaceBorderSide.solid(
     AppColors.accent,

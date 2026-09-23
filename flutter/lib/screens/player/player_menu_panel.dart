@@ -186,7 +186,7 @@ RoundedRectangleBorder _tabShape(BuildContext context) =>
     RoundedRectangleBorder(
       borderRadius: BorderRadius.circular(AppShape.radiusSm.du(context)),
     );
-final _tabColors = SurfaceColors(
+SurfaceColors get _tabColors => SurfaceColors(
   container: AppColors.surface,
   content: AppColors.ink3,
   focusedContainer: AppColors.surfaceRaised,
@@ -194,7 +194,7 @@ final _tabColors = SurfaceColors(
   selectedContainer: AppColors.surfaceRaised,
   selectedContent: AppColors.ink,
 );
-final _tabBorder = SurfaceBorder(
+SurfaceBorder get _tabBorder => SurfaceBorder(
   focused: SurfaceBorderSide.solid(AppColors.accent),
 );
 
@@ -235,7 +235,7 @@ RoundedRectangleBorder _rowShape(BuildContext context) =>
     RoundedRectangleBorder(
       borderRadius: BorderRadius.circular(AppShape.radiusMd.du(context)),
     );
-final _rowColors = SurfaceColors(
+SurfaceColors get _rowColors => SurfaceColors(
   container: AppColors.surface,
   content: AppColors.ink2,
   focusedContainer: AppColors.surfaceRaised,
@@ -243,7 +243,7 @@ final _rowColors = SurfaceColors(
   selectedContainer: AppColors.surfaceRaised,
   selectedContent: AppColors.ink,
 );
-final _rowBorder = SurfaceBorder(
+SurfaceBorder get _rowBorder => SurfaceBorder(
   focused: SurfaceBorderSide.solid(AppColors.accent),
 );
 

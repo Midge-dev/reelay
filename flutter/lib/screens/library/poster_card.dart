@@ -17,7 +17,7 @@ const _posterAspectRatio = 2 / 3;
 /// spine would cover the poster — and the caption steps ink3 -> ink on
 /// focus instead of the fill+hairline+spine signal. DESIGN.md non-
 /// negotiable #3.
-final _posterBorder = SurfaceBorder(
+SurfaceBorder get _posterBorder => SurfaceBorder(
   idle: SurfaceBorderSide.solid(AppColors.line),
   focused: SurfaceBorderSide.solid(
     AppColors.accent,
@@ -44,7 +44,6 @@ class PosterCard extends StatefulWidget {
   final VoidCallback? onLongClick;
   final FocusNode? focusNode;
   final bool autofocus;
-  final int staggerDelayMs;
 
   const PosterCard({
     super.key,
@@ -55,7 +54,6 @@ class PosterCard extends StatefulWidget {
     this.onLongClick,
     this.focusNode,
     this.autofocus = false,
-    this.staggerDelayMs = 0,
   });
 
   @override
@@ -129,7 +127,6 @@ class _PosterCardState extends State<PosterCard> {
                 child: SizedBox.expand(
                   child: Artwork(
                     imageUrl: widget.imageUrl,
-                    staggerDelayMs: widget.staggerDelayMs,
                   ),
                 ),
               ),

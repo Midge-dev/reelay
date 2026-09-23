@@ -60,6 +60,7 @@ Widget _buildHome({
       suggestions: suggestions.map(folded).toList(),
       onEndSession: (_) async => true,
       onSelectRoom: (_) {},
+      onOpenRooms: () {},
       onResume: (_) {},
       onRemove: (_) {},
       onSelectWatchlistItem: (_) {},

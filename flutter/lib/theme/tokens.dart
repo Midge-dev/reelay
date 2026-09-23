@@ -316,23 +316,33 @@ class AppScrims {
   AppScrims._();
 
   /// Hero and detail left column: artwork fades in from the leading edge.
-  static const edge = LinearGradient(
+  /// Built from the active theme's ground so the fade meets the screen
+  /// background exactly — a fixed Nocturne ground would leave a blue seam
+  /// under every other theme.
+  static LinearGradient get edge => LinearGradient(
     begin: Alignment.centerLeft,
     end: Alignment.centerRight,
-    colors: [Color(0xFF161826), Color(0xED161826), Color(0x59161826)],
-    stops: [0.0, 0.42, 1.0],
+    colors: [
+      AppColors.background,
+      AppColors.background.withValues(alpha: 0.93),
+      AppColors.background.withValues(alpha: 0.35),
+    ],
+    stops: const [0.0, 0.42, 1.0],
   );
 
   /// Card captions and player controls.
-  static const bottom = LinearGradient(
+  static LinearGradient get bottom => LinearGradient(
     begin: Alignment.topCenter,
     end: Alignment.bottomCenter,
-    colors: [Color(0x00161826), Color(0xF512141F)],
-    stops: [0.0, 0.78],
+    colors: [
+      AppColors.background.withValues(alpha: 0),
+      AppColors.canvas.withValues(alpha: 0.96),
+    ],
+    stops: const [0.0, 0.78],
   );
 
   /// Flat plate behind short labels on unpredictable artwork.
-  static const chip = Color(0xC712141F);
+  static Color get chip => AppColors.canvas.withValues(alpha: 0.78);
 
   /// Behind a dialog. Flat, not blurred.
   static const dialog = Color(0xD1090A10);
@@ -539,29 +549,29 @@ class AppMotion {
 class AppFocusTreatment {
   AppFocusTreatment._();
 
-  static final idleBorderColor = AppColors.line;
+  static Color get idleBorderColor => AppColors.line;
   static const idleBorderWidth = AppShape.borderWidth;
-  static final idleContainer = AppColors.surface;
-  static final idleContent = AppColors.ink2;
+  static Color get idleContainer => AppColors.surface;
+  static Color get idleContent => AppColors.ink2;
 
-  static final focusedBorderColor = AppColors.accent;
+  static Color get focusedBorderColor => AppColors.accent;
   static const focusedBorderWidth = AppShape.borderWidth;
-  static final focusedSpineColor = AppColors.accent;
+  static Color get focusedSpineColor => AppColors.accent;
   static const focusedSpineWidth = AppShape.spineWidth;
-  static final focusedContainer = AppColors.surfaceRaised;
-  static final focusedContent = AppColors.ink;
+  static Color get focusedContainer => AppColors.surfaceRaised;
+  static Color get focusedContent => AppColors.ink;
 
   /// Selected but not focused: the spine goes ink, the fill stays put.
-  static final selectedSpineColor = AppColors.ink;
+  static Color get selectedSpineColor => AppColors.ink;
 
-  static final pressedContainer = AppColors.accent900;
-  static final pressedBorderColor = AppColors.accent700;
+  static Color get pressedContainer => AppColors.accent900;
+  static Color get pressedBorderColor => AppColors.accent700;
 
   /// Barely perceptible up close, and legible in aggregate across a row.
   /// Dropped entirely in low-power mode.
   static const focusScale = 1.03;
 
   /// Artwork cards: a frame all the way round instead of a spine.
-  static final artFrameColor = AppColors.accent;
+  static Color get artFrameColor => AppColors.accent;
   static const artFrameWidth = AppShape.artFrameWidth;
 }
