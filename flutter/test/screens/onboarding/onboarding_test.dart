@@ -55,4 +55,16 @@ void main() {
       expect(tester.takeException(), isNull);
     });
   }
+
+  // Plex revoked this TV's sign-in (removed from the account's devices):
+  // setup opens on linking and says why, instead of a raw 401.
+  for (final uiScale in [1.0, 1.3]) {
+    testWidgets('relinking opens on the link step and says why at ${(uiScale * 100).round()}%', (tester) async {
+      await _pumpAt(tester, uiScale, OnboardingScreen(relinking: true, onComplete: (_) {}));
+      expect(find.text('PLEX SIGNED THIS TV OUT'), findsOneWidget);
+      expect(find.text('Link this TV to Plex again'), findsOneWidget);
+      expect(find.text('COMING SOON'), findsNothing, reason: 'not the servers step');
+      expect(tester.takeException(), isNull);
+    });
+  }
 }

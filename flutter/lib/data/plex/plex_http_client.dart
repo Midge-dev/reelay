@@ -14,3 +14,9 @@ Dio plexHttpClient({Duration timeout = _defaultTimeout}) {
     ),
   );
 }
+
+/// Plex refusing the token itself — the device was removed from the
+/// account, or its sign-in was revoked. Not a network failure: retrying
+/// can't help, only linking again can.
+bool isPlexSignInRevoked(Object error) =>
+    error is DioException && error.response?.statusCode == 401;

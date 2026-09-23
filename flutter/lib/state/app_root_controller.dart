@@ -5,6 +5,7 @@ import 'package:collection/collection.dart';
 import 'package:flutter/foundation.dart';
 
 import '../data/plex/plex_auth_api.dart';
+import '../data/plex/plex_http_client.dart';
 import '../data/plex/plex_identity.dart';
 import '../data/plex/plex_models.dart';
 import '../data/plex/plex_resources_api.dart';
@@ -396,9 +397,38 @@ class AppRootController extends ChangeNotifier {
             : await _loadHome(probed.connected, sectionGroups),
       );
     } catch (e) {
-      _setState(AppError(message: '$e', retryState: const LoggedOut()));
+      if (isPlexSignInRevoked(e)) {
+        await _forgetRevokedSignIn();
+        return;
+      }
+      // Name what failed, never the raw exception.
+      _setState(
+        AppError(
+          message: e is _FriendlyError ? e.message : "Plex didn't answer. Check this TV's connection, then try again.",
+          retryState: const LoggedOut(),
+        ),
+      );
+      return;
     }
     unawaited(_refreshWatchlist());
+  }
+
+  /// Plex refused the saved token (this TV was removed from the account's
+  /// devices). Drop it and go back to linking, for the same profile.
+  Future<void> _forgetRevokedSignIn() async {
+    final profile = _activeProfile;
+    if (profile != null) await _tokenStore.clearTokenForProfile(profile.id);
+    await _tokenStore.clearToken();
+    _accountToken = null;
+    _setState(LoggedOut(relinkProfile: profile));
+  }
+
+  /// Linking again after [_forgetRevokedSignIn]: the new token goes back
+  /// on the profile it came from — its settings, relays and choices intact.
+  Future<void> relink(Profile profile, String token) async {
+    await _tokenStore.saveTokenForProfile(profile.id, token);
+    _activeProfile = profile;
+    await connect(token);
   }
 
   /// Toggles one server in or out of the hub (screen 06's switcher panel —

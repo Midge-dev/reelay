@@ -25,17 +25,26 @@ enum _Step { servers, link, watchTogether }
 /// answered, so the relay question comes before the library loads, in the
 /// design's order, and is never asked again. O5 is the connecting screen
 /// that follows (see setup_ready_screen.dart).
+///
+/// [relinking]: Plex refused this TV's saved sign-in (it was removed from
+/// the account's devices). Setup opens on the link step and says so, and
+/// linking goes straight back in — everything else was already answered.
 class OnboardingScreen extends ConsumerStatefulWidget {
   final ValueChanged<String> onComplete;
+  final bool relinking;
 
-  const OnboardingScreen({super.key, required this.onComplete});
+  const OnboardingScreen({
+    super.key,
+    required this.onComplete,
+    this.relinking = false,
+  });
 
   @override
   ConsumerState<OnboardingScreen> createState() => _OnboardingScreenState();
 }
 
 class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
-  _Step _step = _Step.servers;
+  late _Step _step = widget.relinking ? _Step.link : _Step.servers;
   bool _plexSelected = true;
   String? _token;
 
@@ -50,10 +59,15 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
       _Step.link => BackHandler(
         onBack: () => setState(() => _step = _Step.servers),
         child: _LinkStep(
+          relinking: widget.relinking,
           onBack: () => setState(() => _step = _Step.servers),
           onLinked: (token) async {
             await ref.read(secureTokenStoreProvider).saveToken(token);
             if (!mounted) return;
+            if (widget.relinking) {
+              widget.onComplete(token);
+              return;
+            }
             setState(() {
               _token = token;
               _step = _Step.watchTogether;
@@ -300,8 +314,13 @@ const _pollInterval = Duration(seconds: 2);
 class _LinkStep extends ConsumerStatefulWidget {
   final VoidCallback onBack;
   final ValueChanged<String> onLinked;
+  final bool relinking;
 
-  const _LinkStep({required this.onBack, required this.onLinked});
+  const _LinkStep({
+    required this.onBack,
+    required this.onLinked,
+    this.relinking = false,
+  });
 
   @override
   ConsumerState<_LinkStep> createState() => _LinkStepState();
@@ -381,10 +400,18 @@ class _LinkStepState extends ConsumerState<_LinkStep> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const StepHeading(
-            kicker: 'STEP 2 OF 4 · PLEX',
-            title: 'Link this TV to your Plex account',
-          ),
+          widget.relinking
+              ? const StepHeading(
+                  kicker: 'PLEX SIGNED THIS TV OUT',
+                  title: 'Link this TV to Plex again',
+                  body:
+                      'It was removed from your Plex account\'s devices. '
+                      'Link it again and everything else is as you left it.',
+                )
+              : const StepHeading(
+                  kicker: 'STEP 2 OF 4 · PLEX',
+                  title: 'Link this TV to your Plex account',
+                ),
           SizedBox(height: 32.du(context)),
           // QR beside the code, as in O2 — stacking them pushed the code and
           // the buttons below the fold at large UI sizes.

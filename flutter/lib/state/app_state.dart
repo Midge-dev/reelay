@@ -130,8 +130,13 @@ class Checking extends AppState {
   const Checking();
 }
 
+/// Sign-in (O1/O2). [relinkProfile] is set when Plex refused a profile's
+/// saved sign-in: setup opens on the link step, says why, and linking puts
+/// the new token back on that same profile rather than creating another.
 class LoggedOut extends AppState {
-  const LoggedOut();
+  final Profile? relinkProfile;
+
+  const LoggedOut({this.relinkProfile});
 }
 
 /// Screen 07 — shown only when 2+ profiles exist on the device (a

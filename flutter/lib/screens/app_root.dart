@@ -192,8 +192,11 @@ class _AppContent extends StatelessWidget {
             ? 'Logged in as $username — connecting to library…'
             : 'Connecting to library…',
       ),
-      LoggedOut() => OnboardingScreen(
-        onComplete: controller.completeFirstLogin,
+      LoggedOut(:final relinkProfile) => OnboardingScreen(
+        relinking: relinkProfile != null,
+        onComplete: relinkProfile == null
+            ? controller.completeFirstLogin
+            : (token) => controller.relink(relinkProfile, token),
       ),
       ProfilePicker(:final profiles) => ProfilePickerScreen(
         profiles: profiles,
