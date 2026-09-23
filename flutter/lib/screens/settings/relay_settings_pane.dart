@@ -3,28 +3,14 @@ import 'package:qr_flutter/qr_flutter.dart';
 
 import '../../data/settings/app_settings.dart';
 import '../../kit/button.dart';
-import '../../kit/focusable_surface.dart';
-import '../../kit/surface_style.dart';
+import '../../kit/icon.dart';
 import '../../kit/text.dart';
+import '../../theme/phosphor_icons.dart';
 import '../../theme/scale.dart';
 import '../../theme/tokens.dart';
 import '../../theme/typography.dart';
 import '../common/neon_scrollbar.dart';
 import '../common/relay_status.dart';
-
-RoundedRectangleBorder _rowShape(BuildContext context) =>
-    RoundedRectangleBorder(
-      borderRadius: BorderRadius.all(Radius.circular(8.du(context))),
-    );
-SurfaceColors get _rowColors => SurfaceColors(
-  container: AppColors.background,
-  content: AppColors.ink3,
-  focusedContent: AppColors.inkOnArt,
-);
-SurfaceBorder get _rowBorder => SurfaceBorder(
-  idle: SurfaceBorderSide.solid(AppColors.line),
-  focused: SurfaceBorderSide.solid(AppColors.accent),
-);
 
 /// A (reachable, room-count) pair, or null while still probing — mirrors
 /// Kotlin's `Pair<Boolean, Int>?`.
@@ -99,15 +85,14 @@ class RelaySettingsPane extends StatelessWidget {
                 children: [
                   Padding(
                     padding: EdgeInsets.only(bottom: 24.du(context)),
-                    child: FocusableSurface(
+                    // The kit's text action, so it gets the system's padding
+                    // and focus treatment — the hand-rolled stadium had
+                    // neither, and clipped its own chevron.
+                    child: AppGhostButton(
                       onClick: onBack,
                       focusNode: backFocus,
-                      shape: const StadiumBorder(),
-                      colors: SurfaceColors(
-                        container: AppColors.transparent,
-                        content: AppColors.ink3,
-                      ),
-                      child: AppText('‹ Settings', color: AppColors.ink3),
+                      dense: true,
+                      child: const AppText('‹ Settings', color: null),
                     ),
                   ),
                   AppText('Relay settings', style: AppTypography.title1),
@@ -133,15 +118,16 @@ class RelaySettingsPane extends StatelessWidget {
                         onRemove: () => onRemove(entry),
                       ),
                     ),
-                  SizedBox(
-                    height: 64.du(context),
-                    child: FocusableSurface(
-                      onClick: onAddRelay,
-                      focusNode: addRelayFocus,
-                      shape: _rowShape(context),
-                      colors: _rowColors,
-                      border: _rowBorder,
-                      child: const AppText('Add a relay'),
+                  AppOutlinedButton(
+                    onClick: onAddRelay,
+                    focusNode: addRelayFocus,
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const AppIcon(PhosphorIconsRegular.plus, size: 22),
+                        SizedBox(width: AppSpacing.md.du(context)),
+                        const AppText('Add a relay', color: null),
+                      ],
                     ),
                   ),
                   if (pairingError != null)
