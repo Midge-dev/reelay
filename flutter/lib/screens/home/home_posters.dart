@@ -16,14 +16,14 @@ import '../common/time_format.dart';
 
 const _typeEpisode = 'episode';
 
-/// Ports HomeScreen.kt's `recentlyAddedLabel`.
+/// A recently-added item's caption: a season shows its show's title.
 String recentlyAddedLabel(PlexLibraryItem item) {
   final parentTitle = item.parentTitle;
   if (item.type == 'season' && parentTitle != null) return parentTitle;
   return item.title;
 }
 
-/// Ports HomeScreen.kt's `continueWatchingLabel`.
+/// "Fringe · S1E1" for an episode, the title otherwise.
 String continueWatchingLabel(PlexOnDeckItem item) {
   if (item.type == _typeEpisode &&
       item.grandparentTitle != null &&
@@ -59,7 +59,7 @@ String continueWatchingSubtitle(PlexOnDeckItem item) {
   return parts.join(' · ');
 }
 
-/// Ports HomeScreen.kt's `progressFraction`.
+/// How far through [item] you are, 0–1.
 double progressFraction(PlexOnDeckItem item) {
   final duration = item.duration;
   if (duration == null || duration <= 0) return 0;
@@ -67,7 +67,7 @@ double progressFraction(PlexOnDeckItem item) {
   return fraction.clamp(0.0, 1.0);
 }
 
-/// Ports HomeScreen.kt's `WatchlistPoster` — a 2:3 poster with long-press-
+/// A 2:3 poster with long-press-
 /// to-remove. Reuses DpadLongPressDetector for the hold-to-open gesture;
 /// the confirm overlay's own "swallow the trailing release" guard lives in
 /// RemoveConfirmOverlay itself (see that file's doc comment for why).
@@ -216,9 +216,9 @@ class _WatchlistPosterState extends State<WatchlistPoster> {
   }
 }
 
-/// Ports HomeScreen.kt's `ContinueWatchingPoster` — a wider 16:9 card with
+/// A wider 16:9 card with
 /// the same long-press-to-remove pattern as WatchlistPoster, plus a
-/// progress bar and a focus-scale animation (matches Card.kt's spring).
+/// progress bar and a focus-scale animation.
 class ContinueWatchingPoster extends StatefulWidget {
   final FoldedWork<PlexOnDeckItem> item;
   final VoidCallback onResume;

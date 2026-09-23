@@ -57,7 +57,7 @@ class _LibraryView {
 
 enum _FilterKind { genre, decade, added, sort }
 
-/// Ports ui/library/LibraryScreen.kt, rebuilt to match the Nocturne handoff's
+/// A library section, following the Nocturne handoff's
 /// screens 17-19: the old All/Genres/Collections/Search tab strip is gone
 /// (see the handoff's own "LIBRARY · WHERE THE OLD TABS WENT" explainer —
 /// All was never a distinct mode, Genres is a filter not a destination,
@@ -65,8 +65,7 @@ enum _FilterKind { genre, decade, added, sort }
 /// filter row — a Titles/Collections mode switch, Genre/Decade/Added/Sort
 /// dropdown chips, and a text field that narrows the current grid — sitting
 /// above a 7-column grid that never remounts on a filter change. State
-/// resets whenever `selectedSection.key` changes, mirroring Kotlin's
-/// `remember(selectedSection.key)` pattern via didUpdateWidget.
+/// resets whenever `selectedSection.key` changes (didUpdateWidget).
 class LibraryScreen extends StatefulWidget {
   final List<ReachableServer> servers;
   final SectionGroup selectedSectionGroup;

@@ -6,7 +6,6 @@ import 'plex_response.dart';
 
 /// Per-library "for you" hubs to try, in priority order, when Plex has no
 /// account-level "Suggested" hub enabled (requires Discover/Plex Pass).
-/// See PlexServerApi.kt's kdoc on `fetchSuggestions` for the full rationale.
 const _suggestionHubPriority = ['suggest', 'recommend', 'topunwatched', 'startwatching', 'rediscover'];
 
 /// Per-library "Recently Watched" hubs (movie.recentlyviewed.*, tv.recentlyviewed.*).
@@ -208,7 +207,7 @@ class PlexServerApi {
     return results;
   }
 
-  /// Ports Kotlin's `minByOrNull { it.index ?: Int.MAX_VALUE }` — a stable
+  /// The item with the lowest index (missing indexes last) — a stable
   /// single-pass min, unlike a full `List.sort` (Dart's sort isn't
   /// guaranteed stable, which could pick a different element on ties).
   T? _minByIndex<T>(List<T> items, int? Function(T) indexOf) {

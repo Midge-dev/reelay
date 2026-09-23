@@ -2,17 +2,15 @@ import 'package:video_player/video_player.dart';
 
 import '../sync/synced_player.dart';
 
-/// Ports ExoPlayerAdapter.kt's role — `SyncedPlayer` backed by
-/// `video_player` instead of ExoPlayer. Two real platform-boundary
-/// differences from the Kotlin adapter, both resolved by reading
-/// `video_player`'s actual source rather than assuming ExoPlayer parity:
+/// `SyncedPlayer` backed by `video_player`. Two platform limits, both
+/// checked against `video_player`'s actual source:
 ///
 /// - **No reason codes for play/pause changes.** ExoPlayer reports *why*
 ///   `playWhenReady` changed (`PLAY_WHEN_READY_CHANGE_REASON_USER_REQUEST`
 ///   vs. audio-focus-loss, etc.); `video_player`'s `VideoPlayerValue` only
 ///   reports the new `isPlaying`, with no reason. In practice this doesn't
-///   cost anything: `USER_REQUEST` in ExoPlayer's sense already just means
-///   "the app explicitly called play()/pause()" — which is true of every
+///   cost anything: a "user request" just means "the app explicitly
+///   called play()/pause()" — which is true of every
 ///   `isPlaying` change this adapter can observe, since nothing besides an
 ///   explicit call (ours or the platform's own, e.g. another app briefly
 ///   taking audio focus) changes it. So `isUserRequest` is always reported

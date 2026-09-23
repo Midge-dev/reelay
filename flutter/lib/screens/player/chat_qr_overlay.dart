@@ -11,7 +11,7 @@ import '../../theme/typography.dart';
 
 const _chatQrDisplayMs = 30000;
 
-/// Ports PlayerScreen.kt's `ChatQrOverlay` — a corner QR code that
+/// A corner QR code that
 /// auto-dismisses itself after 30s or on back.
 class ChatQrOverlay extends StatefulWidget {
   final String chatUrl;

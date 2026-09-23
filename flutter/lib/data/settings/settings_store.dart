@@ -21,13 +21,11 @@ const _themeIdKey = 'theme_id';
 const _uiScaleKey = 'ui_scale';
 const _setupCompleteKey = 'setup_complete';
 
-/// Ports SettingsStore.kt. Kotlin's `ObservableSettings` gives a reactive
-/// `Flow` for free because it observes the underlying platform store
-/// directly; shared_preferences has no such stream, so this wraps a
-/// BehaviorSubject that's seeded on construction and re-pushed on every
-/// [save] — valid because this class is the sole writer of these keys
-/// anywhere in the app (same assumption Kotlin's `Mutex`-guarded migration
-/// makes about being the only writer of the legacy key).
+/// App settings over shared_preferences. shared_preferences has no change
+/// stream, so this wraps a BehaviorSubject that's seeded on construction
+/// and re-pushed on every [save] — valid because this class is the sole
+/// writer of these keys anywhere in the app (the same assumption the
+/// mutex-guarded legacy migration makes).
 class SettingsStore {
   final SharedPreferencesAsync _prefs;
   final _subject = BehaviorSubject<AppSettings>();
@@ -210,7 +208,7 @@ extension<T> on Iterable<T> {
   T? get firstOrNull => isEmpty ? null : first;
 }
 
-/// Minimal async mutex (ports Kotlin's `Mutex`/`withLock`) — chains callers
+/// Minimal async mutex — chains callers
 /// onto the previous holder's completion rather than pulling in a whole
 /// package for one lock.
 class _Mutex {

@@ -29,15 +29,11 @@ class SubtitleOption {
   const SubtitleOption({this.streamId, required this.label, required this.requiresBurn});
 }
 
-/// Where a chosen subtitle track's actual content lives — the fix for the
-/// bug ported verbatim from PlexPlayerFactory.kt's `applySubtitleSelection`
-/// (see project_flutter_full_conversion.md): that function only ever set a
-/// *language* preference on ExoPlayer's TrackSelectionParameters, never the
-/// stream's own id/index, and never handled `PlexStream.key != null`
-/// (external/sidecar subtitle files) at all — so with multiple same-language
-/// tracks, or any external subtitle, the wrong (or no) track played despite
-/// the UI showing the right selection. The Phase 4b player adapter must
-/// select by this, not by language string.
+/// Where a chosen subtitle track's actual content lives. Select by this —
+/// the stream's own id, and whether it's an external/sidecar file
+/// (`PlexStream.key != null`) — never by language: with several
+/// same-language tracks, or any external subtitle, a language preference
+/// plays the wrong (or no) track while the UI shows the right one.
 sealed class SubtitleSource {
   const SubtitleSource();
 }
@@ -63,14 +59,11 @@ class ExternalSubtitle extends SubtitleSource {
   const ExternalSubtitle({required this.key, this.languageCode});
 }
 
-/// Deviates from Kotlin's `subtitleOptions` in one respect: the
-/// `video_player` package has no API at all for selecting a subtitle track
+/// The `video_player` package has no API for selecting a subtitle track
 /// muxed into the video container — only an externally-supplied caption
-/// file, or one already baked into the video. So unlike Kotlin/ExoPlayer
-/// (which can select an embedded text track directly, no transcode
-/// needed), every embedded track here is treated as burn-required — same
-/// as the bitmap codecs (pgs/vobsub/dvdsub) that needed burning even in
-/// Kotlin — trading a transcode (server load, a quality/bitrate hit) for
+/// file, or one already baked into the video. So every embedded track is
+/// treated as burn-required, like the bitmap codecs (pgs/vobsub/dvdsub) —
+/// trading a transcode (server load, a quality/bitrate hit) for
 /// actually being able to show it. External sidecar tracks (`key != null`,
 /// fetchable at their own URL as a caption file) never need this.
 List<SubtitleOption> subtitleOptions(PlexPart part) {
@@ -88,8 +81,8 @@ String _subtitleLabel(PlexStream stream) {
 }
 
 /// True for anything `video_player` can't render directly: a bitmap codec
-/// (never player-selectable, even in Kotlin) or an embedded track (no
-/// player-side track-selection API here, unlike ExoPlayer).
+/// (never player-selectable) or an embedded track (no player-side
+/// track-selection API).
 bool _requiresBurn(PlexStream stream) => stream.key == null || _burnRequiredSubtitleCodecs.contains(stream.codec?.toLowerCase());
 
 PlaybackDecision decidePlayback(PlexMovieDetail detail, int? subtitleStreamId, {bool forceBurn = false}) {
@@ -144,7 +137,7 @@ int? defaultSubtitleStreamId(PlexMovieDetail detail) {
 }
 
 /// Resolves exactly which subtitle source a DirectPlay decision needs
-/// attached, replacing the Kotlin bug's language-only guess.
+/// attached — by stream, never a language-only guess.
 SubtitleSource resolveSubtitleSource(PlexPart part, int? subtitleStreamId) {
   if (subtitleStreamId == null) return const NoSubtitle();
 

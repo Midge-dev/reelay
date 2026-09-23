@@ -8,20 +8,15 @@ import '../../theme/typography.dart';
 
 const _borderWidth = 3.0;
 
-/// Ports ui/common/KeyboardOnSelect.kt's `ClickToTypeTextField` — stays
-/// read-only (D-pad-navigable, not text-editing) until D-pad select is
-/// pressed, since a TV remote has no physical keyboard.
+/// A text field that stays read-only (D-pad-navigable, not text-editing)
+/// until D-pad select is pressed, since a TV remote has no physical
+/// keyboard.
 ///
-/// The Kotlin version toggles `readOnly` on one continuously-focused
-/// BasicTextField, needing an `onPreviewKeyEvent` workaround because a
-/// focused text field consumes DirectionRight for cursor movement before
-/// Compose's own focus-search or Flutter's key-event bubbling would ever
-/// see it (see feedback_textfield_dpad_capture — the same root cause
-/// applies to Flutter's EditableText). Flutter's key dispatch starts at
-/// the focused leaf and bubbles outward, so an ancestor can never truly
-/// pre-empt EditableText's own internal key handling the way Compose's
-/// tunneling `onPreviewKeyEvent` can. This ports the same UX by swapping
-/// between two widgets instead of toggling one field's readOnly flag: a
+/// A focused text field consumes Right for cursor movement before focus
+/// traversal ever sees it, and Flutter's key dispatch starts at the focused
+/// leaf and bubbles outward, so no ancestor can pre-empt EditableText's own
+/// key handling. So this swaps between two widgets instead of toggling one
+/// field's readOnly flag: a
 /// plain focusable label (which has no text-field key handling to fight)
 /// while not editing, and a real EditableText only once editing starts —
 /// sidestepping the interception problem rather than solving it, valid

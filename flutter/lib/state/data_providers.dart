@@ -47,9 +47,8 @@ final settingsStreamProvider = StreamProvider<AppSettings>(
   (ref) => ref.watch(settingsStoreProvider).observe(),
 );
 
-/// One controller instance for the app's lifetime — mirrors MainActivity.
-/// kt's AppRoot composable, whose `remember`ed state/closures live exactly
-/// once per process too. `keepAlive` since nothing should ever dispose the
+/// One controller instance for the app's lifetime. `keepAlive` since
+/// nothing should ever dispose the
 /// app's own root state while it's running.
 final appRootControllerProvider = Provider<AppRootController>((ref) {
   final controller = AppRootController(

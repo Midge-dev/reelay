@@ -28,7 +28,7 @@ RelayHttpUrl? relayHttpUrl(String relayUrl) {
 }
 
 /// Builds the phone-chat page URL for a room, carrying the relay's own
-/// auth query string forward. Ports QrCode.kt's `relayUrlToChatUrl`.
+/// auth query string forward.
 ///
 /// [themeId] is `ThemeId.name` of the TV's current theme (e.g. `horror`);
 /// the chat page reads it before first paint so the phone matches the TV.

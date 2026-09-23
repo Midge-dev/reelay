@@ -9,7 +9,7 @@ const _strokeWidth = 4.0;
 const _sweepDegrees = 90.0;
 const _size = 56.0;
 
-/// Ports ui/common/AppLoadingIndicator.kt — a rotating purple arc over a
+/// A rotating purple arc over a
 /// full gray track, not a stock spinner.
 class AppLoadingIndicator extends StatefulWidget {
   const AppLoadingIndicator({super.key});

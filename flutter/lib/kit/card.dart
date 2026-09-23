@@ -20,7 +20,7 @@ SurfaceBorder get _cardBorder => SurfaceBorder(
   focused: SurfaceBorderSide.solid(AppColors.accent),
 );
 
-/// Ports ui/kit/Card.kt's `Card`. Focus is the standard Nocturne signal —
+/// A focusable card. Focus is the standard Nocturne signal —
 /// fill step, hairline, leading spine, 1.03x scale, no bounce — via
 /// FocusableSurface; nothing card-specific left to layer on top of it. Use
 /// [border]/[colors] overrides (or build a dedicated component) for cards
@@ -91,7 +91,7 @@ class AppCard extends StatelessWidget {
   }
 }
 
-/// Ports ui/kit/Card.kt's `CardContainer` — stacks an image card and a
+/// Stacks an image card and a
 /// title below it.
 class CardContainer extends StatelessWidget {
   final Widget imageCard;

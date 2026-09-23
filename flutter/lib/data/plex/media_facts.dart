@@ -1,4 +1,4 @@
-import '../../data/plex/plex_models.dart';
+import 'plex_models.dart';
 
 /// Screen 03's media facts, stated plainly — "the people who run their own
 /// servers care about them". Each returns null when Plex didn't say.

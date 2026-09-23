@@ -20,8 +20,7 @@ import '../common/artwork.dart';
 const _visibleRoomCards = 3;
 const _roomCardSpring = SpringDescription(mass: 1, stiffness: 400, damping: 30);
 
-/// One live room, merged with the relay entry that's hosting it. Ports
-/// HomeScreen.kt's `MergedRoom`.
+/// One live room, merged with the relay entry that's hosting it.
 class MergedRoom {
   final RelayEntry relay;
   final RelayRoomSummary room;
@@ -29,7 +28,7 @@ class MergedRoom {
   const MergedRoom(this.relay, this.room);
 }
 
-/// Ports HomeScreen.kt's `WatchTogetherRow`.
+/// Home's row of live Watch Together rooms.
 class WatchTogetherRow extends StatelessWidget {
   final PlexServer server;
   final List<MergedRoom> rooms;
@@ -93,9 +92,8 @@ class WatchTogetherRow extends StatelessWidget {
         ),
         SizedBox(
           // Tall enough for RoomCard's real content height (image + two
-          // text rows + button row + padding) — Kotlin's LazyRow here has
-          // no fixed height at all (Column gives it intrinsic sizing), but
-          // Flutter's horizontal ListView needs a bounded cross-axis
+          // text rows + button row + padding) — a horizontal ListView
+          // needs a bounded cross-axis
           // height, so this picks one with headroom rather than the
           // arbitrary 260 that clipped the card. +12 further for
           // EdgeFadeRow's ShaderMask bounds — see the matching comment on
@@ -109,10 +107,9 @@ class WatchTogetherRow extends StatelessWidget {
               child: ListView.separated(
                 controller: scrollController,
                 scrollDirection: Axis.horizontal,
-                // See the matching comment on Home's rows — Flutter's ListView
-                // clips its children by default where Compose's LazyRow doesn't,
-                // and RoomCard also has a focus-scale that can bleed past its
-                // own bounds.
+                // See the matching comment on Home's rows — ListView clips its
+                // children by default, and RoomCard has a focus-scale that
+                // bleeds past its own bounds.
                 clipBehavior: Clip.none,
                 padding: EdgeInsets.symmetric(
                   horizontal: 48.du(context),
@@ -160,14 +157,11 @@ RoundedRectangleBorder _roomCardShape(BuildContext context) =>
       borderRadius: BorderRadius.all(Radius.circular(8.du(context))),
     );
 
-/// Ports HomeScreen.kt's `RoomCard` — hand-rolls its own focus tracking
-/// (not FocusableSurface) so it can layer the scale/glow/border exactly
-/// like Card.kt while still hosting two independently-focusable buttons
-/// inside. Explicitly scrolls itself into view on focus via
-/// Scrollable.ensureVisible — Flutter's Scrollable doesn't auto-scroll on
-/// descendant focus by default (unlike Compose's opt-out
-/// suppressAncestorBringIntoView had to fight), so there's no ancestor
-/// double-scroll to suppress here, just this card's own explicit call.
+/// Hand-rolls its own focus tracking
+/// (not FocusableSurface) so it can layer the card's scale/border while
+/// still hosting two independently-focusable buttons inside. Scrolls
+/// itself into view on focus via Scrollable.ensureVisible — Flutter's
+/// Scrollable doesn't auto-scroll on descendant focus.
 class RoomCard extends StatefulWidget {
   final PlexServer server;
   final MergedRoom merged;
@@ -421,9 +415,8 @@ class _RoomCardState extends State<RoomCard>
                     else
                       // Wrap, not Row: "Join"/"Rejoin" + "End session" side
                       // by side can be wider than the 300px card allows
-                      // (Compose's Row silently overflows here rather than
-                      // asserting; Flutter's doesn't, so this drops to a
-                      // second line instead of hard-overflowing).
+                      // (so this drops to a second line instead of
+                      // overflowing).
                       Wrap(
                         spacing: 16.du(context),
                         runSpacing: 8.du(context),

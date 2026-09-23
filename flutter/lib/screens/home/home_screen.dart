@@ -23,7 +23,7 @@ import 'watch_together_row.dart' show MergedRoom;
 const _watchTogetherFocusQuietMs = 1200;
 const _watchTogetherScrollDurationMs = 1100;
 
-/// Ports ui/home/HomeScreen.kt — the most complex screen in the app.
+/// The most complex screen in the app.
 /// Cascading "which row gets initial focus" priority (the resume hero, else
 /// the first non-empty row among Watch Together > Watchlist > Recently
 /// Finished > Recently Added > Suggestions), a debounced
@@ -157,7 +157,7 @@ class _HomeScreenState extends State<HomeScreen> {
     return false; // never consume — this is passive notification only.
   }
 
-  /// Ports HomeScreen.kt's `ReclaimFocusOnRemoval` — if a row shrank (an
+  /// If a row shrank (an
   /// item was removed) and still has items left, reclaim focus onto the
   /// row's anchor so it doesn't fall through to wherever the platform's
   /// default disposal search sends it (checklist item #2).
@@ -494,7 +494,7 @@ String _workId(FoldedWork<Object> work) {
   return '${primary.server.machineIdentifier}:$key';
 }
 
-/// Ports HomeScreen.kt's generic `HomeRow` — a titled horizontal row that
+/// A titled horizontal row that
 /// renders nothing at all when empty (distinct from Continue Watching,
 /// which always shows its title + an explicit empty-state message).
 class _HomeRow<T> extends StatelessWidget {

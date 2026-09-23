@@ -40,7 +40,7 @@ SurfaceBorder get _filledBorder => SurfaceBorder(
   focused: SurfaceBorderSide.solid(AppColors.accent),
 );
 
-/// Ports ui/kit/Button.kt's `Button` — a filled button, radius 8 (not a
+/// A filled button, radius 8 (not a
 /// pill — the old stadium shape fought the 8px cards, see DESIGN.md).
 class AppButton extends StatelessWidget {
   final VoidCallback onClick;
@@ -105,7 +105,7 @@ SurfaceBorder get _outlinedBorder => SurfaceBorder(
   focused: SurfaceBorderSide.solid(AppColors.accent),
 );
 
-/// Ports ui/kit/Button.kt's `OutlinedButton` — the secondary action style.
+/// The secondary action style.
 class AppOutlinedButton extends StatelessWidget {
   final VoidCallback onClick;
   final bool enabled;

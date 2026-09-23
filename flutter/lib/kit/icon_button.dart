@@ -28,7 +28,7 @@ SurfaceBorder get _defaultIconButtonBorder => SurfaceBorder(
   noSpine: true,
 );
 
-/// Ports ui/kit/IconButton.kt — square (not circular; only avatars and seat
+/// Square (not circular; only avatars and seat
 /// circles are round in Nocturne), transparent at rest so it reads on the
 /// scrims it usually sits over (player controls, a detail page's backdrop).
 class AppIconButton extends StatelessWidget {

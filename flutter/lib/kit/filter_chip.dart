@@ -27,7 +27,7 @@ SurfaceBorder get _chipBorder => SurfaceBorder(
   focused: SurfaceBorderSide.solid(AppColors.accent),
 );
 
-/// Ports ui/kit/FilterChip.kt.
+/// A selectable chip — filters, seasons, splits.
 class AppFilterChip extends StatelessWidget {
   final bool selected;
   final VoidCallback onClick;

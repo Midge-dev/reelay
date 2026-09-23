@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:reelay/data/plex/plex_models.dart';
-import 'package:reelay/screens/library/media_facts.dart';
+import 'package:reelay/data/plex/media_facts.dart';
 
 void main() {
   test('states a 4K HDR TrueHD 7.1 HEVC file as screen 03 writes it', () {

@@ -31,7 +31,7 @@ class JoinRoom extends RoomIntent {
 }
 
 /// One WebSocket per client to a relay server, host-authoritative room
-/// model (seatIndex == 0 is always host). Ports RelayClient.kt: reconnect
+/// model (seatIndex == 0 is always host): reconnect
 /// with exponential backoff (1s -> 30s doubling), a connection-generation
 /// counter so a stale attempt's cleanup can never clobber state set by a
 /// newer one, and the same `{type, payload}` event envelope on the wire.

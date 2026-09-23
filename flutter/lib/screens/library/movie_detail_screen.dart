@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 
 import '../../data/plex/plex_image_url.dart';
+import '../../data/plex/media_facts.dart';
 import '../../data/plex/plex_models.dart';
 import '../../focus/back_handler.dart';
 import '../../focus/screen_memory.dart';
@@ -24,7 +25,6 @@ import '../../theme/typography.dart';
 import '../common/artwork.dart';
 import '../common/time_format.dart';
 import '../common/watchlist_button.dart';
-import 'media_facts.dart';
 import 'movie_detail_sections.dart';
 import 'poster_card.dart';
 import 'source_picker_dialog.dart';

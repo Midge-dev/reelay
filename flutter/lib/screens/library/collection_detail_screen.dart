@@ -10,7 +10,7 @@ import '../../theme/tokens.dart';
 import '../../theme/typography.dart';
 import 'poster_card.dart';
 
-/// Ports ui/library/CollectionDetailScreen.kt.
+/// Screen 19 — one collection's titles.
 class CollectionDetailScreen extends StatelessWidget {
   final PlexServer server;
   final PlexCollection collection;

@@ -9,7 +9,7 @@ import 'package:reelay/state/duplicate_fold.dart';
 import 'package:reelay/state/person_credits.dart';
 
 /// PosterCard's title label sits below the clickable card, as a plain
-/// (non-focusable) sibling — same shape as Kotlin's CardContainer. Tap the
+/// (non-focusable) sibling. Tap the
 /// PosterCard ancestor rather than the label text itself.
 Finder _posterCardFor(String title) => find.ancestor(of: find.text(title), matching: find.byType(PosterCard));
 

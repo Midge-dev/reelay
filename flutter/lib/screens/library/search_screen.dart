@@ -24,6 +24,7 @@ import 'search_keyboard.dart';
 const _leftColumnWidth = 440.0;
 const _queryFieldHeight = 64.0;
 const _searchDebounce = Duration(milliseconds: 350);
+const _minQueryLength = 2;
 
 /// Screen 05 — Search, global across every connected server. The on-screen
 /// keyboard sits where the D-pad already is and never loses focus to the
@@ -85,7 +86,8 @@ class _SearchScreenState extends State<SearchScreen> {
     setState(() => _query = query);
     ScreenMemory.write(context, 'search.query', query);
     _debounce?.cancel();
-    if (query.trim().isEmpty) {
+    // Plex doesn't search a single character, so don't ask it to.
+    if (query.trim().length < _minQueryLength) {
       setState(() {
         _results = const [];
         _searching = false;
@@ -280,6 +282,14 @@ class _ResultsPanelState extends State<_ResultsPanel> {
   @override
   Widget build(BuildContext context) {
     if (widget.query.isEmpty) return const SizedBox.shrink();
+    if (widget.query.length < _minQueryLength) {
+      // Not "nothing matches" — nothing has been asked yet.
+      return AppText(
+        'Keep typing — search starts at two letters.',
+        style: AppTypography.body,
+        color: AppColors.ink3,
+      );
+    }
 
     final total = shows.length + movies.length;
     if (!widget.searching && total == 0) {

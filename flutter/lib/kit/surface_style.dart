@@ -2,11 +2,9 @@ import 'package:flutter/widgets.dart';
 
 import '../theme/tokens.dart';
 
-/// Ports ui/kit/FocusableSurface.kt's `Colors` data class — named
-/// SurfaceColors (not `Colors`) to avoid colliding with Flutter's own
-/// Material `Colors` class if it's ever imported alongside this.
-/// Unset states fall back through the same chain Kotlin's default
-/// parameters do: focused -> container, pressed -> focused -> container,
+/// A surface's colours per state, named SurfaceColors (not `Colors`) to
+/// avoid colliding with Flutter's own Material `Colors` class if it's ever
+/// imported alongside this. Unset states fall back: focused -> container, pressed -> focused -> container,
 /// selected -> container independently. Disabled is not a color state
 /// here — FocusableSurface renders the idle appearance at 45% opacity for
 /// the whole surface instead, per AppFocusTreatment / tokens.json's
@@ -48,7 +46,7 @@ class SurfaceBorderSide {
   const SurfaceBorderSide.solid(this.color, {this.width = AppShape.borderWidth});
 }
 
-/// Ports FocusableSurface.kt's `Border` data class, extended with [noSpine]
+/// A surface's border per state, with [noSpine]
 /// for the two Nocturne cases where the leading spine is dropped and the
 /// hairline (which already runs all the way round any shape) is left to
 /// carry focus alone: poster/still cards, where a spine would cover the

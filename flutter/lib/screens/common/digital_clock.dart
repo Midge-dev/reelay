@@ -7,7 +7,7 @@ import '../../theme/scale.dart';
 import '../../theme/tokens.dart';
 import '../../theme/typography.dart';
 
-/// Ports ui/common/DigitalClock.kt — ticks to the next minute boundary
+/// Ticks to the next minute boundary
 /// rather than polling every second. Uses MediaQuery's 24-hour-format flag
 /// instead of full locale-aware java.text.DateFormat (not worth adding the
 /// intl package for this one label).

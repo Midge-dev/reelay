@@ -6,7 +6,7 @@ import '../theme/tokens.dart';
 const _radioSize = 32.0;
 const _radioDotSize = 16.0;
 
-/// Ports ui/kit/RadioButton.kt — a bordered circle with an inner filled dot.
+/// A bordered circle with an inner filled dot.
 /// Purely decorative; used as a leading indicator inside a focusable row
 /// (e.g. AppListItem) rather than being focusable itself.
 class AppRadioButton extends StatelessWidget {

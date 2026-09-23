@@ -7,7 +7,7 @@ import '../theme/tokens.dart';
 import 'content_color.dart';
 import 'surface_style.dart';
 
-/// Ports ui/kit/FocusableSurface.kt — the primitive every other kit
+/// The primitive every other kit
 /// component (Button, Card, FilterChip, IconButton, ListItem, Switch)
 /// funnels through. Resolves container/content color, border and the
 /// Nocturne focus signal (fill step, accent hairline, leading spine, 1.03x

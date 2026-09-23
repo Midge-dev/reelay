@@ -14,8 +14,7 @@ import '../common/relay_status.dart';
 
 const _dotGap = 20.0;
 
-/// A (reachable, room-count) pair, or null while still probing — mirrors
-/// Kotlin's `Pair<Boolean, Int>?`.
+/// A (reachable, room-count) pair, or null while still probing.
 class RelayReachability {
   final bool reachable;
   final int roomCount;
@@ -29,7 +28,7 @@ String relayStatusLabel(RelayReachability? status) {
   return '${status.roomCount} room${status.roomCount == 1 ? '' : 's'}';
 }
 
-/// Ports ui/settings/SettingsScreen.kt's `RelaySettingsPane` — relay
+/// Relay
 /// list management (make default / edit / remove), pairing-from-phone,
 /// and the one-shot "testing a newly added relay" status line.
 class RelaySettingsPane extends StatelessWidget {

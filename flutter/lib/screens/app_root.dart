@@ -50,8 +50,7 @@ const _appVersionName = '0.3.0';
 /// Renders whichever AppState is current, with the splash drawn over it on
 /// cold start until the app underneath is ready (see [SplashScreen]).
 /// Every screen and callback below is wired to [AppRootController] — see
-/// that file for the actual business logic (each method there is a direct
-/// port of one of MainActivity.kt's local closures).
+/// that file for the actual business logic.
 class AppRoot extends ConsumerStatefulWidget {
   const AppRoot({super.key});
 

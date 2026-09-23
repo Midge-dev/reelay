@@ -6,7 +6,7 @@ import 'synced_player.dart';
 import 'time_utils.dart';
 
 /// Guest-side reconciliation against the host's authoritative PlaybackState.
-/// Ports GuestPlaybackReconciler.kt with every timing constant unchanged.
+/// Timing constants are part of the protocol: every client must agree.
 class GuestPlaybackReconciler {
   static const _tickMs = 500;
   static const _deadbandMs = 1500;

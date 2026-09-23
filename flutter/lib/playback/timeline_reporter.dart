@@ -3,7 +3,7 @@ import 'package:dio/dio.dart';
 import '../data/plex/plex_http_client.dart';
 import '../data/plex/plex_models.dart';
 
-/// Ports TimelineReporter.kt's URL-building — split out as a pure function
+/// Plex's timeline (progress) URL — a pure function
 /// so it's testable without a live server.
 String timelineReportUrl(PlexServer server, String ratingKey, String state, int timeMs, int durationMs) {
   final key = Uri.encodeComponent('/library/metadata/$ratingKey');
@@ -16,7 +16,7 @@ String timelineReportUrl(PlexServer server, String ratingKey, String state, int 
       '&duration=$durationMs';
 }
 
-/// Ports TimelineReporter.kt — fire-and-forget scrobble reporting to Plex,
+/// Fire-and-forget scrobble reporting to Plex,
 /// on the same 5s-interval + on-exit cadence PlayerScreen drives it with.
 class TimelineReporter {
   final PlexServer server;
@@ -34,7 +34,7 @@ class TimelineReporter {
         options: Options(headers: {'X-Plex-Token': server.accessToken, 'X-Plex-Client-Identifier': clientIdentifier}),
       );
     } catch (_) {
-      // Fire-and-forget — matches Kotlin's runCatching {}.
+      // Fire-and-forget: a missed progress report isn't worth surfacing.
     }
   }
 }

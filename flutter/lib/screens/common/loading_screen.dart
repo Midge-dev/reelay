@@ -23,8 +23,7 @@ const _flavorMessages = [
   'Refilling the soda machine…',
 ];
 
-/// Ports ui/common/LoadingScreen.kt, plus a small bit of delight the
-/// Kotlin source never had: a randomly-picked "flavor" line under the real
+/// The full-screen wait, with a randomly-picked "flavor" line under the real
 /// status message, purely for personality on what's otherwise a blank
 /// wait — picked once per mount (not re-randomized on every rebuild, which
 /// would just look like flickering text).

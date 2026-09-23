@@ -24,7 +24,7 @@ SurfaceBorder get _listItemBorder => SurfaceBorder(
   focused: SurfaceBorderSide.solid(AppColors.accent),
 );
 
-/// Ports ui/kit/ListItem.kt — used by Settings' server list and the
+/// Used by Settings' server list and the
 /// player's subtitle/quality menus.
 class AppListItem extends StatelessWidget {
   final bool selected;

@@ -7,26 +7,24 @@ import '../../theme/scale.dart';
 import '../../theme/tokens.dart';
 import '../../theme/typography.dart';
 
-/// Ports ui/common/RemoveConfirmOverlay.kt — a full-bleed scrim confirm
+/// A full-bleed scrim confirm
 /// dialog, layered on top of a card's still-mounted content (checklist
 /// item #1's Stack-overlay pattern), not swapped in via if/else.
 ///
-/// Two hazards this ports deliberately, not just the visuals:
+/// Two hazards it handles deliberately:
 ///
 /// - **checklist item #3, cross-widget variant.** The long-press that
 ///   opens this overlay is still physically held when it appears;
 ///   RemoveConfirmOverlay immediately grabs focus onto Remove, so the
 ///   eventual key-up of that same press lands on Remove as a "bare"
-///   KeyUpEvent with no KeyDownEvent of its own. Compose solves this with
-///   `onPreviewKeyEvent` on an ancestor — true capture/tunnel dispatch
-///   that runs before either button's own click handling. Flutter's key
+///   KeyUpEvent with no KeyDownEvent of its own. Flutter's key
 ///   dispatch bubbles from the focused leaf outward (confirmed via
 ///   HardwareKeyboard.addHandler's source: its handlers run before the
 ///   focus-tree dispatch but don't gate/cancel it), so an ancestor can't
-///   pre-empt a descendant FocusableSurface's own onClick this way. Ported
-///   instead by guarding the *semantic action*: `_armed` starts false on
-///   every fresh mount (this widget is freshly built each time it
-///   appears, same lifecycle Kotlin's local state relies on) and the
+///   pre-empt a descendant FocusableSurface's own onClick. Handled instead
+///   by guarding the *semantic action*: `_armed` starts false on every
+///   fresh mount (this widget is freshly built each time it appears) and
+///   the
 ///   first Confirm/Cancel activation only arms it; the action itself
 ///   requires a second, deliberate press.
 /// - **Auto-dismiss on focus loss, correctly sequenced.** Only starts
@@ -187,11 +185,10 @@ class _RemoveConfirmOverlayState extends State<RemoveConfirmOverlay> {
                 padding: widget.compact
                     ? EdgeInsets.symmetric(horizontal: 8.du(context))
                     : EdgeInsets.zero,
-                // Compose's Box silently clips content too big for a small
-                // card's overlay instead of throwing; Flutter's Column would
-                // hard-overflow in the same spot (seen on the narrow
+                // A Column would hard-overflow content too big for a small
+                // card's overlay (seen on the narrow
                 // ContinueWatchingPoster card), so scale the whole block
-                // down to fit rather than reproducing that layout crash.
+                // down to fit.
                 child: FittedBox(
                   fit: BoxFit.scaleDown,
                   child: Column(

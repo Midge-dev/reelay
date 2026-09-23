@@ -39,7 +39,7 @@ class _RosterEntry {
   const _RosterEntry(this.username, this.avatarUrl, this.lastSeenMs);
 }
 
-/// Ports ui/lobby/LobbyScreen.kt — the pre-playback waiting room: live
+/// The pre-playback waiting room: live
 /// roster driven by presence events over [RelayClient.events], a chat QR
 /// modal, and the relay connection status line/dot.
 class LobbyScreen extends StatefulWidget {
