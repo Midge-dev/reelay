@@ -139,17 +139,20 @@ class OnboardingFrame extends StatelessWidget {
             child: LayoutBuilder(
               builder: (context, constraints) => SingleChildScrollView(
                 clipBehavior: Clip.none,
+                // The handoff pads the column the same top and bottom; the
+                // bottom used to be the 48 screen-edge minimum, which sat
+                // O4's "Skipping is fine" bar right on the screen's edge.
                 padding: EdgeInsets.fromLTRB(
                   96.du(context),
                   contentTop.du(context),
                   96.du(context),
-                  AppSpacing.safeY.du(context),
+                  contentTop.du(context),
                 ),
                 child: ConstrainedBox(
                   constraints: BoxConstraints(
                     minHeight:
                         constraints.maxHeight -
-                        (contentTop + AppSpacing.safeY).du(context),
+                        (contentTop * 2).du(context),
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
