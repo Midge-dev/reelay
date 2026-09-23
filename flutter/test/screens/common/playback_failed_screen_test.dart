@@ -19,6 +19,7 @@ Future<void> _pump(
     Directionality(
       textDirection: TextDirection.ltr,
       child: PlaybackFailedScreen(
+        serverName: 'Attic',
         reason: reason,
         onRetry: onRetry ?? () {},
         onBack: onBack ?? () {},
@@ -42,7 +43,7 @@ void main() {
     var retried = false;
     await _pump(tester, onRetry: () => retried = true);
 
-    await tester.tap(find.text('Try again'));
+    await tester.tap(find.text('Try Attic again'));
     await tester.pump();
 
     expect(retried, isTrue);
@@ -62,14 +63,14 @@ void main() {
     await _pump(tester);
 
     expect(find.textContaining('Play from'), findsNothing);
-    expect(find.text('Try again'), findsOneWidget);
+    expect(find.text('Try Attic again'), findsOneWidget);
   });
 
   testWidgets('with an alternate source, Play from X becomes primary and Try again stays available', (tester) async {
     await _pump(tester, alternateServerName: 'Loft', onPlayAlternate: () {});
 
     expect(find.text('Play from Loft'), findsOneWidget);
-    expect(find.text('Try again'), findsOneWidget);
+    expect(find.text('Try Attic again'), findsOneWidget);
   });
 
   testWidgets('tapping Play from X invokes onPlayAlternate', (tester) async {

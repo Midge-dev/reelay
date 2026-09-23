@@ -15,9 +15,10 @@ import '../../theme/typography.dart';
 /// Loft" in the mockup — with plain Retry demoted to a secondary option;
 /// with no alternate, Retry stays primary exactly as before. Rendered as
 /// its own full screen rather than a literal dialog over the dimmed detail
-/// page — see PlaybackFailed's own doc comment for why.
+/// page (AppRoot draws the page underneath, inert).
 class PlaybackFailedScreen extends StatefulWidget {
   final String reason;
+  final String serverName;
   final VoidCallback onRetry;
   final VoidCallback onBack;
   final String? alternateServerName;
@@ -26,6 +27,7 @@ class PlaybackFailedScreen extends StatefulWidget {
   const PlaybackFailedScreen({
     super.key,
     required this.reason,
+    required this.serverName,
     required this.onRetry,
     required this.onBack,
     this.alternateServerName,
@@ -56,7 +58,7 @@ class _PlaybackFailedScreenState extends State<PlaybackFailedScreen> {
   @override
   Widget build(BuildContext context) {
     return ColoredBox(
-      color: AppColors.background,
+      color: AppScrims.dialog,
       child: Center(
         child: Container(
           width: 900.du(context),
@@ -89,6 +91,15 @@ class _PlaybackFailedScreenState extends State<PlaybackFailedScreen> {
               ),
               SizedBox(height: AppSpacing.xl.du(context)),
               AppText(widget.reason, style: AppTypography.title2),
+              if (widget.alternateServerName case final alternate?) ...[
+                SizedBox(height: AppSpacing.xl.du(context)),
+                AppText(
+                  'There is another copy on $alternate, and you would carry '
+                  'on from where you left off.',
+                  style: AppTypography.body,
+                  color: AppColors.ink2,
+                ),
+              ],
               SizedBox(height: AppSpacing.xxl.du(context)),
               Builder(
                 builder: (context) {
@@ -121,7 +132,7 @@ class _PlaybackFailedScreenState extends State<PlaybackFailedScreen> {
                       hasAlternate
                           ? AppOutlinedButton(
                               onClick: widget.onRetry,
-                              child: const AppText('Try again'),
+                              child: AppText('Try ${widget.serverName} again'),
                             )
                           : AppButton(
                               onClick: widget.onRetry,
@@ -134,7 +145,7 @@ class _PlaybackFailedScreenState extends State<PlaybackFailedScreen> {
                                     size: 22,
                                   ),
                                   SizedBox(width: AppSpacing.sm.du(context)),
-                                  const AppText('Try again'),
+                                  AppText('Try ${widget.serverName} again'),
                                 ],
                               ),
                             ),

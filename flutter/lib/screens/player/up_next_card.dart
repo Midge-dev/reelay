@@ -15,12 +15,11 @@ import '../common/artwork.dart';
 
 const _countdownSeconds = 12;
 
-/// Screen 16 — bottom-right, over the credits rather than replacing them;
-/// counts down but never steals focus mid-scene (autofocus is intentionally
-/// not set here — see PlayerScreen's own focus handling, which leaves
-/// playback controls as the default target). Pressing Back dismisses it for
-/// the rest of the episode (PlayerScreen's _upNextDismissed, not just
-/// clearing this widget).
+/// Screen 16 — bottom-right, over the credits rather than replacing them,
+/// with a countdown bar underneath. It appears only in the last seconds, so
+/// Play takes focus: one press plays the next episode. Pressing Back
+/// dismisses it for the rest of the episode (PlayerScreen's
+/// _upNextDismissed, not just clearing this widget).
 class UpNextCard extends StatefulWidget {
   final PlexServer server;
   final PlexOnDeckItem item;
@@ -73,7 +72,7 @@ class _UpNextCardState extends State<UpNextCard> {
     final episodeLabel = item.index != null
         ? 'UP NEXT · EPISODE ${item.index}'
         : 'UP NEXT';
-    return Container(
+    final card = Container(
       width: 760.du(context),
       padding: EdgeInsets.all(AppSpacing.xxl.du(context)),
       decoration: BoxDecoration(
@@ -87,7 +86,6 @@ class _UpNextCardState extends State<UpNextCard> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               SizedBox(
                 width: 260.du(context),
@@ -117,8 +115,19 @@ class _UpNextCardState extends State<UpNextCard> {
                       item.title,
                       style: AppTypography.title2,
                       color: AppColors.inkOnArt,
+                      maxLines: 1,
                     ),
-                    SizedBox(height: AppSpacing.lg.du(context)),
+                    if (item.summary case final summary?
+                        when summary.isNotEmpty) ...[
+                      SizedBox(height: AppSpacing.sm.du(context)),
+                      AppText(
+                        summary,
+                        style: AppTypography.caption.copyWith(height: 1.5),
+                        color: AppColors.ink2,
+                        maxLines: 2,
+                      ),
+                    ],
+                    SizedBox(height: 20.du(context)),
                     Wrap(
                       spacing: AppSpacing.md.du(context),
                       runSpacing: AppSpacing.sm.du(context),
@@ -150,6 +159,32 @@ class _UpNextCardState extends State<UpNextCard> {
           ),
         ],
       ),
+    );
+    // The countdown, drawn under the card as screen 16 does: it fills as
+    // the seconds run out, so the auto-play is never a surprise.
+    final elapsed = (_countdownSeconds - _secondsLeft + 1) / _countdownSeconds;
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        card,
+        SizedBox(height: 16.du(context)),
+        SizedBox(
+          width: 760.du(context),
+          height: 4.du(context),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(2.du(context)),
+            child: ColoredBox(
+              color: AppColors.inkOnArt.withValues(alpha: 0.22),
+              child: AnimatedFractionallySizedBox(
+                duration: const Duration(seconds: 1),
+                alignment: Alignment.centerLeft,
+                widthFactor: elapsed.clamp(0.0, 1.0),
+                child: ColoredBox(color: AppColors.accent),
+              ),
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

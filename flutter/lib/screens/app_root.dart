@@ -152,6 +152,7 @@ class _AppContent extends StatelessWidget {
     CollectionDetail(:final returnState) ||
     EpisodeDetail(:final returnState) ||
     WatchTogetherStart(:final returnState) => _destinationFor(returnState),
+    PlaybackFailed(:final returnState) => _destinationFor(returnState),
     _ => RailDestination.none,
   };
 
@@ -208,32 +209,50 @@ class _AppContent extends StatelessWidget {
         :final reason,
         :final returnState,
       ) =>
-        PlaybackFailedScreen(
-          reason: reason,
-          onRetry: () => controller.playMovie(
-            ctx,
-            server,
-            targetRatingKey,
-            returnState,
-            fromStart: fromStart,
-          ),
-          alternateServerName: _alternateSourceFor(
-            returnState,
-            server,
-          )?.server.name,
-          onPlayAlternate: _alternateSourceFor(returnState, server) == null
-              ? null
-              : () {
-                  final alternate = _alternateSourceFor(returnState, server)!;
-                  controller.playMovie(
-                    ctx,
-                    alternate.server,
-                    alternate.value.ratingKey,
-                    returnState,
-                    fromStart: fromStart,
-                  );
-                },
-          onBack: () => controller.returnTo(returnState),
+        Stack(
+          fit: StackFit.expand,
+          children: [
+            // Screen 25: the dialog stays over the detail page, so nothing is
+            // lost — same inert-page-underneath treatment as screen 09.
+            ExcludeFocus(
+              child: IgnorePointer(child: _screenFor(context, returnState)),
+            ),
+            BackHandler(
+              onBack: () => controller.returnTo(returnState),
+              child: PlaybackFailedScreen(
+                reason: reason,
+                serverName: server.name,
+                onRetry: () => controller.playMovie(
+                  ctx,
+                  server,
+                  targetRatingKey,
+                  returnState,
+                  fromStart: fromStart,
+                ),
+                alternateServerName: _alternateSourceFor(
+                  returnState,
+                  server,
+                )?.server.name,
+                onPlayAlternate:
+                    _alternateSourceFor(returnState, server) == null
+                    ? null
+                    : () {
+                        final alternate = _alternateSourceFor(
+                          returnState,
+                          server,
+                        )!;
+                        controller.playMovie(
+                          ctx,
+                          alternate.server,
+                          alternate.value.ratingKey,
+                          returnState,
+                          fromStart: fromStart,
+                        );
+                      },
+                onBack: () => controller.returnTo(returnState),
+              ),
+            ),
+          ],
         ),
       AppError(:final message, :final retryState) => BackHandler(
         onBack: () => controller.returnTo(retryState),

@@ -806,7 +806,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
               if (_upNextItem != null && !_menuOpen)
                 Positioned(
                   right: 64.du(context),
-                  bottom: 64.du(context),
+                  bottom: 44.du(context),
                   child: BackHandler(
                     onBack: _dismissUpNext,
                     child: UpNextCard(
