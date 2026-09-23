@@ -198,6 +198,10 @@ class PosterCard extends StatefulWidget {
   /// Captions a step dimmer — a title you can see but not play here.
   final bool muted;
 
+  /// A second card's edge peeking out behind the poster — screen 19's
+  /// collections, so a set of titles never reads as a single one.
+  final bool stacked;
+
   const PosterCard({
     super.key,
     this.imageUrl,
@@ -209,6 +213,7 @@ class PosterCard extends StatefulWidget {
     this.autofocus = false,
     this.marker,
     this.muted = false,
+    this.stacked = false,
   });
 
   @override
@@ -266,41 +271,65 @@ class _PosterCardState extends State<PosterCard> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           mainAxisSize: MainAxisSize.min,
           children: [
-            SizedBox(
-              height: posterHeight.du(context),
-              child: AppCard(
-                onClick: widget.onClick,
-                onLongClick: widget.onLongClick,
-                focusNode: _focusNode,
-                autofocus: widget.autofocus,
-                border: _posterBorder,
-                // This widget's own _handleFocusChange already does a
-                // title-inclusive ensureRowVisible; AppCard's narrower,
-                // image-only default would otherwise fire right after it
-                // (same focus notification, later-registered listener) and
-                // win, undoing the more precise target.
-                ensureVisibleOnFocus: false,
-                child: Stack(
-                  fit: StackFit.expand,
-                  children: [
-                    Artwork(imageUrl: widget.imageUrl),
-                    if (widget.marker != null)
-                      Positioned(
-                        left: 0,
-                        right: 0,
-                        bottom: 0,
-                        child: Container(
-                          color: AppScrims.dialog,
-                          padding: EdgeInsets.symmetric(
-                            horizontal: 14.du(context),
-                            vertical: AppSpacing.md.du(context),
-                          ),
-                          child: widget.marker,
+            Stack(
+              clipBehavior: Clip.none,
+              children: [
+                if (widget.stacked)
+                  Positioned(
+                    left: 10.du(context),
+                    right: -10.du(context),
+                    top: -6.du(context),
+                    height: posterHeight.du(context),
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        color: AppColors.surface,
+                        border: Border.all(
+                          color: AppColors.line,
+                          width: 2.du(context),
+                        ),
+                        borderRadius: BorderRadius.circular(
+                          AppShape.radiusMd.du(context),
                         ),
                       ),
-                  ],
+                    ),
+                  ),
+                SizedBox(
+                  height: posterHeight.du(context),
+                  child: AppCard(
+                    onClick: widget.onClick,
+                    onLongClick: widget.onLongClick,
+                    focusNode: _focusNode,
+                    autofocus: widget.autofocus,
+                    border: _posterBorder,
+                    // This widget's own _handleFocusChange already does a
+                    // title-inclusive ensureRowVisible; AppCard's narrower,
+                    // image-only default would otherwise fire right after it
+                    // (same focus notification, later-registered listener) and
+                    // win, undoing the more precise target.
+                    ensureVisibleOnFocus: false,
+                    child: Stack(
+                      fit: StackFit.expand,
+                      children: [
+                        Artwork(imageUrl: widget.imageUrl),
+                        if (widget.marker != null)
+                          Positioned(
+                            left: 0,
+                            right: 0,
+                            bottom: 0,
+                            child: Container(
+                              color: AppScrims.dialog,
+                              padding: EdgeInsets.symmetric(
+                                horizontal: 14.du(context),
+                                vertical: AppSpacing.md.du(context),
+                              ),
+                              child: widget.marker,
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
                 ),
-              ),
+              ],
             ),
             Padding(
               padding: EdgeInsets.only(top: _captionGap.du(context)),

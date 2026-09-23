@@ -639,8 +639,9 @@ class _LibraryScreenState extends State<LibraryScreen> {
           : null;
     }
 
+    // Centred in the space under the filter bar, a little above middle.
     return Padding(
-      padding: EdgeInsets.only(top: 24.du(context), bottom: 48.du(context)),
+      padding: EdgeInsets.only(bottom: 60.du(context)),
       child: Center(
         child: ConstrainedBox(
           constraints: BoxConstraints(maxWidth: 660.du(context)),
@@ -655,13 +656,14 @@ class _LibraryScreenState extends State<LibraryScreen> {
               SizedBox(height: 24.du(context)),
               AppText(
                 headline,
-                style: AppTypography.title2,
+                style: AppTypography.title2.copyWith(fontSize: 34),
                 textAlign: TextAlign.center,
               ),
               if (factSentence != null) ...[
-                SizedBox(height: 12.du(context)),
+                SizedBox(height: 16.du(context)),
                 AppText(
                   factSentence,
+                  style: AppTypography.body,
                   color: AppColors.ink3,
                   textAlign: TextAlign.center,
                 ),
@@ -673,18 +675,32 @@ class _LibraryScreenState extends State<LibraryScreen> {
                   spacing: 16.du(context),
                   runSpacing: 12.du(context),
                   children: [
-                    for (final cause in causes)
-                      AppOutlinedButton(
-                        onClick: cause.$4,
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            const AppIcon(PhosphorIconsRegular.x, size: 20),
-                            SizedBox(width: AppSpacing.sm.du(context)),
-                            AppText(cause.$2),
-                          ],
+                    // The first way out is the primary action, per screen 23.
+                    for (final (i, cause) in causes.indexed)
+                      if (i == 0)
+                        AppButton(
+                          onClick: cause.$4,
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const AppIcon(PhosphorIconsRegular.x, size: 20),
+                              SizedBox(width: AppSpacing.sm.du(context)),
+                              AppText(cause.$2),
+                            ],
+                          ),
+                        )
+                      else
+                        AppOutlinedButton(
+                          onClick: cause.$4,
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const AppIcon(PhosphorIconsRegular.x, size: 20),
+                              SizedBox(width: AppSpacing.sm.du(context)),
+                              AppText(cause.$2),
+                            ],
+                          ),
                         ),
-                      ),
                     if (searchActive)
                       AppOutlinedButton(
                         onClick: () => setState(() => _searchQuery = ''),
@@ -705,11 +721,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
                           _dateAddedFilter = null;
                           _searchQuery = '';
                         }),
-                        child: AppText(
-                          'Clear all',
-                          style: AppTypography.caption,
-                          color: null,
-                        ),
+                        child: const AppText('Clear all'),
                       ),
                   ],
                 ),
@@ -738,6 +750,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
         final collection = results[index];
         final childCount = collection.value.childCount;
         return PosterCard(
+          stacked: true,
           key: ValueKey(
             '${collection.server.machineIdentifier}:${collection.value.ratingKey}',
           ),
