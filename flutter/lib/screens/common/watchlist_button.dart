@@ -2,9 +2,9 @@ import 'package:flutter/widgets.dart';
 
 import '../../kit/icon_button.dart';
 import '../../kit/surface_style.dart';
-import '../../kit/text.dart';
+import '../../kit/icon.dart';
 import '../../theme/tokens.dart';
-import '../../theme/typography.dart';
+import '../../theme/phosphor_icons.dart';
 
 /// Ports ui/common/WatchlistButton.kt. Square, not round — this sits in the
 /// detail-page action row alongside the other icon-only buttons (restart,
@@ -24,10 +24,11 @@ class WatchlistButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Screens 03/04: an outlined 62x62 square like its neighbours, the
+    // glyph saying which state it's in — check when saved, plus when not.
+    // No accent at rest; the accent is focus's alone.
     final border = SurfaceBorder(
-      idle: SurfaceBorderSide.solid(
-        isOnWatchlist ? AppColors.accent : AppColors.lineStrong,
-      ),
+      idle: SurfaceBorderSide.solid(AppColors.lineStrong),
       focused: SurfaceBorderSide.solid(AppColors.accent),
       noSpine: true,
     );
@@ -36,10 +37,9 @@ class WatchlistButton extends StatelessWidget {
       onClick: onClick,
       onFocusChange: onFocusChange,
       border: border,
-      child: AppText(
-        isOnWatchlist ? '✓' : '+',
-        style: AppTypography.label,
-        color: isOnWatchlist ? AppColors.accent : AppColors.ink2,
+      child: AppIcon(
+        isOnWatchlist ? PhosphorIconsRegular.check : PhosphorIconsRegular.plus,
+        size: 24,
       ),
     );
   }

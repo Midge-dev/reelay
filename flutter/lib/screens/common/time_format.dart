@@ -40,3 +40,13 @@ String formatCount(int n) {
   }
   return buffer.toString();
 }
+
+const _months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+/// Plex's `originallyAvailableAt` ("2022-12-18") as people write it:
+/// "Dec 18, 2022". Anything unparseable is shown as given.
+String formatAirDate(String iso) {
+  final d = DateTime.tryParse(iso);
+  if (d == null) return iso;
+  return '${_months[d.month - 1]} ${d.day}, ${d.year}';
+}

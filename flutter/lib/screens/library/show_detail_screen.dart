@@ -16,14 +16,25 @@ import '../../theme/tokens.dart';
 import '../../theme/typography.dart';
 import '../common/artwork.dart';
 import '../common/time_format.dart';
-import '../common/watch_together_icon.dart';
 import '../common/watchlist_button.dart';
 
-const _heroHeight = 620.0;
+// Screen 04: content from 80 du down, 48 du from the rail, 80 du from the
+// right edge; 30 du between hero, season chips and episodes; hero column
+// 820 du wide beside a 220x330 poster 44 du away; blocks 14 du apart.
+const _contentTop = 80.0;
+const _contentRight = 80.0;
+const _sectionGap = 30.0;
+const _heroColumnMax = 820.0;
+const _heroBlockGap = 14.0;
+const _posterGap = 44.0;
+const _synopsisMax = 720.0;
+const _bottomFadeHeight = 600.0;
 const _posterWidth = 220.0;
 const _posterHeight = 330.0;
 const _episodeThumbWidth = 220.0;
 const _episodeThumbHeight = 124.0;
+const _episodeGap = 12.0;
+const _episodeSummaryMax = 900.0;
 
 /// Ports screen 04 of the Nocturne handoff — "seasons are a chip row, not a
 /// separate screen" — one fewer back-press between the show and an episode.
@@ -142,12 +153,7 @@ class _ShowDetailScreenState extends State<ShowDetailScreen> {
     final episodes = await widget.loadEpisodes(target.ratingKey);
     if (!mounted) return;
 
-    final wanted = next?.ratingKey;
-    final hasWanted =
-        wanted != null && episodes.any((e) => e.ratingKey == wanted);
-    final focusKey = hasWanted
-        ? wanted
-        : (episodes.isNotEmpty ? episodes.first.ratingKey : null);
+    final focusKey = _nextUpIn(episodes, next)?.ratingKey;
     if (focusKey != null) {
       _initialFocusNode = FocusNode(
         debugLabel: 'show-detail-episode-$focusKey',
@@ -162,6 +168,23 @@ class _ShowDetailScreenState extends State<ShowDetailScreen> {
       _episodesLoading = false;
       _initialFocusEpisodeKey = focusKey;
     });
+  }
+
+  /// Screen 04 lands on "the next unwatched episode": one already in
+  /// progress, else Plex's own on-deck pick, else the first never-watched
+  /// one, else the first.
+  PlexEpisode? _nextUpIn(List<PlexEpisode> episodes, PlexOnDeckItem? onDeck) {
+    if (episodes.isEmpty) return null;
+    for (final e in episodes) {
+      if ((e.viewOffset ?? 0) > 0) return e;
+    }
+    for (final e in episodes) {
+      if (e.ratingKey == onDeck?.ratingKey) return e;
+    }
+    for (final e in episodes) {
+      if ((e.viewCount ?? 0) == 0) return e;
+    }
+    return episodes.first;
   }
 
   PlexSeason? _pickInitialSeason(
@@ -206,10 +229,24 @@ class _ShowDetailScreenState extends State<ShowDetailScreen> {
   @override
   Widget build(BuildContext context) {
     final detail = _detail;
-    final playTarget = _nextEpisode?.ratingKey;
-    final playLabel = _nextEpisode != null
-        ? 'Play S${_nextEpisode!.parentIndex}E${_nextEpisode!.index}'
-        : 'Play';
+    // The episode Play targets: the one focus lands on (in progress or
+    // next unwatched), falling back to Plex's on-deck pick before episodes
+    // load.
+    final nextUp = _episodes
+        .where((e) => e.ratingKey == _initialFocusEpisodeKey)
+        .firstOrNull;
+    final playTarget = nextUp?.ratingKey ?? _nextEpisode?.ratingKey;
+    final seasonIndex =
+        nextUp?.parentIndex ??
+        _selectedSeason?.index ??
+        _nextEpisode?.parentIndex;
+    final episodeIndex = nextUp?.index ?? _nextEpisode?.index;
+    final resuming = (nextUp?.viewOffset ?? 0) > 0;
+    final playLabel = [
+      resuming ? 'Resume' : 'Play',
+      if (seasonIndex != null && episodeIndex != null)
+        'S$seasonIndex E$episodeIndex',
+    ].join(' ');
     final guid = detail?.guid ?? widget.show.guid;
 
     final sections = <Widget>[
@@ -228,45 +265,84 @@ class _ShowDetailScreenState extends State<ShowDetailScreen> {
         onToggleWatchlist: () => widget.onToggleWatchlist(guid),
         onActionButtonFocused: _scrollToTop,
       ),
-    ];
-
-    if (_seasons.isNotEmpty) {
-      sections.add(
+      if (_seasons.isNotEmpty)
         _SeasonChipsRow(
           seasons: _seasons,
           selected: _selectedSeason,
           onSelect: _onSelectSeason,
         ),
-      );
-    }
-
-    if (!_episodesLoading) {
-      for (final episode in _episodes) {
-        sections.add(
-          _EpisodeRow(
-            key: ValueKey(episode.ratingKey),
-            server: widget.server,
-            episode: episode,
-            isNextUp: episode.ratingKey == _nextEpisode?.ratingKey,
-            focusNode: episode.ratingKey == _initialFocusEpisodeKey
-                ? _initialFocusNode
-                : null,
-            onClick: () => widget.onSelectEpisode(episode),
-          ),
-        );
-      }
-    }
-    sections.add(SizedBox(height: 48.du(context)));
+      if (!_episodesLoading)
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            for (final (i, episode) in _episodes.indexed) ...[
+              if (i > 0) SizedBox(height: _episodeGap.du(context)),
+              _EpisodeRow(
+                key: ValueKey(episode.ratingKey),
+                server: widget.server,
+                episode: episode,
+                focusNode: episode.ratingKey == _initialFocusEpisodeKey
+                    ? _initialFocusNode
+                    : null,
+                onClick: () => widget.onSelectEpisode(episode),
+              ),
+            ],
+          ],
+        ),
+    ];
 
     return BackHandler(
       onBack: widget.onBack,
       child: ColoredBox(
         color: AppColors.background,
-        child: ListView.separated(
-          controller: _scrollController,
-          itemCount: sections.length,
-          separatorBuilder: (context, index) => SizedBox(height: 20.du(context)),
-          itemBuilder: (context, index) => sections[index],
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            // The show's backdrop sits behind the whole page (screen 04),
+            // under scrim.edge and a bottom fade into the ground, so the
+            // episode list reads on the ground rather than on the art.
+            Artwork(
+              imageUrl: PlexImageUrl.of(
+                widget.server,
+                widget.show.art ?? widget.show.thumb,
+              ),
+            ),
+            DecoratedBox(decoration: BoxDecoration(gradient: AppScrims.edge)),
+            Positioned(
+              left: 0,
+              right: 0,
+              bottom: 0,
+              height: _bottomFadeHeight.du(context),
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [
+                      AppColors.background.withValues(alpha: 0),
+                      AppColors.background,
+                    ],
+                    stops: const [0, 0.55],
+                  ),
+                ),
+              ),
+            ),
+            ListView.separated(
+              controller: _scrollController,
+              // Focused rows scale 1.03 — keep them clear of the edges.
+              clipBehavior: Clip.none,
+              padding: EdgeInsets.fromLTRB(
+                AppSpacing.safeX.du(context),
+                _contentTop.du(context),
+                _contentRight.du(context),
+                AppSpacing.safeY.du(context),
+              ),
+              itemCount: sections.length,
+              separatorBuilder: (context, index) =>
+                  SizedBox(height: _sectionGap.du(context)),
+              itemBuilder: (context, index) => sections[index],
+            ),
+          ],
         ),
       ),
     );
@@ -304,8 +380,7 @@ class _ShowHero extends StatelessWidget {
     if (focused) onActionButtonFocused();
   }
 
-  // Nothing sits above the action button row (it's the top of the hero) —
-  // see the matching comment in movie_detail_screen.dart.
+  // Nothing sits above the action row — see movie_detail_screen.dart.
   KeyEventResult _trapUp(FocusNode node, KeyEvent event) {
     if (event is KeyDownEvent &&
         event.logicalKey == LogicalKeyboardKey.arrowUp) {
@@ -316,153 +391,202 @@ class _ShowHero extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final metaParts = <String>[
+    final gap = SizedBox(height: _heroBlockGap.du(context));
+    final episodes = show.leafCount;
+    final meta = <String>[
       if (show.year != null) '${show.year}',
-      if (seasonCount > 0) '$seasonCount season${seasonCount == 1 ? '' : 's'}',
-      if (show.leafCount != null)
-        '${show.leafCount} episode${show.leafCount == 1 ? '' : 's'}',
+      [
+        if (seasonCount > 0)
+          '$seasonCount season${seasonCount == 1 ? '' : 's'}',
+        if (episodes != null) '$episodes episode${episodes == 1 ? '' : 's'}',
+      ].join(' · '),
       if (show.genres.isNotEmpty) show.genres.first.tag,
-      if (show.contentRating != null) show.contentRating!,
-    ];
+    ].where((p) => p.isNotEmpty).toList();
 
-    return SizedBox(
-      height: _heroHeight.du(context),
-      child: Stack(
-        fit: StackFit.expand,
-        children: [
-          Artwork(
-            imageUrl: PlexImageUrl.of(server, show.art ?? show.thumb),
-          ),
-          // scrim.edge — the ground colour holds solid under the text
-          // column and fades away toward the artwork. DESIGN.md #2.
-          Positioned.fill(
-            child: DecoratedBox(
-              decoration: BoxDecoration(gradient: AppScrims.edge),
-            ),
-          ),
-          Positioned.fill(
-            child: DecoratedBox(
-              decoration: BoxDecoration(gradient: AppScrims.bottom),
-            ),
-          ),
-          Padding(
-            padding: EdgeInsets.fromLTRB(
-              AppSpacing.xxxl.du(context),
-              AppSpacing.xxl.du(context),
-              AppSpacing.xxxl.du(context),
-              AppSpacing.xl.du(context),
-            ),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Expanded(
+          child: Align(
+            alignment: AlignmentDirectional.topStart,
+            child: ConstrainedBox(
+              constraints: BoxConstraints(maxWidth: _heroColumnMax.du(context)),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Container(
-                            width: 20.du(context),
-                            height: 2.du(context),
-                            color: AppColors.accent,
-                          ),
-                          SizedBox(width: AppSpacing.md.du(context)),
-                          AppText('SHOW', style: AppTypography.micro),
-                        ],
+                      Container(
+                        width: 20.du(context),
+                        height: 2.du(context),
+                        color: AppColors.accent,
                       ),
-                      SizedBox(height: AppSpacing.sm.du(context)),
-                      ConstrainedBox(
-                        constraints: BoxConstraints(maxWidth: 900.du(context)),
-                        child: AppText(
-                          show.title,
-                          style: AppTypography.display,
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                      if (metaParts.isNotEmpty) ...[
-                        SizedBox(height: AppSpacing.sm.du(context)),
-                        AppText(metaParts.join(' · '), color: AppColors.ink2),
-                      ],
-                      if (summary != null) ...[
-                        SizedBox(height: AppSpacing.md.du(context)),
-                        ConstrainedBox(
-                          constraints: BoxConstraints(maxWidth: 780.du(context)),
-                          child: AppText(
-                            summary!,
-                            style: AppTypography.body,
-                            maxLines: 3,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                      ],
-                      SizedBox(height: AppSpacing.lg.du(context)),
-                      Focus(
-                        canRequestFocus: false,
-                        onKeyEvent: _trapUp,
-                        child: Wrap(
-                          // Wrap, not Row — a long "Play S3E12" label plus
-                          // Watch Together and the watchlist button can be
-                          // wider than the column allows. See the matching
-                          // comment in movie_detail_screen.dart.
-                          spacing: AppSpacing.md.du(context),
-                          runSpacing: AppSpacing.md.du(context),
-                          crossAxisAlignment: WrapCrossAlignment.center,
-                          children: [
-                            AppButton(
-                              onClick: onPlay ?? () {},
-                              focusNode: playFocus,
-                              onFocusChange: _onFocus,
-                              child: AppText(playLabel),
-                            ),
-                            AppOutlinedButton(
-                              onClick: onWatchTogether ?? () {},
-                              onFocusChange: _onFocus,
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  const WatchTogetherIcon(),
-                                  Padding(
-                                    padding: EdgeInsets.only(
-                                      left: AppSpacing.sm.du(context),
-                                    ),
-                                    child: const AppText('Watch Together'),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            WatchlistButton(
-                              isOnWatchlist: isOnWatchlist,
-                              onClick: onToggleWatchlist,
-                              onFocusChange: _onFocus,
-                            ),
-                          ],
-                        ),
+                      SizedBox(width: AppSpacing.md.du(context)),
+                      AppText(
+                        'SERIES · PLEX · ${server.name.toUpperCase()}',
+                        style: AppTypography.micro,
                       ),
                     ],
                   ),
-                ),
-                SizedBox(width: AppSpacing.xxl.du(context)),
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(AppShape.radiusMd.du(context)),
-                  child: Container(
-                    width: _posterWidth.du(context),
-                    height: _posterHeight.du(context),
-                    decoration: BoxDecoration(
-                      border: Border.all(color: AppColors.lineStrong),
+                  gap,
+                  AppText(
+                    show.title,
+                    style: AppTypography.display,
+                    color: AppColors.inkOnArt,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  gap,
+                  _MetaRow(parts: meta, rating: show.contentRating),
+                  if (summary != null && summary!.trim().isNotEmpty) ...[
+                    gap,
+                    ConstrainedBox(
+                      constraints: BoxConstraints(
+                        maxWidth: _synopsisMax.du(context),
+                      ),
+                      child: AppText(
+                        summary!,
+                        style: AppTypography.body,
+                        maxLines: 3,
+                        overflow: TextOverflow.ellipsis,
+                      ),
                     ),
-                    child: Artwork(
-                      imageUrl: PlexImageUrl.of(server, show.thumb),
+                  ],
+                  SizedBox(height: (_heroBlockGap + AppSpacing.sm).du(context)),
+                  Focus(
+                    canRequestFocus: false,
+                    onKeyEvent: _trapUp,
+                    child: Wrap(
+                      spacing: _heroBlockGap.du(context),
+                      runSpacing: _heroBlockGap.du(context),
+                      children: [
+                        AppOutlinedButton(
+                          onClick: onPlay ?? () {},
+                          enabled: onPlay != null,
+                          focusNode: playFocus,
+                          onFocusChange: _onFocus,
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const AppIcon(
+                                PhosphorIconsRegular.play,
+                                size: 22,
+                              ),
+                              SizedBox(width: AppSpacing.md.du(context)),
+                              AppText(
+                                playLabel,
+                                style: AppTypography.label,
+                                color: null,
+                              ),
+                            ],
+                          ),
+                        ),
+                        AppOutlinedButton(
+                          onClick: onWatchTogether ?? () {},
+                          enabled: onWatchTogether != null,
+                          onFocusChange: _onFocus,
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const AppIcon(
+                                PhosphorIconsRegular.usersThree,
+                                size: 22,
+                              ),
+                              SizedBox(width: AppSpacing.md.du(context)),
+                              AppText(
+                                'Watch Together',
+                                style: AppTypography.label,
+                                color: null,
+                              ),
+                            ],
+                          ),
+                        ),
+                        WatchlistButton(
+                          isOnWatchlist: isOnWatchlist,
+                          onClick: onToggleWatchlist,
+                          onFocusChange: _onFocus,
+                        ),
+                      ],
                     ),
                   ),
-                ),
-              ],
+                ],
+              ),
+            ),
+          ),
+        ),
+        SizedBox(width: _posterGap.du(context)),
+        ClipRRect(
+          borderRadius: BorderRadius.circular(AppShape.radiusMd.du(context)),
+          child: Container(
+            width: _posterWidth.du(context),
+            height: _posterHeight.du(context),
+            foregroundDecoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(
+                AppShape.radiusMd.du(context),
+              ),
+              border: Border.all(
+                color: AppColors.lineStrong,
+                width: 1.du(context),
+              ),
+            ),
+            child: Artwork(imageUrl: PlexImageUrl.of(server, show.thumb)),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// "2022–2025 · 3 seasons · 24 episodes · Drama [TV-MA]" — 19 du ink2 with
+/// ink4 separators and the rating in its own outlined chip (screen 04).
+class _MetaRow extends StatelessWidget {
+  final List<String> parts;
+  final String? rating;
+
+  const _MetaRow({required this.parts, this.rating});
+
+  @override
+  Widget build(BuildContext context) {
+    final gap = SizedBox(width: AppSpacing.lg.du(context));
+    return Wrap(
+      crossAxisAlignment: WrapCrossAlignment.center,
+      spacing: 0,
+      runSpacing: AppSpacing.xs.du(context),
+      children: [
+        for (final (i, part) in parts.indexed) ...[
+          if (i > 0) ...[
+            gap,
+            AppText('·', style: AppTypography.caption, color: AppColors.ink4),
+            gap,
+          ],
+          AppText(part, style: AppTypography.caption, color: AppColors.ink2),
+        ],
+        if (rating != null) ...[
+          gap,
+          Container(
+            padding: EdgeInsets.symmetric(
+              horizontal: 9.du(context),
+              vertical: 3.du(context),
+            ),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(
+                AppShape.radiusSm.du(context),
+              ),
+              border: Border.all(
+                color: AppColors.lineStrong,
+                width: 1.du(context),
+              ),
+            ),
+            child: AppText(
+              rating!,
+              style: AppTypography.micro.copyWith(letterSpacing: 0),
+              color: AppColors.ink2,
             ),
           ),
         ],
-      ),
+      ],
     );
   }
 }
@@ -490,21 +614,22 @@ class _SeasonChipsRow extends StatelessWidget {
         return (a.index ?? 0).compareTo(b.index ?? 0);
       });
 
-    return Padding(
-      padding: EdgeInsets.symmetric(horizontal: AppSpacing.xxxl.du(context)),
-      child: Wrap(
-        spacing: AppSpacing.md.du(context),
-        runSpacing: AppSpacing.md.du(context),
-        children: [
-          for (final season in sorted)
-            AppFilterChip(
-              key: ValueKey(season.ratingKey),
-              selected: season.ratingKey == selected?.ratingKey,
-              onClick: () => onSelect(season),
-              child: AppText(season.title),
+    return Wrap(
+      spacing: AppSpacing.md.du(context),
+      runSpacing: AppSpacing.md.du(context),
+      children: [
+        for (final season in sorted)
+          AppFilterChip(
+            key: ValueKey(season.ratingKey),
+            selected: season.ratingKey == selected?.ratingKey,
+            onClick: () => onSelect(season),
+            child: AppText(
+              season.title,
+              style: AppTypography.caption,
+              color: null,
             ),
-        ],
-      ),
+          ),
+      ],
     );
   }
 }
@@ -512,7 +637,6 @@ class _SeasonChipsRow extends StatelessWidget {
 class _EpisodeRow extends StatefulWidget {
   final PlexServer server;
   final PlexEpisode episode;
-  final bool isNextUp;
   final FocusNode? focusNode;
   final VoidCallback onClick;
 
@@ -520,7 +644,6 @@ class _EpisodeRow extends StatefulWidget {
     super.key,
     required this.server,
     required this.episode,
-    required this.isNextUp,
     this.focusNode,
     required this.onClick,
   });
@@ -529,6 +652,11 @@ class _EpisodeRow extends StatefulWidget {
   State<_EpisodeRow> createState() => _EpisodeRowState();
 }
 
+/// Screen 04's episode row: a 220x124 still (with a progress rule when
+/// started), "EPISODE 4" plus time left, the title, a two-line synopsis,
+/// and the runtime — plus the play glyph once focused, since that's what
+/// Select does. Focus is the standard surface signal; the kicker steps to
+/// accent300 and the lines step up an ink level with it.
 class _EpisodeRowState extends State<_EpisodeRow> {
   late final FocusNode _focusNode =
       widget.focusNode ??
@@ -545,117 +673,122 @@ class _EpisodeRowState extends State<_EpisodeRow> {
   Widget build(BuildContext context) {
     final episode = widget.episode;
     final duration = episode.duration ?? 0;
-    final remaining = duration - (episode.viewOffset ?? 0);
-    final hasProgress = (episode.viewOffset ?? 0) > 0 && remaining > 0;
-    final progress = duration > 0
-        ? ((episode.viewOffset ?? 0) / duration).clamp(0.0, 1.0)
-        : 0.0;
+    final offset = episode.viewOffset ?? 0;
+    final remaining = duration - offset;
+    final hasProgress = offset > 0 && remaining > 0;
+    final progress = duration > 0 ? (offset / duration).clamp(0.0, 1.0) : 0.0;
 
-    return Padding(
-      padding: EdgeInsets.symmetric(horizontal: AppSpacing.xxxl.du(context)),
-      child: AppCard(
-        onClick: widget.onClick,
-        focusNode: _focusNode,
-        onFocusChange: (focused) => setState(() => _focused = focused),
-        child: Padding(
-          padding: EdgeInsets.symmetric(
-            horizontal: AppSpacing.lg.du(context),
-            vertical: AppSpacing.md.du(context),
-          ),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              ClipRRect(
-                borderRadius: BorderRadius.circular(AppShape.radiusSm.du(context)),
-                child: SizedBox(
-                  width: _episodeThumbWidth.du(context),
-                  height: _episodeThumbHeight.du(context),
-                  child: Stack(
-                    fit: StackFit.expand,
-                    children: [
-                      Artwork(
-                        imageUrl: PlexImageUrl.of(widget.server, episode.thumb),
-                      ),
-                      if (hasProgress)
-                        Positioned(
-                          left: 0,
-                          right: 0,
-                          bottom: 0,
-                          child: Container(
-                            height: 4.du(context),
-                            color: AppColors.ink.withValues(alpha: 0.22),
-                            alignment: Alignment.centerLeft,
-                            child: FractionallySizedBox(
-                              widthFactor: progress,
-                              child: ColoredBox(color: AppColors.accent),
+    return AppCard(
+      onClick: widget.onClick,
+      focusNode: _focusNode,
+      onFocusChange: (focused) => setState(() => _focused = focused),
+      child: Padding(
+        padding: EdgeInsets.symmetric(
+          horizontal: 20.du(context),
+          vertical: AppSpacing.lg.du(context),
+        ),
+        child: Row(
+          children: [
+            ClipRRect(
+              borderRadius: BorderRadius.circular(
+                AppShape.radiusSm.du(context),
+              ),
+              child: SizedBox(
+                width: _episodeThumbWidth.du(context),
+                height: _episodeThumbHeight.du(context),
+                child: Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    Artwork(
+                      imageUrl: PlexImageUrl.of(widget.server, episode.thumb),
+                    ),
+                    if (hasProgress)
+                      Positioned(
+                        left: 0,
+                        right: 0,
+                        bottom: 0,
+                        height: AppSpacing.xs.du(context),
+                        child: ColoredBox(
+                          color: AppColors.ink.withValues(alpha: 0.22),
+                          child: FractionallySizedBox(
+                            alignment: AlignmentDirectional.centerStart,
+                            widthFactor: progress,
+                            child: ColoredBox(
+                              color: _focused
+                                  ? AppColors.accent
+                                  : AppColors.ink3,
                             ),
                           ),
                         ),
-                    ],
-                  ),
+                      ),
+                  ],
                 ),
               ),
-              SizedBox(width: AppSpacing.xl.du(context)),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        AppText(
-                          'EPISODE ${episode.index ?? '—'}',
-                          style: AppTypography.caption,
-                        ),
-                        if (hasProgress) ...[
-                          SizedBox(width: AppSpacing.md.du(context)),
-                          AppText(
-                            formatMinutesLeft(remaining),
-                            style: AppTypography.caption,
-                          ),
-                        ],
-                      ],
-                    ),
-                    SizedBox(height: 4.du(context)),
-                    AppText(
-                      episode.title,
-                      style: _focused
-                          ? AppTypography.label.copyWith(
-                              fontWeight: FontWeight.w500,
-                            )
-                          : AppTypography.label,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    if (episode.summary != null) ...[
-                      SizedBox(height: 4.du(context)),
+            ),
+            SizedBox(width: 22.du(context)),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
                       AppText(
-                        episode.summary!,
+                        'EPISODE ${episode.index ?? '—'}',
                         style: AppTypography.caption,
+                        color: _focused ? AppColors.accent300 : AppColors.ink3,
+                      ),
+                      if (hasProgress) ...[
+                        SizedBox(width: 14.du(context)),
+                        AppText(
+                          formatMinutesLeft(remaining),
+                          style: AppTypography.caption,
+                          color: AppColors.ink2,
+                        ),
+                      ],
+                    ],
+                  ),
+                  SizedBox(height: 5.du(context)),
+                  AppText(
+                    episode.title,
+                    style: AppTypography.rowLabel.copyWith(
+                      fontWeight: _focused ? FontWeight.w500 : FontWeight.w400,
+                    ),
+                    color: _focused ? AppColors.ink : AppColors.ink2,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  if (episode.summary != null &&
+                      episode.summary!.trim().isNotEmpty) ...[
+                    SizedBox(height: 6.du(context)),
+                    ConstrainedBox(
+                      constraints: BoxConstraints(
+                        maxWidth: _episodeSummaryMax.du(context),
+                      ),
+                      child: AppText(
+                        episode.summary!,
+                        style: AppTypography.caption.copyWith(height: 1.5),
+                        color: _focused ? AppColors.ink2 : AppColors.ink3,
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                       ),
-                    ],
-                  ],
-                ),
-              ),
-              SizedBox(width: AppSpacing.lg.du(context)),
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  AppText(
-                    formatRuntime(duration),
-                    style: AppTypography.caption,
-                  ),
-                  if (widget.isNextUp) ...[
-                    SizedBox(width: AppSpacing.md.du(context)),
-                    const AppIcon(PhosphorIconsFill.play, size: 26),
+                    ),
                   ],
                 ],
               ),
+            ),
+            SizedBox(width: 22.du(context)),
+            AppText(
+              formatRuntime(duration),
+              style: AppTypography.caption,
+              color: AppColors.ink3,
+            ),
+            if (_focused) ...[
+              SizedBox(width: 14.du(context)),
+              const AppIcon(PhosphorIconsFill.play, size: 26),
             ],
-          ),
+          ],
         ),
       ),
     );

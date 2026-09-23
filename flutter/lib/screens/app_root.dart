@@ -474,8 +474,12 @@ class _AppContent extends StatelessWidget {
             ),
           ),
         ),
+      // BackHandler: without it Back fell through to Android and closed
+      // the app instead of cancelling the dialog.
       WatchTogetherStart(:final ctx, :final server, :final returnState, :final roomTitle, :final thumb, :final targetRatingKey, :final defaultRestart) =>
-        WatchTogetherStartScreen(
+        BackHandler(
+        onBack: () => controller.returnTo(returnState),
+        child: WatchTogetherStartScreen(
           roomTitle: roomTitle,
           defaultRestart: defaultRestart,
           maxSeats: controller.currentSettings.maxHostSeats,
@@ -493,6 +497,7 @@ class _AppContent extends StatelessWidget {
             restart: restart,
           ),
           onCancel: () => controller.returnTo(returnState),
+        ),
         ),
       Lobby(:final detail, :final returnState, :final relay, :final hostName, :final relayNickname, :final isHost) => LobbyScreen(
           key: ValueKey('lobby-${detail.ratingKey}'),

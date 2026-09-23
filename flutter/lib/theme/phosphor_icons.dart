@@ -13,6 +13,18 @@ import 'package:flutter/widgets.dart';
 class PhosphorIconsRegular {
   const PhosphorIconsRegular._();
 
+  static const play = IconData(
+    0xe3d0,
+    fontFamily: 'PhosphorRegular',
+    fontPackage: 'phosphor_flutter',
+    matchTextDirection: true,
+  );
+  static const check = IconData(
+    0xe182,
+    fontFamily: 'PhosphorRegular',
+    fontPackage: 'phosphor_flutter',
+    matchTextDirection: true,
+  );
   static const dotOutline = IconData(
     0xece0,
     fontFamily: 'PhosphorRegular',

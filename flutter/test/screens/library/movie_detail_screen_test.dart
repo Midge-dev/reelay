@@ -1,5 +1,6 @@
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:reelay/theme/phosphor_icons.dart';
 import 'package:reelay/data/plex/plex_models.dart';
 import 'package:reelay/data/plex/plex_resources_api.dart';
 import 'package:reelay/screens/library/movie_detail_screen.dart';
@@ -61,7 +62,7 @@ void main() {
     await _pump(tester);
     await tester.pump();
 
-    expect(find.text('+'), findsOneWidget, reason: 'not on watchlist -> + button');
+    expect(find.byIcon(PhosphorIconsRegular.plus), findsOneWidget, reason: 'not on watchlist -> plus button');
   });
 
   testWidgets('tapping Play invokes onPlay with the movie ratingKey', (tester) async {
@@ -79,8 +80,8 @@ void main() {
     await _pump(tester, isOnWatchlist: (_) => true);
     await tester.pump();
 
-    expect(find.text('✓'), findsOneWidget);
-    expect(find.text('+'), findsNothing);
+    expect(find.byIcon(PhosphorIconsRegular.check), findsOneWidget);
+    expect(find.byIcon(PhosphorIconsRegular.plus), findsNothing);
   });
 
   group('source picker', () {

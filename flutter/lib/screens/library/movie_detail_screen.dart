@@ -19,7 +19,6 @@ import '../../theme/tokens.dart';
 import '../../theme/typography.dart';
 import '../common/artwork.dart';
 import '../common/time_format.dart';
-import '../common/watch_together_icon.dart';
 import '../common/watchlist_button.dart';
 import 'movie_detail_sections.dart';
 import 'source_picker_dialog.dart';
@@ -552,7 +551,7 @@ class _MovieHero extends StatelessWidget {
                               child: Row(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
-                                  const WatchTogetherIcon(),
+                                  const AppIcon(PhosphorIconsRegular.usersThree, size: 22),
                                   Padding(
                                     padding: EdgeInsets.only(
                                       left: AppSpacing.sm.du(context),

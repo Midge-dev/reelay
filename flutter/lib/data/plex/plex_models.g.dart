@@ -192,6 +192,7 @@ PlexEpisode _$PlexEpisodeFromJson(Map<String, dynamic> json) => PlexEpisode(
   parentIndex: (json['parentIndex'] as num?)?.toInt(),
   grandparentTitle: json['grandparentTitle'] as String?,
   originallyAvailableAt: json['originallyAvailableAt'] as String?,
+  viewCount: (json['viewCount'] as num?)?.toInt(),
 );
 
 Map<String, dynamic> _$PlexEpisodeToJson(PlexEpisode instance) =>
@@ -206,6 +207,7 @@ Map<String, dynamic> _$PlexEpisodeToJson(PlexEpisode instance) =>
       'parentIndex': instance.parentIndex,
       'grandparentTitle': instance.grandparentTitle,
       'originallyAvailableAt': instance.originallyAvailableAt,
+      'viewCount': instance.viewCount,
     };
 
 PlexStream _$PlexStreamFromJson(Map<String, dynamic> json) => PlexStream(

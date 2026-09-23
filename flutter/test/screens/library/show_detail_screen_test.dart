@@ -81,7 +81,7 @@ void main() {
       nextEpisode: const PlexOnDeckItem(ratingKey: 'e3', type: 'episode', title: 'Salt in the Well', parentIndex: 2, index: 1),
     );
 
-    expect(find.text('Play S2E1'), findsOneWidget);
+    expect(find.text('Play S2 E1'), findsOneWidget, reason: 'screen 04 writes "Resume S2 E4"');
     // The season containing the next-unwatched episode is selected on arrival.
     expect(find.text('Salt in the Well'), findsOneWidget);
   });

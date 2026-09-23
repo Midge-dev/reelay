@@ -223,7 +223,16 @@ class _FocusableSurfaceState extends State<FocusableSurface> {
         clipper: ShapeBorderClipper(shape: widget.shape),
         child: ContentColor(
           color: contentColor,
-          child: Align(alignment: widget.contentAlignment, child: widget.child),
+          // Factors of 1: shrink-wrap the content under loose constraints
+          // (a button in a Wrap or Row is its content's width, not the
+          // row's), while tight constraints (a grid cell, a stretched list
+          // row) still size the surface to the slot and align within it.
+          child: Align(
+            alignment: widget.contentAlignment,
+            widthFactor: 1,
+            heightFactor: 1,
+            child: widget.child,
+          ),
         ),
       ),
     );

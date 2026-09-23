@@ -234,6 +234,10 @@ class PlexEpisode {
   final String? grandparentTitle;
   final String? originallyAvailableAt;
 
+  /// Times fully watched; 0/null means unwatched — how the show page
+  /// finds "the next unwatched episode" to land on (screen 04).
+  final int? viewCount;
+
   const PlexEpisode({
     required this.ratingKey,
     required this.title,
@@ -245,6 +249,7 @@ class PlexEpisode {
     this.parentIndex,
     this.grandparentTitle,
     this.originallyAvailableAt,
+    this.viewCount,
   });
 
   factory PlexEpisode.fromJson(Map<String, dynamic> json) => _$PlexEpisodeFromJson(json);

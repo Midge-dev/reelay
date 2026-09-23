@@ -300,6 +300,11 @@ class AppColors {
 
   static const transparent = Color(0x00000000);
 
+  /// Behind a playing video: letterbox and pillarbox bars are the film's
+  /// own black, never a tinted ground. Not a theme role — no theme may
+  /// recolour the picture's frame.
+  static const videoMatte = Color(0xFF000000);
+
   /// Disabled content: 45% of whatever ink is in play. Disabled elements are
   /// also removed from the focus order, not merely dimmed — see
   /// `AppFocusTreatment` / `FocusableSurface`, which apply this as a whole-

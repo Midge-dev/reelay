@@ -5,10 +5,13 @@ import '../../theme/tokens.dart';
 
 const _cardWidth = 372.0;
 const _cardHeight = 209.0;
-// Per-card base opacity before the pulse multiplies on top — matches
-// screen 02's mockup, where each card in the row dims a little further so
-// the whole row doesn't strobe as one flat block.
+// Per-card base opacity before the pulse multiplies on top — screen 02's
+// own values, so the row fades toward its trailing edge.
 const _cardBaseOpacities = [1.0, 0.82, 0.68, 0.6];
+// Caption bar widths as fractions of the card, per screen 02.
+const _captionWidths = [(0.70, 0.45), (0.60, 0.40), (0.75, 0.50), (0.55, 0.38)];
+const _heroTopInset = 120.0;
+const _heroGap = 20.0;
 
 /// Screen 02 — Home, loading. Real geometry at elev2 (not a spinner): the
 /// rail and hero frame paint immediately, and a 2.4s whole-row opacity
@@ -43,15 +46,37 @@ class _HomeLoadingSkeletonState extends State<HomeLoadingSkeleton> with SingleTi
     super.dispose();
   }
 
-  Widget _block({required double width, required double height, double opacity = 1}) {
-    return AnimatedBuilder(
-      animation: _pulse,
-      builder: (context, child) => Opacity(
-        opacity: _pulse.value * opacity,
-        child: Container(
-          width: width.du(context),
-          height: height.du(context),
-          decoration: BoxDecoration(color: AppColors.surface, borderRadius: BorderRadius.circular(AppShape.radiusSm.du(context))),
+  // The second, dimmer placeholder tone screen 02 uses for secondary lines:
+  // a little over halfway from ground to surface.
+  Color get _dim => Color.lerp(AppColors.background, AppColors.surface, 0.57)!;
+
+  Widget _block({required double width, required double height, double radius = 4, Color? color}) {
+    return Container(
+      width: width.du(context),
+      height: height.du(context),
+      decoration: BoxDecoration(
+        color: color ?? AppColors.surface,
+        borderRadius: BorderRadius.circular(radius.du(context)),
+      ),
+    );
+  }
+
+  Widget _card(int i) {
+    final (title, sub) = _captionWidths[i];
+    return Opacity(
+      opacity: _cardBaseOpacities[i],
+      child: SizedBox(
+        width: _cardWidth.du(context),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            _block(width: _cardWidth, height: _cardHeight, radius: AppShape.radiusMd),
+            SizedBox(height: AppSpacing.md.du(context)),
+            _block(width: _cardWidth * title, height: 18),
+            SizedBox(height: AppSpacing.sm.du(context)),
+            _block(width: _cardWidth * sub, height: 16, color: _dim),
+          ],
         ),
       ),
     );
@@ -59,44 +84,93 @@ class _HomeLoadingSkeletonState extends State<HomeLoadingSkeleton> with SingleTi
 
   @override
   Widget build(BuildContext context) {
+    final gap = SizedBox(height: _heroGap.du(context));
+    // One whole-screen opacity breath (not per block, not a sweep): a
+    // single AnimatedBuilder repainting one layer.
     return ColoredBox(
       color: AppColors.background,
-      child: Padding(
-        padding: EdgeInsets.fromLTRB(AppSpacing.xxxl.du(context), AppSpacing.xxxl.du(context), AppSpacing.xxxl.du(context), 0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _block(width: 110, height: 17),
-            SizedBox(height: AppSpacing.md.du(context)),
-            _block(width: 640, height: 62),
-            SizedBox(height: AppSpacing.md.du(context)),
-            _block(width: 520, height: 19),
-            SizedBox(height: AppSpacing.md.du(context)),
-            _block(width: 380, height: 4),
-            SizedBox(height: AppSpacing.md.du(context)),
-            _block(width: 660, height: 21),
-            SizedBox(height: AppSpacing.lg.du(context)),
-            Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                _block(width: 160, height: 62),
-                SizedBox(width: AppSpacing.md.du(context)),
-                _block(width: 220, height: 62),
-              ],
-            ),
-            SizedBox(height: AppSpacing.xxl.du(context)),
-            _block(width: 220, height: 22),
-            SizedBox(height: AppSpacing.lg.du(context)),
-            Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                for (var i = 0; i < _cardBaseOpacities.length; i++) ...[
-                  if (i > 0) SizedBox(width: AppSpacing.xl.du(context)),
-                  _block(width: _cardWidth, height: _cardHeight, opacity: _cardBaseOpacities[i]),
+      child: FadeTransition(
+        opacity: _pulse,
+        child: LayoutBuilder(
+          builder: (context, constraints) => SingleChildScrollView(
+            physics: const NeverScrollableScrollPhysics(),
+            child: ConstrainedBox(
+              constraints: BoxConstraints(minHeight: constraints.maxHeight),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Padding(
+                    padding: EdgeInsets.fromLTRB(
+                      AppSpacing.safeX.du(context),
+                      _heroTopInset.du(context),
+                      AppSpacing.safeX.du(context),
+                      0,
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        _block(width: 110, height: 17),
+                        gap,
+                        _block(width: 640, height: 62, radius: AppShape.radiusSm),
+                        gap,
+                        _block(width: 520, height: 19, color: _dim),
+                        gap,
+                        _block(width: 380, height: 4, radius: 2),
+                        gap,
+                        _block(width: 660, height: 21, color: _dim),
+                        SizedBox(height: (_heroGap + 10).du(context)),
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            _block(width: 180, height: 62, radius: AppShape.radiusMd),
+                            SizedBox(width: AppSpacing.lg.du(context)),
+                            _block(width: 230, height: 62, radius: AppShape.radiusMd, color: _dim),
+                            SizedBox(width: AppSpacing.lg.du(context)),
+                            _block(width: 170, height: 62, radius: AppShape.radiusMd, color: _dim),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                  Padding(
+                    padding: EdgeInsets.only(
+                      left: AppSpacing.safeX.du(context),
+                      top: 28.du(context),
+                      bottom: AppSpacing.safeY.du(context),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        _block(width: 220, height: 22),
+                        SizedBox(height: AppSpacing.lg.du(context)),
+                        // Rows bleed off the right edge (DESIGN.md
+                        // layout) — clip rather than overflow when the
+                        // four cards are wider than the screen.
+                        ClipRect(
+                          child: SingleChildScrollView(
+                            scrollDirection: Axis.horizontal,
+                            physics: const NeverScrollableScrollPhysics(),
+                            child: Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                for (var i = 0; i < _cardBaseOpacities.length; i++) ...[
+                                  if (i > 0) SizedBox(width: AppSpacing.cardGap.du(context)),
+                                  _card(i),
+                                ],
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                 ],
-              ],
+              ),
             ),
-          ],
+          ),
         ),
       ),
     );

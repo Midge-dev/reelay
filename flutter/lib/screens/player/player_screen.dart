@@ -642,7 +642,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
         focusNode: _screenFocusNode,
         onKeyEvent: _handleScreenKeyEvent,
         child: ColoredBox(
-          color: AppScrims.dialog,
+          color: AppColors.videoMatte,
           child: Stack(
             fit: StackFit.expand,
             children: [

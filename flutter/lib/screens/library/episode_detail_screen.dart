@@ -16,10 +16,8 @@ import '../../theme/tokens.dart';
 import '../../theme/typography.dart';
 import '../common/artwork.dart';
 import '../common/time_format.dart';
-import '../common/watch_together_icon.dart';
 import '../common/watchlist_button.dart';
 
-const _heroHeight = 710.0;
 SurfaceBorder get _restartButtonBorder => SurfaceBorder(
   idle: SurfaceBorderSide.solid(AppColors.line),
   focused: SurfaceBorderSide.solid(AppColors.accent),
@@ -123,7 +121,7 @@ class _EpisodeDetailScreenState extends State<EpisodeDetailScreen> {
     if (episode.index != null) kickerParts.add('Episode ${episode.index}');
 
     final metaParts = <String>[
-      if (episode.originallyAvailableAt != null) episode.originallyAvailableAt!,
+      if (episode.originallyAvailableAt != null) formatAirDate(episode.originallyAvailableAt!),
       if (episode.duration != null) formatRuntime(episode.duration!),
     ];
 
@@ -131,8 +129,7 @@ class _EpisodeDetailScreenState extends State<EpisodeDetailScreen> {
       onBack: widget.onBack,
       child: ColoredBox(
         color: AppColors.background,
-        child: SizedBox(
-          height: _heroHeight.du(context),
+        child: SizedBox.expand(
           child: Stack(
             fit: StackFit.expand,
             children: [
@@ -146,21 +143,18 @@ class _EpisodeDetailScreenState extends State<EpisodeDetailScreen> {
                   decoration: BoxDecoration(gradient: AppScrims.edge),
                 ),
               ),
-              Positioned.fill(
-                child: DecoratedBox(
-                  decoration: BoxDecoration(gradient: AppScrims.bottom),
-                ),
-              ),
               Padding(
+                // The same frame as the show page it came from (screen
+                // 04): 80 du from the top, 48 from the rail.
                 padding: EdgeInsets.fromLTRB(
-                  AppSpacing.xxxl.du(context),
-                  AppSpacing.xxl.du(context),
-                  AppSpacing.xxxl.du(context),
-                  AppSpacing.xl.du(context),
+                  AppSpacing.safeX.du(context),
+                  80.du(context),
+                  80.du(context),
+                  AppSpacing.safeY.du(context),
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisAlignment: MainAxisAlignment.end,
+                  mainAxisAlignment: MainAxisAlignment.start,
                   children: [
                     Row(
                       mainAxisSize: MainAxisSize.min,
@@ -177,19 +171,20 @@ class _EpisodeDetailScreenState extends State<EpisodeDetailScreen> {
                         ),
                       ],
                     ),
-                    SizedBox(height: AppSpacing.sm.du(context)),
+                    SizedBox(height: 14.du(context)),
                     ConstrainedBox(
-                      constraints: BoxConstraints(maxWidth: 900.du(context)),
+                      constraints: BoxConstraints(maxWidth: 820.du(context)),
                       child: AppText(
                         episode.title,
+                        color: AppColors.inkOnArt,
                         style: AppTypography.display,
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                       ),
                     ),
                     if (metaParts.isNotEmpty) ...[
-                      SizedBox(height: AppSpacing.sm.du(context)),
-                      AppText(metaParts.join(' · '), color: AppColors.ink2),
+                      SizedBox(height: 14.du(context)),
+                      AppText(metaParts.join('  ·  '), style: AppTypography.caption, color: AppColors.ink2),
                     ],
                     if (hasProgress) ...[
                       SizedBox(height: AppSpacing.md.du(context)),
@@ -263,10 +258,17 @@ class _EpisodeDetailScreenState extends State<EpisodeDetailScreen> {
                           AppButton(
                             onClick: widget.onPlay,
                             focusNode: _primaryFocus,
-                            child: AppText(
-                              hasResume
-                                  ? 'Resume ${formatTimecode(episode.viewOffset ?? 0)}'
-                                  : 'Play from start',
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const AppIcon(PhosphorIconsFill.play, size: 22),
+                                SizedBox(width: AppSpacing.md.du(context)),
+                                AppText(
+                                  hasResume ? 'Resume ${formatTimecode(episode.viewOffset ?? 0)}' : 'Play',
+                                  style: AppTypography.label,
+                                  color: null,
+                                ),
+                              ],
                             ),
                           ),
                           if (hasResume)
@@ -279,7 +281,7 @@ class _EpisodeDetailScreenState extends State<EpisodeDetailScreen> {
                             child: Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                const WatchTogetherIcon(),
+                                const AppIcon(PhosphorIconsRegular.usersThree, size: 22),
                                 Padding(
                                   padding: EdgeInsets.only(
                                     left: AppSpacing.sm.du(context),

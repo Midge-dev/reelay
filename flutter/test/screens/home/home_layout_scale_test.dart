@@ -2,6 +2,7 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:reelay/data/plex/plex_models.dart';
 import 'package:reelay/data/plex/plex_resources_api.dart';
+import 'package:reelay/screens/home/home_loading_skeleton.dart';
 import 'package:reelay/screens/home/home_screen.dart';
 import 'package:reelay/state/duplicate_fold.dart';
 import 'package:reelay/theme/scale.dart';
@@ -56,6 +57,27 @@ void main() {
         ),
       );
       await tester.pump();
+      expect(tester.takeException(), isNull);
+    });
+  }
+
+  for (final uiScale in [1.0, 1.3, 1.5]) {
+    testWidgets('the loading skeleton lays out without overflow at ${(uiScale * 100).round()}% (screen 02)', (tester) async {
+      tester.view.physicalSize = const Size(960, 540);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      await tester.pumpWidget(
+        Directionality(
+          textDirection: TextDirection.ltr,
+          child: MediaQuery(
+            data: const MediaQueryData(size: Size(960, 540)),
+            child: AppScale(factor: 540 / 1080 * uiScale, child: const HomeLoadingSkeleton()),
+          ),
+        ),
+      );
+      await tester.pump(const Duration(milliseconds: 500));
       expect(tester.takeException(), isNull);
     });
   }

@@ -24,7 +24,6 @@ import '../../theme/typography.dart';
 import '../common/artwork.dart';
 import '../common/chat_overlay.dart';
 import '../common/relay_status.dart';
-import '../common/watch_together_icon.dart';
 
 const _presenceIntervalMs = 3000;
 const _rosterStaleMs = _presenceIntervalMs * 3;
@@ -264,7 +263,7 @@ class _LobbyScreenState extends State<LobbyScreen> {
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
-                    const WatchTogetherIcon(),
+                    const AppIcon(PhosphorIconsRegular.usersThree, size: 22),
                     SizedBox(width: 16.du(context)),
                     AppText(
                       widget.detail.title,
