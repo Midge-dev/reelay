@@ -2,9 +2,11 @@ import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:reelay/data/plex/plex_models.dart';
+import 'package:reelay/data/plex/plex_resources_api.dart';
 import 'package:reelay/screens/home/home_posters.dart';
+import 'package:reelay/state/duplicate_fold.dart';
 
-const _server = PlexServer(name: 'Home', baseUrl: 'http://192.168.1.5:32400', accessToken: 'tok');
+const _server = PlexServer(name: 'Home', baseUrl: 'http://192.168.1.5:32400', accessToken: 'tok', machineIdentifier: 'home-id');
 
 void main() {
   group('recentlyAddedLabel', () {
@@ -139,8 +141,7 @@ void main() {
           textDirection: TextDirection.ltr,
           child: Center(
             child: ContinueWatchingPoster(
-              server: _server,
-              item: item,
+              item: FoldedWork(item.guid, [Sourced(item, _server, ServerReachability.local)]),
               onResume: onResume ?? () {},
               onRemove: onRemove ?? () {},
               autofocus: true,
@@ -190,6 +191,52 @@ void main() {
       await tester.pump();
 
       expect(removed, isTrue);
+    });
+
+    // Directional traversal needs WidgetsApp's arrow-key shortcuts; the
+    // card's own focus node wraps the overlay and spans the whole card, so
+    // it's a geometric candidate for Left/Right too.
+    testWidgets('Right/Left moves between Remove and Cancel without closing the confirm', (tester) async {
+      tester.view.physicalSize = const Size(1920, 1080);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      await tester.pumpWidget(
+        WidgetsApp(
+          color: const Color(0xFF000000),
+          builder: (_, _) => Center(
+            child: ContinueWatchingPoster(
+              item: FoldedWork(item.guid, [Sourced(item, _server, ServerReachability.local)]),
+              onResume: () {},
+              onRemove: () {},
+              autofocus: true,
+            ),
+          ),
+        ),
+      );
+      await tester.pump();
+
+      await tester.sendKeyDownEvent(LogicalKeyboardKey.select);
+      await tester.pump(const Duration(milliseconds: 600));
+      await tester.sendKeyUpEvent(LogicalKeyboardKey.select);
+      await tester.pump();
+
+      String? focused() => FocusManager.instance.primaryFocus?.debugLabel;
+      expect(focused(), 'remove-confirm-remove');
+
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
+      await tester.pump();
+      expect(find.text('Remove from Continue Watching?'), findsOneWidget);
+      expect(focused(), 'remove-confirm-cancel');
+
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
+      await tester.pump();
+      expect(focused(), 'remove-confirm-cancel');
+
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowLeft);
+      await tester.pump();
+      expect(find.text('Remove from Continue Watching?'), findsOneWidget);
+      expect(focused(), 'remove-confirm-remove');
     });
   });
 }

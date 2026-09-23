@@ -1,5 +1,6 @@
 import 'package:flutter/widgets.dart';
 
+import '../../theme/scale.dart';
 import '../../theme/tokens.dart';
 import '../../theme/typography.dart';
 
@@ -12,8 +13,16 @@ class PlaceholderScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final style = AppTypography.title2;
     return Center(
-      child: Text(label, style: AppTypography.headlineMedium.copyWith(color: AppColors.onBackground)),
+      child: Text(
+        label,
+        style: style.copyWith(
+          color: AppColors.ink,
+          fontSize: style.fontSize?.du(context),
+          letterSpacing: style.letterSpacing?.du(context),
+        ),
+      ),
     );
   }
 }

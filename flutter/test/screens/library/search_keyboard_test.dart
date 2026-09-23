@@ -2,6 +2,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:reelay/screens/library/search_keyboard.dart';
+import 'package:reelay/theme/phosphor_icons.dart';
 
 Future<void> _pump(WidgetTester tester, Widget child) async {
   await tester.pumpWidget(
@@ -34,7 +35,7 @@ void main() {
       SearchKeyboard(onChar: (_) {}, onBackspace: () => backspaces++, onClear: () => clears++),
     );
 
-    await tester.tap(find.text('⌫ DELETE'));
+    await tester.tap(find.byIcon(PhosphorIconsRegular.backspace));
     await tester.pump();
 
     expect(backspaces, 1);
@@ -48,7 +49,7 @@ void main() {
       SearchKeyboard(onChar: (_) {}, onBackspace: () {}, onClear: () => clears++),
     );
 
-    final deleteFinder = find.ancestor(of: find.text('⌫ DELETE'), matching: find.byType(Focus)).first;
+    final deleteFinder = find.ancestor(of: find.byIcon(PhosphorIconsRegular.backspace), matching: find.byType(Focus)).first;
     final focusNode = tester.widget<Focus>(deleteFinder).focusNode!;
     focusNode.requestFocus();
     await tester.pump();
@@ -99,5 +100,24 @@ void main() {
 
     expect(tester.takeException(), isNull);
     expect(aFocus.hasFocus, isTrue, reason: 'trapped at the boundary, focus should stay put');
+  });
+
+  testWidgets('123 switches to symbols and back, keeping focus on the switch key', (tester) async {
+    String? typed;
+    await _pump(tester, SearchKeyboard(onChar: (c) => typed = c, onBackspace: () {}, onClear: () {}));
+
+    final switchFocus = tester.widget<Focus>(find.ancestor(of: find.text('123'), matching: find.byType(Focus)).first).focusNode!;
+    switchFocus.requestFocus();
+    await tester.pump();
+    await tester.sendKeyEvent(LogicalKeyboardKey.select);
+    await tester.pump();
+
+    expect(find.text('ABC'), findsOneWidget);
+    expect(find.text('A'), findsNothing);
+    expect(switchFocus.hasFocus, isTrue, reason: 'focus belongs to the position, not the label');
+
+    await tester.tap(find.text('1'));
+    await tester.pump();
+    expect(typed, '1');
   });
 }

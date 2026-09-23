@@ -1,0 +1,290 @@
+<!doctype html>
+<html lang="en" data-theme="nocturne">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
+<meta name="theme-color" content="#161826">
+<title>Reelay — Chat</title>
+<script>
+  // Resolve the theme before first paint. The TV puts ?theme=<ThemeId.name> in the QR URL.
+  (function () {
+    var THEMES = ['nocturne', 'projection', 'ember', 'harbour', 'sage', 'clay', 'quartz', 'horror'];
+    var q = new URLSearchParams(location.search).get('theme');
+    var saved = null;
+    try { saved = localStorage.getItem('reelay_chat_theme'); } catch (e) {}
+    var t = THEMES.indexOf(q) !== -1 ? q : (THEMES.indexOf(saved) !== -1 ? saved : 'nocturne');
+    document.documentElement.setAttribute('data-theme', t);
+    try { localStorage.setItem('reelay_chat_theme', t); } catch (e) {}
+  })();
+</script>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500&display=swap">
+<style>
+  /* Palettes mirror flutter/lib/theme/tokens.dart — keep in step. */
+  :root, [data-theme="nocturne"] {
+    --canvas:#12141F; --bg:#161826; --surface:#1D1F30; --raised:#252840; --overlay:#2E3150;
+    --line:#2A2D40; --line-strong:#3A3D55;
+    --ink:#E9E9ED; --ink2:#C8CAD8; --ink3:#9093A8; --ink4:#6E7188;
+    --accent:#9184D9; --a300:#B6ACEC; --a700:#5F55A0; --a900:#2A2745;
+  }
+  [data-theme="projection"] {
+    --canvas:#090A0E; --bg:#0E0F14; --surface:#171922; --raised:#1E202B; --overlay:#282A3A;
+    --line:#262936; --line-strong:#363A4B;
+    --ink:#DEDFE3; --ink2:#BDC2CE; --ink3:#878B9C; --ink4:#676B7A;
+    --accent:#EDEEF2; --a300:#FFFFFF; --a700:#B5B8C2; --a900:#2A2C36;
+  }
+  [data-theme="ember"] {
+    --canvas:#0A0B0E; --bg:#0F1014; --surface:#191A20; --raised:#22242B; --overlay:#2D2F39;
+    --line:#31333B; --line-strong:#43454E;
+    --ink:#D6D5D3; --ink2:#C1BAB2; --ink3:#8B8880; --ink4:#676662;
+    --accent:#C89B5A; --a300:#DEB87F; --a700:#786142; --a900:#1F1912;
+  }
+  [data-theme="harbour"] {
+    --canvas:#0E1113; --bg:#131619; --surface:#1A1E22; --raised:#222830; --overlay:#2C343F;
+    --line:#2A313A; --line-strong:#3B434E;
+    --ink:#E1E2E5; --ink2:#C0C6D0; --ink3:#8A939E; --ink4:#6A727C;
+    --accent:#7C93A8; --a300:#9CB0C3; --a700:#535F69; --a900:#1B2127;
+  }
+  [data-theme="sage"] {
+    --canvas:#0F1214; --bg:#14181A; --surface:#1A2022; --raised:#222A2C; --overlay:#2D373A;
+    --line:#2A3234; --line-strong:#3C4547;
+    --ink:#E0E3E3; --ink2:#C0CDCC; --ink3:#8B9A96; --ink4:#6B7874;
+    --accent:#7FA08C; --a300:#9FBBAA; --a700:#54635A; --a900:#19211D;
+  }
+  [data-theme="clay"] {
+    --canvas:#110F0D; --bg:#171412; --surface:#1E1A18; --raised:#272220; --overlay:#352E2B;
+    --line:#322C29; --line-strong:#453F3B;
+    --ink:#E2E0DE; --ink2:#CDC3BD; --ink3:#9A9088; --ink4:#776F69;
+    --accent:#B0826A; --a300:#C9A18C; --a700:#695349; --a900:#241C18;
+  }
+  [data-theme="quartz"] {
+    --canvas:#110F13; --bg:#171419; --surface:#1E1A20; --raised:#272029; --overlay:#352B37;
+    --line:#322B33; --line-strong:#453D46;
+    --ink:#E3E2E3; --ink2:#CBC3CC; --ink3:#968E99; --ink4:#746E77;
+    --accent:#AE8B9B; --a300:#C9ABB9; --a700:#735E68; --a900:#272124;
+  }
+  [data-theme="horror"] {
+    --canvas:#0A0607; --bg:#110B0C; --surface:#1A1112; --raised:#24171A; --overlay:#2E1C1F;
+    --line:#301F22; --line-strong:#432C30;
+    --ink:#E6DDD5; --ink2:#CDBFB6; --ink3:#9A8889; --ink4:#6E5C5E;
+    --accent:#A8363D; --a300:#E0A4A4; --a700:#6E2328; --a900:#2A1013;
+  }
+  :root { --ok:#6FB98A; --warn:#D8A14B; --bad:#E07A6F; color-scheme:dark; }
+
+  * { box-sizing:border-box; }
+  html, body { height:100%; }
+  body {
+    margin:0; height:100vh; height:100dvh; display:flex; flex-direction:column;
+    background:radial-gradient(120% 50% at 0% 0%, var(--surface) 0%, var(--bg) 60%);
+    background-color:var(--bg); color:var(--ink);
+    font:400 15px/1.45 Inter, system-ui, -apple-system, sans-serif;
+    -webkit-font-smoothing:antialiased; -webkit-tap-highlight-color:transparent;
+  }
+  ::selection { background:var(--a700); color:var(--ink); }
+  :focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
+
+  header { position:relative; padding:calc(14px + env(safe-area-inset-top)) 18px 12px; display:flex; flex-direction:column; gap:10px; }
+  header::after, .composer::before {
+    content:""; position:absolute; left:0; right:0; height:1px;
+    background:linear-gradient(90deg, transparent, var(--line) 48px, var(--line) calc(100% - 48px), transparent);
+  }
+  header::after { bottom:0; }
+  .top { display:flex; align-items:center; gap:12px; }
+  .mark { flex:none; }
+  .titles { flex:1; min-width:0; display:flex; flex-direction:column; gap:2px; }
+  .kicker { display:flex; align-items:center; gap:8px; font-size:11px; font-weight:500; letter-spacing:.1em; color:var(--a300); }
+  .kicker::before { content:""; width:12px; height:2px; background:var(--accent); }
+  h1 { margin:0; font-size:17px; font-weight:500; letter-spacing:-.01em; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .status { display:flex; align-items:center; gap:7px; font-size:13px; color:var(--ink3); }
+  .dot { width:7px; height:7px; border-radius:50%; background:var(--warn); flex:none; }
+  [data-state="live"] .dot { background:var(--ok); }
+  [data-state="ended"] .dot { background:var(--bad); }
+
+  .me { display:flex; align-items:center; gap:6px; font-size:13px; color:var(--ink3); }
+  .me label { display:flex; align-items:center; gap:6px; min-height:32px; padding:0 8px 0 10px; border-radius:8px; border:1px solid var(--line); background:var(--surface); cursor:text; }
+  .me label:focus-within { border-color:var(--accent); }
+  #nameField { width:9.5em; background:transparent; border:0; padding:0; color:var(--ink); font:500 13px Inter, system-ui, sans-serif; }
+  #nameField:focus { outline:none; }
+  .me svg { color:var(--ink4); }
+
+  #log { flex:1; overflow-y:auto; padding:18px 18px 12px; display:flex; flex-direction:column; gap:3px; overscroll-behavior:contain; }
+  .msg { display:flex; flex-direction:column; max-width:80%; }
+  .msg.mine { align-self:flex-end; align-items:flex-end; }
+  .msg.theirs { align-self:flex-start; align-items:flex-start; }
+  .msg.first { margin-top:10px; }
+  .msg:first-child { margin-top:auto; }
+  .who { font-size:12px; font-weight:500; color:var(--ink3); margin:0 2px 4px; }
+  .bubble { padding:9px 13px; border-radius:12px; font-size:15px; overflow-wrap:anywhere; white-space:pre-wrap; border:1px solid var(--line); background:var(--surface); color:var(--ink); }
+  .theirs .bubble { border-top-left-radius:4px; }
+  .theirs:not(.first) .bubble { border-top-left-radius:12px; }
+  .mine .bubble { background:var(--a900); border-color:var(--a700); border-top-right-radius:4px; }
+  .mine:not(.first) .bubble { border-top-right-radius:12px; }
+  .note { align-self:stretch; margin:14px 0 4px; font-size:13px; color:var(--ink3); display:flex; align-items:center; gap:10px; }
+  .note::before, .note::after { content:""; flex:1; height:1px; background:linear-gradient(90deg, transparent, var(--line)); }
+  .note::after { background:linear-gradient(90deg, var(--line), transparent); }
+  .empty { margin:auto 0 8px; display:flex; flex-direction:column; gap:6px; }
+  .empty b { font-weight:500; font-size:17px; color:var(--ink); }
+  .empty span { color:var(--ink3); font-size:14px; max-width:26em; }
+
+  .composer { position:relative; display:flex; gap:10px; padding:12px 18px calc(12px + env(safe-area-inset-bottom)); }
+  .composer::before { top:0; }
+  #text { flex:1; min-width:0; height:48px; padding:0 14px; border-radius:8px; border:1px solid var(--line-strong); background:var(--surface); color:var(--ink); font:400 16px Inter, system-ui, sans-serif; }
+  #text::placeholder { color:var(--ink4); }
+  #text:focus { outline:none; border-color:var(--accent); background:var(--raised); }
+  #send { flex:none; width:48px; height:48px; border-radius:8px; border:1.5px solid var(--accent); background:transparent; color:var(--a300); display:flex; align-items:center; justify-content:center; cursor:pointer; transition:background .12s; }
+  #send:hover { background:var(--a900); }
+  #send:active { background:var(--a700); color:var(--ink); }
+  #send:disabled, #text:disabled { opacity:.45; cursor:default; }
+  #send:disabled:hover { background:transparent; }
+</style>
+</head>
+<body data-state="connecting">
+  <header>
+    <div class="top">
+      <svg class="mark" width="26" height="26" viewBox="0 0 46 46" aria-hidden="true"><rect x="5" y="9" width="36" height="12" rx="4" fill="var(--accent)"/><rect x="5" y="25" width="22" height="12" rx="4" fill="var(--ink)"/></svg>
+      <div class="titles">
+        <div class="kicker">WATCH TOGETHER</div>
+        <h1 id="title">Chat</h1>
+      </div>
+    </div>
+    <div class="status" role="status"><span class="dot"></span><span id="status">Connecting…</span></div>
+    <div class="me">Chatting as
+      <label><input type="text" id="nameField" maxlength="24" aria-label="Your name" autocomplete="nickname"><svg width="14" height="14" viewBox="0 0 256 256" fill="none" stroke="currentColor" stroke-width="16" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M92.69,216H48a8,8,0,0,1-8-8V163.31a8,8,0,0,1,2.34-5.65L165.66,34.34a8,8,0,0,1,11.31,0L221.66,79a8,8,0,0,1,0,11.31L98.34,213.66A8,8,0,0,1,92.69,216Z"/><line x1="136" y1="64" x2="192" y2="120"/></svg></label>
+    </div>
+  </header>
+  <div id="log" aria-live="polite"></div>
+  <form class="composer" id="form">
+    <input type="text" id="text" placeholder="Say something…" autocomplete="off" maxlength="200" enterkeyhint="send">
+    <button type="submit" id="send" aria-label="Send" disabled><svg width="20" height="20" viewBox="0 0 256 256" fill="none" stroke="currentColor" stroke-width="18" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="128" y1="216" x2="128" y2="40"/><polyline points="56 112 128 40 200 112"/></svg></button>
+  </form>
+<script>
+  const $ = (id) => document.getElementById(id);
+  const statusEl = $('status'), logEl = $('log'), form = $('form'), textInput = $('text'), sendBtn = $('send'), nameField = $('nameField'), titleEl = $('title');
+  const params = new URLSearchParams(location.search);
+  const roomId = params.get('room');
+
+  document.querySelector('meta[name=theme-color]').content =
+    getComputedStyle(document.documentElement).getPropertyValue('--bg').trim();
+
+  let username = localStorage.getItem('reelay_chat_name') || params.get('name') || ('Phone ' + Math.floor(Math.random() * 900 + 100));
+  nameField.value = username;
+  nameField.addEventListener('change', () => {
+    username = nameField.value.trim() || username;
+    nameField.value = username;
+    localStorage.setItem('reelay_chat_name', username);
+  });
+  nameField.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); nameField.blur(); } });
+
+  function setState(state, text) {
+    document.body.dataset.state = state;
+    statusEl.textContent = text;
+    const ended = state === 'ended';
+    textInput.disabled = ended;
+    textInput.placeholder = ended ? 'This chat has ended' : 'Say something…';
+    syncSend();
+  }
+  function syncSend() { sendBtn.disabled = textInput.disabled || !textInput.value.trim(); }
+  textInput.addEventListener('input', syncSend);
+
+  let lastWho = null;
+  function showEmpty() {
+    logEl.innerHTML = '<div class="empty"><b>No messages yet.</b><span>Say hello — messages show up on the TV over the picture.</span></div>';
+    lastWho = null;
+  }
+  function renderMessage(who, text, isMe) {
+    const empty = logEl.querySelector('.empty');
+    if (empty) empty.remove();
+    const key = (isMe ? '\u0000me' : who);
+    const line = document.createElement('div');
+    line.className = 'msg ' + (isMe ? 'mine' : 'theirs') + (key !== lastWho ? ' first' : '');
+    if (!isMe && key !== lastWho) {
+      const whoEl = document.createElement('div');
+      whoEl.className = 'who';
+      whoEl.textContent = who;
+      line.appendChild(whoEl);
+    }
+    const bubble = document.createElement('div');
+    bubble.className = 'bubble';
+    bubble.textContent = text;
+    line.appendChild(bubble);
+    logEl.appendChild(line);
+    lastWho = key;
+    logEl.scrollTop = logEl.scrollHeight;
+  }
+  function renderNote(text) {
+    const n = document.createElement('div');
+    n.className = 'note';
+    n.textContent = text;
+    logEl.appendChild(n);
+    lastWho = null;
+    logEl.scrollTop = logEl.scrollHeight;
+  }
+
+  // ?preview=chat|empty|reconnecting|ended renders fixtures without connecting (design review only).
+  const preview = params.get('preview');
+  if (preview) {
+    titleEl.textContent = 'The Quiet Coast';
+    if (preview === 'empty') { setState('live', 'Connected'); showEmpty(); }
+    else {
+      [['Maya', 'ok everyone back? starting in 10'], ['Sam', 'grabbing a drink, 2 min'], ['Sam', 'back'], [username, 'ready'], ['Maya', 'that lighthouse shot 👀'], [username, 'the sound design in this is unreal'], ['Priya', 'can we pause after this scene']]
+        .forEach(([w, t]) => renderMessage(w, t, w === username));
+      if (preview === 'ended') { renderNote('Session ended after 30 minutes'); setState('ended', 'Reopen the chat from the TV to rejoin'); }
+      else if (preview === 'reconnecting') setState('connecting', 'Disconnected — retrying…');
+      else setState('live', 'Connected');
+    }
+  } else {
+    showEmpty();
+    let ws, backoffMs = 1000, kicked = false;
+    const connect = () => {
+      const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
+      ws = new WebSocket(proto + '//' + location.host + '/' + location.search);
+      ws.onopen = () => {
+        setState('live', 'Connected');
+        backoffMs = 1000;
+        ws.send(JSON.stringify({ type: 'hello', role: 'chat', roomId }));
+      };
+      ws.onclose = () => {
+        if (kicked) return;
+        setState('connecting', 'Disconnected — retrying…');
+        setTimeout(connect, backoffMs);
+        backoffMs = Math.min(backoffMs * 2, 15000);
+      };
+      ws.onerror = () => ws.close();
+      ws.onmessage = (event) => {
+        const msg = JSON.parse(event.data);
+        if (msg.type === 'kicked') {
+          kicked = true;
+          renderNote('Session ended after 30 minutes');
+          setState('ended', 'Reopen the chat from the TV to rejoin');
+          return;
+        }
+        if (msg.type === 'notFound') { kicked = true; setState('ended', 'This room has ended'); return; }
+        if (msg.type === 'full') { kicked = true; setState('ended', 'Chat is full — 4 phones max'); return; }
+        if (msg.type === 'chatHistory') {
+          if (msg.title) { titleEl.textContent = msg.title; document.title = msg.title + ' — Reelay chat'; }
+          const list = msg.messages || [];
+          if (!list.length) { showEmpty(); return; }
+          logEl.innerHTML = ''; lastWho = null;
+          for (const m of list) renderMessage(m.username || 'Someone', m.text || '', (m.username || '') === username);
+          return;
+        }
+        if (msg.type === 'event' && msg.payload && msg.payload.kind === 'chat') {
+          renderMessage(msg.payload.username || 'Someone', msg.payload.text || '', false);
+        }
+      };
+    };
+    connect();
+    form.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const text = textInput.value.trim();
+      if (!text || !ws || ws.readyState !== WebSocket.OPEN) return;
+      ws.send(JSON.stringify({ type: 'event', payload: { kind: 'chat', username, text } }));
+      renderMessage(username, text, true);
+      textInput.value = '';
+      syncSend();
+    });
+  }
+  if (preview) form.addEventListener('submit', (e) => { e.preventDefault(); const t = textInput.value.trim(); if (t) { renderMessage(username, t, true); textInput.value = ''; syncSend(); } });
+</script>
+</body>
+</html>

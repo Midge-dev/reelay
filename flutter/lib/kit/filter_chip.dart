@@ -1,23 +1,31 @@
 import 'package:flutter/widgets.dart';
 
+import '../theme/scale.dart';
 import '../theme/tokens.dart';
 import 'focusable_surface.dart';
 import 'surface_style.dart';
 
-const _chipShape = StadiumBorder();
-const _chipContentPadding = EdgeInsets.symmetric(horizontal: 14, vertical: 8);
+RoundedRectangleBorder _chipShape(BuildContext context) =>
+    RoundedRectangleBorder(
+      borderRadius: BorderRadius.circular(AppShape.radiusSm.du(context)),
+    );
+const _chipHeight = 48.0;
+const _chipContentPaddingHorizontal = 22.0;
 
-final _chipColors = SurfaceColors(
-  container: AppColors.surfaceVariant,
-  content: AppColors.onSurfaceVariant,
-  focusedContainer: AppColors.accent,
-  focusedContent: AppColors.white,
-  selectedContainer: AppColors.surfaceVariant,
-  selectedContent: AppColors.white,
-  disabledContent: AppColors.onSurfaceVariant.withValues(alpha: 0.5),
+SurfaceColors get _chipColors => SurfaceColors(
+  container: AppColors.transparent,
+  content: AppColors.ink3,
+  focusedContainer: AppColors.surfaceRaised,
+  focusedContent: AppColors.ink,
+  selectedContainer: AppColors.surface,
+  selectedContent: AppColors.ink,
+  pressedContainer: AppColors.accent900,
+  pressedContent: AppColors.ink2,
 );
-const _chipBorder = SurfaceBorder(focused: SurfaceBorderSide.gradient(AppFocusTreatment.focusedGradient));
-const _chipGlow = SurfaceGlow(focusedColor: AppColors.accentGlow);
+SurfaceBorder get _chipBorder => SurfaceBorder(
+  idle: SurfaceBorderSide.solid(AppColors.line),
+  focused: SurfaceBorderSide.solid(AppColors.accent),
+);
 
 /// Ports ui/kit/FilterChip.kt.
 class AppFilterChip extends StatelessWidget {
@@ -43,13 +51,21 @@ class AppFilterChip extends StatelessWidget {
       enabled: enabled,
       selected: selected,
       focusNode: focusNode,
-      shape: _chipShape,
+      shape: _chipShape(context),
       colors: _chipColors,
       border: _chipBorder,
-      glow: _chipGlow,
-      child: Padding(
-        padding: _chipContentPadding,
-        child: Row(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.center, children: [child]),
+      child: SizedBox(
+        height: _chipHeight.du(context),
+        child: Padding(
+          padding: EdgeInsets.symmetric(
+            horizontal: _chipContentPaddingHorizontal.du(context),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [child],
+          ),
+        ),
       ),
     );
   }

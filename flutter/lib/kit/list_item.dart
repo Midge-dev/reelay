@@ -1,21 +1,31 @@
 import 'package:flutter/widgets.dart';
 
+import '../theme/scale.dart';
 import '../theme/tokens.dart';
 import 'focusable_surface.dart';
 import 'surface_style.dart';
 
-const _listItemShape = RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(8)));
-const _listItemPadding = EdgeInsets.symmetric(horizontal: 16, vertical: 12);
+RoundedRectangleBorder _listItemShape(BuildContext context) =>
+    RoundedRectangleBorder(
+      borderRadius: BorderRadius.circular(AppShape.radiusMd.du(context)),
+    );
+const _listItemHeight = 96.0;
+const _listItemPaddingHorizontal = AppSpacing.xl;
 
-final _listItemColors = SurfaceColors(
-  container: AppColors.transparent,
-  content: AppColors.white,
-  focusedContainer: AppColors.accent,
-  selectedContainer: AppColors.accent.withValues(alpha: 0.35),
+SurfaceColors get _listItemColors => SurfaceColors(
+  container: AppColors.surface,
+  content: AppColors.ink2,
+  focusedContainer: AppColors.surfaceRaised,
+  focusedContent: AppColors.ink,
+  selectedContent: AppColors.ink,
+);
+SurfaceBorder get _listItemBorder => SurfaceBorder(
+  idle: SurfaceBorderSide.solid(AppColors.line),
+  focused: SurfaceBorderSide.solid(AppColors.accent),
 );
 
-/// Ports ui/kit/ListItem.kt — used by the nav rail, Settings' server list,
-/// and the player's subtitle/quality menus.
+/// Ports ui/kit/ListItem.kt — used by Settings' server list and the
+/// player's subtitle/quality menus.
 class AppListItem extends StatelessWidget {
   final bool selected;
   final VoidCallback onClick;
@@ -43,17 +53,26 @@ class AppListItem extends StatelessWidget {
         selected: selected,
         focusNode: focusNode,
         autofocus: autofocus,
-        shape: _listItemShape,
+        shape: _listItemShape(context),
         colors: _listItemColors,
+        border: _listItemBorder,
         contentAlignment: AlignmentDirectional.centerStart,
-        child: Padding(
-          padding: _listItemPadding,
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              if (leading != null) ...[leading!, const SizedBox(width: 16)],
-              headline,
-            ],
+        child: SizedBox(
+          height: _listItemHeight.du(context),
+          child: Padding(
+            padding: EdgeInsets.symmetric(
+              horizontal: _listItemPaddingHorizontal.du(context),
+            ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                if (leading != null) ...[
+                  leading!,
+                  SizedBox(width: AppSpacing.lg.du(context)),
+                ],
+                headline,
+              ],
+            ),
           ),
         ),
       ),

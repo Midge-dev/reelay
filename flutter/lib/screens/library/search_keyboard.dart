@@ -2,12 +2,15 @@ import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 
 import '../../kit/focusable_surface.dart';
+import '../../kit/icon.dart';
 import '../../kit/surface_style.dart';
 import '../../kit/text.dart';
+import '../../theme/phosphor_icons.dart';
+import '../../theme/scale.dart';
 import '../../theme/tokens.dart';
 import '../../theme/typography.dart';
 
-enum SearchKeyAction { char, delete, clear }
+enum SearchKeyAction { char, delete, clear, toggleSymbols }
 
 class SearchKey {
   final String label;
@@ -15,65 +18,77 @@ class SearchKey {
   final SearchKeyAction action;
   final int span;
 
-  const SearchKey({required this.label, this.insert, this.action = SearchKeyAction.char, this.span = 1});
+  const SearchKey({
+    required this.label,
+    this.insert,
+    this.action = SearchKeyAction.char,
+    this.span = 1,
+  });
 }
 
-/// A-Z, 0-9 chunked 6 per row, then a final row of SPACE/DELETE/CLEAR
-/// (each spanning 2 of the 6 columns). Ports SEARCH_KEY_ROWS.
-final List<List<SearchKey>> searchKeyRows = () {
-  final chars = [
-    for (var i = 0; i < 26; i++) String.fromCharCode(65 + i),
-    for (var i = 0; i < 10; i++) '$i',
+const _columns = 6;
+
+List<SearchKey> _chars(String chars) => [
+  for (final c in chars.split('')) SearchKey(label: c, insert: c),
+];
+
+/// Screen 05's keyboard: six columns — A-Z, a "123" switch and backspace,
+/// then space and clear across the bottom. The symbols page has exactly
+/// the same shape, so switching never moves focus off the key under it.
+List<List<SearchKey>> searchKeyRows({required bool symbols}) {
+  final glyphs = symbols
+      ? _chars("1234567890&-':!?.,()#+/\"%@")
+      : _chars('ABCDEFGHIJKLMNOPQRSTUVWXYZ');
+  return [
+    for (var i = 0; i < 24; i += _columns) glyphs.sublist(i, i + _columns),
+    [
+      ...glyphs.sublist(24, 26),
+      SearchKey(
+        label: symbols ? 'ABC' : '123',
+        action: SearchKeyAction.toggleSymbols,
+        span: 2,
+      ),
+      const SearchKey(label: 'delete', action: SearchKeyAction.delete, span: 2),
+    ],
+    const [
+      SearchKey(label: 'space', insert: ' ', span: 3),
+      SearchKey(label: 'clear', action: SearchKeyAction.clear, span: 3),
+    ],
   ];
-  final rows = <List<SearchKey>>[];
-  for (var i = 0; i < chars.length; i += 6) {
-    rows.add(chars.skip(i).take(6).map((c) => SearchKey(label: c, insert: c)).toList());
-  }
-  rows.add([
-    const SearchKey(label: 'SPACE', insert: ' ', span: 2),
-    const SearchKey(label: '⌫ DELETE', action: SearchKeyAction.delete, span: 2),
-    const SearchKey(label: 'CLEAR', action: SearchKeyAction.clear, span: 2),
-  ]);
-  return rows;
-}();
+}
 
-/// Span-expanded grid (each key repeated once per column it occupies) —
-/// used for column-index neighbor lookup. Ports SEARCH_KEY_GRID.
-final List<List<SearchKey>> searchKeyGrid = searchKeyRows.map((row) {
-  final expanded = <SearchKey>[];
-  for (final key in row) {
-    for (var i = 0; i < key.span; i++) {
-      expanded.add(key);
-    }
-  }
-  return expanded;
-}).toList();
+// Smaller than screen 05's 76 / 10 — the full-size keyboard dominated the
+// screen; the column it fills narrows with it (see search_screen.dart).
+const _keyHeight = 60.0;
+const _keyGap = 8.0;
+RoundedRectangleBorder _keyShape(BuildContext context) =>
+    RoundedRectangleBorder(
+      borderRadius: BorderRadius.circular(AppShape.radiusSm.du(context)),
+    );
+SurfaceColors get _keyColors => SurfaceColors(
+  container: AppColors.surface,
+  content: AppColors.ink2,
+  focusedContainer: AppColors.surfaceRaised,
+  focusedContent: AppColors.ink,
+);
+// noSpine — a key is a small square glyph target (DESIGN.md #3); a leading
+// spine would read as a sliver on something this size.
+SurfaceBorder get _keyBorder => SurfaceBorder(
+  idle: SurfaceBorderSide.solid(AppColors.line),
+  focused: SurfaceBorderSide.solid(AppColors.accent),
+  noSpine: true,
+);
 
-const _keyShape = RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(8)));
-final _keyColors = SurfaceColors(container: AppColors.surface, content: AppColors.white, focusedContainer: AppColors.accent, focusedContent: AppColors.white);
-const _keyBorder = SurfaceBorder(focused: SurfaceBorderSide.gradient(AppFocusTreatment.focusedGradient));
-const _keyGlow = SurfaceGlow(focusedColor: AppColors.accentGlow);
-
-/// Ports ui/library/LibraryScreen.kt's `SearchKeyboard` — a hand-wired
-/// D-pad grid (small, tightly-packed keys where span-2 keys make default
-/// 2D directional traversal unreliable, so every interior neighbor gets an
-/// explicit requestFocus() rather than relying on Flutter's default
-/// traversal). Up/down are trapped (Cancel) at the top/bottom rows since
-/// there's nothing meaningful above/below to escape to from mid-keyboard;
-/// left/right at the row edges are deliberately left unhandled (falls
-/// through to default traversal), matching the Kotlin source only setting
-/// `left`/`right` conditionally.
+/// A hand-wired D-pad grid: spans make default 2D traversal unreliable, so
+/// every neighbour is explicit. Focus nodes belong to grid positions, not
+/// to keys, so the symbols switch keeps focus exactly where it was. Up at
+/// the top row and down at the bottom row are trapped (the keyboard keeps
+/// focus — results never steal it); left at the leading edge falls through
+/// to the rail, right at the trailing edge is trapped.
 class SearchKeyboard extends StatefulWidget {
   final ValueChanged<String> onChar;
   final VoidCallback onBackspace;
   final VoidCallback onClear;
-  final bool autofocus;
-  // Lets a caller (e.g. right after switching to the Search tab) explicitly
-  // request focus onto the first key. autofocus alone isn't reliable here:
-  // whatever had focus before this widget mounted (the Search tab button
-  // itself, in practice) still holds it in the enclosing scope, and
-  // Flutter's autofocus declines to steal focus from an already-focused
-  // scope — see the matching fix in player_screen.dart for the same issue.
   final FocusNode? firstKeyFocusNode;
 
   const SearchKeyboard({
@@ -81,7 +96,6 @@ class SearchKeyboard extends StatefulWidget {
     required this.onChar,
     required this.onBackspace,
     required this.onClear,
-    this.autofocus = false,
     this.firstKeyFocusNode,
   });
 
@@ -90,162 +104,152 @@ class SearchKeyboard extends StatefulWidget {
 }
 
 class _SearchKeyboardState extends State<SearchKeyboard> {
-  late final Map<SearchKey, FocusNode> _focusNodes = {
-    for (var r = 0; r < searchKeyRows.length; r++)
-      for (var c = 0; c < searchKeyRows[r].length; c++)
-        searchKeyRows[r][c]: (r == 0 && c == 0 && widget.firstKeyFocusNode != null)
+  bool _symbols = false;
+
+  /// One node per (row, first column) cell.
+  late final Map<(int, int), FocusNode> _nodes = {
+    for (final (r, row) in searchKeyRows(symbols: false).indexed)
+      for (final c in _starts(row))
+        (r, c): (r == 0 && c == 0 && widget.firstKeyFocusNode != null)
             ? widget.firstKeyFocusNode!
-            : FocusNode(debugLabel: 'search-key-${searchKeyRows[r][c].label}'),
+            : FocusNode(debugLabel: 'search-key-$r-$c'),
   };
+
+  static List<int> _starts(List<SearchKey> row) {
+    final starts = <int>[];
+    var c = 0;
+    for (final k in row) {
+      starts.add(c);
+      c += k.span;
+    }
+    return starts;
+  }
+
+  /// The node whose key covers [col] in [row].
+  FocusNode _nodeAt(int row, int col) {
+    final keys = searchKeyRows(symbols: _symbols)[row];
+    var start = 0;
+    for (final k in keys) {
+      if (col < start + k.span) return _nodes[(row, start)]!;
+      start += k.span;
+    }
+    return _nodes[(row, _starts(keys).last)]!;
+  }
 
   @override
   void dispose() {
-    for (final node in _focusNodes.values) {
+    for (final node in _nodes.values) {
       if (node != widget.firstKeyFocusNode) node.dispose();
     }
     super.dispose();
   }
 
-  void _handleClick(SearchKey key) {
+  void _press(SearchKey key) {
     switch (key.action) {
       case SearchKeyAction.char:
-        final insert = key.insert;
-        if (insert != null) widget.onChar(insert);
+        if (key.insert != null) widget.onChar(key.insert!);
       case SearchKeyAction.delete:
         widget.onBackspace();
       case SearchKeyAction.clear:
         widget.onClear();
+      case SearchKeyAction.toggleSymbols:
+        setState(() => _symbols = !_symbols);
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final rows = searchKeyRows(symbols: _symbols);
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        for (var rowIndex = 0; rowIndex < searchKeyRows.length; rowIndex++) ...[
-          if (rowIndex > 0) const SizedBox(height: 6),
-          _buildRow(rowIndex),
+        for (final (r, row) in rows.indexed) ...[
+          if (r > 0) SizedBox(height: _keyGap.du(context)),
+          Row(
+            children: [
+              for (final (i, key) in row.indexed) ...[
+                if (i > 0) SizedBox(width: _keyGap.du(context)),
+                Expanded(
+                  flex: key.span,
+                  child: _buildKey(context, rows, r, _starts(row)[i], key),
+                ),
+              ],
+            ],
+          ),
         ],
       ],
     );
   }
 
-  Widget _buildRow(int rowIndex) {
-    final row = searchKeyRows[rowIndex];
-    final children = <Widget>[];
-    var col = 0;
-    for (final key in row) {
-      if (children.isNotEmpty) children.add(const SizedBox(width: 6));
-      final colStart = col;
-      final colEnd = col + key.span - 1;
-      col += key.span;
-
-      final up = rowIndex > 0 ? _focusNodes[searchKeyGrid[rowIndex - 1][colStart]] : null;
-      final down = rowIndex < searchKeyRows.length - 1 ? _focusNodes[searchKeyGrid[rowIndex + 1][colStart]] : null;
-      final left = colStart > 0 ? _focusNodes[searchKeyGrid[rowIndex][colStart - 1]] : null;
-      final right = colEnd < 5 ? _focusNodes[searchKeyGrid[rowIndex][colEnd + 1]] : null;
-
-      children.add(
-        Expanded(
-          flex: key.span,
-          child: _SearchKeyButton(
-            searchKey: key,
-            focusNode: _focusNodes[key]!,
-            autofocus: widget.autofocus && rowIndex == 0 && colStart == 0,
-            trapUp: rowIndex == 0,
-            trapDown: rowIndex == searchKeyRows.length - 1,
-            upNeighbor: up,
-            downNeighbor: down,
-            leftNeighbor: left,
-            rightNeighbor: right,
-            onClick: () => _handleClick(key),
-            onLongClick: key.action == SearchKeyAction.delete ? widget.onClear : null,
-          ),
-        ),
-      );
-    }
-    return Row(children: children);
-  }
-}
-
-class _SearchKeyButton extends StatelessWidget {
-  final SearchKey searchKey;
-  final FocusNode focusNode;
-  final bool autofocus;
-  final bool trapUp;
-  final bool trapDown;
-  final FocusNode? upNeighbor;
-  final FocusNode? downNeighbor;
-  final FocusNode? leftNeighbor;
-  final FocusNode? rightNeighbor;
-  final VoidCallback onClick;
-  final VoidCallback? onLongClick;
-
-  const _SearchKeyButton({
-    required this.searchKey,
-    required this.focusNode,
-    this.autofocus = false,
-    required this.trapUp,
-    required this.trapDown,
-    this.upNeighbor,
-    this.downNeighbor,
-    this.leftNeighbor,
-    this.rightNeighbor,
-    required this.onClick,
-    this.onLongClick,
-  });
-
-  KeyEventResult _handleArrowKeys(FocusNode node, KeyEvent event) {
-    if (event is! KeyDownEvent) return KeyEventResult.ignored;
-    final key = event.logicalKey;
-    if (key == LogicalKeyboardKey.arrowUp) {
-      if (upNeighbor != null) {
-        upNeighbor!.requestFocus();
-        return KeyEventResult.handled;
+  Widget _buildKey(
+    BuildContext context,
+    List<List<SearchKey>> rows,
+    int r,
+    int c,
+    SearchKey key,
+  ) {
+    final last = rows.length - 1;
+    final end = c + key.span - 1;
+    KeyEventResult onKey(FocusNode node, KeyEvent event) {
+      if (event is! KeyDownEvent && event is! KeyRepeatEvent)
+        return KeyEventResult.ignored;
+      final k = event.logicalKey;
+      FocusNode? target;
+      if (k == LogicalKeyboardKey.arrowUp) {
+        if (r == 0) return KeyEventResult.handled;
+        target = _nodeAt(r - 1, c);
+      } else if (k == LogicalKeyboardKey.arrowDown) {
+        if (r == last) return KeyEventResult.handled;
+        target = _nodeAt(r + 1, c);
+      } else if (k == LogicalKeyboardKey.arrowLeft) {
+        if (c == 0) return KeyEventResult.ignored;
+        target = _nodeAt(r, c - 1);
+      } else if (k == LogicalKeyboardKey.arrowRight) {
+        // Off the right edge: on to the results beside the keyboard when
+        // there are any; with none, stay put rather than lose focus.
+        if (end >= _columns - 1) {
+          node.focusInDirection(TraversalDirection.right);
+          return KeyEventResult.handled;
+        }
+        target = _nodeAt(r, end + 1);
+      } else {
+        return KeyEventResult.ignored;
       }
-      return trapUp ? KeyEventResult.handled : KeyEventResult.ignored;
-    }
-    if (key == LogicalKeyboardKey.arrowDown) {
-      if (downNeighbor != null) {
-        downNeighbor!.requestFocus();
-        return KeyEventResult.handled;
-      }
-      return trapDown ? KeyEventResult.handled : KeyEventResult.ignored;
-    }
-    if (key == LogicalKeyboardKey.arrowLeft && leftNeighbor != null) {
-      leftNeighbor!.requestFocus();
+      target.requestFocus();
       return KeyEventResult.handled;
     }
-    if (key == LogicalKeyboardKey.arrowRight && rightNeighbor != null) {
-      rightNeighbor!.requestFocus();
-      return KeyEventResult.handled;
-    }
-    return KeyEventResult.ignored;
-  }
 
-  @override
-  Widget build(BuildContext context) {
+    final isWord = key.label.length > 1;
+    final Widget label = key.action == SearchKeyAction.delete
+        ? const AppIcon(PhosphorIconsRegular.backspace, size: 24)
+        : AppText(
+            key.label,
+            textAlign: TextAlign.center,
+            style: isWord
+                ? AppTypography.label
+                : AppTypography.rowLabel.copyWith(fontWeight: FontWeight.w400),
+            color: isWord ? AppColors.ink3 : null,
+            maxLines: 1,
+          );
     return SizedBox(
-      height: 30,
+      height: _keyHeight.du(context),
       child: Focus(
         canRequestFocus: false,
-        onKeyEvent: _handleArrowKeys,
+        skipTraversal: true,
+        onKeyEvent: onKey,
         child: FocusableSurface(
-          onClick: onClick,
-          onLongClick: onLongClick,
-          focusNode: focusNode,
-          autofocus: autofocus,
-          shape: _keyShape,
+          key: ValueKey('key-$r-$c'),
+          onClick: () => _press(key),
+          onLongClick: key.action == SearchKeyAction.delete
+              ? widget.onClear
+              : null,
+          focusNode: _nodes[(r, c)],
+          shape: _keyShape(context),
           colors: _keyColors,
           border: _keyBorder,
-          glow: _keyGlow,
-          child: AppText(
-            searchKey.label,
-            textAlign: TextAlign.center,
-            style: AppTypography.bodySmall,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
+          child: Semantics(
+            label: key.action == SearchKeyAction.delete ? 'delete' : null,
+            child: label,
           ),
         ),
       ),

@@ -1,66 +1,88 @@
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 
-import '../../data/plex/plex_models.dart';
 import '../../kit/focusable_surface.dart';
+import '../../kit/icon.dart';
 import '../../kit/surface_style.dart';
 import '../../kit/text.dart';
+import '../../theme/phosphor_icons.dart';
+import '../../theme/scale.dart';
 import '../../theme/tokens.dart';
 import '../../theme/typography.dart';
 import '../common/neon_scrollbar.dart';
-import 'library_filters.dart';
 
 final RegExp _missingSpaceAfterAmpersand = RegExp(r'&(?=\S)');
 
-String formatGenreLabel(String genre) => genre.replaceAllMapped(_missingSpaceAfterAmpersand, (_) => '& ');
+String formatGenreLabel(String genre) =>
+    genre.replaceAllMapped(_missingSpaceAfterAmpersand, (_) => '& ');
 
-class AppliedFilterChip extends StatelessWidget {
+/// The library filter row's applied-value chip (screen 18: "1990s ✕",
+/// accent900 fill/accent300 text) — distinct from a dropdown's own applied
+/// row treatment, which lives in [MenuOptionRow] below.
+class AppliedValueChip extends StatelessWidget {
   final String label;
+  final VoidCallback onRemove;
 
-  const AppliedFilterChip({super.key, required this.label});
+  const AppliedValueChip({
+    super.key,
+    required this.label,
+    required this.onRemove,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
-      decoration: BoxDecoration(color: AppColors.accent, borderRadius: BorderRadius.circular(50)),
-      child: AppText(label, color: AppColors.white),
-    );
-  }
-}
-
-class MenuSectionHeader extends StatelessWidget {
-  final String label;
-
-  const MenuSectionHeader({super.key, required this.label});
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(top: 10, bottom: 4),
-      child: AppText(
-        label.toUpperCase(),
-        style: AppTypography.bodySmall.copyWith(letterSpacing: 1.5),
-        color: AppColors.onSurfaceVariant,
+    return SizedBox(
+      height: 58.du(context),
+      child: FocusableSurface(
+        onClick: onRemove,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppShape.radiusMd.du(context)),
+        ),
+        colors: SurfaceColors(
+          container: AppColors.accent900,
+          content: AppColors.accent300,
+          focusedContainer: AppColors.surfaceRaised,
+          focusedContent: AppColors.ink,
+          selectedContainer: AppColors.accent900,
+          selectedContent: AppColors.accent300,
+        ),
+        border: SurfaceBorder(
+          focused: SurfaceBorderSide.solid(AppColors.accent),
+        ),
+        child: Padding(
+          padding: EdgeInsets.symmetric(horizontal: 18.du(context)),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              AppText(label),
+              SizedBox(width: 12.du(context)),
+              const AppIcon(PhosphorIconsRegular.x, size: 17),
+            ],
+          ),
+        ),
       ),
     );
   }
 }
 
-const _menuShape = RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(8)));
-final _menuRowColors = SurfaceColors(
+RoundedRectangleBorder _menuShape(BuildContext context) =>
+    RoundedRectangleBorder(
+      borderRadius: BorderRadius.circular(AppShape.radiusMd.du(context)),
+    );
+SurfaceColors get _menuRowColors => SurfaceColors(
   container: AppColors.transparent,
-  content: AppColors.white,
-  focusedContainer: AppColors.accent,
-  selectedContainer: AppColors.accent.withValues(alpha: 0.35),
+  content: AppColors.ink2,
+  focusedContainer: AppColors.surfaceRaised,
+  focusedContent: AppColors.ink,
+  selectedContainer: AppColors.surface,
+  selectedContent: AppColors.ink,
 );
-const _menuRowBorder = SurfaceBorder(focused: SurfaceBorderSide.gradient(AppFocusTreatment.focusedGradient));
-// The default glow radius (14) is tuned for larger surfaces (cards, tabs) —
-// on these short, narrow rows it reads as oversized, so it's dialed down.
-const _menuRowGlow = SurfaceGlow(focusedColor: AppColors.accentGlow, radius: 8);
+SurfaceBorder get _menuRowBorder =>
+    SurfaceBorder(focused: SurfaceBorderSide.solid(AppColors.accent));
 
 class MenuOptionRow extends StatelessWidget {
   final String label;
+  final String? countLabel;
   final bool applied;
   final bool dimmed;
   final VoidCallback onClick;
@@ -70,6 +92,7 @@ class MenuOptionRow extends StatelessWidget {
   const MenuOptionRow({
     super.key,
     required this.label,
+    this.countLabel,
     required this.applied,
     this.dimmed = false,
     required this.onClick,
@@ -84,31 +107,51 @@ class MenuOptionRow extends StatelessWidget {
             container: _menuRowColors.container,
             content: _menuRowColors.content.withValues(alpha: 0.5),
             focusedContainer: _menuRowColors.focusedContainer,
-            focusedContent: _menuRowColors.focusedContent.withValues(alpha: 0.5),
+            focusedContent: _menuRowColors.focusedContent.withValues(
+              alpha: 0.5,
+            ),
             selectedContainer: _menuRowColors.selectedContainer,
-            selectedContent: _menuRowColors.selectedContent.withValues(alpha: 0.5),
+            selectedContent: _menuRowColors.selectedContent.withValues(
+              alpha: 0.5,
+            ),
           )
         : _menuRowColors;
 
     return SizedBox(
-      height: 46,
+      height: 64.du(context),
       child: FocusableSurface(
         onClick: onClick,
         selected: applied,
         focusNode: focusNode,
         onFocusChange: onFocusChange,
-        shape: _menuShape,
+        shape: _menuShape(context),
         colors: colors,
         border: _menuRowBorder,
-        glow: _menuRowGlow,
         contentAlignment: AlignmentDirectional.centerStart,
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 14),
+          padding: EdgeInsets.symmetric(horizontal: 18.du(context)),
           child: Row(
-            mainAxisSize: MainAxisSize.min,
             children: [
-              if (applied) ...[const AppText('✓'), const SizedBox(width: 8)],
-              Flexible(child: AppText(label, maxLines: 1, overflow: TextOverflow.ellipsis)),
+              Expanded(
+                child: AppText(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              if (countLabel != null) ...[
+                SizedBox(width: 12.du(context)),
+                AppText(
+                  countLabel!,
+                  color: dimmed
+                      ? AppColors.ink3.withValues(alpha: 0.5)
+                      : AppColors.ink3,
+                ),
+              ],
+              if (applied) ...[
+                SizedBox(width: 12.du(context)),
+                const AppIcon(PhosphorIconsFill.checkCircle, size: 22),
+              ],
             ],
           ),
         ),
@@ -117,99 +160,78 @@ class MenuOptionRow extends StatelessWidget {
   }
 }
 
-/// Ports ui/library/LibraryScreen.kt's `GenreFilterPanel` — genre/decade/
-/// date-added filter rows, each dimmed if selecting it alongside the
-/// currently-active filters would produce zero results. Down is trapped
-/// at the last row (checklist-adjacent: without it, an unhandled Down
-/// could let focus escape somewhere unintended below); Up at the first
-/// row hands off to [aboveFocusNode] (the Genre tab or Clear-all).
-/// Right isn't given an explicit redirect to the results grid — Flutter's
-/// default directional traversal already finds the nearest focusable
-/// widget to the right (the results grid sits directly beside this
-/// panel), same as relied on elsewhere in this conversion.
-class GenreFilterPanel extends StatefulWidget {
-  final List<PlexLibraryItem> items;
-  final List<String> availableGenres;
-  final List<int> availableDecades;
-  final String? genreFilter;
-  final int? decadeFilter;
-  final DateAddedBucket? dateAddedFilter;
-  final FocusNode aboveFocusNode;
-  final ValueChanged<String> onGenreSelect;
-  final ValueChanged<int> onDecadeSelect;
-  final ValueChanged<DateAddedBucket> onDateAddedSelect;
-  final VoidCallback onClearAll;
+/// One option inside a [FilterDropdown].
+class FilterOption {
+  final String label;
+  final String? countLabel;
+  final bool applied;
+  final bool dimmed;
 
-  const GenreFilterPanel({
+  const FilterOption({
+    required this.label,
+    this.countLabel,
+    required this.applied,
+    this.dimmed = false,
+  });
+}
+
+/// A single-topic floating filter dropdown (screen 18: "GENRE · 18 IN THIS
+/// LIBRARY") — one of these opens from whichever chip triggered it (Genre,
+/// Decade, Added or Sort), replacing the old fused genre+decade+added side
+/// panel now that each filter gets its own chip in one row (screen 17's
+/// note: "not a separate tab"). Selecting the already-applied option clears
+/// it — the D-pad-appropriate equivalent of the mockup's pointer-driven "✕"
+/// on an applied value chip, which stays in the filter row itself.
+class FilterDropdown extends StatefulWidget {
+  final String title;
+  final List<FilterOption> options;
+  final ValueChanged<int> onSelect;
+  final FocusNode aboveFocusNode;
+  final String footerHint;
+
+  const FilterDropdown({
     super.key,
-    required this.items,
-    required this.availableGenres,
-    required this.availableDecades,
-    this.genreFilter,
-    this.decadeFilter,
-    this.dateAddedFilter,
+    required this.title,
+    required this.options,
+    required this.onSelect,
     required this.aboveFocusNode,
-    required this.onGenreSelect,
-    required this.onDecadeSelect,
-    required this.onDateAddedSelect,
-    required this.onClearAll,
+    this.footerHint = 'Select toggles · Back closes and keeps what you picked',
   });
 
   @override
-  State<GenreFilterPanel> createState() => _GenreFilterPanelState();
+  State<FilterDropdown> createState() => _FilterDropdownState();
 }
 
-class _GenreFilterPanelState extends State<GenreFilterPanel> {
+class _FilterDropdownState extends State<FilterDropdown> {
   final _scrollController = ScrollController();
   int _highlightedIndex = 0;
-  // Keyed by stable row identity, not list position — "Clear all" only
-  // exists once some filter is applied, so every row after it used to shift
-  // by one position whenever it appeared/disappeared. With a plain
-  // List<FocusNode> indexed by position, that shift handed each row a
-  // FocusNode object that used to belong to a *different* row (e.g. "Clear
-  // all" would inherit whatever node "Action" — the row that used to sit at
-  // index 0 — had, including that node's real, possibly-still-true
-  // hasFocus), which is exactly what made two rows appear focused at once.
-  // Keying by identity means a row's node follows it, never another row's.
-  final _focusNodesById = <String, FocusNode>{};
-
-  List<String> _computeRowIds() {
-    final anyApplied = widget.genreFilter != null || widget.decadeFilter != null || widget.dateAddedFilter != null;
-    return [
-      if (anyApplied) 'clear-all',
-      for (final genre in widget.availableGenres) 'genre:$genre',
-      for (final decade in widget.availableDecades) 'decade:$decade',
-      for (final bucket in DateAddedBucket.values) 'dateAdded:${bucket.name}',
-    ];
-  }
-
-  FocusNode _nodeFor(String id) => _focusNodesById.putIfAbsent(id, () => FocusNode(debugLabel: 'genre-filter-$id'));
+  late List<FocusNode> _rowFocusNodes = List.generate(
+    widget.options.length,
+    (i) => FocusNode(debugLabel: 'filter-dropdown-row-$i'),
+  );
 
   @override
-  void initState() {
-    super.initState();
-    _syncFocusNodes();
-  }
-
-  @override
-  void didUpdateWidget(covariant GenreFilterPanel oldWidget) {
+  void didUpdateWidget(covariant FilterDropdown oldWidget) {
     super.didUpdateWidget(oldWidget);
-    _syncFocusNodes();
-  }
-
-  void _syncFocusNodes() {
-    final ids = _computeRowIds().toSet();
-    _focusNodesById.removeWhere((id, node) {
-      final stale = !ids.contains(id);
-      if (stale) node.dispose();
-      return stale;
-    });
-    if (_highlightedIndex >= ids.length) _highlightedIndex = ids.isNotEmpty ? ids.length - 1 : 0;
+    if (oldWidget.options.length != widget.options.length) {
+      for (final node in _rowFocusNodes) {
+        node.dispose();
+      }
+      _rowFocusNodes = List.generate(
+        widget.options.length,
+        (i) => FocusNode(debugLabel: 'filter-dropdown-row-$i'),
+      );
+      if (_highlightedIndex >= widget.options.length) {
+        _highlightedIndex = widget.options.isEmpty
+            ? 0
+            : widget.options.length - 1;
+      }
+    }
   }
 
   @override
   void dispose() {
-    for (final node in _focusNodesById.values) {
+    for (final node in _rowFocusNodes) {
       node.dispose();
     }
     _scrollController.dispose();
@@ -218,10 +240,12 @@ class _GenreFilterPanelState extends State<GenreFilterPanel> {
 
   KeyEventResult _handlePanelKeyEvent(FocusNode node, KeyEvent event) {
     if (event is! KeyDownEvent) return KeyEventResult.ignored;
-    if (event.logicalKey == LogicalKeyboardKey.arrowDown && _highlightedIndex == _computeRowIds().length - 1) {
+    if (event.logicalKey == LogicalKeyboardKey.arrowDown &&
+        _highlightedIndex == widget.options.length - 1) {
       return KeyEventResult.handled;
     }
-    if (event.logicalKey == LogicalKeyboardKey.arrowUp && _highlightedIndex == 0) {
+    if (event.logicalKey == LogicalKeyboardKey.arrowUp &&
+        _highlightedIndex == 0) {
       widget.aboveFocusNode.requestFocus();
       return KeyEventResult.handled;
     }
@@ -230,129 +254,78 @@ class _GenreFilterPanelState extends State<GenreFilterPanel> {
 
   @override
   Widget build(BuildContext context) {
-    final anyApplied = widget.genreFilter != null || widget.decadeFilter != null || widget.dateAddedFilter != null;
-    var rowIndex = 0;
-    ValueChanged<bool> onFocus(int index) => (focused) {
-          if (focused) setState(() => _highlightedIndex = index);
-        };
-
-    final rows = <Widget>[];
-    if (anyApplied) {
-      final index = rowIndex++;
-      rows.add(MenuOptionRow(
-        key: const ValueKey('clear-all'),
-        label: 'Clear all',
-        applied: false,
-        onClick: widget.onClearAll,
-        focusNode: _nodeFor('clear-all'),
-        onFocusChange: onFocus(index),
-      ));
-    }
-    if (widget.availableGenres.isNotEmpty) {
-      rows.add(const MenuSectionHeader(label: 'Genre'));
-      for (final genre in widget.availableGenres) {
-        final index = rowIndex++;
-        final dimmed = applyLibraryFilters(
-          items: widget.items,
-          query: '',
-          sortMode: SortMode.title,
-          genre: genre,
-          decade: widget.decadeFilter,
-          dateAddedBucket: widget.dateAddedFilter,
-        ).isEmpty;
-        rows.add(MenuOptionRow(
-          key: ValueKey('genre:$genre'),
-          label: formatGenreLabel(genre),
-          applied: genre == widget.genreFilter,
-          dimmed: dimmed,
-          onClick: () => widget.onGenreSelect(genre),
-          focusNode: _nodeFor('genre:$genre'),
-          onFocusChange: onFocus(index),
-        ));
-      }
-    }
-    if (widget.availableDecades.isNotEmpty) {
-      rows.add(const MenuSectionHeader(label: 'Release Date'));
-      for (final decade in widget.availableDecades) {
-        final index = rowIndex++;
-        final dimmed = applyLibraryFilters(
-          items: widget.items,
-          query: '',
-          sortMode: SortMode.title,
-          genre: widget.genreFilter,
-          decade: decade,
-          dateAddedBucket: widget.dateAddedFilter,
-        ).isEmpty;
-        rows.add(MenuOptionRow(
-          key: ValueKey('decade:$decade'),
-          label: '${decade}s',
-          applied: decade == widget.decadeFilter,
-          dimmed: dimmed,
-          onClick: () => widget.onDecadeSelect(decade),
-          focusNode: _nodeFor('decade:$decade'),
-          onFocusChange: onFocus(index),
-        ));
-      }
-    }
-    rows.add(const MenuSectionHeader(label: 'Date Added'));
-    for (final bucket in DateAddedBucket.values) {
-      final index = rowIndex++;
-      final dimmed = applyLibraryFilters(
-        items: widget.items,
-        query: '',
-        sortMode: SortMode.title,
-        genre: widget.genreFilter,
-        decade: widget.decadeFilter,
-        dateAddedBucket: bucket,
-      ).isEmpty;
-      rows.add(MenuOptionRow(
-        key: ValueKey('dateAdded:${bucket.name}'),
-        label: bucket.label,
-        applied: bucket == widget.dateAddedFilter,
-        dimmed: dimmed,
-        onClick: () => widget.onDateAddedSelect(bucket),
-        focusNode: _nodeFor('dateAdded:${bucket.name}'),
-        onFocusChange: onFocus(index),
-      ));
-    }
-
-    return ColoredBox(
-      color: AppColors.surface,
-      // The scroll view below can't clip at its own tight edge (that cuts
-      // the focused-row glow off — see its comment), but leaving the panel
-      // with no clip at all let scrolled rows paint straight over the tab
-      // bar above once they scrolled past the top. Clipping here instead —
-      // at the panel's own outer edge, outside the 24px padding — keeps
-      // scrolled content contained to the panel while still leaving that
-      // padding as slack for the glow to bleed into.
-      child: ClipRect(
-        child: Focus(
-          canRequestFocus: false,
-          onKeyEvent: _handlePanelKeyEvent,
-          child: Padding(
-            padding: const EdgeInsets.all(24),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Flexible(
-                  child: SingleChildScrollView(
-                    controller: _scrollController,
-                    clipBehavior: Clip.none,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        for (final row in rows) ...[row, const SizedBox(height: 2)],
-                      ],
+    return Container(
+      width: 520.du(context),
+      constraints: BoxConstraints(maxHeight: 520.du(context)),
+      padding: EdgeInsets.all(28.du(context)),
+      decoration: BoxDecoration(
+        color: AppColors.surfaceOverlay,
+        border: Border.all(color: AppColors.lineStrong),
+        borderRadius: BorderRadius.circular(AppShape.radiusLg.du(context)),
+        boxShadow: AppElevation.overlay,
+      ),
+      child: Focus(
+        canRequestFocus: false,
+        onKeyEvent: _handlePanelKeyEvent,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            AppText(
+              widget.title,
+              style: AppTypography.micro,
+              color: AppColors.accent300,
+            ),
+            SizedBox(height: 10.du(context)),
+            Flexible(
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Flexible(
+                    child: SingleChildScrollView(
+                      controller: _scrollController,
+                      clipBehavior: Clip.none,
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          for (final (index, option)
+                              in widget.options.indexed) ...[
+                            MenuOptionRow(
+                              label: option.label,
+                              countLabel: option.countLabel,
+                              applied: option.applied,
+                              dimmed: option.dimmed,
+                              onClick: () => widget.onSelect(index),
+                              focusNode: _rowFocusNodes[index],
+                              onFocusChange: (focused) {
+                                if (focused)
+                                  setState(() => _highlightedIndex = index);
+                              },
+                            ),
+                            SizedBox(height: 2.du(context)),
+                          ],
+                        ],
+                      ),
                     ),
                   ),
-                ),
-                const SizedBox(width: 8),
-                NeonScrollbar(controller: _scrollController),
-              ],
+                  SizedBox(width: 8.du(context)),
+                  NeonScrollbar(controller: _scrollController),
+                ],
+              ),
             ),
-          ),
+            SizedBox(height: 16.du(context)),
+            DecoratedBox(
+              decoration: BoxDecoration(
+                border: Border(top: BorderSide(color: AppColors.lineStrong)),
+              ),
+              child: Padding(
+                padding: EdgeInsets.only(top: 16.du(context)),
+                child: AppText(widget.footerHint, color: AppColors.ink3),
+              ),
+            ),
+          ],
         ),
       ),
     );

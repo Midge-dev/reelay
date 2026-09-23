@@ -1,13 +1,18 @@
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:reelay/data/plex/plex_models.dart';
+import 'package:reelay/data/plex/plex_resources_api.dart';
 import 'package:reelay/data/settings/app_settings.dart';
+import 'package:reelay/screens/home/home_hero.dart';
 import 'package:reelay/screens/home/home_posters.dart';
 import 'package:reelay/screens/home/home_screen.dart';
+import 'package:reelay/screens/home/watch_together_bar.dart';
 import 'package:reelay/screens/home/watch_together_row.dart';
+import 'package:reelay/state/duplicate_fold.dart';
 import 'package:reelay/sync/relay_protocol.dart';
 
-const _server = PlexServer(name: 'Home', baseUrl: 'http://192.168.1.5:32400', accessToken: 'tok');
+const _server = PlexServer(name: 'Home', baseUrl: 'http://192.168.1.5:32400', accessToken: 'tok', machineIdentifier: 'home-id');
+const _connectedServers = [ReachableServer(_server, ServerReachability.local)];
 const _relay = RelayEntry(id: 'r1', nickname: 'Home Relay', url: 'wss://relay.example.com');
 
 RelayRoomSummary _room(String id) =>
@@ -43,18 +48,20 @@ Widget _buildHome({
   List<PlexLibraryItem> recentlyAdded = const [],
   List<PlexOnDeckItem> suggestions = const [],
 }) {
+  FoldedWork<T> folded<T>(T v) => FoldedWork(null, [Sourced(v, _server, ServerReachability.local)]);
   return Directionality(
     textDirection: TextDirection.ltr,
     child: HomeScreen(
-      server: _server,
+      servers: _connectedServers,
       liveRooms: liveRooms,
       watchlist: watchlist,
-      onDeck: onDeck,
-      recentActivity: recentActivity,
-      recentlyAdded: recentlyAdded,
-      suggestions: suggestions,
+      onDeck: onDeck.map(folded).toList(),
+      recentActivity: recentActivity.map(folded).toList(),
+      recentlyAdded: recentlyAdded.map(folded).toList(),
+      suggestions: suggestions.map(folded).toList(),
       onEndSession: (_) async => true,
       onSelectRoom: (_) {},
+      onOpenRooms: () {},
       onResume: (_) {},
       onRemove: (_) {},
       onSelectWatchlistItem: (_) {},
@@ -86,8 +93,7 @@ void main() {
       expect(find.text('Recently Finished Watching'), findsNothing);
       expect(find.text('Recently Added'), findsNothing);
       expect(find.text('Suggestions'), findsNothing);
-      expect(find.text('Continue Watching'), findsOneWidget, reason: 'always shown, even empty');
-      expect(find.text('Nothing in progress right now.'), findsOneWidget);
+      expect(find.text('RESUME'), findsNothing, reason: 'first-run empty: no hero and no message (DESIGN.md)');
     });
 
     testWidgets('only rows with data render, in order', (tester) async {
@@ -107,7 +113,7 @@ void main() {
   });
 
   group('initial-focus priority cascade', () {
-    testWidgets('Watch Together wins over every other row when live', (tester) async {
+    testWidgets('the resume hero wins whenever something is in progress, even with a live room (screen 01)', (tester) async {
       await _pump(
         tester,
         _buildHome(
@@ -117,28 +123,28 @@ void main() {
         ),
       );
 
-      expect(_focusIsWithin(RoomCard), isTrue);
+      expect(_focusIsWithin(HomeHero), isTrue);
     });
 
-    testWidgets('Watchlist wins when Watch Together is empty', (tester) async {
+    testWidgets('Watch Together wins when nothing is in progress', (tester) async {
       await _pump(
         tester,
-        _buildHome(watchlist: [_watchlistItem('1')], onDeck: [_onDeckItem('1')]),
+        _buildHome(liveRooms: [MergedRoom(_relay, _room('a'))], watchlist: [_watchlistItem('1')]),
       );
 
-      expect(_focusIsWithin(RoomCard), isFalse);
+      expect(_focusIsWithin(WatchTogetherBar), isTrue);
     });
 
-    testWidgets('Continue Watching wins when Watch Together and Watchlist are both empty', (tester) async {
+    testWidgets('Watchlist wins when nothing is in progress and no room is live', (tester) async {
       await _pump(
         tester,
         _buildHome(
-          onDeck: [_onDeckItem('1')],
+          watchlist: [_watchlistItem('1')],
           recentlyAdded: const [PlexLibraryItem(ratingKey: '1', title: 'Arrival', type: 'movie')],
         ),
       );
 
-      expect(_focusIsWithin(RoomCard), isFalse);
+      expect(_focusIsWithin(WatchlistPoster), isTrue);
     });
   });
 
@@ -150,7 +156,7 @@ void main() {
         watchlist: [_watchlistItem('1'), _watchlistItem('2')],
       );
       await _pump(tester, widget1);
-      expect(_focusIsWithin(RoomCard), isTrue);
+      expect(_focusIsWithin(WatchTogetherBar), isTrue);
 
       // Same HomeScreen instance shape, watchlist shrinks by one item —
       // this should reclaim focus onto the watchlist row's anchor even

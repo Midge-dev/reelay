@@ -2,6 +2,7 @@ import 'dart:math' as math;
 
 import 'package:flutter/widgets.dart';
 
+import '../../theme/scale.dart';
 import '../../theme/tokens.dart';
 
 const _strokeWidth = 4.0;
@@ -17,13 +18,17 @@ class AppLoadingIndicator extends StatefulWidget {
   State<AppLoadingIndicator> createState() => _AppLoadingIndicatorState();
 }
 
-class _AppLoadingIndicatorState extends State<AppLoadingIndicator> with SingleTickerProviderStateMixin {
+class _AppLoadingIndicatorState extends State<AppLoadingIndicator>
+    with SingleTickerProviderStateMixin {
   late final AnimationController _controller;
 
   @override
   void initState() {
     super.initState();
-    _controller = AnimationController(duration: const Duration(milliseconds: 1000), vsync: this)..repeat();
+    _controller = AnimationController(
+      duration: const Duration(milliseconds: 1000),
+      vsync: this,
+    )..repeat();
   }
 
   @override
@@ -35,11 +40,16 @@ class _AppLoadingIndicatorState extends State<AppLoadingIndicator> with SingleTi
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      width: _size,
-      height: _size,
+      width: _size.du(context),
+      height: _size.du(context),
       child: AnimatedBuilder(
         animation: _controller,
-        builder: (context, _) => CustomPaint(painter: _ArcPainter(_controller.value * 360)),
+        builder: (context, _) => CustomPaint(
+          painter: _ArcPainter(
+            _controller.value * 360,
+            _strokeWidth.du(context),
+          ),
+        ),
       ),
     );
   }
@@ -47,21 +57,22 @@ class _AppLoadingIndicatorState extends State<AppLoadingIndicator> with SingleTi
 
 class _ArcPainter extends CustomPainter {
   final double rotationDegrees;
+  final double strokeWidth;
 
-  _ArcPainter(this.rotationDegrees);
+  _ArcPainter(this.rotationDegrees, this.strokeWidth);
 
   @override
   void paint(Canvas canvas, Size size) {
     final rect = Offset.zero & size;
     final track = Paint()
-      ..color = AppColors.surfaceVariant
+      ..color = AppColors.surface
       ..style = PaintingStyle.stroke
-      ..strokeWidth = _strokeWidth
+      ..strokeWidth = strokeWidth
       ..strokeCap = StrokeCap.round;
     final arc = Paint()
       ..color = AppColors.accent
       ..style = PaintingStyle.stroke
-      ..strokeWidth = _strokeWidth
+      ..strokeWidth = strokeWidth
       ..strokeCap = StrokeCap.round;
 
     canvas.drawArc(rect, 0, 2 * math.pi, false, track);
@@ -75,5 +86,7 @@ class _ArcPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(covariant _ArcPainter oldDelegate) => oldDelegate.rotationDegrees != rotationDegrees;
+  bool shouldRepaint(covariant _ArcPainter oldDelegate) =>
+      oldDelegate.rotationDegrees != rotationDegrees ||
+      oldDelegate.strokeWidth != strokeWidth;
 }

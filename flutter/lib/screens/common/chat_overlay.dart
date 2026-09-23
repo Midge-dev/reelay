@@ -5,6 +5,7 @@ import 'package:flutter/widgets.dart';
 import '../../data/settings/app_settings.dart';
 import '../../kit/text.dart';
 import '../../sync/relay_protocol.dart';
+import '../../theme/scale.dart';
 import '../../theme/tokens.dart';
 
 const _messageVisibleMs = 6000;
@@ -18,7 +19,11 @@ class ChatOverlay extends StatefulWidget {
   final Stream<ChatMessage> messages;
   final ChatOverlayCorner corner;
 
-  const ChatOverlay({super.key, required this.messages, this.corner = ChatOverlayCorner.bottomEnd});
+  const ChatOverlay({
+    super.key,
+    required this.messages,
+    this.corner = ChatOverlayCorner.bottomEnd,
+  });
 
   @override
   State<ChatOverlay> createState() => _ChatOverlayState();
@@ -52,18 +57,29 @@ class _ChatOverlayState extends State<ChatOverlay> {
 
   @override
   Widget build(BuildContext context) {
-    final isTop = widget.corner == ChatOverlayCorner.topStart || widget.corner == ChatOverlayCorner.topEnd;
-    final isStart = widget.corner == ChatOverlayCorner.topStart || widget.corner == ChatOverlayCorner.bottomStart;
+    final isTop =
+        widget.corner == ChatOverlayCorner.topStart ||
+        widget.corner == ChatOverlayCorner.topEnd;
+    final isStart =
+        widget.corner == ChatOverlayCorner.topStart ||
+        widget.corner == ChatOverlayCorner.bottomStart;
     final ordered = isTop ? _visible.reversed.toList() : _visible;
     final textAlign = isStart ? TextAlign.start : TextAlign.end;
 
     return Column(
       mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: isStart ? CrossAxisAlignment.start : CrossAxisAlignment.end,
+      crossAxisAlignment: isStart
+          ? CrossAxisAlignment.start
+          : CrossAxisAlignment.end,
       children: [
         for (final message in ordered) ...[
-          _ChatBubble(key: ValueKey(message), message: message, textAlign: textAlign, onExpired: () => _expire(message)),
-          if (message != ordered.last) const SizedBox(height: 6),
+          _ChatBubble(
+            key: ValueKey(message),
+            message: message,
+            textAlign: textAlign,
+            onExpired: () => _expire(message),
+          ),
+          if (message != ordered.last) SizedBox(height: 6.du(context)),
         ],
       ],
     );
@@ -75,7 +91,12 @@ class _ChatBubble extends StatefulWidget {
   final TextAlign textAlign;
   final VoidCallback onExpired;
 
-  const _ChatBubble({super.key, required this.message, required this.textAlign, required this.onExpired});
+  const _ChatBubble({
+    super.key,
+    required this.message,
+    required this.textAlign,
+    required this.onExpired,
+  });
 
   @override
   State<_ChatBubble> createState() => _ChatBubbleState();
@@ -90,7 +111,10 @@ class _ChatBubbleState extends State<_ChatBubble> {
     Future.delayed(const Duration(milliseconds: _messageVisibleMs), () {
       if (!mounted) return;
       setState(() => _shown = false);
-      Future.delayed(const Duration(milliseconds: _fadeOutMs), widget.onExpired);
+      Future.delayed(
+        const Duration(milliseconds: _fadeOutMs),
+        widget.onExpired,
+      );
     });
   }
 
@@ -100,14 +124,19 @@ class _ChatBubbleState extends State<_ChatBubble> {
       opacity: _shown ? 1 : 0,
       duration: const Duration(milliseconds: _fadeOutMs),
       child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 420),
+        constraints: BoxConstraints(maxWidth: 420.du(context)),
         child: DecoratedBox(
-          decoration: BoxDecoration(color: AppColors.scrim.withValues(alpha: 0.6)),
+          decoration: BoxDecoration(
+            color: AppScrims.dialog.withValues(alpha: 0.6),
+          ),
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            padding: EdgeInsets.symmetric(
+              horizontal: 12.du(context),
+              vertical: 6.du(context),
+            ),
             child: AppText(
               '${widget.message.username}: ${widget.message.text}',
-              color: AppColors.white,
+              color: AppColors.inkOnArt,
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
               textAlign: widget.textAlign,

@@ -1,5 +1,6 @@
 import 'package:flutter/widgets.dart';
 
+import '../theme/scale.dart';
 import '../theme/tokens.dart';
 
 const _defaultFadeWidth = 48.0;
@@ -22,6 +23,12 @@ class EdgeFadeRow extends StatelessWidget {
   final bool fadeStart;
   final bool fadeEnd;
 
+  /// How strongly the leading edge fades, 0–1, in place of [fadeStart]'s
+  /// on/off — see [EdgeFadeRow.scrolled]. A scroll-driven fade that only
+  /// switches off at offset 0 vanishes in one frame just after the list
+  /// lands; eased by the offset it has gone by the time it gets there.
+  final double? startStrength;
+
   const EdgeFadeRow({
     super.key,
     required this.child,
@@ -29,7 +36,20 @@ class EdgeFadeRow extends StatelessWidget {
     this.axis = Axis.horizontal,
     this.fadeStart = true,
     this.fadeEnd = true,
+    this.startStrength,
   });
+
+  /// A leading fade that grows over the first [fadeWidth] of scroll and
+  /// shrinks back the same way, instead of switching at offset 0.
+  static double strengthFor(
+    BuildContext context,
+    ScrollController controller, {
+    double fadeWidth = _defaultFadeWidth,
+  }) {
+    if (!controller.hasClients) return 0;
+    final width = fadeWidth.du(context);
+    return width <= 0 ? 0 : (controller.offset / width).clamp(0.0, 1.0);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -37,13 +57,21 @@ class EdgeFadeRow extends StatelessWidget {
       blendMode: BlendMode.dstIn,
       shaderCallback: (bounds) {
         final extent = axis == Axis.horizontal ? bounds.width : bounds.height;
-        final fraction = extent > 0 ? (fadeWidth / extent).clamp(0.0, 0.5) : 0.0;
-        final startColor = fadeStart ? AppColors.transparent : AppColors.white;
-        final endColor = fadeEnd ? AppColors.transparent : AppColors.white;
-        return LinearGradient(
-          begin: axis == Axis.horizontal ? Alignment.centerLeft : Alignment.topCenter,
-          end: axis == Axis.horizontal ? Alignment.centerRight : Alignment.bottomCenter,
-          colors: [startColor, AppColors.white, AppColors.white, endColor],
+        final scaledFadeWidth = fadeWidth.du(context);
+        final fraction = extent > 0
+            ? (scaledFadeWidth / extent).clamp(0.0, 0.5)
+            : 0.0;
+        final strength = startStrength ?? (fadeStart ? 1.0 : 0.0);
+        final startColor = AppColors.ink.withValues(alpha: 1 - strength);
+        final endColor = fadeEnd ? AppColors.transparent : AppColors.ink;
+        return AppGradients.linear(
+          begin: axis == Axis.horizontal
+              ? Alignment.centerLeft
+              : Alignment.topCenter,
+          end: axis == Axis.horizontal
+              ? Alignment.centerRight
+              : Alignment.bottomCenter,
+          colors: [startColor, AppColors.ink, AppColors.ink, endColor],
           stops: [0.0, fraction, 1 - fraction, 1.0],
         ).createShader(bounds);
       },

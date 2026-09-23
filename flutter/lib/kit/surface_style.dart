@@ -1,11 +1,16 @@
 import 'package:flutter/widgets.dart';
 
+import '../theme/tokens.dart';
+
 /// Ports ui/kit/FocusableSurface.kt's `Colors` data class — named
 /// SurfaceColors (not `Colors`) to avoid colliding with Flutter's own
 /// Material `Colors` class if it's ever imported alongside this.
 /// Unset states fall back through the same chain Kotlin's default
 /// parameters do: focused -> container, pressed -> focused -> container,
-/// selected/disabled -> container independently.
+/// selected -> container independently. Disabled is not a color state
+/// here — FocusableSurface renders the idle appearance at 45% opacity for
+/// the whole surface instead, per AppFocusTreatment / tokens.json's
+/// `focus.disabled`.
 class SurfaceColors {
   final Color container;
   final Color content;
@@ -15,8 +20,6 @@ class SurfaceColors {
   final Color pressedContent;
   final Color selectedContainer;
   final Color selectedContent;
-  final Color disabledContainer;
-  final Color disabledContent;
 
   SurfaceColors({
     required this.container,
@@ -27,53 +30,42 @@ class SurfaceColors {
     Color? pressedContent,
     Color? selectedContainer,
     Color? selectedContent,
-    Color? disabledContainer,
-    Color? disabledContent,
   })  : focusedContainer = focusedContainer ?? container,
         focusedContent = focusedContent ?? content,
         pressedContainer = pressedContainer ?? focusedContainer ?? container,
         pressedContent = pressedContent ?? focusedContent ?? content,
         selectedContainer = selectedContainer ?? container,
-        selectedContent = selectedContent ?? content,
-        disabledContainer = disabledContainer ?? container,
-        disabledContent = disabledContent ?? content;
+        selectedContent = selectedContent ?? content;
 }
 
-/// A single border stroke, ported from Compose's `BorderStroke` — either a
-/// flat color (idle borders) or a gradient (the focus-treatment border,
-/// see docs/design-tokens.md's paired border+glow token).
+/// A single solid border stroke. The old gradient-border variant is gone —
+/// Nocturne's focus signal is a flat accent hairline plus a leading spine,
+/// never a gradient (see AppFocusTreatment / FocusableSurface).
 class SurfaceBorderSide {
   final double width;
-  final Color? color;
-  final Gradient? gradient;
+  final Color color;
 
-  const SurfaceBorderSide.solid(this.color, {this.width = 2}) : gradient = null;
-  const SurfaceBorderSide.gradient(this.gradient, {this.width = 2}) : color = null;
+  const SurfaceBorderSide.solid(this.color, {this.width = AppShape.borderWidth});
 }
 
-/// Ports FocusableSurface.kt's `Border` data class.
+/// Ports FocusableSurface.kt's `Border` data class, extended with [noSpine]
+/// for the two Nocturne cases where the leading spine is dropped and the
+/// hairline (which already runs all the way round any shape) is left to
+/// carry focus alone: poster/still cards, where a spine would cover the
+/// artwork — pass a wider [focused] width (AppShape.artFrameWidth) there —
+/// and 62x62 icon-only buttons, where a spine would eat a quarter of the
+/// square. Everywhere else, focus is fill step + hairline + spine together,
+/// never a subset — see DESIGN.md non-negotiable #3.
 class SurfaceBorder {
   final SurfaceBorderSide? idle;
   final SurfaceBorderSide? focused;
+  final bool noSpine;
 
-  const SurfaceBorder({this.idle, this.focused});
-}
+  /// Overrides the selected-not-focused spine (default: 6 du in
+  /// [AppFocusTreatment.selectedSpineColor]). The rail's active item is the
+  /// one user — screens 01-25 draw it as a 4 du accent spine on a raised
+  /// fill, marking "where you are" in the accent rather than ink.
+  final SurfaceBorderSide? selectedSpine;
 
-/// Ports FocusableSurface.kt's `Glow` data class. Rendered via a plain
-/// Flutter BoxShadow rather than the Compose source's hand-rolled 14-shell
-/// blur — Compose needed that workaround because `Modifier.blur` requires
-/// API 31+ and minSdk here is 26; Flutter has no such floor, so a single
-/// blurred shadow is a legitimate simplification, not a missing feature.
-/// Revisit with a custom-painted version only if it doesn't read right on
-/// the real TV. `radius`/`alpha` default to the Kotlin source's literal
-/// values (14dp/0.22) as a starting point — those were tuned for the
-/// layered-blur technique's cumulative brightness, so a single BoxShadow at
-/// the same alpha may read fainter and need re-tuning once seen on the
-/// Shield, not assumed correct from the number alone.
-class SurfaceGlow {
-  final Color? focusedColor;
-  final double radius;
-  final double alpha;
-
-  const SurfaceGlow({this.focusedColor, this.radius = 14, this.alpha = 0.22});
+  const SurfaceBorder({this.idle, this.focused, this.noSpine = false, this.selectedSpine});
 }

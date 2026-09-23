@@ -138,3 +138,23 @@ ChatMessage relayEventToChatMessage(RelayEvent event) => ChatMessage(
       text: event.text ?? '',
       receivedAtMs: nowMs(),
     );
+
+/// What the last room-directory poll learned about one relay — screen 12's
+/// group header ("RENDER RELAY · 38 MS" / "LOFT RELAY · UNREACHABLE") and
+/// its "No answer since 21:04" line.
+class RelayHealth {
+  final bool isReachable;
+  final int? latencyMs;
+
+  /// When this relay last answered at all; null if it never has this
+  /// session.
+  final DateTime? lastAnsweredAt;
+
+  const RelayHealth.reachable({required int this.latencyMs, required DateTime at})
+      : isReachable = true,
+        lastAnsweredAt = at;
+
+  const RelayHealth.unreachable({this.lastAnsweredAt})
+      : isReachable = false,
+        latencyMs = null;
+}

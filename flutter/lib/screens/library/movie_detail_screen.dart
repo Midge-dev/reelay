@@ -1,100 +1,152 @@
-import 'package:flutter/material.dart' show Icons;
+import 'dart:math';
+
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 
 import '../../data/plex/plex_image_url.dart';
 import '../../data/plex/plex_models.dart';
 import '../../focus/back_handler.dart';
+import '../../focus/screen_memory.dart';
+import '../../focus/row_end_stop.dart';
 import '../../kit/button.dart';
+import '../../kit/card.dart';
+import '../../kit/edge_fade_row.dart';
 import '../../kit/icon.dart';
 import '../../kit/icon_button.dart';
 import '../../kit/surface_style.dart';
 import '../../kit/text.dart';
+import '../../state/copy_facts.dart';
+import '../../state/duplicate_fold.dart';
+import '../../theme/phosphor_icons.dart';
+import '../../theme/scale.dart';
 import '../../theme/tokens.dart';
 import '../../theme/typography.dart';
 import '../common/artwork.dart';
-import '../common/watch_together_icon.dart';
+import '../common/time_format.dart';
 import '../common/watchlist_button.dart';
+import 'media_facts.dart';
 import 'movie_detail_sections.dart';
+import 'poster_card.dart';
+import 'source_picker_dialog.dart';
 
-const _heroHeight = 420.0;
-const _restartButtonBorder = SurfaceBorder(
-  idle: SurfaceBorderSide.solid(AppColors.dimBorder),
-  focused: SurfaceBorderSide.gradient(AppFocusTreatment.focusedGradient),
+// Screen 03: content 96 du from the top, 48 from the rail, 80 from the
+// right; poster 280x420 48 du from a facts column capped at 960; blocks
+// 16 apart; a 540 du bottom fade. Screen 03b: a 112 du compact header once
+// the hero has scrolled away.
+const _contentTop = 96.0;
+const _contentRight = 80.0;
+const _posterWidth = 280.0;
+const _posterHeight = 420.0;
+const _posterGap = 48.0;
+const _factsMax = 960.0;
+const _blockGap = 16.0;
+const _synopsisMax = 780.0;
+const _bottomFadeHeight = 540.0;
+const _progressBarWidth = 380.0;
+const _compactHeaderHeight = 112.0;
+const _moreLikeThisMax = 20;
+
+SurfaceBorder get _restartButtonBorder => SurfaceBorder(
+  idle: SurfaceBorderSide.solid(AppColors.lineStrong),
+  focused: SurfaceBorderSide.solid(AppColors.accent),
+  noSpine: true,
 );
 
-/// Ports ui/library/MovieDetailScreen.kt. The hero's action buttons each
-/// call [_scrollToTop] directly from their own onFocusChange — Kotlin
-/// needs a "heroFocusToken" int (not a boolean) specifically because
-/// Compose's `LaunchedEffect(key)` only re-fires when its key actually
-/// *changes*, so a boolean flipping true->true between two already-
-/// focused-region buttons never re-triggers (ARCHITECTURE.md §4,
-/// checklist item #6). Flutter's onFocusChange is an imperative callback
-/// invoked unconditionally every time focus changes, so it re-fires on
-/// every move between action buttons with no token workaround needed —
-/// the hazard is specific to Compose's effect-dedup, not a Flutter one.
+/// Screen 03 (and 03b, scrolled). Poster left, facts right, actions on
+/// one line, the media facts stated plainly. Below the hero the page
+/// holds exactly two rows — Cast & crew, and More like this — because "a
+/// detail page that shrinks its rows to fit is carrying too much". Once
+/// the hero scrolls away a compact header keeps the title and the resume
+/// point in view.
 class MovieDetailScreen extends StatefulWidget {
   final PlexServer server;
   final PlexLibraryItem movie;
-  final bool isShow;
+  final FoldedWork<PlexLibraryItem> work;
   final VoidCallback onBack;
-  final ValueChanged<String> onPlay;
+
+  /// The ratingKey, and how far in to start — the title's progress,
+  /// which can be further than this copy's own.
+  final void Function(String ratingKey, int resumeAtMs) onPlay;
   final ValueChanged<String> onWatchTogether;
   final ValueChanged<String> onRestartSolo;
-  final VoidCallback onSeasons;
   final bool Function(String?) isOnWatchlist;
   final ValueChanged<String?> onToggleWatchlist;
-  final Future<PlexOnDeckItem?> Function() resolveNextEpisode;
   final Future<PlexMovieDetail?> Function() loadDetail;
   final Future<List<PlexHub>> Function() loadRelatedHubs;
-  final Future<List<PlexLibraryItem>> Function(int actorId) loadByActor;
   final ValueChanged<PlexOnDeckItem> onSelectRelated;
   final ValueChanged<PlexPerson> onSelectPerson;
+  final void Function(Sourced<PlexLibraryItem> copy, int resumeAtMs)
+  onSwitchSource;
+  final Future<CopyFacts> Function(Sourced<PlexLibraryItem> copy) loadCopyFacts;
+
+  /// Progress on the title carried from another copy; see MovieDetail.
+  final int? resumeAtMs;
+
+  /// Open 03d over the page on arrival (screen 25's "All sources").
+  final bool showSources;
 
   const MovieDetailScreen({
     super.key,
     required this.server,
     required this.movie,
-    required this.isShow,
+    required this.work,
     required this.onBack,
     required this.onPlay,
     required this.onWatchTogether,
     required this.onRestartSolo,
-    required this.onSeasons,
     required this.isOnWatchlist,
     required this.onToggleWatchlist,
-    required this.resolveNextEpisode,
     required this.loadDetail,
     required this.loadRelatedHubs,
-    required this.loadByActor,
     required this.onSelectRelated,
     required this.onSelectPerson,
+    required this.onSwitchSource,
+    required this.loadCopyFacts,
+    this.resumeAtMs,
+    this.showSources = false,
   });
 
   @override
   State<MovieDetailScreen> createState() => _MovieDetailScreenState();
 }
 
-class _CoStarRow {
-  final PlexPerson person;
-  final List<PlexLibraryItem> items;
-
-  const _CoStarRow(this.person, this.items);
-}
-
 class _MovieDetailScreenState extends State<MovieDetailScreen> {
   final _playFocus = FocusNode(debugLabel: 'movie-detail-play');
   final _scrollController = ScrollController();
+  final _heroKey = GlobalKey();
 
-  PlexOnDeckItem? _nextEpisode;
   PlexMovieDetail? _detail;
-  List<PlexHub> _relatedHubs = const [];
-  List<_CoStarRow> _coStarRows = const [];
+  List<PlexOnDeckItem> _moreLikeThis = const [];
+  bool _showingSourcePicker = false;
+  bool _compact = false;
 
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) => _playFocus.requestFocus());
+    _scrollController.addListener(_onScroll);
+    // Coming back (from a cast member, a related title, the player) the
+    // page draws what it had at once, so the remembered scroll position
+    // and focused item exist on the first frame; _load still refreshes
+    // it (the resume point has usually moved).
+    final kept = ScreenMemory.read<(PlexMovieDetail?, List<PlexOnDeckItem>)>(
+      context,
+      'movie.loaded',
+    );
+    if (kept != null) {
+      _detail = kept.$1;
+      _moreLikeThis = kept.$2;
+    }
+    // 03d on arrival (screen 25's "All sources") is one-shot: coming Back
+    // to this page later shouldn't open it again.
+    if (widget.showSources &&
+        ScreenMemory.read<bool>(context, 'movie.sourcesShown') != true) {
+      _showingSourcePicker = true;
+      ScreenMemory.write(context, 'movie.sourcesShown', true);
+    } else if (!ScreenMemory.restoringOf(context)) {
+      WidgetsBinding.instance.addPostFrameCallback(
+        (_) => _playFocus.requestFocus(),
+      );
+    }
     _load();
   }
 
@@ -103,189 +155,340 @@ class _MovieDetailScreenState extends State<MovieDetailScreen> {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.movie.ratingKey != widget.movie.ratingKey) {
       setState(() {
-        _nextEpisode = null;
         _detail = null;
-        _relatedHubs = const [];
-        _coStarRows = const [];
+        _moreLikeThis = const [];
       });
-      WidgetsBinding.instance.addPostFrameCallback((_) => _playFocus.requestFocus());
+      WidgetsBinding.instance.addPostFrameCallback(
+        (_) => _playFocus.requestFocus(),
+      );
       _load();
     }
   }
 
   @override
   void dispose() {
+    _scrollController.removeListener(_onScroll);
     _playFocus.dispose();
     _scrollController.dispose();
     super.dispose();
   }
 
-  Future<void> _load() async {
-    if (widget.isShow) {
-      final next = await widget.resolveNextEpisode();
-      if (mounted) setState(() => _nextEpisode = next);
-    }
-    final results = await Future.wait([widget.loadDetail(), widget.loadRelatedHubs()]);
-    if (!mounted) return;
-    final detail = results[0] as PlexMovieDetail?;
-    final relatedHubs = results[1] as List<PlexHub>;
-    setState(() {
-      _detail = detail;
-      _relatedHubs = relatedHubs;
-    });
-    await _computeCoStarRows(detail, relatedHubs);
+  void _onScroll() {
+    final heroHeight =
+        (_heroKey.currentContext?.findRenderObject() as RenderBox?)
+            ?.size
+            .height;
+    if (heroHeight == null) return;
+    // The compact header arrives once the actions have gone under it.
+    final compact = _scrollController.offset > heroHeight * 0.55;
+    if (compact != _compact) setState(() => _compact = compact);
   }
 
-  Future<void> _computeCoStarRows(PlexMovieDetail? detail, List<PlexHub> relatedHubs) async {
-    final roles = detail?.roles;
-    if (roles == null) return;
+  Future<void> _load() async {
+    final results = await Future.wait([
+      widget.loadDetail(),
+      widget.loadRelatedHubs(),
+    ]);
+    if (!mounted) return;
+    final hubs = results[1] as List<PlexHub>;
+    setState(() {
+      _detail = results[0] as PlexMovieDetail?;
+      _moreLikeThis = _mergeRelated(hubs);
+    });
+    ScreenMemory.write(context, 'movie.loaded', (_detail, _moreLikeThis));
+  }
 
-    final autoHubNames = <String>{};
-    for (final hub in relatedHubs) {
-      const prefix = 'More with ';
-      if (hub.title.startsWith(prefix)) autoHubNames.add(hub.title.substring(prefix.length));
+  /// One "More like this" row out of Plex's related hubs — similar titles
+  /// first, then collections and the rest — deduplicated, without this
+  /// title, drawn only from the server's own libraries.
+  List<PlexOnDeckItem> _mergeRelated(List<PlexHub> hubs) {
+    int rank(PlexHub h) {
+      final id = '${h.hubIdentifier ?? ''} ${h.title}'.toLowerCase();
+      if (id.contains('similar') || id.contains('like this')) return 0;
+      if (id.contains('collection')) return 1;
+      return 2;
     }
 
-    final seen = <Object>{};
-    final candidates = <PlexPerson>[];
-    for (final person in roles) {
-      if (autoHubNames.contains(person.tag)) continue;
-      final identity = person.id ?? person.tag;
-      if (!seen.add(identity)) continue;
-      candidates.add(person);
-      if (candidates.length >= 2) break;
-    }
-
-    final rows = <_CoStarRow>[];
-    for (final person in candidates) {
-      final actorId = person.id;
-      if (actorId == null) continue;
-      final items = (await widget.loadByActor(actorId)).where((i) => i.ratingKey != widget.movie.ratingKey).toList();
-      if (items.length >= 3) rows.add(_CoStarRow(person, items));
-    }
-    if (mounted) setState(() => _coStarRows = rows);
+    final ordered = [...hubs]..sort((a, b) => rank(a).compareTo(rank(b)));
+    final seen = <String>{widget.movie.ratingKey};
+    return [
+      for (final hub in ordered)
+        for (final item in hub.items)
+          if (seen.add(item.ratingKey)) item,
+    ].take(_moreLikeThisMax).toList();
   }
 
   void _scrollToTop() {
-    if (!_scrollController.hasClients) return;
-    _scrollController.animateTo(0, duration: const Duration(milliseconds: 300), curve: Curves.easeOut);
+    if (!_scrollController.hasClients || _scrollController.offset == 0) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted && _scrollController.hasClients) {
+        _scrollController.animateTo(
+          0,
+          duration: AppMotion.rowScroll,
+          curve: AppMotion.enter,
+        );
+      }
+    });
   }
 
   @override
   Widget build(BuildContext context) {
     final detail = _detail;
-    final hasResume = !widget.isShow && (detail?.viewOffset ?? 0) > 0;
-    final playTarget = widget.isShow ? _nextEpisode?.ratingKey : widget.movie.ratingKey;
-    final playLabel = widget.isShow
-        ? (_nextEpisode != null ? 'Play S${_nextEpisode!.parentIndex}E${_nextEpisode!.index}' : 'Play')
-        : (hasResume ? 'Continue' : 'Play');
-    final watchTogetherLabel = hasResume ? 'Continue Together' : 'Watch Together';
-
-    final sections = <Widget>[
-      _MovieHero(
-        server: widget.server,
-        movie: widget.movie,
-        summary: detail?.summary ?? widget.movie.summary,
-        playLabel: playLabel,
-        watchTogetherLabel: watchTogetherLabel,
-        showRestart: hasResume,
-        playFocus: _playFocus,
-        isShow: widget.isShow,
-        onPlay: playTarget != null ? () => widget.onPlay(playTarget) : null,
-        onWatchTogether: playTarget != null ? () => widget.onWatchTogether(playTarget) : null,
-        onRestartSolo: playTarget != null ? () => widget.onRestartSolo(playTarget) : null,
-        onSeasons: widget.onSeasons,
-        isOnWatchlist: widget.isOnWatchlist(detail?.guid),
-        onToggleWatchlist: () => widget.onToggleWatchlist(detail?.guid),
-        onActionButtonFocused: _scrollToTop,
-      ),
+    final duration = detail?.duration;
+    final viewOffset = max(detail?.viewOffset ?? 0, widget.resumeAtMs ?? 0);
+    final hasResume = viewOffset > 0;
+    final remaining = (duration ?? 0) - viewOffset;
+    final media = detail?.media.isNotEmpty == true
+        ? MediaFacts(detail!.media.first)
+        : null;
+    final meta = [
+      if (widget.movie.year != null) '${widget.movie.year}',
+      if (duration != null) formatRuntime(duration),
     ];
-    if (detail != null) {
-      sections.add(CastCrewRow(server: widget.server, cast: detail.roles, crew: [...detail.directors, ...detail.writers], onSelectPerson: widget.onSelectPerson));
-    }
-    for (final hub in _relatedHubs) {
-      sections.add(PosterRow(
-        key: ValueKey(hub.hubIdentifier ?? hub.title),
-        title: hub.title,
-        items: hub.items,
-        server: widget.server,
-        onClick: widget.onSelectRelated,
-      ));
-    }
-    for (final row in _coStarRows) {
-      sections.add(PosterRow(
-        key: ValueKey(row.person.id ?? row.person.tag),
-        title: 'More with ${row.person.tag}',
-        items: row.items
-            .map((i) => PlexOnDeckItem(ratingKey: i.ratingKey, type: i.type ?? 'movie', title: i.title, thumb: i.thumb))
-            .toList(),
-        server: widget.server,
-        onClick: widget.onSelectRelated,
-      ));
-    }
-    sections.add(const SizedBox(height: 48));
 
     return BackHandler(
       onBack: widget.onBack,
       child: ColoredBox(
         color: AppColors.background,
-        child: ListView.separated(
-          controller: _scrollController,
-          itemCount: sections.length,
-          separatorBuilder: (context, index) => const SizedBox(height: 28),
-          itemBuilder: (context, index) => sections[index],
+        child: Stack(
+          children: [
+            LayoutBuilder(
+              builder: (context, constraints) => ListView(
+                key: const PageStorageKey('movie-detail'),
+                controller: _scrollController,
+                clipBehavior: Clip.none,
+                padding: EdgeInsets.only(bottom: AppSpacing.safeY.du(context)),
+                children: [
+                  _HeroViewport(
+                    key: _heroKey,
+                    minHeight: constraints.maxHeight,
+                    backdrop: PlexImageUrl.of(
+                      widget.server,
+                      widget.movie.art ?? widget.movie.thumb,
+                    ),
+                    hero: _Hero(
+                      server: widget.server,
+                      movie: widget.movie,
+                      detail: detail,
+                      media: media,
+                      hasResume: hasResume,
+                      remainingMs: remaining,
+                      progress: (duration ?? 0) > 0
+                          ? (viewOffset / duration!).clamp(0.0, 1.0)
+                          : 0.0,
+                      playFocus: _playFocus,
+                      onPlay: () =>
+                          widget.onPlay(widget.movie.ratingKey, viewOffset),
+                      onWatchTogether: () =>
+                          widget.onWatchTogether(widget.movie.ratingKey),
+                      onRestartSolo: () =>
+                          widget.onRestartSolo(widget.movie.ratingKey),
+                      isOnWatchlist: widget.isOnWatchlist(
+                        detail?.guid ?? widget.movie.guid,
+                      ),
+                      onToggleWatchlist: () => widget.onToggleWatchlist(
+                        detail?.guid ?? widget.movie.guid,
+                      ),
+                      onActionFocused: _scrollToTop,
+                      copyCount: widget.work.copies.length,
+                      onOpenSourcePicker: widget.work.copies.length > 1
+                          ? () => setState(() => _showingSourcePicker = true)
+                          : null,
+                    ),
+                    footer: detail == null
+                        ? null
+                        : CastCrewRow(
+                            server: widget.server,
+                            cast: detail.roles,
+                            directors: detail.directors,
+                            writers: detail.writers,
+                            onSelectPerson: widget.onSelectPerson,
+                          ),
+                  ),
+                  if (_moreLikeThis.isNotEmpty)
+                    _MoreLikeThis(
+                      items: _moreLikeThis,
+                      serverName: widget.server.name,
+                      server: widget.server,
+                      onSelect: widget.onSelectRelated,
+                    ),
+                ],
+              ),
+            ),
+            // 03b's compact header: title, facts and the resume point stay
+            // in view while the rows below are browsed. A reminder, not a
+            // focus target — Up from the rows still returns to the hero's
+            // own actions (and scrolls it back).
+            IgnorePointer(
+              child: ExcludeFocus(
+                child: AnimatedSwitcher(
+                  duration: AppMotion.overlayIn,
+                  reverseDuration: AppMotion.overlayOut,
+                  switchInCurve: AppMotion.enter,
+                  switchOutCurve: AppMotion.exit,
+                  child: _compact
+                      ? _CompactHeader(
+                          server: widget.server,
+                          movie: widget.movie,
+                          meta: [
+                            ...meta,
+                            'playing from ${widget.server.name}',
+                          ].join(' · '),
+                          action: hasResume
+                              ? 'Resume · ${formatMinutesLeft(remaining)}'
+                              : 'Play',
+                        )
+                      : const SizedBox.shrink(),
+                ),
+              ),
+            ),
+            if (_showingSourcePicker)
+              SourcePickerDialog(
+                title: widget.movie.title,
+                work: widget.work,
+                activeCopy: widget.work.copies.firstWhere(
+                  (c) =>
+                      c.server.machineIdentifier ==
+                      widget.server.machineIdentifier,
+                  orElse: () => widget.work.primary,
+                ),
+                loadFacts: widget.loadCopyFacts,
+                resumeAtMs: viewOffset,
+                onSelect: (copy) => widget.onSwitchSource(copy, viewOffset),
+                onPlay: () => widget.onPlay(widget.movie.ratingKey, viewOffset),
+                onClose: () => setState(() => _showingSourcePicker = false),
+              ),
+          ],
         ),
       ),
     );
   }
 }
 
-class _MovieHero extends StatelessWidget {
+/// The first screen of the page: the backdrop and its scrims behind the
+/// hero, with Cast & crew pinned to its foot — at least one viewport tall,
+/// taller only when a large UI size needs it.
+class _HeroViewport extends StatelessWidget {
+  final double minHeight;
+  final String? backdrop;
+  final Widget hero;
+  final Widget? footer;
+
+  const _HeroViewport({
+    super.key,
+    required this.minHeight,
+    this.backdrop,
+    required this.hero,
+    this.footer,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return ConstrainedBox(
+      constraints: BoxConstraints(minHeight: minHeight),
+      child: Stack(
+        fit: StackFit.passthrough,
+        children: [
+          Positioned.fill(child: Artwork(imageUrl: backdrop)),
+          Positioned.fill(
+            child: DecoratedBox(
+              decoration: BoxDecoration(gradient: AppScrims.edge),
+            ),
+          ),
+          Positioned(
+            left: 0,
+            right: 0,
+            bottom: 0,
+            height: _bottomFadeHeight.du(context),
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                gradient: AppGradients.linear(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    AppColors.background.withValues(alpha: 0),
+                    AppColors.background,
+                  ],
+                  stops: const [0, 0.58],
+                ),
+              ),
+            ),
+          ),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Padding(
+                padding: EdgeInsets.fromLTRB(
+                  AppSpacing.safeX.du(context),
+                  _contentTop.du(context),
+                  _contentRight.du(context),
+                  0,
+                ),
+                child: hero,
+              ),
+              if (footer != null)
+                Padding(
+                  padding: EdgeInsets.only(
+                    top: AppSpacing.xxl.du(context),
+                    bottom: AppSpacing.safeY.du(context),
+                  ),
+                  child: footer,
+                ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _Hero extends StatelessWidget {
   final PlexServer server;
   final PlexLibraryItem movie;
-  final String? summary;
-  final String playLabel;
-  final String watchTogetherLabel;
-  final bool showRestart;
+  final PlexMovieDetail? detail;
+  final MediaFacts? media;
+  final bool hasResume;
+  final int remainingMs;
+  final double progress;
   final FocusNode playFocus;
-  final bool isShow;
-  final VoidCallback? onPlay;
-  final VoidCallback? onWatchTogether;
-  final VoidCallback? onRestartSolo;
-  final VoidCallback onSeasons;
+  final VoidCallback onPlay;
+  final VoidCallback onWatchTogether;
+  final VoidCallback onRestartSolo;
   final bool isOnWatchlist;
   final VoidCallback onToggleWatchlist;
-  final VoidCallback onActionButtonFocused;
+  final VoidCallback onActionFocused;
+  final int copyCount;
+  final VoidCallback? onOpenSourcePicker;
 
-  const _MovieHero({
+  const _Hero({
     required this.server,
     required this.movie,
-    this.summary,
-    required this.playLabel,
-    required this.watchTogetherLabel,
-    required this.showRestart,
+    required this.detail,
+    required this.media,
+    required this.hasResume,
+    required this.remainingMs,
+    required this.progress,
     required this.playFocus,
-    required this.isShow,
-    this.onPlay,
-    this.onWatchTogether,
-    this.onRestartSolo,
-    required this.onSeasons,
+    required this.onPlay,
+    required this.onWatchTogether,
+    required this.onRestartSolo,
     required this.isOnWatchlist,
     required this.onToggleWatchlist,
-    required this.onActionButtonFocused,
+    required this.onActionFocused,
+    required this.copyCount,
+    this.onOpenSourcePicker,
   });
 
   void _onFocus(bool focused) {
-    if (focused) onActionButtonFocused();
+    if (focused) onActionFocused();
   }
 
-  // Nothing sits above the action button row (it's the top of the
-  // hero) — without this, Flutter's default traversal treats the nav
-  // rail's Home item as the nearest candidate in that direction and
-  // escapes there, same class of bug as library_screen.dart's
-  // _trapUpAboveTabs.
+  // Nothing sits above the action row — without this Up escapes to the
+  // nearest thing geometrically above, which is nothing on this page.
   KeyEventResult _trapUp(FocusNode node, KeyEvent event) {
-    if (event is KeyDownEvent && event.logicalKey == LogicalKeyboardKey.arrowUp) {
+    if (event is KeyDownEvent &&
+        event.logicalKey == LogicalKeyboardKey.arrowUp) {
       return KeyEventResult.handled;
     }
     return KeyEventResult.ignored;
@@ -293,76 +496,491 @@ class _MovieHero extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      height: _heroHeight,
-      child: Stack(
-        fit: StackFit.expand,
-        children: [
-          Artwork(imageUrl: PlexImageUrl.of(server, movie.art ?? movie.thumb)),
-          Positioned(
-            left: 0,
-            right: 0,
-            bottom: 0,
-            child: Container(
-              decoration: const BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  stops: [0, 0.35, 1],
-                  colors: [AppColors.transparent, Color(0xCC000000), AppColors.scrim],
-                ),
+    final gap = SizedBox(height: _blockGap.du(context));
+    final duration = detail?.duration;
+    final summary = detail?.summary ?? movie.summary;
+    final rating = detail?.contentRating ?? movie.contentRating;
+    final meta = [
+      if (movie.year != null) '${movie.year}',
+      if (duration != null) formatRuntime(duration),
+      if (movie.genres.isNotEmpty) movie.genres.first.tag,
+    ];
+    final chips = [?rating, ?media?.picture, ?media?.audio];
+    final directors = detail?.directors.map((p) => p.tag).take(2).join(', ');
+    final facts = <(String, String)>[
+      if (directors != null && directors.isNotEmpty) ('Director', directors),
+      if (detail?.studio != null) ('Studio', detail!.studio!),
+      if (media?.subtitles != null) ('Subtitles', media!.subtitles!),
+      if (media?.file != null) ('File', media!.file!),
+    ];
+
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        ClipRRect(
+          borderRadius: BorderRadius.circular(AppShape.radiusMd.du(context)),
+          child: Container(
+            width: _posterWidth.du(context),
+            height: _posterHeight.du(context),
+            foregroundDecoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(
+                AppShape.radiusMd.du(context),
               ),
-              padding: const EdgeInsets.all(48),
+              border: Border.all(
+                color: AppColors.lineStrong,
+                width: 1.du(context),
+              ),
+            ),
+            child: Artwork(imageUrl: PlexImageUrl.of(server, movie.thumb)),
+          ),
+        ),
+        SizedBox(width: _posterGap.du(context)),
+        Expanded(
+          child: Align(
+            alignment: AlignmentDirectional.topStart,
+            child: ConstrainedBox(
+              constraints: BoxConstraints(maxWidth: _factsMax.du(context)),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  AppText(movie.title, style: AppTypography.displaySmall, color: AppColors.white),
-                  if (movie.year != null)
-                    Padding(padding: const EdgeInsets.only(top: 8), child: AppText('${movie.year}', color: AppColors.white)),
-                  if (summary != null)
-                    Padding(padding: const EdgeInsets.only(top: 16), child: AppText(summary!, color: AppColors.white)),
-                  Padding(
-                    padding: const EdgeInsets.only(top: 24),
-                    child: Focus(canRequestFocus: false, onKeyEvent: _trapUp, child: Row(
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Container(
+                        width: 20.du(context),
+                        height: 2.du(context),
+                        color: AppColors.accent,
+                      ),
+                      SizedBox(width: AppSpacing.md.du(context)),
+                      AppText('MOVIE', style: AppTypography.micro),
+                    ],
+                  ),
+                  gap,
+                  AppText(
+                    movie.title,
+                    style: AppTypography.display,
+                    color: AppColors.inkOnArt,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  gap,
+                  MetaRow(parts: meta, chips: chips),
+                  if (hasResume && remainingMs > 0) ...[
+                    gap,
+                    Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        AppButton(onClick: onPlay ?? () {}, focusNode: playFocus, onFocusChange: _onFocus, child: AppText(playLabel)),
-                        const SizedBox(width: 16),
-                        AppOutlinedButton(
-                          onClick: onWatchTogether ?? () {},
-                          onFocusChange: _onFocus,
-                          child: Row(mainAxisSize: MainAxisSize.min, children: [
-                            const WatchTogetherIcon(),
-                            Padding(padding: const EdgeInsets.only(left: 12), child: AppText(watchTogetherLabel)),
-                          ]),
-                        ),
-                        if (!isShow) ...[
-                          const SizedBox(width: 16),
-                          WatchlistButton(isOnWatchlist: isOnWatchlist, onClick: onToggleWatchlist, onFocusChange: _onFocus),
-                        ],
-                        if (isShow) ...[
-                          const SizedBox(width: 16),
-                          AppOutlinedButton(onClick: onSeasons, onFocusChange: _onFocus, child: const AppText('Seasons')),
-                        ],
-                        if (showRestart) ...[
-                          const SizedBox(width: 16),
-                          AppIconButton(
-                            onClick: onRestartSolo ?? () {},
-                            border: _restartButtonBorder,
-                            onFocusChange: _onFocus,
-                            child: const AppIcon(Icons.replay, tint: AppColors.white),
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(2.du(context)),
+                          child: SizedBox(
+                            width: _progressBarWidth.du(context),
+                            height: AppSpacing.xs.du(context),
+                            child: ColoredBox(
+                              color: AppColors.ink.withValues(alpha: 0.22),
+                              child: FractionallySizedBox(
+                                alignment: AlignmentDirectional.centerStart,
+                                widthFactor: progress,
+                                child: ColoredBox(color: AppColors.accent),
+                              ),
+                            ),
                           ),
-                        ],
-                        if (isShow) ...[
-                          const SizedBox(width: 16),
-                          WatchlistButton(isOnWatchlist: isOnWatchlist, onClick: onToggleWatchlist, onFocusChange: _onFocus),
-                        ],
+                        ),
+                        SizedBox(width: AppSpacing.lg.du(context)),
+                        AppText(
+                          formatMinutesLeft(remainingMs),
+                          style: AppTypography.caption,
+                          color: AppColors.ink2,
+                        ),
                       ],
-                    )),
+                    ),
+                  ],
+                  if (summary != null && summary.trim().isNotEmpty) ...[
+                    gap,
+                    ConstrainedBox(
+                      constraints: BoxConstraints(
+                        maxWidth: _synopsisMax.du(context),
+                      ),
+                      child: AppText(
+                        summary,
+                        style: AppTypography.body,
+                        maxLines: 4,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                  SizedBox(height: (_blockGap + 10).du(context)),
+                  Focus(
+                    canRequestFocus: false,
+                    onKeyEvent: _trapUp,
+                    child: Wrap(
+                      spacing: AppSpacing.lg.du(context),
+                      runSpacing: AppSpacing.lg.du(context),
+                      children: [
+                        RememberFocus(
+                          id: 'play',
+                          child: AppButton(
+                            onClick: onPlay,
+                            focusNode: playFocus,
+                            onFocusChange: _onFocus,
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const AppIcon(PhosphorIconsFill.play, size: 22),
+                                SizedBox(width: AppSpacing.md.du(context)),
+                                AppText(
+                                  hasResume ? 'Resume' : 'Play',
+                                  style: AppTypography.label,
+                                  color: null,
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                        RememberFocus(
+                          id: 'watch-together',
+                          child: AppOutlinedButton(
+                            onClick: onWatchTogether,
+                            onFocusChange: _onFocus,
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const AppIcon(
+                                  PhosphorIconsRegular.usersThree,
+                                  size: 22,
+                                ),
+                                SizedBox(width: AppSpacing.md.du(context)),
+                                AppText(
+                                  'Watch Together',
+                                  style: AppTypography.label,
+                                  color: null,
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                        if (hasResume)
+                          RememberFocus(
+                            id: 'restart',
+                            child: AppIconButton(
+                              onClick: onRestartSolo,
+                              border: _restartButtonBorder,
+                              onFocusChange: _onFocus,
+                              child: const AppIcon(
+                                PhosphorIconsRegular.arrowCounterClockwise,
+                              ),
+                            ),
+                          ),
+                        RememberFocus(
+                          id: 'watchlist',
+                          child: WatchlistButton(
+                            isOnWatchlist: isOnWatchlist,
+                            onClick: onToggleWatchlist,
+                            onFocusChange: _onFocus,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
+                  SizedBox(height: _blockGap.du(context)),
+                  RememberFocus(
+                    id: 'source',
+                    child: _SourceChip(
+                      serverName: server.name,
+                      facts: [
+                        ?media?.picture,
+                        if (media?.media.videoCodec != null)
+                          media!.media.videoCodec!.toUpperCase(),
+                      ],
+                      copyCount: copyCount,
+                      onClick: onOpenSourcePicker,
+                    ),
+                  ),
+                  if (facts.isNotEmpty) ...[
+                    SizedBox(height: 14.du(context)),
+                    Wrap(
+                      spacing: 56.du(context),
+                      runSpacing: AppSpacing.lg.du(context),
+                      children: [
+                        for (final (label, value) in facts)
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              AppText(
+                                label,
+                                style: AppTypography.caption,
+                                color: AppColors.ink,
+                              ),
+                              SizedBox(height: 5.du(context)),
+                              AppText(value, style: AppTypography.caption),
+                            ],
+                          ),
+                      ],
+                    ),
+                  ],
                 ],
               ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+SurfaceColors get _sourceChipColors => SurfaceColors(
+  container: AppColors.surface,
+  content: AppColors.ink2,
+  focusedContainer: AppColors.surfaceRaised,
+  focusedContent: AppColors.ink,
+);
+SurfaceBorder get _sourceChipBorder => SurfaceBorder(
+  idle: SurfaceBorderSide.solid(AppColors.line),
+  focused: SurfaceBorderSide.solid(AppColors.accent),
+);
+
+/// "● Playing from Attic · 4K HDR │ 3 copies ›" — a fact when there is one
+/// copy, the way into the source picker (03d) when folding found more.
+class _SourceChip extends StatelessWidget {
+  final String serverName;
+  final List<String> facts;
+  final int copyCount;
+  final VoidCallback? onClick;
+
+  const _SourceChip({
+    required this.serverName,
+    required this.facts,
+    required this.copyCount,
+    this.onClick,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final content = ConstrainedBox(
+      constraints: BoxConstraints(minHeight: 56.du(context)),
+      child: Padding(
+        padding: EdgeInsets.symmetric(horizontal: 20.du(context)),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: AppSpacing.sm.du(context),
+              height: AppSpacing.sm.du(context),
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: AppColors.success,
+              ),
+            ),
+            SizedBox(width: 18.du(context)),
+            AppText(
+              'Playing from ',
+              style: AppTypography.caption,
+              color: AppColors.ink2,
+            ),
+            AppText(
+              serverName,
+              style: AppTypography.caption,
+              color: AppColors.ink,
+            ),
+            if (facts.isNotEmpty)
+              AppText(
+                ' · ${facts.join(' · ')}',
+                style: AppTypography.caption,
+                color: AppColors.ink2,
+              ),
+            if (onClick != null) ...[
+              SizedBox(width: 18.du(context)),
+              Container(
+                width: 1.du(context),
+                height: 26.du(context),
+                color: AppColors.line,
+              ),
+              SizedBox(width: 18.du(context)),
+              AppText('$copyCount copies', style: AppTypography.caption),
+              SizedBox(width: AppSpacing.sm.du(context)),
+              AppIcon(
+                PhosphorIconsRegular.caretRight,
+                size: 18,
+                tint: AppColors.ink4,
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+    final radius = BorderRadius.circular(AppShape.radiusMd.du(context));
+    if (onClick == null) {
+      return Container(
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          border: Border.all(
+            color: AppColors.line,
+            width: AppShape.borderWidth.du(context),
+          ),
+          borderRadius: radius,
+        ),
+        child: content,
+      );
+    }
+    return AppCard(
+      onClick: onClick!,
+      colors: _sourceChipColors,
+      border: _sourceChipBorder,
+      child: content,
+    );
+  }
+}
+
+/// 03b's only other row: titles like this one, drawn from the server's
+/// own libraries — full-size posters, as everywhere else.
+class _MoreLikeThis extends StatelessWidget {
+  final List<PlexOnDeckItem> items;
+  final String serverName;
+  final PlexServer server;
+  final ValueChanged<PlexOnDeckItem> onSelect;
+
+  const _MoreLikeThis({
+    required this.items,
+    required this.serverName,
+    required this.server,
+    required this.onSelect,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        RowHeading(
+          title: 'More like this',
+          hint: 'Drawn from your libraries, not from a recommendation service',
+        ),
+        SizedBox(
+          height: (AppSpacing.lg - AppSpacing.rowHeadroom / 2).du(context),
+        ),
+        SizedBox(
+          height: (posterCardExtent + AppSpacing.rowHeadroom).du(context),
+          child: EdgeFadeRow(
+            child: RowEndStop(
+              child: ListView.separated(
+                key: const PageStorageKey('more-like-this'),
+                scrollDirection: Axis.horizontal,
+                clipBehavior: Clip.none,
+                padding: EdgeInsets.symmetric(
+                  horizontal: AppSpacing.safeX.du(context),
+                  vertical: (AppSpacing.rowHeadroom / 2).du(context),
+                ),
+                itemCount: items.length,
+                separatorBuilder: (context, index) =>
+                    SizedBox(width: AppSpacing.xl.du(context)),
+                itemBuilder: (context, index) {
+                  final item = items[index];
+                  return RememberFocus(
+                    key: ValueKey(item.ratingKey),
+                    id: 'related:${item.ratingKey}',
+                    child: PosterCard(
+                      imageUrl: PlexImageUrl.of(server, item.thumb),
+                      title: item.title,
+                      subtitle: serverName,
+                      onClick: () => onSelect(item),
+                    ),
+                  );
+                },
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _CompactHeader extends StatelessWidget {
+  final PlexServer server;
+  final PlexLibraryItem movie;
+  final String meta;
+  final String action;
+
+  const _CompactHeader({
+    required this.server,
+    required this.movie,
+    required this.meta,
+    required this.action,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: _compactHeaderHeight.du(context),
+      padding: EdgeInsets.fromLTRB(
+        AppSpacing.safeX.du(context),
+        0,
+        _contentRight.du(context),
+        0,
+      ),
+      decoration: BoxDecoration(
+        color: AppColors.canvas,
+        border: Border(
+          bottom: BorderSide(color: AppColors.line, width: 1.du(context)),
+        ),
+      ),
+      child: Row(
+        children: [
+          ClipRRect(
+            borderRadius: BorderRadius.circular(5.du(context)),
+            child: SizedBox(
+              width: 44.du(context),
+              height: 66.du(context),
+              child: Artwork(imageUrl: PlexImageUrl.of(server, movie.thumb)),
+            ),
+          ),
+          SizedBox(width: AppSpacing.xl.du(context)),
+          Expanded(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                AppText(
+                  movie.title,
+                  style: AppTypography.rowLabel,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                SizedBox(height: 3.du(context)),
+                AppText(
+                  meta,
+                  style: AppTypography.caption,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ),
+          ),
+          Container(
+            height: 48.du(context),
+            padding: EdgeInsets.symmetric(horizontal: 22.du(context)),
+            decoration: BoxDecoration(
+              border: Border.all(
+                color: AppColors.lineStrong,
+                width: AppShape.borderWidth.du(context),
+              ),
+              borderRadius: BorderRadius.circular(
+                AppShape.radiusSm.du(context),
+              ),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                AppIcon(PhosphorIconsFill.play, size: 20, tint: AppColors.ink2),
+                SizedBox(width: 10.du(context)),
+                AppText(
+                  action,
+                  style: AppTypography.caption,
+                  color: AppColors.ink2,
+                ),
+              ],
             ),
           ),
         ],

@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/widgets.dart';
 
+import '../theme/scale.dart';
 import '../theme/typography.dart';
 import 'content_color.dart';
 
@@ -16,11 +17,19 @@ const _pixelsPerSecond = 45.0;
 /// inactive or already short enough to fit.
 class MarqueeText extends StatefulWidget {
   final String text;
-  final TextStyle style;
+  // Nullable rather than defaulting to AppTypography.body directly — see
+  // AppCard.border's matching comment.
+  final TextStyle? style;
   final Color? color;
   final bool active;
 
-  const MarqueeText(this.text, {super.key, this.style = AppTypography.bodyLarge, this.color, required this.active});
+  const MarqueeText(
+    this.text, {
+    super.key,
+    this.style,
+    this.color,
+    required this.active,
+  });
 
   @override
   State<MarqueeText> createState() => _MarqueeTextState();
@@ -65,7 +74,10 @@ class _MarqueeTextState extends State<MarqueeText> {
       if (distance <= 0) return;
       await _scrollController.animateTo(
         distance,
-        duration: Duration(milliseconds: (distance / _pixelsPerSecond * 1000).round()),
+        duration: Duration(
+          milliseconds:
+              (distance / _pixelsPerSecond.du(context) * 1000).round(),
+        ),
         curve: Curves.linear,
       );
       if (mounted && widget.active) _scheduleBackward();
@@ -78,7 +90,10 @@ class _MarqueeTextState extends State<MarqueeText> {
       final distance = _scrollController.position.maxScrollExtent;
       await _scrollController.animateTo(
         0,
-        duration: Duration(milliseconds: (distance / _pixelsPerSecond * 1000).round()),
+        duration: Duration(
+          milliseconds:
+              (distance / _pixelsPerSecond.du(context) * 1000).round(),
+        ),
         curve: Curves.linear,
       );
       if (mounted && widget.active) _scheduleForward();
@@ -87,13 +102,23 @@ class _MarqueeTextState extends State<MarqueeText> {
 
   @override
   Widget build(BuildContext context) {
-    final resolvedStyle = widget.style.copyWith(color: widget.color ?? ContentColor.of(context));
+    final baseStyle = widget.style ?? AppTypography.body;
+    final resolvedStyle = baseStyle.copyWith(
+      color: widget.color ?? ContentColor.of(context),
+      fontSize: baseStyle.fontSize?.du(context),
+      letterSpacing: baseStyle.letterSpacing?.du(context),
+    );
     // Inactive: plain ellipsized text (the normal static look — matches
     // every other truncated label in the app) rather than the scrolling
     // viewport, which has nothing to indicate truncation on its own once
     // frozen at rest.
     if (!widget.active) {
-      return Text(widget.text, maxLines: 1, overflow: TextOverflow.ellipsis, style: resolvedStyle);
+      return Text(
+        widget.text,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: resolvedStyle,
+      );
     }
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,

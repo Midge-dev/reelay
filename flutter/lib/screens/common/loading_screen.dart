@@ -3,6 +3,7 @@ import 'dart:math';
 import 'package:flutter/widgets.dart';
 
 import '../../kit/text.dart';
+import '../../theme/scale.dart';
 import '../../theme/tokens.dart';
 import '../../theme/typography.dart';
 import 'app_loading_indicator.dart';
@@ -43,7 +44,8 @@ class LoadingScreen extends StatefulWidget {
 }
 
 class _LoadingScreenState extends State<LoadingScreen> {
-  late final _flavor = _flavorMessages[Random().nextInt(_flavorMessages.length)];
+  late final _flavor =
+      _flavorMessages[Random().nextInt(_flavorMessages.length)];
 
   @override
   Widget build(BuildContext context) {
@@ -55,12 +57,16 @@ class _LoadingScreenState extends State<LoadingScreen> {
           mainAxisSize: MainAxisSize.min,
           children: [
             const AppLoadingIndicator(),
-            const SizedBox(height: 16),
+            SizedBox(height: 16.du(context)),
             if (message != null) ...[
               AppText(message),
-              const SizedBox(height: 4),
+              SizedBox(height: 4.du(context)),
             ],
-            AppText(_flavor, style: AppTypography.bodySmall, color: AppColors.onSurfaceVariant),
+            AppText(
+              _flavor,
+              style: AppTypography.caption,
+              color: AppColors.ink3,
+            ),
           ],
         ),
       ),

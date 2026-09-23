@@ -4,9 +4,10 @@ import '../../data/plex/plex_image_url.dart';
 import '../../data/plex/plex_models.dart';
 import '../../focus/back_handler.dart';
 import '../../focus/dpad_long_press.dart';
-import '../../kit/focusable_surface.dart';
 import '../../kit/scroll_peek.dart';
 import '../../kit/text.dart';
+import '../../state/duplicate_fold.dart';
+import '../../theme/scale.dart';
 import '../../theme/tokens.dart';
 import '../../theme/typography.dart';
 import '../common/artwork.dart';
@@ -14,8 +15,6 @@ import '../common/remove_confirm_overlay.dart';
 import '../common/time_format.dart';
 
 const _typeEpisode = 'episode';
-
-const _continueWatchingShape = RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(8)));
 
 /// Ports HomeScreen.kt's `recentlyAddedLabel`.
 String recentlyAddedLabel(PlexLibraryItem item) {
@@ -26,10 +25,38 @@ String recentlyAddedLabel(PlexLibraryItem item) {
 
 /// Ports HomeScreen.kt's `continueWatchingLabel`.
 String continueWatchingLabel(PlexOnDeckItem item) {
-  if (item.type == _typeEpisode && item.grandparentTitle != null && item.parentIndex != null && item.index != null) {
+  if (item.type == _typeEpisode &&
+      item.grandparentTitle != null &&
+      item.parentIndex != null &&
+      item.index != null) {
     return '${item.grandparentTitle} · S${item.parentIndex}E${item.index}';
   }
   return item.title;
+}
+
+/// The show name for an episode, otherwise the item's own title — the
+/// primary line on a hero or "More in progress" card. Nocturne two-line
+/// captions split what [continueWatchingLabel] combines into one.
+String continueWatchingTitle(PlexOnDeckItem item) {
+  if (item.type == _typeEpisode && item.grandparentTitle != null)
+    return item.grandparentTitle!;
+  return item.title;
+}
+
+/// "S3 E1 · 38 min left" — the secondary line under [continueWatchingTitle].
+String continueWatchingSubtitle(PlexOnDeckItem item) {
+  final parts = <String>[];
+  if (item.type == _typeEpisode &&
+      item.parentIndex != null &&
+      item.index != null) {
+    parts.add('S${item.parentIndex} E${item.index}');
+  }
+  final duration = item.duration;
+  if (duration != null && duration > 0) {
+    final remaining = duration - (item.viewOffset ?? 0);
+    if (remaining > 0) parts.add(formatMinutesLeft(remaining));
+  }
+  return parts.join(' · ');
 }
 
 /// Ports HomeScreen.kt's `progressFraction`.
@@ -51,7 +78,6 @@ class WatchlistPoster extends StatefulWidget {
   final VoidCallback onRemove;
   final FocusNode? focusNode;
   final bool autofocus;
-  final int staggerDelayMs;
 
   const WatchlistPoster({
     super.key,
@@ -61,7 +87,6 @@ class WatchlistPoster extends StatefulWidget {
     required this.onRemove,
     this.focusNode,
     this.autofocus = false,
-    this.staggerDelayMs = 0,
   });
 
   @override
@@ -73,7 +98,9 @@ class _WatchlistPosterState extends State<WatchlistPoster> {
   bool _ownsFocusNode = false;
   bool _focused = false;
   bool _confirmingRemove = false;
-  late final DpadLongPressDetector _longPress = DpadLongPressDetector(onLongPress: _openConfirm);
+  late final DpadLongPressDetector _longPress = DpadLongPressDetector(
+    onLongPress: _openConfirm,
+  );
 
   @override
   void initState() {
@@ -105,7 +132,9 @@ class _WatchlistPosterState extends State<WatchlistPoster> {
 
   void _closeConfirm() {
     setState(() => _confirmingRemove = false);
-    WidgetsBinding.instance.addPostFrameCallback((_) => _focusNode.requestFocus());
+    WidgetsBinding.instance.addPostFrameCallback(
+      (_) => _focusNode.requestFocus(),
+    );
   }
 
   KeyEventResult _handleKeyEvent(FocusNode node, KeyEvent event) =>
@@ -117,7 +146,7 @@ class _WatchlistPosterState extends State<WatchlistPoster> {
       enabled: _confirmingRemove,
       onBack: _closeConfirm,
       child: SizedBox(
-        width: 160,
+        width: 160.du(context),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           mainAxisSize: MainAxisSize.min,
@@ -125,10 +154,15 @@ class _WatchlistPosterState extends State<WatchlistPoster> {
             AspectRatio(
               aspectRatio: 2 / 3,
               child: ClipRRect(
-                borderRadius: BorderRadius.circular(8),
+                borderRadius: BorderRadius.circular(8.du(context)),
                 child: Container(
                   decoration: BoxDecoration(
-                    border: _focused ? Border.all(color: AppColors.accent, width: 2) : null,
+                    border: _focused
+                        ? Border.all(
+                            color: AppColors.accent,
+                            width: 2.du(context),
+                          )
+                        : null,
                   ),
                   child: Focus(
                     focusNode: _focusNode,
@@ -143,10 +177,16 @@ class _WatchlistPosterState extends State<WatchlistPoster> {
                       child: Stack(
                         fit: StackFit.expand,
                         children: [
-                          Artwork(imageUrl: PlexImageUrl.of(widget.server, widget.entry.thumb), staggerDelayMs: widget.staggerDelayMs),
+                          Artwork(
+                            imageUrl: PlexImageUrl.of(
+                              widget.server,
+                              widget.entry.thumb,
+                            ),
+                          ),
                           if (_confirmingRemove)
                             RemoveConfirmOverlay(
-                              message: 'Remove ${widget.entry.title} from your watchlist?',
+                              message:
+                                  'Remove ${widget.entry.title} from your watchlist?',
                               onConfirm: () {
                                 setState(() => _confirmingRemove = false);
                                 widget.onRemove();
@@ -162,8 +202,12 @@ class _WatchlistPosterState extends State<WatchlistPoster> {
               ),
             ),
             Padding(
-              padding: const EdgeInsets.only(top: 16),
-              child: AppText(widget.entry.title, maxLines: 1, overflow: TextOverflow.ellipsis),
+              padding: EdgeInsets.only(top: 16.du(context)),
+              child: AppText(
+                widget.entry.title,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
             ),
           ],
         ),
@@ -176,23 +220,19 @@ class _WatchlistPosterState extends State<WatchlistPoster> {
 /// the same long-press-to-remove pattern as WatchlistPoster, plus a
 /// progress bar and a focus-scale animation (matches Card.kt's spring).
 class ContinueWatchingPoster extends StatefulWidget {
-  final PlexServer server;
-  final PlexOnDeckItem item;
+  final FoldedWork<PlexOnDeckItem> item;
   final VoidCallback onResume;
   final VoidCallback onRemove;
   final FocusNode? focusNode;
   final bool autofocus;
-  final int staggerDelayMs;
 
   const ContinueWatchingPoster({
     super.key,
-    required this.server,
     required this.item,
     required this.onResume,
     required this.onRemove,
     this.focusNode,
     this.autofocus = false,
-    this.staggerDelayMs = 0,
   });
 
   @override
@@ -204,13 +244,16 @@ class _ContinueWatchingPosterState extends State<ContinueWatchingPoster> {
   bool _ownsFocusNode = false;
   bool _focused = false;
   bool _confirmingRemove = false;
-  late final DpadLongPressDetector _longPress = DpadLongPressDetector(onLongPress: _openConfirm);
+  late final DpadLongPressDetector _longPress = DpadLongPressDetector(
+    onLongPress: _openConfirm,
+  );
 
   @override
   void initState() {
     super.initState();
     _ownsFocusNode = widget.focusNode == null;
-    _focusNode = widget.focusNode ?? FocusNode(debugLabel: 'continue-watching-poster');
+    _focusNode =
+        widget.focusNode ?? FocusNode(debugLabel: 'continue-watching-poster');
     _focusNode.addListener(_handleFocusChange);
   }
 
@@ -236,7 +279,9 @@ class _ContinueWatchingPosterState extends State<ContinueWatchingPoster> {
 
   void _closeConfirm() {
     setState(() => _confirmingRemove = false);
-    WidgetsBinding.instance.addPostFrameCallback((_) => _focusNode.requestFocus());
+    WidgetsBinding.instance.addPostFrameCallback(
+      (_) => _focusNode.requestFocus(),
+    );
   }
 
   KeyEventResult _handleKeyEvent(FocusNode node, KeyEvent event) =>
@@ -244,13 +289,17 @@ class _ContinueWatchingPosterState extends State<ContinueWatchingPoster> {
 
   @override
   Widget build(BuildContext context) {
-    final progress = progressFraction(widget.item);
+    final active = widget.item.primary;
+    final value = active.value;
+    final progress = progressFraction(value);
+
+    final remainingMs = (value.duration ?? 0) - (value.viewOffset ?? 0);
 
     return BackHandler(
       enabled: _confirmingRemove,
       onBack: _closeConfirm,
       child: SizedBox(
-        width: 240,
+        width: 372.du(context),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           mainAxisSize: MainAxisSize.min,
@@ -258,19 +307,30 @@ class _ContinueWatchingPosterState extends State<ContinueWatchingPoster> {
             AspectRatio(
               aspectRatio: 16 / 9,
               child: AnimatedScale(
-                scale: _focused ? 1.04 : 1.0,
-                duration: const Duration(milliseconds: 150),
-                child: CustomPaint(
-                  // A crisp width-pt stroke, matching every other card's
-                  // border via GradientBorderPainter — the previous
-                  // Container(border + gradient-fill + padding) combo drew
-                  // both a border stroke AND a solid-filled padded band,
-                  // reading visibly thicker than the rest of the app's cards.
-                  foregroundPainter: _focused
-                      ? GradientBorderPainter(shape: _continueWatchingShape, gradient: AppFocusTreatment.focusedGradient, width: AppShape.borderWidth)
-                      : null,
+                scale: _focused ? AppFocusTreatment.focusScale : 1.0,
+                duration: AppMotion.focusEnter,
+                curve: AppMotion.enter,
+                child: Container(
+                  // Artwork takes a frame all the way round instead of a
+                  // spine on focus — a spine would cover the thumbnail.
+                  // DESIGN.md #3.
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(
+                      AppShape.radiusMd.du(context),
+                    ),
+                    border: Border.all(
+                      color: _focused
+                          ? AppFocusTreatment.artFrameColor
+                          : AppColors.line,
+                      width:
+                          (_focused
+                                  ? AppShape.artFrameWidth
+                                  : AppShape.borderWidth)
+                              .du(context),
+                    ),
+                  ),
                   child: ClipRRect(
-                    borderRadius: BorderRadius.circular(8),
+                    borderRadius: BorderRadius.circular(8.du(context)),
                     child: Focus(
                       focusNode: _focusNode,
                       autofocus: widget.autofocus,
@@ -284,15 +344,22 @@ class _ContinueWatchingPosterState extends State<ContinueWatchingPoster> {
                         child: Stack(
                           fit: StackFit.expand,
                           children: [
-                            Artwork(imageUrl: PlexImageUrl.of(widget.server, widget.item.thumb), staggerDelayMs: widget.staggerDelayMs),
-                            if (_focused && !_confirmingRemove)
+                            Artwork(
+                              imageUrl: PlexImageUrl.of(
+                                active.server,
+                                value.thumb,
+                              ),
+                            ),
+                            if (_focused &&
+                                !_confirmingRemove &&
+                                remainingMs > 0)
                               Positioned(
-                                right: 6,
-                                bottom: 8,
-                                child: Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                  decoration: BoxDecoration(color: AppColors.scrim.withValues(alpha: 0.7), borderRadius: BorderRadius.circular(4)),
-                                  child: AppText(formatTimecode(widget.item.viewOffset ?? 0), color: AppColors.white, style: AppTypography.bodySmall),
+                                left: 16.du(context),
+                                bottom: 16.du(context),
+                                child: AppText(
+                                  formatMinutesLeft(remainingMs),
+                                  color: AppColors.inkOnArt,
+                                  style: AppTypography.caption,
                                 ),
                               ),
                             Positioned(
@@ -300,17 +367,14 @@ class _ContinueWatchingPosterState extends State<ContinueWatchingPoster> {
                               right: 0,
                               bottom: 0,
                               child: Container(
-                                height: 4,
-                                color: AppColors.scrim.withValues(alpha: 0.4),
+                                height: 4.du(context),
+                                color: AppColors.ink.withValues(alpha: 0.22),
                                 alignment: Alignment.centerLeft,
                                 child: FractionallySizedBox(
                                   widthFactor: progress,
-                                  child: Container(
-                                    height: 4,
-                                    decoration: const BoxDecoration(
-                                      gradient: LinearGradient(colors: [AppColors.accent, AppColors.accentGlow]),
-                                    ),
-                                  ),
+                                  // Flat ink3 fill: screens 01/11 keep the
+                                  // accent for the hero's bar only.
+                                  child: ColoredBox(color: AppColors.ink3),
                                 ),
                               ),
                             ),
@@ -332,8 +396,32 @@ class _ContinueWatchingPosterState extends State<ContinueWatchingPoster> {
               ),
             ),
             Padding(
-              padding: const EdgeInsets.only(top: 8),
-              child: AppText(continueWatchingLabel(widget.item), maxLines: 1, overflow: TextOverflow.ellipsis),
+              padding: EdgeInsets.only(top: 12.du(context)),
+              child: AppText(
+                continueWatchingTitle(value),
+                style: _focused
+                    ? AppTypography.label.copyWith(fontWeight: FontWeight.w500)
+                    : AppTypography.label,
+                color: _focused ? AppColors.ink : AppColors.ink2,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            Builder(
+              builder: (context) {
+                final subtitle = continueWatchingSubtitle(value);
+                if (subtitle.isEmpty) return const SizedBox.shrink();
+                return Padding(
+                  padding: EdgeInsets.only(top: 3.du(context)),
+                  child: AppText(
+                    subtitle,
+                    style: AppTypography.caption,
+                    color: AppColors.ink3,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                );
+              },
             ),
           ],
         ),

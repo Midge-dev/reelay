@@ -1,53 +1,356 @@
+import 'dart:async';
+import 'dart:ui' show ImageFilter;
+
 import 'package:flutter/widgets.dart';
 
+import '../../theme/scale.dart';
 import '../../theme/tokens.dart';
-import '../../theme/typography.dart';
 
-const _fadeInMs = 500;
+// Splash spec (design_handoff_reelay_splash/DESIGN.md) — every number below
+// is from its §2 geometry and §4 timeline, in du at the 1920×1080 reference.
+const _introMs = 1300;
+const _breatheHalfMs = 900; // 0.24 → 0.07 → 0.24 is one 1800 ms period
+const _exitMs = 300;
+const _breatheFromMs = 1600;
+const _minHoldMs = 2400;
+const _reducedFadeMs = 300;
 
-/// Placeholder splash while a real logo design is in progress — plain
-/// wordmark text and a simple fade-in, no logo asset. Swap back to a real
-/// mark/wordmark image pair (see git history for the previous animated
-/// version) once that design lands.
+// Dimmer than the handoff's 0.24 / 0.07 so the mark reads clearly in front
+// of it; the trough keeps the same ratio to the peak.
+const _glowPeak = 0.14;
+const _glowTrough = 0.04;
+
+/// The first thing Reelay paints: the mark draws itself (~1.2 s), holds
+/// while the app loads underneath, then fades to reveal it. Exits when
+/// [ready] completes or at 2.4 s, whichever is later — never early (a
+/// half-drawn mark reads as a glitch), never held longer than it has to.
+/// Still loading at 1.6 s, the glow breathes; the bars never move again.
 class SplashScreen extends StatefulWidget {
-  const SplashScreen({super.key});
+  final Future<void> ready;
+  final VoidCallback onDone;
+
+  const SplashScreen({super.key, required this.ready, required this.onDone});
 
   @override
   State<SplashScreen> createState() => _SplashScreenState();
 }
 
-class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderStateMixin {
-  late final AnimationController _fadeIn;
+class _SplashScreenState extends State<SplashScreen>
+    with TickerProviderStateMixin {
+  late final _intro = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: _introMs),
+  );
+  late final _breathe = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: _breatheHalfMs),
+  );
+  late final _exit = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: _exitMs),
+  );
+
+  Animation<double> _interval(double begin, double end, Curve curve) =>
+      CurvedAnimation(
+        parent: _intro,
+        curve: Interval(begin, end, curve: curve),
+      );
+
+  late final _ground = _interval(0.000, 0.185, Curves.linear);
+  late final _accentBar = _interval(0.123, 0.554, Curves.easeOutQuint);
+  late final _inkBar = _interval(0.246, 0.646, Curves.easeOutQuint);
+  late final _glow = _interval(0.462, 1.000, Curves.easeOut);
+  late final _word = _interval(0.538, 0.923, Curves.easeOutQuint);
+  late final _breatheCurve = CurvedAnimation(
+    parent: _breathe,
+    curve: Curves.easeInOut,
+  );
+
+  bool _started = false;
+  bool _reducedMotion = false;
+  bool _isReady = false;
+  Timer? _breatheTimer;
+  Timer? _holdTimer;
 
   @override
-  void initState() {
-    super.initState();
-    _fadeIn = AnimationController(duration: const Duration(milliseconds: _fadeInMs), vsync: this)..forward();
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_started) return;
+    _started = true;
+    _reducedMotion = MediaQuery.disableAnimationsOf(context);
+    _run();
+  }
+
+  Future<void> _run() async {
+    if (_reducedMotion) {
+      // Bars and wordmark at full size; the lockup and glow fade in over
+      // 300 ms linear instead (see build). No breathe.
+      _intro.value = 1;
+    } else {
+      _intro.forward();
+      _breatheTimer = Timer(const Duration(milliseconds: _breatheFromMs), () {
+        if (mounted && !_isReady) _breathe.repeat(reverse: true);
+      });
+    }
+    widget.ready.then((_) => _isReady = true, onError: (_) => _isReady = true);
+
+    final held = Completer<void>();
+    _holdTimer = Timer(const Duration(milliseconds: _minHoldMs), held.complete);
+    await Future.wait([widget.ready.catchError((_) {}), held.future]);
+    if (!mounted) return;
+    // Let the current breath finish on its 0.24 peak (≤ 900 ms), then exit.
+    if (_breathe.isAnimating) {
+      await _breathe.animateBack(0);
+      if (!mounted) return;
+    }
+    await _exit.forward();
+    if (mounted) widget.onDone();
   }
 
   @override
   void dispose() {
-    _fadeIn.dispose();
+    _breatheTimer?.cancel();
+    _holdTimer?.cancel();
+    _intro.dispose();
+    _breathe.dispose();
+    _exit.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    return ColoredBox(
-      color: AppColors.background,
-      child: Center(
-        child: FadeTransition(
-          opacity: CurvedAnimation(parent: _fadeIn, curve: Curves.fastOutSlowIn),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text('Reelay', style: AppTypography.displaySmall.copyWith(color: AppColors.white)),
-              Padding(
-                padding: const EdgeInsets.only(top: 12),
-                child: Text('Watch together', style: AppTypography.bodyLarge.copyWith(color: AppColors.white.withValues(alpha: 0.7))),
+    Widget lockup = Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        _Mark(
+          accentBar: _accentBar,
+          inkBar: _inkBar,
+          glow: _glow,
+          breathe: _breatheCurve,
+          reducedMotion: _reducedMotion,
+        ),
+        SizedBox(width: 34.du(context)),
+        _Wordmark(progress: _word),
+      ],
+    );
+    if (_reducedMotion) {
+      lockup = TweenAnimationBuilder<double>(
+        tween: Tween(begin: 0, end: 1),
+        duration: const Duration(milliseconds: _reducedFadeMs),
+        builder: (context, t, child) => Opacity(opacity: t, child: child),
+        child: lockup,
+      );
+    }
+    return FadeTransition(
+      // Exit: lockup and ground together, 1 → 0, easeIn — the app is
+      // already painted underneath. No slide, scale or route transition.
+      opacity: ReverseAnimation(
+        CurvedAnimation(parent: _exit, curve: Curves.easeIn),
+      ),
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          // Frame 0 is the saved theme's canvas — the same colour the
+          // native window was (within a few % luminance).
+          ColoredBox(color: AppColors.canvas),
+          FadeTransition(
+            opacity: _ground,
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                gradient: RadialGradient(
+                  // CSS radial-gradient(110% 90% at 50% 45%, …): an
+                  // ellipse, so scale a circle to the box's aspect.
+                  center: const Alignment(0, -0.1),
+                  radius: 0.9,
+                  transform: const _EllipseTransform(),
+                  colors: _smoothGround,
+                  stops: _smoothStops,
+                ),
               ),
-            ],
+            ),
           ),
+          Center(child: lockup),
+        ],
+      ),
+    );
+  }
+}
+
+/// The ground's surface → background (50%) → canvas, as one smooth curve
+/// (the quadratic through all three) sampled at [_smoothStops]. Three
+/// linear stops change slope sharply at the middle one, which the eye
+/// picks out as a ring on these near-identical darks; the curve has no
+/// corner anywhere. Checked monotone for every theme — no overshoot.
+const _groundSamples = 16;
+final _smoothStops = [
+  for (var i = 0; i <= _groundSamples; i++) i / _groundSamples,
+];
+List<Color> get _smoothGround {
+  final s = AppColors.surface, b = AppColors.background, c = AppColors.canvas;
+  double curve(double t, double a, double m, double z) =>
+      a * (t - 0.5) * (t - 1) / 0.5 +
+      m * t * (t - 1) / -0.25 +
+      z * t * (t - 0.5) / 0.5;
+  return [
+    for (final t in _smoothStops)
+      Color.from(
+        alpha: 1,
+        red: curve(t, s.r, b.r, c.r).clamp(0, 1),
+        green: curve(t, s.g, b.g, c.g).clamp(0, 1),
+        blue: curve(t, s.b, b.b, c.b).clamp(0, 1),
+      ),
+  ];
+}
+
+/// CSS `radial-gradient(110% 90% at 50% 45%)`: an ellipse whose radii are
+/// 110% of the width and 90% of the height. [RadialGradient]'s circle has
+/// radius 0.9 × the shorter side (the height, on a TV), so stretch x about
+/// the centre until it reaches 1.1 × the width.
+class _EllipseTransform extends GradientTransform {
+  const _EllipseTransform();
+
+  @override
+  Matrix4? transform(Rect bounds, {TextDirection? textDirection}) {
+    final ry = 0.9 * bounds.shortestSide;
+    final sx = (1.1 * bounds.width) / ry;
+    final sy = (0.9 * bounds.height) / ry;
+    final cx = bounds.left + bounds.width * 0.5;
+    final cy = bounds.top + bounds.height * 0.45;
+    return Matrix4.identity()
+      ..translateByDouble(cx, cy, 0, 1)
+      ..scaleByDouble(sx, sy, 1, 1)
+      ..translateByDouble(-cx, -cy, 0, 1);
+  }
+}
+
+/// The 46-unit master mark (rect 36×12 r4 over rect 22×12 r4, gap 4)
+/// scaled by 3: 108×36 accent over 66×36 ink, gap 12, both r12, in a
+/// 108×84 box — with the accent glow behind it.
+class _Mark extends StatelessWidget {
+  final Animation<double> accentBar;
+  final Animation<double> inkBar;
+  final Animation<double> glow;
+  final Animation<double> breathe;
+  final bool reducedMotion;
+
+  const _Mark({
+    required this.accentBar,
+    required this.inkBar,
+    required this.glow,
+    required this.breathe,
+    required this.reducedMotion,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    Widget bar(Animation<double> scaleX, double width, Color color) =>
+        AnimatedBuilder(
+          animation: scaleX,
+          builder: (context, child) => Transform(
+            alignment: Alignment.centerLeft,
+            transform: Matrix4.diagonal3Values(scaleX.value, 1, 1),
+            child: child,
+          ),
+          child: Container(
+            width: width.du(context),
+            height: 36.du(context),
+            decoration: BoxDecoration(
+              color: color,
+              borderRadius: BorderRadius.circular(12.du(context)),
+            ),
+          ),
+        );
+
+    return SizedBox(
+      width: 108.du(context),
+      height: 84.du(context),
+      child: Stack(
+        clipBehavior: Clip.none,
+        children: [
+          // The only blurred layer. ImageFiltered, not a BoxShadow — a
+          // shadow has an edge; the glow shouldn't.
+          // Tighter than the handoff's 204×124 (σ26) so the bloom stays
+          // around the mark instead of bleeding into the wordmark: same
+          // centre on the accent bar (54, 18), 140×100, σ18.
+          Positioned(
+            left: -16.du(context),
+            top: -32.du(context),
+            width: 140.du(context),
+            height: 100.du(context),
+            child: AnimatedBuilder(
+              animation: Listenable.merge([glow, breathe]),
+              builder: (context, child) {
+                final breath = reducedMotion ? 0.0 : breathe.value;
+                final level = _glowPeak - (_glowPeak - _glowTrough) * breath;
+                return Opacity(opacity: glow.value * level, child: child);
+              },
+              child: ImageFiltered(
+                imageFilter: ImageFilter.blur(
+                  sigmaX: 18.du(context),
+                  sigmaY: 18.du(context),
+                  tileMode: TileMode.decal,
+                ),
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    color: AppColors.accent,
+                    borderRadius: BorderRadius.circular(50.du(context)),
+                  ),
+                ),
+              ),
+            ),
+          ),
+          Positioned(
+            left: 0,
+            top: 0,
+            child: bar(accentBar, 108, AppColors.accent),
+          ),
+          Positioned(
+            left: 0,
+            top: 48.du(context),
+            child: bar(inkBar, 66, AppColors.splashInkBar),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// "Reelay", Inter 500 at 100 du, line-height 1.0, −3% tracking — text,
+/// not a bitmap, so it stays crisp at any scale. Fades in while sliding
+/// 14 du from the left.
+class _Wordmark extends StatelessWidget {
+  final Animation<double> progress;
+
+  const _Wordmark({required this.progress});
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: progress,
+      builder: (context, child) => Opacity(
+        opacity: progress.value,
+        child: Transform.translate(
+          offset: Offset((1 - progress.value) * -14.du(context), 0),
+          child: child,
+        ),
+      ),
+      child: Text(
+        'Reelay',
+        textScaler: TextScaler.noScaling,
+        style: TextStyle(
+          fontFamily: 'Inter',
+          fontSize: 100.du(context),
+          fontWeight: FontWeight.w500,
+          // The handoff renders in a browser, which sets Inter's optical
+          // size from the font size (clamped to 32) — match it, so the
+          // splash wordmark and the TV banner's are the same letterforms.
+          fontVariations: const [
+            FontVariation.weight(500),
+            FontVariation.opticalSize(32),
+          ],
+          height: 1.0,
+          letterSpacing: -3.du(context),
+          color: AppColors.ink,
         ),
       ),
     );

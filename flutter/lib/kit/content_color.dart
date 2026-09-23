@@ -10,9 +10,13 @@ class ContentColor extends InheritedWidget {
 
   const ContentColor({super.key, required this.color, required super.child});
 
+  /// The ambient colour only when a surface actually provides one.
+  static Color? maybeOf(BuildContext context) =>
+      context.dependOnInheritedWidgetOfExactType<ContentColor>()?.color;
+
   static Color of(BuildContext context) {
     final widget = context.dependOnInheritedWidgetOfExactType<ContentColor>();
-    return widget?.color ?? AppColors.onBackground;
+    return widget?.color ?? AppColors.ink;
   }
 
   @override

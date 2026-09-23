@@ -117,6 +117,24 @@ PlaybackDecision decidePlayback(PlexMovieDetail detail, int? subtitleStreamId, {
   return DirectPlay(part: part, subtitleStreamId: subtitleStreamId);
 }
 
+/// The subtitle a first press of Play starts with: Plex's remembered one,
+/// but only when it doesn't force a transcode — a burn-in is something to
+/// opt into from the CC menu, not something a remembered language quietly
+/// starts. Shared by the player and the source rows (25, 03d) so "Direct
+/// play" on a row is what Play then actually does.
+int? firstSubtitleStreamId(PlexMovieDetail detail) {
+  final id = defaultSubtitleStreamId(detail);
+  if (id == null || detail.media.isEmpty || detail.media.first.parts.isEmpty) return null;
+  for (final s in detail.media.first.parts.first.streams) {
+    if (s.streamType == _subtitleStreamType && s.id == id) return _requiresBurn(s) ? null : id;
+  }
+  return null;
+}
+
+/// What a first press of Play does with [detail]; see [firstSubtitleStreamId].
+PlaybackDecision firstPlaybackDecision(PlexMovieDetail detail, {bool forceBurn = false}) =>
+    decidePlayback(detail, firstSubtitleStreamId(detail), forceBurn: forceBurn);
+
 int? defaultSubtitleStreamId(PlexMovieDetail detail) {
   if (detail.media.isEmpty || detail.media.first.parts.isEmpty) return null;
   for (final s in detail.media.first.parts.first.streams) {

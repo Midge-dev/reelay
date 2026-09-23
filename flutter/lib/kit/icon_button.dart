@@ -1,28 +1,42 @@
 import 'package:flutter/widgets.dart';
 
+import '../theme/scale.dart';
 import '../theme/tokens.dart';
 import 'focusable_surface.dart';
 import 'surface_style.dart';
 
-const _iconButtonShape = CircleBorder();
-const _iconButtonSize = 44.0;
+RoundedRectangleBorder _iconButtonShape(BuildContext context) =>
+    RoundedRectangleBorder(
+      borderRadius: BorderRadius.circular(AppShape.radiusMd.du(context)),
+    );
+const _iconButtonSize = 62.0;
 
-final _iconButtonColors = SurfaceColors(
+SurfaceColors get _iconButtonColors => SurfaceColors(
   container: AppColors.transparent,
-  content: AppColors.white,
-  focusedContainer: AppColors.accent,
-  pressedContainer: AppColors.accentPressed,
-  disabledContent: AppColors.white.withValues(alpha: 0.5),
+  content: AppColors.ink2,
+  focusedContainer: AppColors.surfaceRaised,
+  focusedContent: AppColors.ink,
+  pressedContainer: AppColors.accent900,
+  pressedContent: AppColors.ink2,
 );
-const _defaultIconButtonBorder = SurfaceBorder(focused: SurfaceBorderSide.gradient(AppFocusTreatment.focusedGradient));
-const _iconButtonGlow = SurfaceGlow(focusedColor: AppColors.accentGlow);
 
-/// Ports ui/kit/IconButton.kt — transparent at rest so it floats over
-/// video/photos (e.g. player controls).
+/// A spine would eat a quarter of a 62x62 square, so icon-only buttons take
+/// the hairline frame alone — DESIGN.md non-negotiable #3.
+SurfaceBorder get _defaultIconButtonBorder => SurfaceBorder(
+  idle: SurfaceBorderSide.solid(AppColors.lineStrong),
+  focused: SurfaceBorderSide.solid(AppColors.accent),
+  noSpine: true,
+);
+
+/// Ports ui/kit/IconButton.kt — square (not circular; only avatars and seat
+/// circles are round in Nocturne), transparent at rest so it reads on the
+/// scrims it usually sits over (player controls, a detail page's backdrop).
 class AppIconButton extends StatelessWidget {
   final VoidCallback onClick;
   final bool enabled;
-  final SurfaceBorder border;
+  // Nullable rather than defaulting to _defaultIconButtonBorder directly —
+  // see AppCard.border's matching comment.
+  final SurfaceBorder? border;
   final FocusNode? focusNode;
   final bool autofocus;
   final ValueChanged<bool>? onFocusChange;
@@ -32,7 +46,7 @@ class AppIconButton extends StatelessWidget {
     super.key,
     required this.onClick,
     this.enabled = true,
-    this.border = _defaultIconButtonBorder,
+    this.border,
     this.focusNode,
     this.autofocus = false,
     this.onFocusChange,
@@ -42,18 +56,17 @@ class AppIconButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      width: _iconButtonSize,
-      height: _iconButtonSize,
+      width: _iconButtonSize.du(context),
+      height: _iconButtonSize.du(context),
       child: FocusableSurface(
         onClick: onClick,
         enabled: enabled,
         focusNode: focusNode,
         autofocus: autofocus,
         onFocusChange: onFocusChange,
-        shape: _iconButtonShape,
+        shape: _iconButtonShape(context),
         colors: _iconButtonColors,
-        border: border,
-        glow: _iconButtonGlow,
+        border: border ?? _defaultIconButtonBorder,
         child: child,
       ),
     );

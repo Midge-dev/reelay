@@ -47,6 +47,7 @@ PlexSection _$PlexSectionFromJson(Map<String, dynamic> json) => PlexSection(
   key: json['key'] as String,
   title: json['title'] as String,
   type: json['type'] as String? ?? '',
+  agent: json['agent'] as String? ?? '',
 );
 
 Map<String, dynamic> _$PlexSectionToJson(PlexSection instance) =>
@@ -54,6 +55,7 @@ Map<String, dynamic> _$PlexSectionToJson(PlexSection instance) =>
       'key': instance.key,
       'title': instance.title,
       'type': instance.type,
+      'agent': instance.agent,
     };
 
 PlexTag _$PlexTagFromJson(Map<String, dynamic> json) =>
@@ -61,6 +63,13 @@ PlexTag _$PlexTagFromJson(Map<String, dynamic> json) =>
 
 Map<String, dynamic> _$PlexTagToJson(PlexTag instance) => <String, dynamic>{
   'tag': instance.tag,
+};
+
+PlexGuid _$PlexGuidFromJson(Map<String, dynamic> json) =>
+    PlexGuid(id: json['id'] as String);
+
+Map<String, dynamic> _$PlexGuidToJson(PlexGuid instance) => <String, dynamic>{
+  'id': instance.id,
 };
 
 PlexLibraryItem _$PlexLibraryItemFromJson(Map<String, dynamic> json) =>
@@ -77,6 +86,14 @@ PlexLibraryItem _$PlexLibraryItemFromJson(Map<String, dynamic> json) =>
       addedAt: (json['addedAt'] as num?)?.toInt(),
       originallyAvailableAt: json['originallyAvailableAt'] as String?,
       guid: json['guid'] as String?,
+      contentRating: json['contentRating'] as String?,
+      leafCount: (json['leafCount'] as num?)?.toInt(),
+      childCount: (json['childCount'] as num?)?.toInt(),
+      guids:
+          (json['Guid'] as List<dynamic>?)
+              ?.map((e) => PlexGuid.fromJson(e as Map<String, dynamic>))
+              .toList() ??
+          [],
       genres:
           (json['Genre'] as List<dynamic>?)
               ?.map((e) => PlexTag.fromJson(e as Map<String, dynamic>))
@@ -103,8 +120,12 @@ Map<String, dynamic> _$PlexLibraryItemToJson(PlexLibraryItem instance) =>
       'addedAt': instance.addedAt,
       'originallyAvailableAt': instance.originallyAvailableAt,
       'guid': instance.guid,
+      'contentRating': instance.contentRating,
+      'leafCount': instance.leafCount,
+      'childCount': instance.childCount,
       'Genre': instance.genres,
       'Collection': instance.collections,
+      'Guid': instance.guids,
     };
 
 PlexWatchlistItem _$PlexWatchlistItemFromJson(Map<String, dynamic> json) =>
@@ -173,6 +194,7 @@ PlexEpisode _$PlexEpisodeFromJson(Map<String, dynamic> json) => PlexEpisode(
   parentIndex: (json['parentIndex'] as num?)?.toInt(),
   grandparentTitle: json['grandparentTitle'] as String?,
   originallyAvailableAt: json['originallyAvailableAt'] as String?,
+  viewCount: (json['viewCount'] as num?)?.toInt(),
 );
 
 Map<String, dynamic> _$PlexEpisodeToJson(PlexEpisode instance) =>
@@ -187,11 +209,14 @@ Map<String, dynamic> _$PlexEpisodeToJson(PlexEpisode instance) =>
       'parentIndex': instance.parentIndex,
       'grandparentTitle': instance.grandparentTitle,
       'originallyAvailableAt': instance.originallyAvailableAt,
+      'viewCount': instance.viewCount,
     };
 
 PlexStream _$PlexStreamFromJson(Map<String, dynamic> json) => PlexStream(
   id: (json['id'] as num?)?.toInt() ?? 0,
   streamType: (json['streamType'] as num).toInt(),
+  displayTitle: json['displayTitle'] as String?,
+  channels: (json['channels'] as num?)?.toInt(),
   codec: json['codec'] as String?,
   language: json['language'] as String?,
   languageCode: json['languageCode'] as String?,
@@ -212,11 +237,14 @@ Map<String, dynamic> _$PlexStreamToJson(PlexStream instance) =>
       'index': instance.index,
       'selected': instance.selected,
       'forced': instance.forced,
+      'displayTitle': instance.displayTitle,
+      'channels': instance.channels,
     };
 
 PlexPart _$PlexPartFromJson(Map<String, dynamic> json) => PlexPart(
   id: (json['id'] as num).toInt(),
   key: json['key'] as String,
+  size: (json['size'] as num?)?.toInt(),
   container: json['container'] as String?,
   duration: (json['duration'] as num?)?.toInt(),
   streams:
@@ -231,10 +259,12 @@ Map<String, dynamic> _$PlexPartToJson(PlexPart instance) => <String, dynamic>{
   'key': instance.key,
   'container': instance.container,
   'duration': instance.duration,
+  'size': instance.size,
   'Stream': instance.streams,
 };
 
 PlexMedia _$PlexMediaFromJson(Map<String, dynamic> json) => PlexMedia(
+  audioChannels: (json['audioChannels'] as num?)?.toInt(),
   videoCodec: json['videoCodec'] as String?,
   audioCodec: json['audioCodec'] as String?,
   container: json['container'] as String?,
@@ -251,6 +281,7 @@ Map<String, dynamic> _$PlexMediaToJson(PlexMedia instance) => <String, dynamic>{
   'audioCodec': instance.audioCodec,
   'container': instance.container,
   'videoResolution': instance.videoResolution,
+  'audioChannels': instance.audioChannels,
   'Part': instance.parts,
 };
 
@@ -259,6 +290,7 @@ PlexPerson _$PlexPersonFromJson(Map<String, dynamic> json) => PlexPerson(
   tag: json['tag'] as String,
   role: json['role'] as String?,
   thumb: json['thumb'] as String?,
+  tagKey: json['tagKey'] as String?,
 );
 
 Map<String, dynamic> _$PlexPersonToJson(PlexPerson instance) =>
@@ -267,6 +299,7 @@ Map<String, dynamic> _$PlexPersonToJson(PlexPerson instance) =>
       'tag': instance.tag,
       'role': instance.role,
       'thumb': instance.thumb,
+      'tagKey': instance.tagKey,
     };
 
 PlexReview _$PlexReviewFromJson(Map<String, dynamic> json) => PlexReview(
@@ -294,6 +327,12 @@ PlexMovieDetail _$PlexMovieDetailFromJson(Map<String, dynamic> json) =>
       summary: json['summary'] as String?,
       duration: (json['duration'] as num?)?.toInt(),
       viewOffset: (json['viewOffset'] as num?)?.toInt(),
+      studio: json['studio'] as String?,
+      contentRating: json['contentRating'] as String?,
+      year: (json['year'] as num?)?.toInt(),
+      grandparentTitle: json['grandparentTitle'] as String?,
+      parentIndex: (json['parentIndex'] as num?)?.toInt(),
+      index: (json['index'] as num?)?.toInt(),
       media:
           (json['Media'] as List<dynamic>?)
               ?.map((e) => PlexMedia.fromJson(e as Map<String, dynamic>))
@@ -335,6 +374,12 @@ Map<String, dynamic> _$PlexMovieDetailToJson(PlexMovieDetail instance) =>
       'summary': instance.summary,
       'duration': instance.duration,
       'viewOffset': instance.viewOffset,
+      'studio': instance.studio,
+      'contentRating': instance.contentRating,
+      'year': instance.year,
+      'grandparentTitle': instance.grandparentTitle,
+      'parentIndex': instance.parentIndex,
+      'index': instance.index,
       'Media': instance.media,
       'rating': instance.rating,
       'audienceRating': instance.audienceRating,
@@ -358,6 +403,15 @@ PlexOnDeckItem _$PlexOnDeckItemFromJson(Map<String, dynamic> json) =>
       grandparentTitle: json['grandparentTitle'] as String?,
       parentIndex: (json['parentIndex'] as num?)?.toInt(),
       index: (json['index'] as num?)?.toInt(),
+      guid: json['guid'] as String?,
+      summary: json['summary'] as String?,
+      year: (json['year'] as num?)?.toInt(),
+      childCount: (json['childCount'] as num?)?.toInt(),
+      guids:
+          (json['Guid'] as List<dynamic>?)
+              ?.map((e) => PlexGuid.fromJson(e as Map<String, dynamic>))
+              .toList() ??
+          [],
     );
 
 Map<String, dynamic> _$PlexOnDeckItemToJson(PlexOnDeckItem instance) =>
@@ -372,6 +426,11 @@ Map<String, dynamic> _$PlexOnDeckItemToJson(PlexOnDeckItem instance) =>
       'grandparentTitle': instance.grandparentTitle,
       'parentIndex': instance.parentIndex,
       'index': instance.index,
+      'guid': instance.guid,
+      'summary': instance.summary,
+      'year': instance.year,
+      'childCount': instance.childCount,
+      'Guid': instance.guids,
     };
 
 PlexHub _$PlexHubFromJson(Map<String, dynamic> json) => PlexHub(

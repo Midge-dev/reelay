@@ -1,42 +1,84 @@
+import 'package:collection/collection.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 
 import '../../data/plex/plex_image_url.dart';
 import '../../data/plex/plex_models.dart';
-import '../../kit/edge_fade_row.dart';
+import '../../data/plex/plex_resources_api.dart' show ReachableServer;
+import '../../focus/screen_memory.dart';
+import '../../kit/button.dart';
+import '../../kit/focusable_surface.dart';
+import '../../kit/icon.dart';
+import '../../kit/surface_style.dart';
 import '../../kit/text.dart';
+import '../../state/app_state.dart' show SectionGroup;
+import '../../state/duplicate_fold.dart';
+import '../../theme/phosphor_icons.dart';
+import '../../theme/scale.dart';
 import '../../theme/tokens.dart';
 import '../../theme/typography.dart';
+import '../common/click_to_type_text_field.dart';
 import '../common/loading_screen.dart';
+import '../common/time_format.dart';
 import 'genre_filter_panel.dart';
 import 'library_filters.dart';
-import 'library_tab.dart';
 import 'poster_card.dart';
-import 'search_keyboard.dart';
 
-const _gridColumns = 5;
-const _posterCardHeight = 278.0;
+// Screen 17: 22 du between header, filter bar and grid; filter bar items
+// 22 apart; chips 58 tall.
+const _blockGap = 22.0;
+const _chipHeight = 58.0;
+const _narrowFieldWidth = 320.0;
 
-enum BrowseTab { all, genre, collections, search }
+enum _ViewMode { titles, collections }
 
-/// Ports ui/library/LibraryScreen.kt — the single most focus-logic-heavy
-/// screen in the app: a tabbed browse UI (All/Genres/Collections/Search)
-/// with a custom on-screen keyboard and a genre/decade/date-added filter
-/// panel. State resets whenever `selectedSection.key` changes (a new
-/// library section was picked in the nav rail), mirroring Kotlin's
+/// What Library keeps in its ScreenMemory besides focus and scroll.
+class _LibraryView {
+  final String sectionKey;
+  final _ViewMode viewMode;
+  final String? genre;
+  final int? decade;
+  final DateAddedBucket? dateAdded;
+  final SortMode sortMode;
+  final List<Sourced<PlexCollection>>? collections;
+  final String query;
+
+  const _LibraryView({
+    required this.sectionKey,
+    required this.viewMode,
+    required this.genre,
+    required this.decade,
+    required this.dateAdded,
+    required this.sortMode,
+    required this.collections,
+    required this.query,
+  });
+}
+
+enum _FilterKind { genre, decade, added, sort }
+
+/// Ports ui/library/LibraryScreen.kt, rebuilt to match the Nocturne handoff's
+/// screens 17-19: the old All/Genres/Collections/Search tab strip is gone
+/// (see the handoff's own "LIBRARY · WHERE THE OLD TABS WENT" explainer —
+/// All was never a distinct mode, Genres is a filter not a destination,
+/// Search already exists in the rail at a wider scope). What remains is one
+/// filter row — a Titles/Collections mode switch, Genre/Decade/Added/Sort
+/// dropdown chips, and a text field that narrows the current grid — sitting
+/// above a 7-column grid that never remounts on a filter change. State
+/// resets whenever `selectedSection.key` changes, mirroring Kotlin's
 /// `remember(selectedSection.key)` pattern via didUpdateWidget.
 class LibraryScreen extends StatefulWidget {
-  final PlexServer server;
-  final PlexSection selectedSection;
-  final List<PlexLibraryItem> items;
-  final ValueChanged<PlexLibraryItem> onSelectItem;
-  final Future<List<PlexCollection>> Function() loadCollections;
-  final ValueChanged<PlexCollection> onSelectCollection;
+  final List<ReachableServer> servers;
+  final SectionGroup selectedSectionGroup;
+  final List<FoldedWork<PlexLibraryItem>> items;
+  final ValueChanged<FoldedWork<PlexLibraryItem>> onSelectItem;
+  final Future<List<Sourced<PlexCollection>>> Function() loadCollections;
+  final ValueChanged<Sourced<PlexCollection>> onSelectCollection;
 
   const LibraryScreen({
     super.key,
-    required this.server,
-    required this.selectedSection,
+    required this.servers,
+    required this.selectedSectionGroup,
     required this.items,
     required this.onSelectItem,
     required this.loadCollections,
@@ -48,80 +90,118 @@ class LibraryScreen extends StatefulWidget {
 }
 
 class _LibraryScreenState extends State<LibraryScreen> {
+  _ViewMode _viewMode = _ViewMode.titles;
   String? _genreFilter;
   int? _decadeFilter;
   DateAddedBucket? _dateAddedFilter;
-  BrowseTab _browseTab = BrowseTab.all;
-  List<PlexCollection>? _collections;
+  SortMode _sortMode = SortMode.title;
+  _FilterKind? _openFilter;
+  List<Sourced<PlexCollection>>? _collections;
   String _searchQuery = '';
 
-  final _allTabScrollController = ScrollController();
-  final _genreResultsScrollController = ScrollController();
+  final _gridScrollController = ScrollController();
   final _collectionsScrollController = ScrollController();
-  final _searchResultsScrollController = ScrollController();
-  final _allTabFocus = FocusNode(debugLabel: 'tab-all');
-  final _genreTabFocus = FocusNode(debugLabel: 'tab-genre');
-  final _collectionsTabFocus = FocusNode(debugLabel: 'tab-collections');
-  final _searchTabFocus = FocusNode(debugLabel: 'tab-search');
-  final _searchFirstKeyFocus = FocusNode(debugLabel: 'search-key-first');
+  final _titlesModeFocus = FocusNode(debugLabel: 'library-mode-titles');
+  final _collectionsModeFocus = FocusNode(
+    debugLabel: 'library-mode-collections',
+  );
+  final _genreChipFocus = FocusNode(debugLabel: 'library-filter-genre');
+  final _decadeChipFocus = FocusNode(debugLabel: 'library-filter-decade');
+  final _addedChipFocus = FocusNode(debugLabel: 'library-filter-added');
+  final _sortChipFocus = FocusNode(debugLabel: 'library-filter-sort');
+  final _clearAllFocus = FocusNode(debugLabel: 'library-filter-clear-all');
+  final _searchFieldFocus = FocusNode(debugLabel: 'library-search-field');
+
+  final _stackKey = GlobalKey();
+  final _genreChipKey = GlobalKey();
+  final _decadeChipKey = GlobalKey();
+  final _addedChipKey = GlobalKey();
+  final _sortChipKey = GlobalKey();
+  Offset? _panelAnchor;
 
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) => _tabFocusFor(_browseTab).requestFocus());
+    // Back from a title comes back to the same mode, filters and narrowing
+    // it left (focus and scroll are ScreenMemory's own).
+    final kept = ScreenMemory.read<_LibraryView>(context, 'library.view');
+    if (kept != null && kept.sectionKey == widget.selectedSectionGroup.key) {
+      _viewMode = kept.viewMode;
+      _genreFilter = kept.genre;
+      _decadeFilter = kept.decade;
+      _dateAddedFilter = kept.dateAdded;
+      _sortMode = kept.sortMode;
+      _collections = kept.collections;
+      _searchQuery = kept.query;
+    }
   }
+
+  void _rememberView() => ScreenMemory.write(
+    context,
+    'library.view',
+    _LibraryView(
+      sectionKey: widget.selectedSectionGroup.key,
+      viewMode: _viewMode,
+      genre: _genreFilter,
+      decade: _decadeFilter,
+      dateAdded: _dateAddedFilter,
+      sortMode: _sortMode,
+      collections: _collections,
+      query: _searchQuery,
+    ),
+  );
 
   @override
   void didUpdateWidget(covariant LibraryScreen oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.selectedSection.key != widget.selectedSection.key) {
+    if (oldWidget.selectedSectionGroup.key != widget.selectedSectionGroup.key) {
       setState(() {
+        _viewMode = _ViewMode.titles;
         _genreFilter = null;
         _decadeFilter = null;
         _dateAddedFilter = null;
-        _browseTab = BrowseTab.all;
+        _sortMode = SortMode.title;
+        _openFilter = null;
         _collections = null;
         _searchQuery = '';
       });
-      WidgetsBinding.instance.addPostFrameCallback((_) => _allTabFocus.requestFocus());
     }
   }
 
   @override
   void dispose() {
-    _allTabScrollController.dispose();
-    _genreResultsScrollController.dispose();
+    _gridScrollController.dispose();
     _collectionsScrollController.dispose();
-    _searchResultsScrollController.dispose();
-    _allTabFocus.dispose();
-    _genreTabFocus.dispose();
-    _collectionsTabFocus.dispose();
-    _searchTabFocus.dispose();
-    _searchFirstKeyFocus.dispose();
+    _titlesModeFocus.dispose();
+    _collectionsModeFocus.dispose();
+    _genreChipFocus.dispose();
+    _decadeChipFocus.dispose();
+    _addedChipFocus.dispose();
+    _sortChipFocus.dispose();
+    _clearAllFocus.dispose();
+    _searchFieldFocus.dispose();
     super.dispose();
   }
 
-  FocusNode _tabFocusFor(BrowseTab tab) => switch (tab) {
-        BrowseTab.all => _allTabFocus,
-        BrowseTab.genre => _genreTabFocus,
-        BrowseTab.collections => _collectionsTabFocus,
-        BrowseTab.search => _searchTabFocus,
-      };
+  GlobalKey _chipKeyFor(_FilterKind kind) => switch (kind) {
+    _FilterKind.genre => _genreChipKey,
+    _FilterKind.decade => _decadeChipKey,
+    _FilterKind.added => _addedChipKey,
+    _FilterKind.sort => _sortChipKey,
+  };
 
-  void _selectTab(BrowseTab tab) {
-    setState(() => _browseTab = tab);
-    if (tab == BrowseTab.collections && _collections == null) _loadCollections();
-    // The tab button itself keeps focus through this setState — explicit
-    // request needed, same reasoning as the matching player_screen.dart fix.
-    if (tab == BrowseTab.search) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) _searchFirstKeyFocus.requestFocus();
-      });
+  void _selectMode(_ViewMode mode) {
+    setState(() {
+      _viewMode = mode;
+      _openFilter = null;
+    });
+    if (mode == _ViewMode.collections && _collections == null) {
+      _loadCollections();
     }
   }
 
   Future<void> _loadCollections() async {
-    List<PlexCollection> result;
+    List<Sourced<PlexCollection>> result;
     try {
       result = await widget.loadCollections();
     } catch (_) {
@@ -130,338 +210,919 @@ class _LibraryScreenState extends State<LibraryScreen> {
     if (mounted) setState(() => _collections = result);
   }
 
+  void _toggleFilter(_FilterKind kind) {
+    final opening = _openFilter != kind;
+    setState(() => _openFilter = opening ? kind : null);
+    if (!opening) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final stackBox =
+          _stackKey.currentContext?.findRenderObject() as RenderBox?;
+      final chipBox =
+          _chipKeyFor(kind).currentContext?.findRenderObject() as RenderBox?;
+      if (stackBox == null || chipBox == null) return;
+      final chipTopLeft = chipBox.localToGlobal(
+        Offset.zero,
+        ancestor: stackBox,
+      );
+      setState(
+        () => _panelAnchor = Offset(
+          chipTopLeft.dx,
+          chipTopLeft.dy + chipBox.size.height + 8.du(context),
+        ),
+      );
+    });
+  }
+
+  void _closeFilter() => setState(() => _openFilter = null);
+
   /// Wraps a vertically-scrolling poster grid with the scroll-aware
   /// top/bottom fade and a hard clip at its own bounds — the grid's own
   /// Clip.none (needed so a focused card's scale-up isn't clipped by its
   /// own cell) would otherwise let scrolled-past rows paint straight
-  /// through into whatever sits above it (the tab bar, a header) once they
+  /// through into whatever sits above it (the filter row) once they
   /// scroll behind it. The top fade only shows once actually scrolled, so
   /// it doesn't just dim the first row for no reason at rest.
-  Widget _fadingGrid({required ScrollController controller, required Widget grid}) {
-    return ClipRect(
-      child: AnimatedBuilder(
-        animation: controller,
-        builder: (context, child) => EdgeFadeRow(
-          axis: Axis.vertical,
-          fadeStart: controller.hasClients && controller.offset > 0,
-          // Matches PosterCard's ensureRowVisible peek extent, so the gap
-          // it reserves at the bottom of a scroll and the band that
-          // actually fades line up.
-          fadeWidth: posterRowPeekExtent,
-          child: child!,
-        ),
-        child: grid,
-      ),
-    );
-  }
-
-  KeyEventResult _trapUpAboveTabs(FocusNode node, KeyEvent event) {
-    if (event is KeyDownEvent && event.logicalKey == LogicalKeyboardKey.arrowUp) {
+  KeyEventResult _trapUpAboveFilterRow(FocusNode node, KeyEvent event) {
+    if (event is KeyDownEvent &&
+        event.logicalKey == LogicalKeyboardKey.arrowUp) {
       return KeyEventResult.handled;
     }
     return KeyEventResult.ignored;
   }
 
-  @override
-  Widget build(BuildContext context) {
-    final availableGenres = widget.items.expand((i) => i.genres.map((g) => g.tag)).toSet().toList()..sort();
-    final availableDecades = widget.items.map(decadeOf).whereType<int>().toSet().toList()..sort((a, b) => b.compareTo(a));
-    final genreResults = applyLibraryFilters(
-      items: widget.items,
-      query: '',
-      sortMode: SortMode.title,
+  /// [applyLibraryFilters] (library_filters.dart) works on bare
+  /// PlexLibraryItems and stays that way — per the design handoff's own
+  /// note, it's "unchanged, this is purely how the filters are surfaced."
+  /// This unwraps for filtering, then maps the (identity-preserved) results
+  /// back to their [Sourced] wrapper for rendering.
+  List<FoldedWork<PlexLibraryItem>> _filteredItems() {
+    final byIdentity = {for (final s in widget.items) s.primary.value: s};
+    final bareResults = applyLibraryFilters(
+      items: widget.items.map((s) => s.primary.value).toList(),
+      query: _searchQuery,
+      sortMode: _sortMode,
       genre: _genreFilter,
       decade: _decadeFilter,
       dateAddedBucket: _dateAddedFilter,
     );
-    final searchResults = _searchQuery.trim().isEmpty
-        ? const <PlexLibraryItem>[]
-        : applyLibraryFilters(items: widget.items, query: _searchQuery, sortMode: SortMode.title);
+    return bareResults.map((i) => byIdentity[i]!).toList();
+  }
+
+  List<PlexLibraryItem> get _bareItems =>
+      widget.items.map((s) => s.primary.value).toList();
+
+  String get _serverLabel {
+    final ids = widget.selectedSectionGroup.sectionsByServerId.keys;
+    final names = ids
+        .map(
+          (id) => widget.servers
+              .firstWhereOrNull((s) => s.server.machineIdentifier == id)
+              ?.server
+              .name,
+        )
+        .whereType<String>()
+        .toList();
+    if (names.length == 1) return 'Plex · ${names.single}';
+    return 'Plex · ${names.length} servers';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    _rememberView();
+    final bareItems = widget.items.map((s) => s.primary.value).toList();
+    final availableGenres =
+        bareItems.expand((i) => i.genres.map((g) => g.tag)).toSet().toList()
+          ..sort();
+    final availableDecades =
+        bareItems.map(decadeOf).whereType<int>().toSet().toList()
+          ..sort((a, b) => b.compareTo(a));
+    final titleResults = _filteredItems();
+    final collections = _collections;
+    final collectionResults = collections == null
+        ? null
+        : (_searchQuery.trim().isEmpty
+              ? collections
+              : collections
+                    .where(
+                      (c) => c.value.title.toLowerCase().contains(
+                        _searchQuery.trim().toLowerCase(),
+                      ),
+                    )
+                    .toList());
 
     return ColoredBox(
       color: AppColors.background,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
+      child: Stack(
+        key: _stackKey,
         children: [
-          Focus(
-            canRequestFocus: false,
-            onKeyEvent: _trapUpAboveTabs,
-            child: Padding(
-              padding: const EdgeInsets.only(left: 32, top: 16, right: 32),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  LibraryTab(label: 'All', selected: _browseTab == BrowseTab.all, focusNode: _allTabFocus, onClick: () => _selectTab(BrowseTab.all)),
-                  const SizedBox(width: 6),
-                  LibraryTab(label: 'Genres', selected: _browseTab == BrowseTab.genre, focusNode: _genreTabFocus, onClick: () => _selectTab(BrowseTab.genre)),
-                  const SizedBox(width: 6),
-                  LibraryTab(label: 'Collections', selected: _browseTab == BrowseTab.collections, focusNode: _collectionsTabFocus, onClick: () => _selectTab(BrowseTab.collections)),
-                  const SizedBox(width: 6),
-                  LibraryTab(label: 'Search', selected: _browseTab == BrowseTab.search, focusNode: _searchTabFocus, onClick: () => _selectTab(BrowseTab.search)),
-                ],
-              ),
+          Padding(
+            padding: EdgeInsets.fromLTRB(
+              AppSpacing.safeX.du(context),
+              AppSpacing.safeY.du(context),
+              AppSpacing.safeX.du(context),
+              0,
             ),
-          ),
-          Container(height: 2, color: AppColors.surfaceVariant),
-          Expanded(
-            child: switch (_browseTab) {
-              BrowseTab.all => _buildAllTab(),
-              BrowseTab.genre => _buildGenreTab(availableGenres, availableDecades, genreResults),
-              BrowseTab.collections => _buildCollectionsTab(),
-              BrowseTab.search => _buildSearchTab(searchResults),
-            },
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildAllTab() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(32, 24, 32, 8),
-          child: Row(
-            children: [
-              AppText(widget.selectedSection.title, style: AppTypography.titleMedium),
-              const Spacer(),
-              AppText('${widget.items.length} titles · A–Z', color: AppColors.onSurfaceVariant),
-            ],
-          ),
-        ),
-        Expanded(
-          child: widget.items.isEmpty
-              ? const Padding(padding: EdgeInsets.all(32), child: AppText('Nothing in this library yet.'))
-              : _fadingGrid(
-                  controller: _allTabScrollController,
-                  grid: GridView.builder(
-                    controller: _allTabScrollController,
-                    padding: const EdgeInsets.fromLTRB(32, 8, 32, 48),
-                    clipBehavior: Clip.none,
-                    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: _gridColumns,
-                      mainAxisSpacing: 24,
-                      crossAxisSpacing: 24,
-                      mainAxisExtent: _posterCardHeight,
-                    ),
-                    itemCount: widget.items.length,
-                    itemBuilder: (context, index) {
-                      final item = widget.items[index];
-                      return PosterCard(
-                        key: ValueKey(item.ratingKey),
-                        imageUrl: PlexImageUrl.of(widget.server, item.thumb),
-                        title: item.title,
-                        autofocus: index == 0,
-                        staggerDelayMs: (index % _gridColumns) * 120,
-                        onClick: () => widget.onSelectItem(item),
-                      );
-                    },
-                  ),
-                ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildGenreTab(List<String> availableGenres, List<int> availableDecades, List<PlexLibraryItem> genreResults) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        GenreFilterPanel(
-          items: widget.items,
-          availableGenres: availableGenres,
-          availableDecades: availableDecades,
-          genreFilter: _genreFilter,
-          decadeFilter: _decadeFilter,
-          dateAddedFilter: _dateAddedFilter,
-          aboveFocusNode: _genreTabFocus,
-          onGenreSelect: (g) => setState(() => _genreFilter = _genreFilter == g ? null : g),
-          onDecadeSelect: (d) => setState(() => _decadeFilter = _decadeFilter == d ? null : d),
-          onDateAddedSelect: (b) => setState(() => _dateAddedFilter = _dateAddedFilter == b ? null : b),
-          onClearAll: () => setState(() {
-            _genreFilter = null;
-            _decadeFilter = null;
-            _dateAddedFilter = null;
-          }),
-        ),
-        Expanded(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 24),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 Row(
-                  crossAxisAlignment: CrossAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.baseline,
+                  textBaseline: TextBaseline.alphabetic,
                   children: [
-                    if (_genreFilter != null) ...[AppliedFilterChip(label: formatGenreLabel(_genreFilter!)), const SizedBox(width: 12)],
-                    if (_decadeFilter != null) ...[AppliedFilterChip(label: '${_decadeFilter}s'), const SizedBox(width: 12)],
-                    if (_dateAddedFilter != null) ...[AppliedFilterChip(label: _dateAddedFilter!.label), const SizedBox(width: 12)],
+                    AppText(
+                      widget.selectedSectionGroup.title,
+                      style: AppTypography.title1,
+                    ),
+                    SizedBox(width: 18.du(context)),
+                    AppText(_serverLabel, style: AppTypography.caption),
                     const Spacer(),
-                    AppText('${genreResults.length} titles · Sort: Title', color: AppColors.onSurfaceVariant),
+                    AppText(
+                      _summaryText(
+                        titleResults.length,
+                        collectionResults?.length,
+                      ),
+                      style: AppTypography.caption,
+                    ),
                   ],
                 ),
+                SizedBox(height: _blockGap.du(context)),
+                Focus(
+                  canRequestFocus: false,
+                  onKeyEvent: _trapUpAboveFilterRow,
+                  child: _buildFilterRow(availableGenres, availableDecades),
+                ),
+                // The grid carries rowHeadroom/2 of its own top padding so a
+                // focused first-row card's scale isn't clipped; together
+                // they make the design's 22.
+                SizedBox(
+                  height: (_blockGap - AppSpacing.rowHeadroom / 2).du(context),
+                ),
                 Expanded(
-                  child: genreResults.isEmpty
-                      ? const Padding(padding: EdgeInsets.only(top: 24), child: AppText('Nothing matches these filters.'))
-                      : _fadingGrid(
-                          controller: _genreResultsScrollController,
-                          grid: GridView.builder(
-                            controller: _genreResultsScrollController,
-                            // Unlike the All/Collections grids, this one has
-                            // no padding of its own margin from the screen
-                            // edge (its ancestor Padding already provides
-                            // that) — but the new outer ClipRect still needs
-                            // *some* slack inside it, or a focused card's
-                            // scale-up has nowhere to bleed into on the left.
-                            padding: const EdgeInsets.fromLTRB(16, 24, 16, 48),
-                            clipBehavior: Clip.none,
-                            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                              crossAxisCount: 4,
-                              mainAxisSpacing: 12,
-                              crossAxisSpacing: 12,
-                              mainAxisExtent: _posterCardHeight,
-                            ),
-                            itemCount: genreResults.length,
-                            itemBuilder: (context, index) {
-                              final item = genreResults[index];
-                              return PosterCard(
-                                key: ValueKey(item.ratingKey),
-                                imageUrl: PlexImageUrl.of(widget.server, item.thumb),
-                                title: item.title,
-                                autofocus: index == 0,
-                                onClick: () => widget.onSelectItem(item),
-                              );
-                            },
-                          ),
-                        ),
+                  child: _viewMode == _ViewMode.titles
+                      ? _buildTitlesGrid(titleResults)
+                      : _buildCollectionsGrid(collectionResults),
                 ),
               ],
             ),
           ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildCollectionsTab() {
-    final collections = _collections;
-    if (collections == null) {
-      return const LoadingScreen();
-    }
-    if (collections.isEmpty) {
-      return const Padding(padding: EdgeInsets.all(32), child: AppText('No collections found'));
-    }
-    return _fadingGrid(
-      controller: _collectionsScrollController,
-      grid: GridView.builder(
-        controller: _collectionsScrollController,
-        padding: const EdgeInsets.fromLTRB(32, 32, 32, 48),
-        clipBehavior: Clip.none,
-        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: _gridColumns,
-          mainAxisSpacing: 24,
-          crossAxisSpacing: 24,
-          mainAxisExtent: _posterCardHeight,
-        ),
-        itemCount: collections.length,
-        itemBuilder: (context, index) {
-          final collection = collections[index];
-          final childCount = collection.childCount;
-          return PosterCard(
-            key: ValueKey(collection.ratingKey),
-            imageUrl: PlexImageUrl.of(widget.server, collection.thumb),
-            title: collection.title,
-            subtitle: childCount != null ? '$childCount title${childCount == 1 ? '' : 's'}' : null,
-            autofocus: index == 0,
-            onClick: () => widget.onSelectCollection(collection),
-          );
-        },
+          if (_openFilter != null && _panelAnchor != null)
+            Positioned(
+              left: _panelAnchor!.dx,
+              top: _panelAnchor!.dy,
+              child: _buildOpenFilterPanel(availableGenres, availableDecades),
+            ),
+        ],
       ),
     );
   }
 
-  Widget _buildSearchTab(List<PlexLibraryItem> searchResults) {
-    return Padding(
-      padding: const EdgeInsets.all(32),
+  String _summaryText(int titleCount, int? collectionCount) {
+    if (_viewMode == _ViewMode.collections) {
+      final count = collectionCount ?? 0;
+      return '${formatCount(count)} collection${count == 1 ? '' : 's'} · sorted by title';
+    }
+    final total = widget.items.length;
+    final filtered = titleCount != total;
+    final countText = filtered
+        ? '${formatCount(titleCount)} of ${formatCount(total)} titles'
+        : '${formatCount(total)} titles';
+    return '$countText · sorted by ${_sortMode.label.toLowerCase()}';
+  }
+
+  Widget _buildFilterRow(
+    List<String> availableGenres,
+    List<int> availableDecades,
+  ) {
+    return SizedBox(
+      height: _chipHeight.du(context),
       child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          SizedBox(
-            width: 210,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(
-                  decoration: BoxDecoration(
-                    color: AppColors.surface,
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: AppColors.surfaceVariant, width: 2),
-                  ),
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                  child: AppText(
-                    _searchQuery.isEmpty ? 'Type a title…' : _searchQuery,
-                    color: _searchQuery.isEmpty ? AppColors.onSurfaceVariant : AppColors.white,
-                  ),
-                ),
-                const SizedBox(height: 12),
-                SearchKeyboard(
-                  onChar: (c) => setState(() => _searchQuery += c),
-                  onBackspace: () => setState(() => _searchQuery = _searchQuery.isEmpty ? '' : _searchQuery.substring(0, _searchQuery.length - 1)),
-                  onClear: () => setState(() => _searchQuery = ''),
-                  autofocus: true,
-                  firstKeyFocusNode: _searchFirstKeyFocus,
-                ),
-              ],
+          _ModeSwitch(
+            mode: _viewMode,
+            onSelect: _selectMode,
+            titlesFocusNode: _titlesModeFocus,
+            collectionsFocusNode: _collectionsModeFocus,
+          ),
+          SizedBox(width: 22.du(context)),
+          Container(
+            width: 1.du(context),
+            height: 36.du(context),
+            color: AppColors.line,
+          ),
+          SizedBox(width: 22.du(context)),
+          // The filter-chip cluster scrolls horizontally rather than
+          // overflowing — a library with every filter applied plus a long
+          // genre name can exceed the row's remaining width even at 1920,
+          // and D-pad focus already auto-scrolls a focused chip into view
+          // (Scrollable.ensureVisible, same as every other scrollable rail
+          // in this app), so nothing here is actually unreachable.
+          Expanded(
+            child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: _buildFilterChips(),
+              ),
             ),
           ),
-          Expanded(
-            child: Padding(
-              padding: const EdgeInsets.only(left: 48),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  AppText(
-                    _searchQuery.trim().isEmpty ? 'Results' : 'Results · ${searchResults.length} titles for "$_searchQuery"',
-                    color: AppColors.onSurfaceVariant,
-                  ),
-                  Expanded(
-                    child: _searchQuery.trim().isEmpty
-                        ? const SizedBox.shrink()
-                        : _fadingGrid(
-                            controller: _searchResultsScrollController,
-                            grid: GridView.builder(
-                              controller: _searchResultsScrollController,
-                              // See the matching comment on the Genres tab's grid.
-                              padding: const EdgeInsets.fromLTRB(16, 24, 16, 48),
-                              clipBehavior: Clip.none,
-                              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                                crossAxisCount: 4,
-                                mainAxisSpacing: 12,
-                                crossAxisSpacing: 12,
-                                mainAxisExtent: _posterCardHeight,
-                              ),
-                              itemCount: searchResults.length,
-                              itemBuilder: (context, index) {
-                                final item = searchResults[index];
-                                return PosterCard(
-                                  key: ValueKey(item.ratingKey),
-                                  imageUrl: PlexImageUrl.of(widget.server, item.thumb),
-                                  title: item.title,
-                                  onClick: () => widget.onSelectItem(item),
-                                );
-                              },
-                            ),
-                          ),
-                  ),
-                ],
+          SizedBox(width: _blockGap.du(context)),
+          _NarrowField(
+            value: _searchQuery,
+            hintText: _viewMode == _ViewMode.titles
+                ? 'Narrow this library'
+                : 'Narrow collections',
+            focusNode: _searchFieldFocus,
+            onValueChange: (v) => setState(() => _searchQuery = v),
+          ),
+        ],
+      ),
+    );
+  }
+
+  List<Widget> _buildFilterChips() {
+    return [
+      if (_viewMode == _ViewMode.titles) ...[
+        _FilterChip(
+          key: _genreChipKey,
+          label: 'Genre',
+          valueLabel: _genreFilter != null
+              ? formatGenreLabel(_genreFilter!)
+              : null,
+          open: _openFilter == _FilterKind.genre,
+          focusNode: _genreChipFocus,
+          onClick: () => _toggleFilter(_FilterKind.genre),
+        ),
+        SizedBox(width: _blockGap.du(context)),
+        _FilterChip(
+          key: _decadeChipKey,
+          label: 'Decade',
+          valueLabel: _decadeFilter != null ? '${_decadeFilter}s' : null,
+          open: _openFilter == _FilterKind.decade,
+          focusNode: _decadeChipFocus,
+          onClick: () => _toggleFilter(_FilterKind.decade),
+        ),
+        SizedBox(width: _blockGap.du(context)),
+        _FilterChip(
+          key: _addedChipKey,
+          label: 'Added',
+          valueLabel: _dateAddedFilter?.label,
+          open: _openFilter == _FilterKind.added,
+          focusNode: _addedChipFocus,
+          onClick: () => _toggleFilter(_FilterKind.added),
+        ),
+        SizedBox(width: _blockGap.du(context)),
+      ],
+      _FilterChip(
+        key: _sortChipKey,
+        label: 'Sort',
+        valueLabel: _sortMode.label,
+        alwaysShowValue: true,
+        open: _openFilter == _FilterKind.sort,
+        focusNode: _sortChipFocus,
+        onClick: () => _toggleFilter(_FilterKind.sort),
+      ),
+      if (_viewMode == _ViewMode.titles && anyFilterApplied) ...[
+        SizedBox(width: _blockGap.du(context)),
+        _ClearAllChip(
+          focusNode: _clearAllFocus,
+          onClick: () => setState(() {
+            _genreFilter = null;
+            _decadeFilter = null;
+            _dateAddedFilter = null;
+            _openFilter = null;
+          }),
+        ),
+      ],
+    ];
+  }
+
+  bool get anyFilterApplied =>
+      _genreFilter != null || _decadeFilter != null || _dateAddedFilter != null;
+
+  Widget _buildOpenFilterPanel(
+    List<String> availableGenres,
+    List<int> availableDecades,
+  ) {
+    switch (_openFilter!) {
+      case _FilterKind.genre:
+        return FilterDropdown(
+          title: 'GENRE · ${availableGenres.length} IN THIS LIBRARY',
+          aboveFocusNode: _genreChipFocus,
+          options: [
+            for (final genre in availableGenres)
+              FilterOption(
+                label: formatGenreLabel(genre),
+                countLabel:
+                    '${_bareItems.where((i) => i.genres.any((g) => g.tag == genre)).length}',
+                applied: genre == _genreFilter,
+                dimmed: applyLibraryFilters(
+                  items: _bareItems,
+                  query: '',
+                  sortMode: SortMode.title,
+                  genre: genre,
+                  decade: _decadeFilter,
+                  dateAddedBucket: _dateAddedFilter,
+                ).isEmpty,
               ),
+          ],
+          onSelect: (index) {
+            final genre = availableGenres[index];
+            setState(() => _genreFilter = _genreFilter == genre ? null : genre);
+            _closeFilter();
+          },
+        );
+      case _FilterKind.decade:
+        return FilterDropdown(
+          title: 'DECADE · ${availableDecades.length} IN THIS LIBRARY',
+          aboveFocusNode: _decadeChipFocus,
+          options: [
+            for (final decade in availableDecades)
+              FilterOption(
+                label: '${decade}s',
+                countLabel:
+                    '${_bareItems.where((i) => decadeOf(i) == decade).length}',
+                applied: decade == _decadeFilter,
+                dimmed: applyLibraryFilters(
+                  items: _bareItems,
+                  query: '',
+                  sortMode: SortMode.title,
+                  genre: _genreFilter,
+                  decade: decade,
+                  dateAddedBucket: _dateAddedFilter,
+                ).isEmpty,
+              ),
+          ],
+          onSelect: (index) {
+            final decade = availableDecades[index];
+            setState(
+              () => _decadeFilter = _decadeFilter == decade ? null : decade,
+            );
+            _closeFilter();
+          },
+        );
+      case _FilterKind.added:
+        return FilterDropdown(
+          title: 'ADDED',
+          aboveFocusNode: _addedChipFocus,
+          options: [
+            for (final bucket in DateAddedBucket.values)
+              FilterOption(
+                label: bucket.label,
+                applied: bucket == _dateAddedFilter,
+                dimmed: applyLibraryFilters(
+                  items: _bareItems,
+                  query: '',
+                  sortMode: SortMode.title,
+                  genre: _genreFilter,
+                  decade: _decadeFilter,
+                  dateAddedBucket: bucket,
+                ).isEmpty,
+              ),
+          ],
+          onSelect: (index) {
+            final bucket = DateAddedBucket.values[index];
+            setState(
+              () =>
+                  _dateAddedFilter = _dateAddedFilter == bucket ? null : bucket,
+            );
+            _closeFilter();
+          },
+        );
+      case _FilterKind.sort:
+        return FilterDropdown(
+          title: 'SORT',
+          aboveFocusNode: _sortChipFocus,
+          footerHint: 'Select applies · Back closes and keeps what you picked',
+          options: [
+            for (final mode in SortMode.values)
+              FilterOption(label: mode.label, applied: mode == _sortMode),
+          ],
+          onSelect: (index) {
+            setState(() => _sortMode = SortMode.values[index]);
+            _closeFilter();
+          },
+        );
+    }
+  }
+
+  Widget _buildTitlesGrid(List<FoldedWork<PlexLibraryItem>> results) {
+    if (widget.items.isEmpty) {
+      return Padding(
+        padding: EdgeInsets.all(32.du(context)),
+        child: const AppText('Nothing in this library yet.'),
+      );
+    }
+    if (results.isEmpty) {
+      return _buildEmptyResultsState();
+    }
+    final restoring = ScreenMemory.restoringOf(context);
+    return PosterGrid(
+      storageId: 'library-titles',
+      controller: _gridScrollController,
+      itemCount: results.length,
+      itemBuilder: (context, index) {
+        final item = results[index];
+        final id =
+            '${item.primary.server.machineIdentifier}:${item.primary.value.ratingKey}';
+        return RememberFocus(
+          key: ValueKey(id),
+          id: 'library:$id',
+          child: PosterCard(
+            imageUrl: PlexImageUrl.of(
+              item.primary.server,
+              item.primary.value.thumb,
+            ),
+            title: item.primary.value.title,
+            subtitle: item.primary.value.year?.toString(),
+            autofocus: index == 0 && !restoring,
+            onClick: () => widget.onSelectItem(item),
+          ),
+        );
+      },
+    );
+  }
+
+  /// Screen 23 — inline, not a takeover: the rail, header and filter row
+  /// all stay exactly where they were, and the copy names the specific
+  /// filters responsible with real counts rather than a generic "no
+  /// results" ("Name the cause, not the symptom" — DESIGN.md rule 10).
+  /// Each cause gets its own "Drop the X" action; "Clear all" only when
+  /// two or more are actually stacked.
+  Widget _buildEmptyResultsState() {
+    final causes =
+        <
+          (
+            String headlineFragment,
+            String dropLabel,
+            String factLabel,
+            VoidCallback onDrop,
+          )
+        >[
+          if (_genreFilter != null)
+            (
+              '${formatGenreLabel(_genreFilter!).toLowerCase()} titles',
+              'Drop the genre',
+              '${applyLibraryFilters(items: _bareItems, query: '', sortMode: SortMode.title, genre: _genreFilter).length} ${formatGenreLabel(_genreFilter!).toLowerCase()} titles',
+              () => setState(() => _genreFilter = null),
+            ),
+          if (_decadeFilter != null)
+            (
+              'titles from the ${_decadeFilter}s',
+              'Drop the decade',
+              '${applyLibraryFilters(items: _bareItems, query: '', sortMode: SortMode.title, decade: _decadeFilter).length} titles from the ${_decadeFilter}s',
+              () => setState(() => _decadeFilter = null),
+            ),
+          if (_dateAddedFilter != null)
+            (
+              'titles added ${_dateAddedFilter!.label.toLowerCase()}',
+              'Drop "Added"',
+              '${applyLibraryFilters(items: _bareItems, query: '', sortMode: SortMode.title, dateAddedBucket: _dateAddedFilter).length} titles added ${_dateAddedFilter!.label.toLowerCase()}',
+              () => setState(() => _dateAddedFilter = null),
+            ),
+        ];
+    final searchActive = _searchQuery.trim().isNotEmpty;
+
+    final String headline;
+    final String? factSentence;
+    if (causes.isEmpty && searchActive) {
+      headline = 'Nothing matches "${_searchQuery.trim()}"';
+      factSentence = null;
+    } else if (causes.isEmpty) {
+      headline = 'Nothing matches these filters';
+      factSentence = null;
+    } else {
+      headline =
+          'No ${causes.map((c) => c.$1).join(' + ')} on ${widget.selectedSectionGroup.title}';
+      factSentence = causes.length > 1
+          ? '${widget.selectedSectionGroup.title} has ${causes.map((c) => c.$3).join(' and ')}. Together they leave nothing.'
+          : null;
+    }
+
+    // Centred in the space under the filter bar, a little above middle.
+    return Padding(
+      padding: EdgeInsets.only(bottom: 60.du(context)),
+      child: Center(
+        child: ConstrainedBox(
+          constraints: BoxConstraints(maxWidth: 660.du(context)),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              AppIcon(
+                PhosphorIconsRegular.funnel,
+                size: 64,
+                tint: AppColors.lineStrong,
+              ),
+              SizedBox(height: 24.du(context)),
+              AppText(
+                headline,
+                style: AppTypography.title2.copyWith(fontSize: 34),
+                textAlign: TextAlign.center,
+              ),
+              if (factSentence != null) ...[
+                SizedBox(height: 16.du(context)),
+                AppText(
+                  factSentence,
+                  style: AppTypography.body,
+                  color: AppColors.ink3,
+                  textAlign: TextAlign.center,
+                ),
+              ],
+              if (causes.isNotEmpty || searchActive) ...[
+                SizedBox(height: 24.du(context)),
+                Wrap(
+                  alignment: WrapAlignment.center,
+                  spacing: 16.du(context),
+                  runSpacing: 12.du(context),
+                  children: [
+                    // The first way out is the primary action, per screen 23.
+                    for (final (i, cause) in causes.indexed)
+                      if (i == 0)
+                        AppButton(
+                          onClick: cause.$4,
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const AppIcon(PhosphorIconsRegular.x, size: 20),
+                              SizedBox(width: AppSpacing.sm.du(context)),
+                              AppText(cause.$2),
+                            ],
+                          ),
+                        )
+                      else
+                        AppOutlinedButton(
+                          onClick: cause.$4,
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const AppIcon(PhosphorIconsRegular.x, size: 20),
+                              SizedBox(width: AppSpacing.sm.du(context)),
+                              AppText(cause.$2),
+                            ],
+                          ),
+                        ),
+                    if (searchActive)
+                      AppOutlinedButton(
+                        onClick: () => setState(() => _searchQuery = ''),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const AppIcon(PhosphorIconsRegular.x, size: 20),
+                            SizedBox(width: AppSpacing.sm.du(context)),
+                            const AppText('Clear search'),
+                          ],
+                        ),
+                      ),
+                    if (causes.length + (searchActive ? 1 : 0) > 1)
+                      AppOutlinedButton(
+                        onClick: () => setState(() {
+                          _genreFilter = null;
+                          _decadeFilter = null;
+                          _dateAddedFilter = null;
+                          _searchQuery = '';
+                        }),
+                        child: const AppText('Clear all'),
+                      ),
+                  ],
+                ),
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCollectionsGrid(List<Sourced<PlexCollection>>? results) {
+    if (results == null) {
+      return const LoadingScreen();
+    }
+    if (results.isEmpty) {
+      return Padding(
+        padding: EdgeInsets.all(32.du(context)),
+        child: const AppText('No collections found'),
+      );
+    }
+    final restoring = ScreenMemory.restoringOf(context);
+    return PosterGrid(
+      storageId: 'library-collections',
+      controller: _collectionsScrollController,
+      itemCount: results.length,
+      itemBuilder: (context, index) {
+        final collection = results[index];
+        final childCount = collection.value.childCount;
+        final id =
+            '${collection.server.machineIdentifier}:${collection.value.ratingKey}';
+        return RememberFocus(
+          key: ValueKey(id),
+          id: 'collection:$id',
+          child: PosterCard(
+            stacked: true,
+            imageUrl: PlexImageUrl.of(
+              collection.server,
+              collection.value.thumb,
+            ),
+            title: collection.value.title,
+            subtitle: childCount != null
+                ? '$childCount title${childCount == 1 ? '' : 's'}'
+                : null,
+            autofocus: index == 0 && !restoring,
+            onClick: () => widget.onSelectCollection(collection),
+          ),
+        );
+      },
+    );
+  }
+}
+
+RoundedRectangleBorder _segmentShape(BuildContext context) =>
+    RoundedRectangleBorder(
+      borderRadius: BorderRadius.circular(AppShape.radiusSm.du(context)),
+    );
+SurfaceColors get _segmentColors => SurfaceColors(
+  container: AppColors.transparent,
+  content: AppColors.ink3,
+  focusedContainer: AppColors.surfaceRaised,
+  focusedContent: AppColors.ink,
+  selectedContainer: AppColors.surfaceRaised,
+  selectedContent: AppColors.ink,
+);
+SurfaceBorder get _segmentBorder =>
+    SurfaceBorder(focused: SurfaceBorderSide.solid(AppColors.accent));
+
+/// The Titles/Collections view switch (screens 17-19: "a view switch...
+/// two options in one segmented control at the head of the filter bar, not
+/// a tab among four").
+class _ModeSwitch extends StatelessWidget {
+  final _ViewMode mode;
+  final ValueChanged<_ViewMode> onSelect;
+  final FocusNode titlesFocusNode;
+  final FocusNode collectionsFocusNode;
+
+  const _ModeSwitch({
+    required this.mode,
+    required this.onSelect,
+    required this.titlesFocusNode,
+    required this.collectionsFocusNode,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: EdgeInsets.all(5.du(context)),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        border: Border.all(color: AppColors.line),
+        borderRadius: BorderRadius.circular(AppShape.radiusMd.du(context)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          _segmentButton(
+            context,
+            'Titles',
+            mode == _ViewMode.titles,
+            titlesFocusNode,
+            () => onSelect(_ViewMode.titles),
+          ),
+          SizedBox(width: 6.du(context)),
+          _segmentButton(
+            context,
+            'Collections',
+            mode == _ViewMode.collections,
+            collectionsFocusNode,
+            () => onSelect(_ViewMode.collections),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _segmentButton(
+    BuildContext context,
+    String label,
+    bool selected,
+    FocusNode focusNode,
+    VoidCallback onClick,
+  ) {
+    return SizedBox(
+      height: 48.du(context),
+      child: FocusableSurface(
+        onClick: onClick,
+        selected: selected,
+        focusNode: focusNode,
+        shape: _segmentShape(context),
+        colors: _segmentColors,
+        border: _segmentBorder,
+        child: Padding(
+          padding: EdgeInsets.symmetric(horizontal: 22.du(context)),
+          child: AppText(label, style: AppTypography.caption, color: null),
+        ),
+      ),
+    );
+  }
+}
+
+RoundedRectangleBorder _filterChipShape(BuildContext context) =>
+    RoundedRectangleBorder(
+      borderRadius: BorderRadius.circular(AppShape.radiusSm.du(context)),
+    );
+SurfaceColors get _filterChipColors => SurfaceColors(
+  container: AppColors.transparent,
+  content: AppColors.ink2,
+  focusedContainer: AppColors.surfaceRaised,
+  focusedContent: AppColors.ink,
+  selectedContainer: AppColors.accent900,
+  selectedContent: AppColors.accent300,
+);
+SurfaceBorder get _filterChipBorder => SurfaceBorder(
+  idle: SurfaceBorderSide.solid(AppColors.line),
+  focused: SurfaceBorderSide.solid(AppColors.accent),
+);
+
+/// One dropdown-trigger chip in the filter row (Genre/Decade/Added/Sort).
+/// Visual "open" state is just this chip having real D-pad focus while its
+/// panel happens to be showing — [FocusableSurface]'s existing focused
+/// treatment already matches the mockup's highlighted-chip look, so `open`
+/// only changes the caret direction and whether the value is shown inline.
+class _FilterChip extends StatelessWidget {
+  final String label;
+  final String? valueLabel;
+  final bool open;
+  final bool alwaysShowValue;
+  final FocusNode focusNode;
+  final VoidCallback onClick;
+
+  const _FilterChip({
+    super.key,
+    required this.label,
+    this.valueLabel,
+    required this.open,
+    this.alwaysShowValue = false,
+    required this.focusNode,
+    required this.onClick,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final applied = valueLabel != null;
+    final text = applied
+        ? (open || alwaysShowValue ? '$label · $valueLabel' : valueLabel!)
+        : label;
+    return SizedBox(
+      height: _chipHeight.du(context),
+      child: FocusableSurface(
+        onClick: onClick,
+        selected: applied && !alwaysShowValue,
+        focusNode: focusNode,
+        shape: _filterChipShape(context),
+        colors: _filterChipColors,
+        border: _filterChipBorder,
+        child: Padding(
+          padding: EdgeInsets.symmetric(horizontal: 20.du(context)),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              AppText(text, style: AppTypography.caption, color: null),
+              SizedBox(width: AppSpacing.md.du(context)),
+              AppIcon(
+                open
+                    ? PhosphorIconsRegular.caretUp
+                    : PhosphorIconsRegular.caretDown,
+                size: 18,
+                tint: AppColors.ink4,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ClearAllChip extends StatelessWidget {
+  final FocusNode focusNode;
+  final VoidCallback onClick;
+
+  const _ClearAllChip({required this.focusNode, required this.onClick});
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: _chipHeight.du(context),
+      child: FocusableSurface(
+        onClick: onClick,
+        focusNode: focusNode,
+        shape: _filterChipShape(context),
+        colors: SurfaceColors(
+          container: AppColors.transparent,
+          content: AppColors.ink2,
+          focusedContainer: AppColors.surfaceRaised,
+          focusedContent: AppColors.ink,
+          selectedContainer: AppColors.transparent,
+          selectedContent: AppColors.ink2,
+        ),
+        border: SurfaceBorder(
+          idle: SurfaceBorderSide.solid(AppColors.lineStrong),
+          focused: SurfaceBorderSide.solid(AppColors.accent),
+        ),
+        child: Padding(
+          padding: EdgeInsets.symmetric(horizontal: 20.du(context)),
+          child: AppText(
+            'Clear all',
+            style: AppTypography.caption,
+            color: null,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// "Narrow this library" — screen 17 draws it as one more chip at the end
+/// of the filter bar (58 tall, radius 6, 2 du line border, 19 du ink3 text
+/// behind a 20 du glass), not a bare text field; focus is the standard
+/// signal, painted here because the field itself is not a FocusableSurface.
+class _NarrowField extends StatefulWidget {
+  final String value;
+  final String hintText;
+  final FocusNode focusNode;
+  final ValueChanged<String> onValueChange;
+
+  const _NarrowField({
+    required this.value,
+    required this.hintText,
+    required this.focusNode,
+    required this.onValueChange,
+  });
+
+  @override
+  State<_NarrowField> createState() => _NarrowFieldState();
+}
+
+class _NarrowFieldState extends State<_NarrowField> {
+  bool _focused = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final shape = _filterChipShape(context);
+    final field = AnimatedContainer(
+      duration: _focused ? AppMotion.focusEnter : AppMotion.focusExit,
+      curve: _focused ? AppMotion.enter : AppMotion.exit,
+      width: _narrowFieldWidth.du(context),
+      height: _chipHeight.du(context),
+      padding: EdgeInsets.symmetric(horizontal: 20.du(context)),
+      decoration: ShapeDecoration(
+        color: _focused ? AppColors.surfaceRaised : AppColors.transparent,
+        shape: shape.copyWith(
+          side: BorderSide(
+            color: _focused ? AppColors.accent : AppColors.line,
+            width: AppShape.borderWidth.du(context),
+          ),
+        ),
+        shadows: _focused && AppMotion.scaleOnFocus
+            ? AppElevation.raised
+            : AppElevation.surface,
+      ),
+      child: Row(
+        children: [
+          AppIcon(
+            PhosphorIconsRegular.magnifyingGlass,
+            size: 20,
+            tint: _focused ? AppColors.ink : AppColors.ink3,
+          ),
+          SizedBox(width: AppSpacing.md.du(context)),
+          Expanded(
+            child: ClickToTypeTextField(
+              value: widget.value,
+              onValueChange: widget.onValueChange,
+              focusNode: widget.focusNode,
+              hintText: widget.hintText,
+              showBorder: false,
+              textStyle: AppTypography.caption.copyWith(color: AppColors.ink),
+              onFocusChange: (f) => setState(() => _focused = f),
             ),
           ),
         ],
       ),
+    );
+    return AnimatedScale(
+      scale: _focused && AppMotion.scaleOnFocus
+          ? AppFocusTreatment.focusScale
+          : 1,
+      duration: _focused ? AppMotion.focusEnter : AppMotion.focusExit,
+      child: _focused
+          ? CustomPaint(
+              foregroundPainter: LeadingSpinePainter(
+                shape: shape,
+                color: AppColors.accent,
+                width: AppShape.spineWidth.du(context),
+              ),
+              child: field,
+            )
+          : field,
     );
   }
 }

@@ -44,7 +44,18 @@ class PlexServer {
   final String baseUrl;
   final String accessToken;
 
-  const PlexServer({required this.name, required this.baseUrl, required this.accessToken});
+  /// Stable per-server id (Plex's `machineIdentifier`, from [PlexResource]) —
+  /// survives IP/URL changes, unlike [baseUrl]. Empty for servers built
+  /// without one (e.g. older test fixtures); the multi-server hub uses this
+  /// to key connected/disabled servers, so real connections always set it.
+  final String machineIdentifier;
+
+  const PlexServer({
+    required this.name,
+    required this.baseUrl,
+    required this.accessToken,
+    this.machineIdentifier = '',
+  });
 }
 
 @JsonSerializable()
@@ -53,7 +64,17 @@ class PlexSection {
   final String title;
   final String type;
 
-  const PlexSection({required this.key, required this.title, this.type = ''});
+  /// The library's metadata agent. Plex's "Other Videos"/home-video
+  /// libraries use a `*.agents.none` agent — no matching, no posters, no
+  /// ids to fold on — which is how [isBrowsable] tells them apart from a
+  /// real Movies/Shows library without guessing from the title.
+  final String agent;
+
+  const PlexSection({required this.key, required this.title, this.type = '', this.agent = ''});
+
+  /// A movie or show library with a real metadata agent — the only kind
+  /// the rail and home rows surface.
+  bool get isBrowsable => (type == 'movie' || type == 'show') && !agent.endsWith('.none');
 
   factory PlexSection.fromJson(Map<String, dynamic> json) => _$PlexSectionFromJson(json);
   Map<String, dynamic> toJson() => _$PlexSectionToJson(this);
@@ -67,6 +88,24 @@ class PlexTag {
 
   factory PlexTag.fromJson(Map<String, dynamic> json) => _$PlexTagFromJson(json);
   Map<String, dynamic> toJson() => _$PlexTagToJson(this);
+}
+
+/// One entry of Plex's `Guid` array — `imdb://tt.../tmdb://.../tvdb://...`,
+/// present on modern agents regardless of which one is the server's
+/// *primary* agent (that's the scalar [PlexLibraryItem.guid]/
+/// [PlexOnDeckItem.guid] instead, which can differ across two servers
+/// indexing the same title under different agents). duplicate_fold.dart's
+/// [foldByGuid] matches on either, so two copies fold together the moment
+/// they agree on any one provider id, not only on an identical primary
+/// agent.
+@JsonSerializable()
+class PlexGuid {
+  final String id;
+
+  const PlexGuid({required this.id});
+
+  factory PlexGuid.fromJson(Map<String, dynamic> json) => _$PlexGuidFromJson(json);
+  Map<String, dynamic> toJson() => _$PlexGuidToJson(this);
 }
 
 @JsonSerializable()
@@ -83,12 +122,24 @@ class PlexLibraryItem {
   final int? addedAt;
   final String? originallyAvailableAt;
   final String? guid;
+  final String? contentRating;
+
+  /// Total episode count on a show item (Plex's own rollup) — the season
+  /// count is not carried here since it's just `seasons.length` once a
+  /// show detail screen has actually loaded them.
+  final int? leafCount;
+
+  /// Season count on a show item.
+  final int? childCount;
 
   @JsonKey(name: 'Genre', defaultValue: [])
   final List<PlexTag> genres;
 
   @JsonKey(name: 'Collection', defaultValue: [])
   final List<PlexTag> collections;
+
+  @JsonKey(name: 'Guid', defaultValue: [])
+  final List<PlexGuid> guids;
 
   const PlexLibraryItem({
     required this.ratingKey,
@@ -103,6 +154,10 @@ class PlexLibraryItem {
     this.addedAt,
     this.originallyAvailableAt,
     this.guid,
+    this.contentRating,
+    this.leafCount,
+    this.childCount,
+    this.guids = const [],
     this.genres = const [],
     this.collections = const [],
   });
@@ -183,6 +238,10 @@ class PlexEpisode {
   final String? grandparentTitle;
   final String? originallyAvailableAt;
 
+  /// Times fully watched; 0/null means unwatched — how the show page
+  /// finds "the next unwatched episode" to land on (screen 04).
+  final int? viewCount;
+
   const PlexEpisode({
     required this.ratingKey,
     required this.title,
@@ -194,6 +253,7 @@ class PlexEpisode {
     this.parentIndex,
     this.grandparentTitle,
     this.originallyAvailableAt,
+    this.viewCount,
   });
 
   factory PlexEpisode.fromJson(Map<String, dynamic> json) => _$PlexEpisodeFromJson(json);
@@ -212,9 +272,16 @@ class PlexStream {
   final bool selected;
   final bool forced;
 
+  /// Plex's own summary, e.g. "4K DoVi/HDR10 (HEVC Main 10)" or "English
+  /// (TRUEHD 7.1)" — what screen 03's media chips read HDR from.
+  final String? displayTitle;
+  final int? channels;
+
   const PlexStream({
     this.id = 0,
     required this.streamType,
+    this.displayTitle,
+    this.channels,
     this.codec,
     this.language,
     this.languageCode,
@@ -235,12 +302,16 @@ class PlexPart {
   final String? container;
   final int? duration;
 
+  /// File size in bytes.
+  final int? size;
+
   @JsonKey(name: 'Stream', defaultValue: [])
   final List<PlexStream> streams;
 
   const PlexPart({
     required this.id,
     required this.key,
+    this.size,
     this.container,
     this.duration,
     this.streams = const [],
@@ -256,11 +327,13 @@ class PlexMedia {
   final String? audioCodec;
   final String? container;
   final String? videoResolution;
+  final int? audioChannels;
 
   @JsonKey(name: 'Part', defaultValue: [])
   final List<PlexPart> parts;
 
   const PlexMedia({
+    this.audioChannels,
     this.videoCodec,
     this.audioCodec,
     this.container,
@@ -279,7 +352,11 @@ class PlexPerson {
   final String? role;
   final String? thumb;
 
-  const PlexPerson({this.id, required this.tag, this.role, this.thumb});
+  /// Plex's own id for the person, the same on every server — [id] is only
+  /// this server's tag id.
+  final String? tagKey;
+
+  const PlexPerson({this.id, required this.tag, this.role, this.thumb, this.tagKey});
 
   factory PlexPerson.fromJson(Map<String, dynamic> json) => _$PlexPersonFromJson(json);
   Map<String, dynamic> toJson() => _$PlexPersonToJson(this);
@@ -308,6 +385,14 @@ class PlexMovieDetail {
   final String? summary;
   final int? duration;
   final int? viewOffset;
+  final String? studio;
+  final String? contentRating;
+  final int? year;
+
+  /// Episode context (null for movies) — the player's "SHOW · S2 E4" kicker.
+  final String? grandparentTitle;
+  final int? parentIndex;
+  final int? index;
 
   @JsonKey(name: 'Media', defaultValue: [])
   final List<PlexMedia> media;
@@ -338,6 +423,12 @@ class PlexMovieDetail {
     this.summary,
     this.duration,
     this.viewOffset,
+    this.studio,
+    this.contentRating,
+    this.year,
+    this.grandparentTitle,
+    this.parentIndex,
+    this.index,
     this.media = const [],
     this.rating,
     this.audienceRating,
@@ -363,6 +454,12 @@ class PlexMovieDetail {
         summary: summary,
         duration: duration,
         viewOffset: viewOffset ?? this.viewOffset,
+        studio: studio,
+        contentRating: contentRating,
+        year: year,
+        grandparentTitle: grandparentTitle,
+        parentIndex: parentIndex,
+        index: index,
         media: media,
         rating: rating,
         audienceRating: audienceRating,
@@ -387,6 +484,18 @@ class PlexOnDeckItem {
   final String? grandparentTitle;
   final int? parentIndex;
   final int? index;
+  final String? guid;
+
+  /// Episode or movie synopsis — the hero's body line (screen 01).
+  final String? summary;
+
+  /// Search results' caption ("Attic · 2021", "Loft · 3 seasons" —
+  /// screen 05): a movie's year, a show's season count.
+  final int? year;
+  final int? childCount;
+
+  @JsonKey(name: 'Guid', defaultValue: [])
+  final List<PlexGuid> guids;
 
   const PlexOnDeckItem({
     required this.ratingKey,
@@ -399,6 +508,11 @@ class PlexOnDeckItem {
     this.grandparentTitle,
     this.parentIndex,
     this.index,
+    this.guid,
+    this.summary,
+    this.year,
+    this.childCount,
+    this.guids = const [],
   });
 
   factory PlexOnDeckItem.fromJson(Map<String, dynamic> json) => _$PlexOnDeckItemFromJson(json);

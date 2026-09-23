@@ -1,11 +1,15 @@
-import 'package:flutter/material.dart' show Icons;
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 
+import '../../theme/phosphor_icons.dart';
+
 import '../../kit/icon.dart';
-import '../../kit/icon_button.dart';
+import '../../kit/focusable_surface.dart';
+import '../../kit/surface_style.dart';
 import '../../kit/text.dart';
+import '../../theme/scale.dart';
 import '../../theme/tokens.dart';
+import '../../theme/typography.dart';
 import '../common/time_format.dart';
 
 class _RowButton {
@@ -44,6 +48,8 @@ class PlayerControlsBar extends StatelessWidget {
   final int durationMs;
   final double bufferedFraction;
   final bool subtitlesAvailable;
+  final String subtitleLabel;
+  final String qualityLabel;
   final FocusNode progressFocusNode;
   final FocusNode rewindFocusNode;
   final FocusNode playPauseFocusNode;
@@ -58,7 +64,12 @@ class PlayerControlsBar extends StatelessWidget {
   final VoidCallback onCycleSubtitles;
   final VoidCallback onCycleBitrate;
   final bool chatAvailable;
+
+  /// A Watch Together session: seeking moves everyone, so it says so.
+  final bool inRoom;
   final VoidCallback onOpenChatQr;
+  final FocusNode menuFocusNode;
+  final VoidCallback onOpenMenu;
 
   const PlayerControlsBar({
     super.key,
@@ -67,6 +78,8 @@ class PlayerControlsBar extends StatelessWidget {
     required this.durationMs,
     this.bufferedFraction = 0,
     required this.subtitlesAvailable,
+    required this.subtitleLabel,
+    required this.qualityLabel,
     required this.progressFocusNode,
     required this.rewindFocusNode,
     required this.playPauseFocusNode,
@@ -81,12 +94,17 @@ class PlayerControlsBar extends StatelessWidget {
     required this.onCycleSubtitles,
     required this.onCycleBitrate,
     required this.chatAvailable,
+    this.inRoom = false,
     required this.onOpenChatQr,
+    required this.menuFocusNode,
+    required this.onOpenMenu,
   });
 
   @override
   Widget build(BuildContext context) {
-    final playedFraction = durationMs > 0 ? (positionMs / durationMs).clamp(0.0, 1.0) : 0.0;
+    final playedFraction = durationMs > 0
+        ? (positionMs / durationMs).clamp(0.0, 1.0)
+        : 0.0;
 
     final row = [
       _RowButton(rewindFocusNode, true),
@@ -95,6 +113,7 @@ class PlayerControlsBar extends StatelessWidget {
       _RowButton(subtitlesFocusNode, subtitlesAvailable),
       _RowButton(bitrateFocusNode, true),
       _RowButton(chatFocusNode, chatAvailable),
+      _RowButton(menuFocusNode, true),
     ];
 
     KeyEventResult handleRowKey(int index, KeyEvent event) {
@@ -133,97 +152,174 @@ class PlayerControlsBar extends StatelessWidget {
       // must reach onSeekKeyEvent for hold-to-accelerate to work. KeyUpEvent
       // falls through ignored so it bubbles to the screen level, which
       // resets the hold-repeat bookkeeping there.
-      if (event is! KeyDownEvent && event is! KeyRepeatEvent) return KeyEventResult.ignored;
+      if (event is! KeyDownEvent && event is! KeyRepeatEvent)
+        return KeyEventResult.ignored;
       final key = event.logicalKey;
       if (key == LogicalKeyboardKey.arrowUp) return KeyEventResult.handled;
       if (key == LogicalKeyboardKey.arrowDown) {
         playPauseFocusNode.requestFocus();
         return KeyEventResult.handled;
       }
-      if (key == LogicalKeyboardKey.arrowLeft || key == LogicalKeyboardKey.arrowRight) {
+      if (key == LogicalKeyboardKey.arrowLeft ||
+          key == LogicalKeyboardKey.arrowRight) {
         return onSeekKeyEvent(event);
       }
       return KeyEventResult.ignored;
     }
 
     Widget trapped(int index, Widget child) {
-      return Focus(canRequestFocus: false, onKeyEvent: (node, event) => handleRowKey(index, event), child: child);
+      return Focus(
+        canRequestFocus: false,
+        onKeyEvent: (node, event) => handleRowKey(index, event),
+        child: child,
+      );
     }
 
+    final gap = SizedBox(width: 14.du(context));
     return DecoratedBox(
+      // Screen 13's bottom scrim: clear at the top, near-solid ground by
+      // 78% down, so the controls read over any frame.
       decoration: BoxDecoration(
-        gradient: LinearGradient(
+        gradient: AppGradients.linear(
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
-          colors: [AppColors.scrim.withValues(alpha: 0), AppColors.scrim.withValues(alpha: 0.6)],
+          stops: const [0, 0.78],
+          colors: [
+            AppColors.canvas.withValues(alpha: 0),
+            AppColors.canvas.withValues(alpha: 0.96),
+          ],
         ),
       ),
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(24, 48, 24, 16),
+        // The top padding is the room the seek bubble rises into.
+        padding: EdgeInsets.fromLTRB(
+          64.du(context),
+          150.du(context),
+          64.du(context),
+          56.du(context),
+        ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Focus(
-              focusNode: progressFocusNode,
-              onKeyEvent: (node, event) => handleProgressKey(event),
-              child: ListenableBuilder(
-                listenable: progressFocusNode,
-                builder: (context, _) => _ProgressTrack(
-                  playedFraction: playedFraction,
-                  bufferedFraction: bufferedFraction,
-                  focused: progressFocusNode.hasFocus,
+            Row(
+              children: [
+                AppText(
+                  formatTimecode(positionMs),
+                  style: AppTypography.rowLabel.copyWith(
+                    fontWeight: FontWeight.w400,
+                  ),
+                  color: AppColors.inkOnArt,
                 ),
-              ),
+                SizedBox(width: 22.du(context)),
+                Expanded(
+                  child: Focus(
+                    focusNode: progressFocusNode,
+                    onKeyEvent: (node, event) => handleProgressKey(event),
+                    child: ListenableBuilder(
+                      listenable: progressFocusNode,
+                      builder: (context, _) => _ProgressTrack(
+                        playedFraction: playedFraction,
+                        bufferedFraction: bufferedFraction,
+                        focused: progressFocusNode.hasFocus,
+                        positionLabel: formatTimecode(positionMs),
+                      ),
+                    ),
+                  ),
+                ),
+                SizedBox(width: 22.du(context)),
+                AppText(
+                  formatTimecode(durationMs),
+                  style: AppTypography.rowLabel.copyWith(
+                    fontWeight: FontWeight.w400,
+                  ),
+                  color: AppColors.ink2,
+                ),
+              ],
             ),
-            const SizedBox(height: 12),
-            AppText('${formatTimecode(positionMs)} / ${formatTimecode(durationMs)}', color: AppColors.white),
-            const SizedBox(height: 12),
-            // mainAxisAlignment.center on a mainAxisSize.min Row is a no-op
-            // (nothing to center within), and the Column above pins it to
-            // the start — Center makes the button group actually center
-            // within the bar's full width without affecting the
-            // left-aligned/full-width progress track and timecode above it.
-            Center(
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  trapped(0, AppIconButton(onClick: onRewind, focusNode: rewindFocusNode, child: const AppIcon(Icons.replay_10, tint: AppColors.white))),
-                  const SizedBox(width: 16),
-                  trapped(
-                    1,
-                    AppIconButton(
-                      onClick: onPlayPause,
-                      focusNode: playPauseFocusNode,
-                      child: AppIcon(isPlaying ? Icons.pause : Icons.play_arrow, tint: AppColors.white),
-                    ),
+            SizedBox(height: 26.du(context)),
+            Row(
+              children: [
+                trapped(
+                  0,
+                  _ControlButton(
+                    onClick: onRewind,
+                    focusNode: rewindFocusNode,
+                    icon: PhosphorIconsRegular.rewind,
                   ),
-                  const SizedBox(width: 16),
-                  trapped(2, AppIconButton(onClick: onForward, focusNode: forwardFocusNode, child: const AppIcon(Icons.forward_10, tint: AppColors.white))),
-                  const SizedBox(width: 16),
-                  trapped(
-                    3,
-                    AppIconButton(
-                      onClick: onCycleSubtitles,
-                      enabled: subtitlesAvailable,
-                      focusNode: subtitlesFocusNode,
-                      child: AppIcon(Icons.closed_caption, tint: AppColors.white.withValues(alpha: subtitlesAvailable ? 1 : 0.5)),
-                    ),
+                ),
+                gap,
+                trapped(
+                  1,
+                  _ControlButton(
+                    onClick: onPlayPause,
+                    focusNode: playPauseFocusNode,
+                    icon: isPlaying
+                        ? PhosphorIconsFill.pause
+                        : PhosphorIconsFill.play,
                   ),
-                  const SizedBox(width: 16),
-                  trapped(4, AppIconButton(onClick: onCycleBitrate, focusNode: bitrateFocusNode, child: const AppIcon(Icons.high_quality, tint: AppColors.white))),
-                  const SizedBox(width: 16),
+                ),
+                gap,
+                trapped(
+                  2,
+                  _ControlButton(
+                    onClick: onForward,
+                    focusNode: forwardFocusNode,
+                    icon: PhosphorIconsRegular.fastForward,
+                  ),
+                ),
+                if (inRoom) ...[
+                  SizedBox(width: 24.du(context)),
+                  AppText(
+                    'Seeking moves the whole room',
+                    style: AppTypography.caption,
+                    color: AppColors.ink2,
+                  ),
+                ],
+                const Spacer(),
+                trapped(
+                  3,
+                  _ControlButton(
+                    onClick: onCycleSubtitles,
+                    enabled: subtitlesAvailable,
+                    focusNode: subtitlesFocusNode,
+                    icon: PhosphorIconsRegular.closedCaptioning,
+                    label: subtitleLabel,
+                  ),
+                ),
+                gap,
+                trapped(
+                  4,
+                  _ControlButton(
+                    onClick: onCycleBitrate,
+                    focusNode: bitrateFocusNode,
+                    icon: PhosphorIconsRegular.monitor,
+                    label: qualityLabel,
+                  ),
+                ),
+                // Phone chat only exists in a Watch Together session — a
+                // permanently disabled button elsewhere is noise.
+                if (chatAvailable) ...[
+                  gap,
                   trapped(
                     5,
-                    AppIconButton(
+                    _ControlButton(
                       onClick: onOpenChatQr,
-                      enabled: chatAvailable,
                       focusNode: chatFocusNode,
-                      child: AppIcon(Icons.chat_bubble_outline, tint: AppColors.white.withValues(alpha: chatAvailable ? 1 : 0.5)),
+                      icon: PhosphorIconsRegular.chatCircleText,
                     ),
                   ),
                 ],
-              ),
+                gap,
+                trapped(
+                  6,
+                  _ControlButton(
+                    onClick: onOpenMenu,
+                    focusNode: menuFocusNode,
+                    icon: PhosphorIconsRegular.gear,
+                  ),
+                ),
+              ],
             ),
           ],
         ),
@@ -232,59 +328,173 @@ class PlayerControlsBar extends StatelessWidget {
   }
 }
 
-const _thumbSize = 14.0;
+SurfaceColors get _controlColors => SurfaceColors(
+  container: AppColors.canvas.withValues(alpha: 0.72),
+  content: AppColors.inkOnArt,
+  focusedContainer: AppColors.surfaceRaised,
+  focusedContent: AppColors.inkOnArt,
+  pressedContainer: AppColors.accent900,
+  pressedContent: AppColors.inkOnArt,
+);
+
+/// Screen 13's control: a 64 du square for icon-only actions, a pill with
+/// the current value beside its icon for the track choices ("English",
+/// "20 Mbps"), both on a translucent ground so they read over the picture.
+class _ControlButton extends StatelessWidget {
+  final VoidCallback onClick;
+  final bool enabled;
+  final FocusNode focusNode;
+  final IconData icon;
+  final String? label;
+
+  const _ControlButton({
+    required this.onClick,
+    this.enabled = true,
+    required this.focusNode,
+    required this.icon,
+    this.label,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final size = 64.du(context);
+    final label = this.label;
+    return SizedBox(
+      height: size,
+      width: label == null ? size : null,
+      child: FocusableSurface(
+        onClick: onClick,
+        enabled: enabled,
+        focusNode: focusNode,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppShape.radiusMd.du(context)),
+        ),
+        colors: _controlColors,
+        border: SurfaceBorder(
+          idle: SurfaceBorderSide.solid(AppColors.lineStrong),
+          focused: SurfaceBorderSide.solid(AppColors.accent),
+          noSpine: label == null,
+        ),
+        child: label == null
+            ? AppIcon(icon, size: 26)
+            : Padding(
+                padding: EdgeInsets.symmetric(horizontal: 24.du(context)),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    AppIcon(icon, size: 24),
+                    SizedBox(width: AppSpacing.md.du(context)),
+                    AppText(label, style: AppTypography.label, color: null),
+                  ],
+                ),
+              ),
+      ),
+    );
+  }
+}
+
+const _thumbSize = 12.0;
+const _thumbFocusedSize = 20.0;
 
 class _ProgressTrack extends StatelessWidget {
   final double playedFraction;
   final double bufferedFraction;
   final bool focused;
+  final String positionLabel;
 
-  const _ProgressTrack({required this.playedFraction, required this.bufferedFraction, this.focused = false});
+  const _ProgressTrack({
+    required this.playedFraction,
+    required this.bufferedFraction,
+    this.focused = false,
+    required this.positionLabel,
+  });
 
   @override
   Widget build(BuildContext context) {
+    final boxHeight = _thumbFocusedSize.du(context);
+    final thumbSize = (focused ? _thumbFocusedSize : _thumbSize).du(context);
+    final bubbleWidth = 150.du(context);
     return SizedBox(
-      height: _thumbSize,
+      height: boxHeight,
       child: LayoutBuilder(
         builder: (context, constraints) {
           final trackWidth = constraints.maxWidth;
-          final thumbLeft = (trackWidth * playedFraction - _thumbSize / 2).clamp(0.0, trackWidth - _thumbSize);
+          final x = trackWidth * playedFraction;
           return Stack(
+            clipBehavior: Clip.none,
             alignment: Alignment.centerLeft,
             children: [
               ClipRRect(
-                borderRadius: BorderRadius.circular(2),
+                borderRadius: BorderRadius.circular(3.du(context)),
                 child: SizedBox(
-                  height: 4,
+                  height: 6.du(context),
                   child: Stack(
                     fit: StackFit.expand,
                     children: [
-                      const ColoredBox(color: Color(0x40FFFFFF)),
+                      ColoredBox(
+                        color: AppColors.inkOnArt.withValues(alpha: 0.22),
+                      ),
                       FractionallySizedBox(
                         alignment: Alignment.centerLeft,
                         widthFactor: bufferedFraction.clamp(0.0, 1.0),
-                        child: const ColoredBox(color: Color(0x66FFFFFF)),
+                        child: ColoredBox(
+                          color: AppColors.inkOnArt.withValues(alpha: 0.38),
+                        ),
                       ),
                       FractionallySizedBox(
                         alignment: Alignment.centerLeft,
                         widthFactor: playedFraction,
-                        child: const DecoratedBox(decoration: BoxDecoration(gradient: AppFocusTreatment.progressGradient)),
+                        // Flat fill, not a gradient — DESIGN.md #4/#8.
+                        child: ColoredBox(color: AppColors.accent),
                       ),
                     ],
                   ),
                 ),
               ),
-              // Reserved and laid out unconditionally so toggling `focused`
-              // never changes this row's height/position — only its color
-              // changes, avoiding a layout jump on every focus change.
               Positioned(
-                left: thumbLeft,
+                left: (x - thumbSize / 2).clamp(0.0, trackWidth - thumbSize),
+                top: (boxHeight - thumbSize) / 2,
                 child: Container(
-                  width: _thumbSize,
-                  height: _thumbSize,
-                  decoration: BoxDecoration(color: focused ? AppColors.accent : AppColors.transparent, shape: BoxShape.circle),
+                  width: thumbSize,
+                  height: thumbSize,
+                  decoration: BoxDecoration(
+                    color: AppColors.ink,
+                    shape: BoxShape.circle,
+                    boxShadow: AppElevation.raised,
+                  ),
                 ),
               ),
+              // Focused, the scrubber is a seek target: the time you would
+              // land on rides above the thumb.
+              if (focused)
+                Positioned(
+                  left: (x - bubbleWidth / 2).clamp(
+                    0.0,
+                    trackWidth - bubbleWidth,
+                  ),
+                  bottom: 34.du(context),
+                  width: bubbleWidth,
+                  child: Container(
+                    padding: EdgeInsets.symmetric(vertical: 8.du(context)),
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      color: AppColors.canvas.withValues(alpha: 0.86),
+                      border: Border.all(
+                        color: AppColors.lineStrong,
+                        width: 1.du(context),
+                      ),
+                      borderRadius: BorderRadius.circular(
+                        AppShape.radiusMd.du(context),
+                      ),
+                      boxShadow: AppElevation.overlay,
+                    ),
+                    child: AppText(
+                      positionLabel,
+                      style: AppTypography.caption,
+                      color: AppColors.inkOnArt,
+                    ),
+                  ),
+                ),
             ],
           );
         },
