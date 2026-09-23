@@ -9,16 +9,14 @@ import '../../theme/tokens.dart';
 // Splash spec (design_handoff_reelay_splash/DESIGN.md) — every number below
 // is from its §2 geometry and §4 timeline, in du at the 1920×1080 reference.
 const _introMs = 1300;
-// Softer than the handoff's 0.24 → 0.07 over 1.8 s, which read as a blink
-// on a real TV: a shallower dip over a longer, sine-shaped breath.
-const _breatheHalfMs = 1200; // 0.24 → 0.16 → 0.24 is one 2400 ms period
+const _breatheHalfMs = 900; // 0.24 → 0.07 → 0.24 is one 1800 ms period
 const _exitMs = 300;
 const _breatheFromMs = 1600;
 const _minHoldMs = 2400;
 const _reducedFadeMs = 300;
 
 const _glowPeak = 0.24;
-const _glowTrough = 0.16;
+const _glowTrough = 0.07;
 
 /// The first thing Reelay paints: the mark draws itself (~1.2 s), holds
 /// while the app loads underneath, then fades to reveal it. Exits when
@@ -63,7 +61,7 @@ class _SplashScreenState extends State<SplashScreen>
   late final _word = _interval(0.538, 0.923, Curves.easeOutQuint);
   late final _breatheCurve = CurvedAnimation(
     parent: _breathe,
-    curve: Curves.easeInOutSine,
+    curve: Curves.easeInOut,
   );
 
   bool _started = false;
@@ -98,7 +96,7 @@ class _SplashScreenState extends State<SplashScreen>
     _holdTimer = Timer(const Duration(milliseconds: _minHoldMs), held.complete);
     await Future.wait([widget.ready.catchError((_) {}), held.future]);
     if (!mounted) return;
-    // Let the current breath finish on its 0.24 peak (≤ 1.2 s), then exit.
+    // Let the current breath finish on its 0.24 peak (≤ 900 ms), then exit.
     if (_breathe.isAnimating) {
       await _breathe.animateBack(0);
       if (!mounted) return;
