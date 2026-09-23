@@ -108,6 +108,7 @@ class PersonFilmographyScreen extends StatelessWidget {
                       key: ValueKey(item.ratingKey),
                       imageUrl: PlexImageUrl.of(server, item.thumb),
                       title: item.title,
+                      subtitle: item.year?.toString(),
                       autofocus: index == 0,
                       onClick: () => onSelectItem(item),
                     );

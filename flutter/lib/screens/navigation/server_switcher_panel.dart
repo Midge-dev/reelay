@@ -274,7 +274,12 @@ class _ServerSwitcherPanelState extends State<ServerSwitcherPanel> {
                               ),
                               SizedBox(height: AppSpacing.xl.du(context)),
                               AppText(
-                                primaryServerName != null
+                                // Libraries are merged across servers, so
+                                // one server's name only fits when it is
+                                // the only one.
+                                widget.connectedServers.length > 1
+                                    ? 'LIBRARIES ACROSS YOUR SERVERS'
+                                    : primaryServerName != null
                                     ? 'LIBRARIES ON ${primaryServerName.toUpperCase()}'
                                     : 'LIBRARIES',
                                 style: AppTypography.micro,
