@@ -269,11 +269,14 @@ class _Mark extends StatelessWidget {
         children: [
           // The only blurred layer. ImageFiltered, not a BoxShadow — a
           // shadow has an edge; the glow shouldn't.
+          // Tighter than the handoff's 204×124 (σ26) so the bloom stays
+          // around the mark instead of bleeding into the wordmark: same
+          // centre on the accent bar (54, 18), 140×100, σ18.
           Positioned(
-            left: -48.du(context),
-            top: -44.du(context),
-            width: 204.du(context),
-            height: 124.du(context),
+            left: -16.du(context),
+            top: -32.du(context),
+            width: 140.du(context),
+            height: 100.du(context),
             child: AnimatedBuilder(
               animation: Listenable.merge([glow, breathe]),
               builder: (context, child) {
@@ -283,14 +286,14 @@ class _Mark extends StatelessWidget {
               },
               child: ImageFiltered(
                 imageFilter: ImageFilter.blur(
-                  sigmaX: 26.du(context),
-                  sigmaY: 26.du(context),
+                  sigmaX: 18.du(context),
+                  sigmaY: 18.du(context),
                   tileMode: TileMode.decal,
                 ),
                 child: DecoratedBox(
                   decoration: BoxDecoration(
                     color: AppColors.accent,
-                    borderRadius: BorderRadius.circular(62.du(context)),
+                    borderRadius: BorderRadius.circular(50.du(context)),
                   ),
                 ),
               ),
