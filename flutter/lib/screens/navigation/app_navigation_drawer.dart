@@ -171,7 +171,10 @@ class _AppNavigationDrawerState extends State<AppNavigationDrawer> {
   }
 
   FocusNode _sectionNode(SectionGroup section) =>
-      _sectionFocusNodes.putIfAbsent(section.key, () => FocusNode(debugLabel: 'nav-rail-section-${section.key}'));
+      _sectionFocusNodes.putIfAbsent(
+        section.key,
+        () => FocusNode(debugLabel: 'nav-rail-section-${section.key}'),
+      );
 
   FocusNode get _currentDestinationNode {
     if (_roomsOpen) return _roomsItemFocusNode;
@@ -184,7 +187,9 @@ class _AppNavigationDrawerState extends State<AppNavigationDrawer> {
         return _watchlistItemFocusNode;
       case RailDestination.section:
         final key = widget.selectedSectionGroupKey;
-        final match = widget.sectionGroups.where((s) => s.key == key).firstOrNull;
+        final match = widget.sectionGroups
+            .where((s) => s.key == key)
+            .firstOrNull;
         if (match != null) return _sectionNode(match);
         return _homeItemFocusNode;
       case RailDestination.home:
@@ -207,21 +212,24 @@ class _AppNavigationDrawerState extends State<AppNavigationDrawer> {
   // sections and Settings is a real geometric gap, and nearest-neighbour
   // traversal would happily skip across it. Right leaves for the screen.
   KeyEventResult _handleRailKeyEvent(FocusNode node, KeyEvent event) {
-    if (event is! KeyDownEvent && event is! KeyRepeatEvent) return KeyEventResult.ignored;
+    if (event is! KeyDownEvent && event is! KeyRepeatEvent)
+      return KeyEventResult.ignored;
     final key = event.logicalKey;
     if (key == LogicalKeyboardKey.arrowRight) {
       _focusContent();
       return KeyEventResult.handled;
     }
     if (key == LogicalKeyboardKey.arrowLeft) return KeyEventResult.handled;
-    if (key != LogicalKeyboardKey.arrowUp && key != LogicalKeyboardKey.arrowDown) {
+    if (key != LogicalKeyboardKey.arrowUp &&
+        key != LogicalKeyboardKey.arrowDown) {
       return KeyEventResult.ignored;
     }
 
     final ordered = _orderedRailFocusNodes;
     final currentIndex = ordered.indexWhere((n) => n.hasFocus);
     if (currentIndex == -1) return KeyEventResult.ignored;
-    final nextIndex = currentIndex + (key == LogicalKeyboardKey.arrowUp ? -1 : 1);
+    final nextIndex =
+        currentIndex + (key == LogicalKeyboardKey.arrowUp ? -1 : 1);
     if (nextIndex >= 0 && nextIndex < ordered.length) {
       final target = ordered[nextIndex];
       target.requestFocus();
@@ -229,7 +237,10 @@ class _AppNavigationDrawerState extends State<AppNavigationDrawer> {
       if (targetContext != null) {
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (targetContext.mounted) {
-            Scrollable.ensureVisible(targetContext, duration: AppMotion.railSlide);
+            Scrollable.ensureVisible(
+              targetContext,
+              duration: AppMotion.railSlide,
+            );
           }
         });
       }
@@ -241,11 +252,15 @@ class _AppNavigationDrawerState extends State<AppNavigationDrawer> {
   // widget inside the screen that handles left itself (a row scrolling
   // back, a keyboard) sees the key first; this only runs when nothing did.
   KeyEventResult _handleContentKeyEvent(FocusNode node, KeyEvent event) {
-    if (event is! KeyDownEvent && event is! KeyRepeatEvent) return KeyEventResult.ignored;
-    if (event.logicalKey != LogicalKeyboardKey.arrowLeft) return KeyEventResult.ignored;
+    if (event is! KeyDownEvent && event is! KeyRepeatEvent)
+      return KeyEventResult.ignored;
+    if (event.logicalKey != LogicalKeyboardKey.arrowLeft)
+      return KeyEventResult.ignored;
     final primary = FocusManager.instance.primaryFocus;
-    if (primary == null || !_contentScope.hasFocus) return KeyEventResult.ignored;
-    if (primary.focusInDirection(TraversalDirection.left)) return KeyEventResult.handled;
+    if (primary == null || !_contentScope.hasFocus)
+      return KeyEventResult.ignored;
+    if (primary.focusInDirection(TraversalDirection.left))
+      return KeyEventResult.handled;
     // A held key must not tumble out of a row into the rail.
     if (event is KeyRepeatEvent) return KeyEventResult.handled;
     _currentDestinationNode.requestFocus();
@@ -254,14 +269,18 @@ class _AppNavigationDrawerState extends State<AppNavigationDrawer> {
 
   void _focusContent() {
     final remembered = _contentScope.focusedChild;
-    if (remembered != null && remembered.context != null && remembered.canRequestFocus) {
+    if (remembered != null &&
+        remembered.context != null &&
+        remembered.canRequestFocus) {
       remembered.requestFocus();
       return;
     }
     // Nothing remembered (the screen changed under the rail): the first
     // focusable in the screen, top-left first.
     final candidates = _contentScope.traversalDescendants
-        .where((n) => n.canRequestFocus && n.context != null && !n.skipTraversal)
+        .where(
+          (n) => n.canRequestFocus && n.context != null && !n.skipTraversal,
+        )
         .toList();
     if (candidates.isEmpty) return;
     candidates.sort((a, b) {
@@ -286,7 +305,10 @@ class _AppNavigationDrawerState extends State<AppNavigationDrawer> {
       if (targetContext != null) {
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (targetContext.mounted) {
-            Scrollable.ensureVisible(targetContext, duration: AppMotion.railSlide);
+            Scrollable.ensureVisible(
+              targetContext,
+              duration: AppMotion.railSlide,
+            );
           }
         });
       }
@@ -386,10 +408,14 @@ class _AppNavigationDrawerState extends State<AppNavigationDrawer> {
           child: AnimatedContainer(
             duration: AppMotion.railSlide,
             curve: AppMotion.enter,
-            width: (expanded ? _expandedRailWidth : _collapsedRailWidth).du(context),
+            width: (expanded ? _expandedRailWidth : _collapsedRailWidth).du(
+              context,
+            ),
             decoration: BoxDecoration(
               color: AppColors.canvas,
-              border: Border(right: BorderSide(color: AppColors.line, width: 1.du(context))),
+              border: Border(
+                right: BorderSide(color: AppColors.line, width: 1.du(context)),
+              ),
               boxShadow: expanded ? AppElevation.overlay : AppElevation.surface,
             ),
             child: FocusScope(
@@ -400,7 +426,9 @@ class _AppNavigationDrawerState extends State<AppNavigationDrawer> {
                 // centred in the rail and its icon centred in the item.
                 padding: EdgeInsets.symmetric(
                   vertical: _railPaddingY.du(context),
-                  horizontal: ((_collapsedRailWidth - _railItemSize) / 2).du(context),
+                  horizontal: ((_collapsedRailWidth - _railItemSize) / 2).du(
+                    context,
+                  ),
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -430,14 +458,17 @@ class _AppNavigationDrawerState extends State<AppNavigationDrawer> {
                                 label: 'Search',
                                 selected: _isSelected(RailDestination.search),
                                 expanded: expanded,
-                                onClick: () => _handleSelect(widget.onOpenSearch),
+                                onClick: () =>
+                                    _handleSelect(widget.onOpenSearch),
                                 focusNode: _searchItemFocusNode,
                               ),
                               _SidebarItem(
                                 icon: PhosphorIconsRegular.bookmarkSimple,
                                 selectedIcon: PhosphorIconsFill.bookmarkSimple,
                                 label: 'Watchlist',
-                                selected: _isSelected(RailDestination.watchlist),
+                                selected: _isSelected(
+                                  RailDestination.watchlist,
+                                ),
                                 expanded: expanded,
                                 onClick: () {
                                   final open = widget.onOpenWatchlist;
@@ -455,10 +486,14 @@ class _AppNavigationDrawerState extends State<AppNavigationDrawer> {
                                       ? PhosphorIconsFill.televisionSimple
                                       : PhosphorIconsFill.filmSlate,
                                   label: section.title,
-                                  selected: _isSelected(RailDestination.section) &&
-                                      section.key == widget.selectedSectionGroupKey,
+                                  selected:
+                                      _isSelected(RailDestination.section) &&
+                                      section.key ==
+                                          widget.selectedSectionGroupKey,
                                   expanded: expanded,
-                                  onClick: () => _handleSelect(() => widget.onSelectSection(section)),
+                                  onClick: () => _handleSelect(
+                                    () => widget.onSelectSection(section),
+                                  ),
                                   focusNode: _sectionNode(section),
                                 ),
                               _SidebarItem(
@@ -471,7 +506,10 @@ class _AppNavigationDrawerState extends State<AppNavigationDrawer> {
                                 onClick: _openRooms,
                                 focusNode: _roomsItemFocusNode,
                               ),
-                            ]) ...[item, SizedBox(height: _railItemGap.du(context))],
+                            ]) ...[
+                              item,
+                              SizedBox(height: _railItemGap.du(context)),
+                            ],
                           ],
                         ),
                       ),
@@ -509,7 +547,8 @@ class _AppNavigationDrawerState extends State<AppNavigationDrawer> {
             loadServers: widget.loadServers,
             probeServer: widget.probeServer,
             loadLibraryCount: widget.loadLibraryCount,
-            onSelectSection: (section) => _handleSelect(() => widget.onSelectSection(section)),
+            onSelectSection: (section) =>
+                _handleSelect(() => widget.onSelectSection(section)),
             onToggleServer: widget.onToggleServer,
             onClose: _closeServerSwitcher,
           ),
@@ -537,9 +576,10 @@ class _AppNavigationDrawerState extends State<AppNavigationDrawer> {
   }
 }
 
-RoundedRectangleBorder _railItemShape(BuildContext context) => RoundedRectangleBorder(
-  borderRadius: BorderRadius.circular(AppShape.radiusMd.du(context)),
-);
+RoundedRectangleBorder _railItemShape(BuildContext context) =>
+    RoundedRectangleBorder(
+      borderRadius: BorderRadius.circular(AppShape.radiusMd.du(context)),
+    );
 SurfaceColors get _railItemColors => SurfaceColors(
   container: AppColors.transparent,
   content: AppColors.ink4,
@@ -550,7 +590,10 @@ SurfaceColors get _railItemColors => SurfaceColors(
 );
 SurfaceBorder get _railItemBorder => SurfaceBorder(
   focused: SurfaceBorderSide.solid(AppColors.accent),
-  selectedSpine: SurfaceBorderSide.solid(AppColors.accent, width: AppSpacing.xs),
+  selectedSpine: SurfaceBorderSide.solid(
+    AppColors.accent,
+    width: AppSpacing.xs,
+  ),
 );
 
 class _SidebarItem extends StatelessWidget {
@@ -604,8 +647,15 @@ class _SidebarItem extends StatelessWidget {
                     curve: AppMotion.enter,
                     child: expanded
                         ? Padding(
-                            padding: EdgeInsetsDirectional.only(start: AppSpacing.lg.du(context), end: AppSpacing.md.du(context)),
-                            child: AppText(label, maxLines: 1, overflow: TextOverflow.ellipsis),
+                            padding: EdgeInsetsDirectional.only(
+                              start: AppSpacing.lg.du(context),
+                              end: AppSpacing.md.du(context),
+                            ),
+                            child: AppText(
+                              label,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
                           )
                         : const SizedBox.shrink(),
                   ),
@@ -657,12 +707,25 @@ class _UserAvatarItem extends StatelessWidget {
               Container(
                 width: size,
                 height: size,
-                decoration: BoxDecoration(shape: BoxShape.circle, color: AppColors.surfaceOverlay),
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: AppColors.surfaceOverlay,
+                ),
                 alignment: Alignment.center,
                 child: thumb != null
-                    ? ClipOval(child: Image.network(thumb, width: size, height: size, fit: BoxFit.cover))
+                    ? ClipOval(
+                        child: Image.network(
+                          thumb,
+                          width: size,
+                          height: size,
+                          fit: BoxFit.cover,
+                        ),
+                      )
                     : AppText(
-                        (account?.username.isNotEmpty == true ? account!.username[0] : '?').toUpperCase(),
+                        (account?.username.isNotEmpty == true
+                                ? account!.username[0]
+                                : '?')
+                            .toUpperCase(),
                         style: AppTypography.label,
                         color: AppColors.ink,
                       ),
@@ -674,8 +737,15 @@ class _UserAvatarItem extends StatelessWidget {
                     curve: AppMotion.enter,
                     child: expanded
                         ? Padding(
-                            padding: EdgeInsetsDirectional.only(start: AppSpacing.lg.du(context), end: AppSpacing.md.du(context)),
-                            child: AppText(account?.username ?? '', maxLines: 1, overflow: TextOverflow.ellipsis),
+                            padding: EdgeInsetsDirectional.only(
+                              start: AppSpacing.lg.du(context),
+                              end: AppSpacing.md.du(context),
+                            ),
+                            child: AppText(
+                              account?.username ?? '',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
                           )
                         : const SizedBox.shrink(),
                   ),

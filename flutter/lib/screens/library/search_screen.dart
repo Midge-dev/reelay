@@ -106,8 +106,12 @@ class _SearchScreenState extends State<SearchScreen> {
   @override
   Widget build(BuildContext context) {
     final trimmed = _query.trim();
-    final shows = _results.where((r) => r.primary.value.type == 'show').toList();
-    final movies = _results.where((r) => r.primary.value.type == 'movie').toList();
+    final shows = _results
+        .where((r) => r.primary.value.type == 'show')
+        .toList();
+    final movies = _results
+        .where((r) => r.primary.value.type == 'movie')
+        .toList();
 
     return BackHandler(
       onBack: widget.onBack,
@@ -173,7 +177,10 @@ class _QueryField extends StatelessWidget {
       padding: EdgeInsets.symmetric(horizontal: AppSpacing.xl.du(context)),
       decoration: BoxDecoration(
         color: AppColors.surface,
-        border: Border.all(color: AppColors.line, width: AppShape.borderWidth.du(context)),
+        border: Border.all(
+          color: AppColors.line,
+          width: AppShape.borderWidth.du(context),
+        ),
         borderRadius: BorderRadius.circular(AppShape.radiusMd.du(context)),
       ),
       child: Row(
@@ -187,7 +194,9 @@ class _QueryField extends StatelessWidget {
           Flexible(
             child: AppText(
               query.isEmpty ? 'Type a title' : query,
-              style: AppTypography.rowLabel.copyWith(fontWeight: FontWeight.w400),
+              style: AppTypography.rowLabel.copyWith(
+                fontWeight: FontWeight.w400,
+              ),
               color: query.isEmpty ? AppColors.ink3 : AppColors.ink,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
@@ -195,7 +204,11 @@ class _QueryField extends StatelessWidget {
           ),
           // The caret sits right after the text, where the next letter goes.
           SizedBox(width: AppSpacing.xs.du(context)),
-          Container(width: 2.du(context), height: 30.du(context), color: AppColors.accent),
+          Container(
+            width: 2.du(context),
+            height: 30.du(context),
+            color: AppColors.accent,
+          ),
         ],
       ),
     );
@@ -221,7 +234,9 @@ class _ResultsPanel extends StatelessWidget {
 
   /// "across Attic and Loft" / "on Attic".
   String get _serverLabel {
-    final names = {for (final item in [...shows, ...movies]) item.primary.server.name}.toList();
+    final names = {
+      for (final item in [...shows, ...movies]) item.primary.server.name,
+    }.toList();
     if (names.length == 1) return 'on ${names.single}';
     if (names.length == 2) return 'across ${names[0]} and ${names[1]}';
     return 'across ${names.length} servers';
@@ -234,7 +249,10 @@ class _ResultsPanel extends StatelessWidget {
     final total = shows.length + movies.length;
     if (!searching && total == 0) {
       // Verbatim from the handoff's copy list.
-      return AppText('Nothing on your servers matches that.', style: AppTypography.body);
+      return AppText(
+        'Nothing on your servers matches that.',
+        style: AppTypography.body,
+      );
     }
 
     return SingleChildScrollView(
@@ -247,15 +265,29 @@ class _ResultsPanel extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.baseline,
             textBaseline: TextBaseline.alphabetic,
             children: [
-              AppText(searching ? 'Searching…' : '${formatCount(total)} result${total == 1 ? '' : 's'}', style: AppTypography.rowLabel),
+              AppText(
+                searching
+                    ? 'Searching…'
+                    : '${formatCount(total)} result${total == 1 ? '' : 's'}',
+                style: AppTypography.rowLabel,
+              ),
               if (!searching) ...[
                 SizedBox(width: AppSpacing.lg.du(context)),
-                Flexible(child: AppText(_serverLabel, style: AppTypography.caption, maxLines: 1, overflow: TextOverflow.ellipsis)),
+                Flexible(
+                  child: AppText(
+                    _serverLabel,
+                    style: AppTypography.caption,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
               ],
             ],
           ),
-          if (shows.isNotEmpty) _ResultGroup(label: 'SERIES', items: shows, onSelect: onSelect),
-          if (movies.isNotEmpty) _ResultGroup(label: 'MOVIES', items: movies, onSelect: onSelect),
+          if (shows.isNotEmpty)
+            _ResultGroup(label: 'SERIES', items: shows, onSelect: onSelect),
+          if (movies.isNotEmpty)
+            _ResultGroup(label: 'MOVIES', items: movies, onSelect: onSelect),
         ],
       ),
     );
@@ -269,7 +301,11 @@ class _ResultGroup extends StatefulWidget {
   final List<FoldedWork<PlexOnDeckItem>> items;
   final ValueChanged<FoldedWork<PlexOnDeckItem>> onSelect;
 
-  const _ResultGroup({required this.label, required this.items, required this.onSelect});
+  const _ResultGroup({
+    required this.label,
+    required this.items,
+    required this.onSelect,
+  });
 
   @override
   State<_ResultGroup> createState() => _ResultGroupState();
@@ -289,7 +325,8 @@ class _ResultGroupState extends State<_ResultGroup> {
   static String _caption(FoldedWork<PlexOnDeckItem> work) {
     final v = work.primary.value;
     final detail = switch (v.type) {
-      'show' when v.childCount != null => '${v.childCount} season${v.childCount == 1 ? '' : 's'}',
+      'show' when v.childCount != null =>
+        '${v.childCount} season${v.childCount == 1 ? '' : 's'}',
       _ when v.year != null => '${v.year}',
       _ => null,
     };
@@ -310,7 +347,10 @@ class _ResultGroupState extends State<_ResultGroup> {
             height: (posterCardExtent + AppSpacing.rowHeadroom).du(context),
             child: AnimatedBuilder(
               animation: _scroll,
-              builder: (context, child) => EdgeFadeRow(fadeStart: _scroll.hasClients && _scroll.offset > 0, child: child!),
+              builder: (context, child) => EdgeFadeRow(
+                fadeStart: _scroll.hasClients && _scroll.offset > 0,
+                child: child!,
+              ),
               child: ListView.separated(
                 controller: _scroll,
                 scrollDirection: Axis.horizontal,
@@ -321,12 +361,18 @@ class _ResultGroupState extends State<_ResultGroup> {
                   bottom: (AppSpacing.rowHeadroom / 2).du(context),
                 ),
                 itemCount: widget.items.length,
-                separatorBuilder: (context, index) => SizedBox(width: AppSpacing.cardGap.du(context)),
+                separatorBuilder: (context, index) =>
+                    SizedBox(width: AppSpacing.cardGap.du(context)),
                 itemBuilder: (context, index) {
                   final item = widget.items[index];
                   return PosterCard(
-                    key: ValueKey('${item.primary.server.machineIdentifier}:${item.primary.value.ratingKey}'),
-                    imageUrl: PlexImageUrl.of(item.primary.server, item.primary.value.thumb),
+                    key: ValueKey(
+                      '${item.primary.server.machineIdentifier}:${item.primary.value.ratingKey}',
+                    ),
+                    imageUrl: PlexImageUrl.of(
+                      item.primary.server,
+                      item.primary.value.thumb,
+                    ),
                     title: item.primary.value.title,
                     subtitle: _caption(item),
                     onClick: () => widget.onSelect(item),

@@ -158,7 +158,10 @@ class _WatchlistPosterState extends State<WatchlistPoster> {
                 child: Container(
                   decoration: BoxDecoration(
                     border: _focused
-                        ? Border.all(color: AppColors.accent, width: 2.du(context))
+                        ? Border.all(
+                            color: AppColors.accent,
+                            width: 2.du(context),
+                          )
                         : null,
                   ),
                   child: Focus(
@@ -312,15 +315,18 @@ class _ContinueWatchingPosterState extends State<ContinueWatchingPoster> {
                   // spine on focus — a spine would cover the thumbnail.
                   // DESIGN.md #3.
                   decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(AppShape.radiusMd.du(context)),
+                    borderRadius: BorderRadius.circular(
+                      AppShape.radiusMd.du(context),
+                    ),
                     border: Border.all(
                       color: _focused
                           ? AppFocusTreatment.artFrameColor
                           : AppColors.line,
-                      width: (_focused
-                              ? AppShape.artFrameWidth
-                              : AppShape.borderWidth)
-                          .du(context),
+                      width:
+                          (_focused
+                                  ? AppShape.artFrameWidth
+                                  : AppShape.borderWidth)
+                              .du(context),
                     ),
                   ),
                   child: ClipRRect(

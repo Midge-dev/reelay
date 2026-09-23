@@ -36,7 +36,12 @@ class ThemeList extends StatelessWidget {
   final ValueChanged<ThemeId> onSelect;
   final FocusNode? currentFocus;
 
-  const ThemeList({super.key, required this.current, required this.onSelect, this.currentFocus});
+  const ThemeList({
+    super.key,
+    required this.current,
+    required this.onSelect,
+    this.currentFocus,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -66,10 +71,15 @@ class UiScaleStepper extends StatelessWidget {
   final double value;
   final ValueChanged<double> onChanged;
 
-  const UiScaleStepper({super.key, required this.value, required this.onChanged});
+  const UiScaleStepper({
+    super.key,
+    required this.value,
+    required this.onChanged,
+  });
 
   double _snap(double v) {
-    final stepped = (v / AppSettings.uiScaleStep).round() * AppSettings.uiScaleStep;
+    final stepped =
+        (v / AppSettings.uiScaleStep).round() * AppSettings.uiScaleStep;
     return stepped.clamp(AppSettings.minUiScale, AppSettings.maxUiScale);
   }
 
@@ -90,7 +100,9 @@ class UiScaleStepper extends StatelessWidget {
           child: Center(
             child: AppText(
               '${(value * 100).round()}%',
-              style: AppTypography.rowLabel.copyWith(fontFeatures: AppTypography.tabular),
+              style: AppTypography.rowLabel.copyWith(
+                fontFeatures: AppTypography.tabular,
+              ),
             ),
           ),
         ),
@@ -103,7 +115,11 @@ class UiScaleStepper extends StatelessWidget {
           SizedBox(width: AppSpacing.lg.du(context)),
           AppGhostButton(
             onClick: () => onChanged(AppSettings.defaultUiScale),
-            child: AppText('Reset to ${(AppSettings.defaultUiScale * 100).round()}%', style: AppTypography.caption, color: null),
+            child: AppText(
+              'Reset to ${(AppSettings.defaultUiScale * 100).round()}%',
+              style: AppTypography.caption,
+              color: null,
+            ),
           ),
         ],
       ],
@@ -117,7 +133,12 @@ class _ThemeRow extends StatefulWidget {
   final FocusNode? focusNode;
   final VoidCallback onClick;
 
-  const _ThemeRow({required this.id, required this.selected, this.focusNode, required this.onClick});
+  const _ThemeRow({
+    required this.id,
+    required this.selected,
+    this.focusNode,
+    required this.onClick,
+  });
 
   @override
   State<_ThemeRow> createState() => _ThemeRowState();
@@ -142,7 +163,10 @@ class _ThemeRowState extends State<_ThemeRow> {
         border: _rowBorder,
         contentAlignment: AlignmentDirectional.centerStart,
         child: Padding(
-          padding: EdgeInsets.symmetric(horizontal: 22.du(context), vertical: AppSpacing.md.du(context)),
+          padding: EdgeInsets.symmetric(
+            horizontal: 22.du(context),
+            vertical: AppSpacing.md.du(context),
+          ),
           child: Row(
             children: [
               Expanded(
@@ -152,11 +176,20 @@ class _ThemeRowState extends State<_ThemeRow> {
                   children: [
                     AppText(
                       id.label,
-                      style: AppTypography.body.copyWith(height: 1.3, fontWeight: _focused ? FontWeight.w500 : FontWeight.w400),
+                      style: AppTypography.body.copyWith(
+                        height: 1.3,
+                        fontWeight: _focused
+                            ? FontWeight.w500
+                            : FontWeight.w400,
+                      ),
                       color: _focused ? AppColors.ink : AppColors.ink2,
                     ),
                     SizedBox(height: 2.du(context)),
-                    AppText(id.blurb, style: AppTypography.caption, color: _focused ? AppColors.ink2 : AppColors.ink3),
+                    AppText(
+                      id.blurb,
+                      style: AppTypography.caption,
+                      color: _focused ? AppColors.ink2 : AppColors.ink3,
+                    ),
                   ],
                 ),
               ),
@@ -168,8 +201,13 @@ class _ThemeRowState extends State<_ThemeRow> {
                 height: 44.du(context),
                 decoration: BoxDecoration(
                   color: palette.surfaceRaised,
-                  borderRadius: BorderRadius.circular(AppShape.radiusSm.du(context)),
-                  border: Border.all(color: palette.accent, width: AppShape.borderWidth.du(context)),
+                  borderRadius: BorderRadius.circular(
+                    AppShape.radiusSm.du(context),
+                  ),
+                  border: Border.all(
+                    color: palette.accent,
+                    width: AppShape.borderWidth.du(context),
+                  ),
                 ),
               ),
               SizedBox(width: 22.du(context)),

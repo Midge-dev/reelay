@@ -21,11 +21,16 @@ class SectionGroup {
   /// from this map simply has no matching library, not an error.
   final Map<String, PlexSection> sectionsByServerId;
 
-  const SectionGroup({required this.type, required this.title, required this.sectionsByServerId});
+  const SectionGroup({
+    required this.type,
+    required this.title,
+    required this.sectionsByServerId,
+  });
 
   String get key => '$type::${title.toLowerCase()}';
 
-  PlexSection? sectionOn(String machineIdentifier) => sectionsByServerId[machineIdentifier];
+  PlexSection? sectionOn(String machineIdentifier) =>
+      sectionsByServerId[machineIdentifier];
 }
 
 /// Unions same-(type,title) [PlexSection]s across every connected server
@@ -33,7 +38,9 @@ class SectionGroup {
 /// (type, title), not type alone. [sectionsByServerId] is keyed by
 /// [PlexServer.machineIdentifier]; a server with no sections fetched yet
 /// (or none at all) is simply absent from every group.
-List<SectionGroup> groupSections(Map<String, List<PlexSection>> sectionsByServerId) {
+List<SectionGroup> groupSections(
+  Map<String, List<PlexSection>> sectionsByServerId,
+) {
   final groups = <String, SectionGroup>{};
   final order = <String>[];
   for (final entry in sectionsByServerId.entries) {
@@ -42,13 +49,20 @@ List<SectionGroup> groupSections(Map<String, List<PlexSection>> sectionsByServer
       final key = '${section.type}::${title.toLowerCase()}';
       final existing = groups[key];
       if (existing == null) {
-        groups[key] = SectionGroup(type: section.type, title: title, sectionsByServerId: {entry.key: section});
+        groups[key] = SectionGroup(
+          type: section.type,
+          title: title,
+          sectionsByServerId: {entry.key: section},
+        );
         order.add(key);
       } else {
         groups[key] = SectionGroup(
           type: existing.type,
           title: existing.title,
-          sectionsByServerId: {...existing.sectionsByServerId, entry.key: section},
+          sectionsByServerId: {
+            ...existing.sectionsByServerId,
+            entry.key: section,
+          },
         );
       }
     }
@@ -94,12 +108,15 @@ class LibraryContext {
     required this.items,
   });
 
-  LibraryContext copyWith({SectionGroup? selectedSectionGroup, List<FoldedWork<PlexLibraryItem>>? items}) => LibraryContext(
-        servers: servers,
-        sectionGroups: sectionGroups,
-        selectedSectionGroup: selectedSectionGroup ?? this.selectedSectionGroup,
-        items: items ?? this.items,
-      );
+  LibraryContext copyWith({
+    SectionGroup? selectedSectionGroup,
+    List<FoldedWork<PlexLibraryItem>>? items,
+  }) => LibraryContext(
+    servers: servers,
+    sectionGroups: sectionGroups,
+    selectedSectionGroup: selectedSectionGroup ?? this.selectedSectionGroup,
+    items: items ?? this.items,
+  );
 }
 
 /// Ports MainActivity.kt's `sealed interface AppState` (the Kotlin app has
@@ -143,7 +160,13 @@ class ConnectingToServer extends AppState {
   final String? current;
   final String? headline;
 
-  const ConnectingToServer({this.username, this.firstRun = false, this.done = const [], this.current, this.headline});
+  const ConnectingToServer({
+    this.username,
+    this.firstRun = false,
+    this.done = const [],
+    this.current,
+    this.headline,
+  });
 }
 
 /// Kotlin's `Error` state has no way back at all (just a bare `Text`, no
@@ -226,14 +249,14 @@ class Home extends AppState {
   });
 
   Home copyWith({List<FoldedWork<PlexOnDeckItem>>? onDeck}) => Home(
-        servers: servers,
-        sectionGroups: sectionGroups,
-        onDeck: onDeck ?? this.onDeck,
-        recentlyAdded: recentlyAdded,
-        recentActivity: recentActivity,
-        suggestions: suggestions,
-        unreachableResources: unreachableResources,
-      );
+    servers: servers,
+    sectionGroups: sectionGroups,
+    onDeck: onDeck ?? this.onDeck,
+    recentlyAdded: recentlyAdded,
+    recentActivity: recentActivity,
+    suggestions: suggestions,
+    unreachableResources: unreachableResources,
+  );
 }
 
 class Library extends AppState {
@@ -273,7 +296,11 @@ class Settings extends AppState {
   final AppState returnState;
   final String? relayHint;
 
-  const Settings({required this.ctx, required this.returnState, this.relayHint});
+  const Settings({
+    required this.ctx,
+    required this.returnState,
+    this.relayHint,
+  });
 }
 
 /// Rail-level and reachable from anywhere — DESIGN.md screen 05.
@@ -308,7 +335,12 @@ class MovieDetail extends AppState {
   final Sourced<PlexLibraryItem> activeCopy;
   final AppState returnState;
 
-  const MovieDetail({required this.ctx, required this.work, required this.activeCopy, required this.returnState});
+  const MovieDetail({
+    required this.ctx,
+    required this.work,
+    required this.activeCopy,
+    required this.returnState,
+  });
 }
 
 /// [server] is whichever server [person] (and the movie/show they were
@@ -340,7 +372,12 @@ class CollectionDetail extends AppState {
   final List<PlexLibraryItem> items;
   final AppState returnState;
 
-  const CollectionDetail({required this.ctx, required this.collection, required this.items, required this.returnState});
+  const CollectionDetail({
+    required this.ctx,
+    required this.collection,
+    required this.items,
+    required this.returnState,
+  });
 }
 
 /// [episode] is fetched from [activeCopy]'s server — same single-server
@@ -353,7 +390,13 @@ class EpisodeDetail extends AppState {
   final PlexEpisode episode;
   final AppState returnState;
 
-  const EpisodeDetail({required this.ctx, required this.work, required this.activeCopy, required this.episode, required this.returnState});
+  const EpisodeDetail({
+    required this.ctx,
+    required this.work,
+    required this.activeCopy,
+    required this.episode,
+    required this.returnState,
+  });
 }
 
 /// Screen 09 — "three decisions, one confirm" before a room is created,
@@ -421,5 +464,11 @@ class Player extends AppState {
   // enough for screen 16's real fetchNextEpisodeForShow lookup.
   final String? showRatingKey;
 
-  const Player({required this.server, required this.detail, required this.returnState, this.relay, this.showRatingKey});
+  const Player({
+    required this.server,
+    required this.detail,
+    required this.returnState,
+    this.relay,
+    this.showRatingKey,
+  });
 }

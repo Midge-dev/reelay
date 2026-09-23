@@ -77,9 +77,8 @@ SurfaceColors get _menuRowColors => SurfaceColors(
   selectedContainer: AppColors.surface,
   selectedContent: AppColors.ink,
 );
-SurfaceBorder get _menuRowBorder => SurfaceBorder(
-  focused: SurfaceBorderSide.solid(AppColors.accent),
-);
+SurfaceBorder get _menuRowBorder =>
+    SurfaceBorder(focused: SurfaceBorderSide.solid(AppColors.accent));
 
 class MenuOptionRow extends StatelessWidget {
   final String label;

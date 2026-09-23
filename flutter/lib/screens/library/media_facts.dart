@@ -23,7 +23,9 @@ class MediaFacts {
     final hdr = _streams.any((s) {
       if (s.streamType != 1) return false;
       final t = s.displayTitle?.toLowerCase() ?? '';
-      return t.contains('hdr') || t.contains('dovi') || t.contains('dolby vision');
+      return t.contains('hdr') ||
+          t.contains('dovi') ||
+          t.contains('dolby vision');
     });
     return hdr ? '$base HDR' : base;
   }

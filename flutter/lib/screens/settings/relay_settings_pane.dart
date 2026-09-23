@@ -112,7 +112,10 @@ class RelaySettingsPane extends StatelessWidget {
                   ),
                   AppText('Relay settings', style: AppTypography.title1),
                   Padding(
-                    padding: EdgeInsets.only(top: 8.du(context), bottom: 24.du(context)),
+                    padding: EdgeInsets.only(
+                      top: 8.du(context),
+                      bottom: 24.du(context),
+                    ),
                     child: AppText(
                       'Anyone who keeps a relay running can be added by address — a cloud host, a Pi in '
                       "someone's front room, whatever answers.",
@@ -208,7 +211,10 @@ class RelaySettingsPane extends StatelessWidget {
             ),
           ),
           Padding(
-            padding: EdgeInsets.symmetric(vertical: 48.du(context), horizontal: 12.du(context)),
+            padding: EdgeInsets.symmetric(
+              vertical: 48.du(context),
+              horizontal: 12.du(context),
+            ),
             child: NeonScrollbar(controller: scrollController),
           ),
         ],
@@ -240,7 +246,10 @@ class RelayRow extends StatelessWidget {
         border: Border.all(color: AppColors.line, width: 2.du(context)),
         borderRadius: BorderRadius.circular(8.du(context)),
       ),
-      padding: EdgeInsets.symmetric(horizontal: 28.du(context), vertical: 20.du(context)),
+      padding: EdgeInsets.symmetric(
+        horizontal: 28.du(context),
+        vertical: 20.du(context),
+      ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [

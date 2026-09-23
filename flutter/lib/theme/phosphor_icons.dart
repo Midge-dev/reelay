@@ -19,6 +19,12 @@ class PhosphorIconsRegular {
     fontPackage: 'phosphor_flutter',
     matchTextDirection: true,
   );
+
+  static const qrCode = IconData(
+    0xe3e6,
+    fontFamily: 'PhosphorRegular',
+    fontPackage: 'phosphor_flutter',
+  );
   static const arrowRight = IconData(
     0xe06c,
     fontFamily: 'PhosphorRegular',

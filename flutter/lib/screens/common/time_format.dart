@@ -6,7 +6,9 @@ String formatMinutesLeft(int remainingMs) {
   if (totalMinutes < 60) return '$totalMinutes min left';
   final hours = totalMinutes ~/ 60;
   final minutes = totalMinutes % 60;
-  return minutes == 0 ? '${hours}h left' : '${hours}h ${minutes.toString().padLeft(2, '0')}m left';
+  return minutes == 0
+      ? '${hours}h left'
+      : '${hours}h ${minutes.toString().padLeft(2, '0')}m left';
 }
 
 /// "1h 58m" / "42m" — a title's total runtime, for a detail page's
@@ -41,7 +43,20 @@ String formatCount(int n) {
   return buffer.toString();
 }
 
-const _months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+const _months = [
+  'Jan',
+  'Feb',
+  'Mar',
+  'Apr',
+  'May',
+  'Jun',
+  'Jul',
+  'Aug',
+  'Sep',
+  'Oct',
+  'Nov',
+  'Dec',
+];
 
 /// Plex's `originallyAvailableAt` ("2022-12-18") as people write it:
 /// "Dec 18, 2022". Anything unparseable is shown as given.

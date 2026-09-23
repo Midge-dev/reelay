@@ -62,7 +62,9 @@ class _PlexPinLinkPanelState extends ConsumerState<PlexPinLinkPanel> {
 
   Future<void> _start() async {
     try {
-      final clientIdentifier = await ref.read(plexIdentityProvider).getOrCreateClientIdentifier();
+      final clientIdentifier = await ref
+          .read(plexIdentityProvider)
+          .getOrCreateClientIdentifier();
       final api = PlexAuthApi(clientIdentifier);
 
       final pin = await api.createPin();
@@ -79,7 +81,11 @@ class _PlexPinLinkPanelState extends ConsumerState<PlexPinLinkPanel> {
       if (_disposed) return;
 
       if (authToken == null) {
-        setState(() => _state = const _LinkError('Code expired — restart to get a new one'));
+        setState(
+          () => _state = const _LinkError(
+            'Code expired — restart to get a new one',
+          ),
+        );
         return;
       }
 
@@ -97,36 +103,39 @@ class _PlexPinLinkPanelState extends ConsumerState<PlexPinLinkPanel> {
     return switch (state) {
       _Loading() => const AppText('Connecting to Plex…'),
       _AwaitingLink(:final code) => Row(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            Container(
-              width: 220.du(context),
-              height: 220.du(context),
-              color: AppColors.inkOnArt,
-              padding: EdgeInsets.all(16.du(context)),
-              child: QrImageView(data: 'https://www.plex.tv/link/', backgroundColor: AppColors.inkOnArt),
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Container(
+            width: 220.du(context),
+            height: 220.du(context),
+            color: AppColors.inkOnArt,
+            padding: EdgeInsets.all(16.du(context)),
+            child: QrImageView(
+              data: 'https://www.plex.tv/link/',
+              backgroundColor: AppColors.inkOnArt,
             ),
-            SizedBox(width: 48.du(context)),
-            Flexible(
-              child: ConstrainedBox(
-                constraints: BoxConstraints(maxWidth: 360.du(context)),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    const AppText(
-                      'Scan with your phone, or on any device visit plex.tv/link, then enter:',
-                      textAlign: TextAlign.center,
-                    ),
-                    SizedBox(height: 24.du(context)),
-                    AppText(code, style: AppTypography.title2),
-                  ],
-                ),
+          ),
+          SizedBox(width: 48.du(context)),
+          Flexible(
+            child: ConstrainedBox(
+              constraints: BoxConstraints(maxWidth: 360.du(context)),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  const AppText(
+                    'Scan with your phone, or on any device visit plex.tv/link, then enter:',
+                    textAlign: TextAlign.center,
+                  ),
+                  SizedBox(height: 24.du(context)),
+                  AppText(code, style: AppTypography.title2),
+                ],
               ),
             ),
-          ],
-        ),
+          ),
+        ],
+      ),
       _LinkError(:final message) => AppText('Error: $message'),
     };
   }

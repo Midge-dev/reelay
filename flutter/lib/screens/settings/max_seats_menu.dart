@@ -155,9 +155,8 @@ SurfaceColors get _rowColors => SurfaceColors(
   focusedContainer: AppColors.accent,
   selectedContainer: AppColors.accent.withValues(alpha: 0.35),
 );
-SurfaceBorder get _rowBorder => SurfaceBorder(
-  focused: SurfaceBorderSide.solid(AppColors.accent),
-);
+SurfaceBorder get _rowBorder =>
+    SurfaceBorder(focused: SurfaceBorderSide.solid(AppColors.accent));
 
 class _MaxSeatsRow extends StatelessWidget {
   final int value;
@@ -192,7 +191,10 @@ class _MaxSeatsRow extends StatelessWidget {
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              SizedBox(width: 16.du(context), child: applied ? const AppText('✓') : null),
+              SizedBox(
+                width: 16.du(context),
+                child: applied ? const AppText('✓') : null,
+              ),
               SizedBox(width: 12.du(context)),
               AppText('$value'),
             ],

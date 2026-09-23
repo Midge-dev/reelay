@@ -9,9 +9,8 @@ import '../../theme/tokens.dart';
 import '../../theme/typography.dart';
 
 const _rowMinHeight = 96.0;
-Border get _badgeBorder => Border.fromBorderSide(
-  BorderSide(color: AppColors.warning),
-);
+Border get _badgeBorder =>
+    Border.fromBorderSide(BorderSide(color: AppColors.warning));
 
 /// A real, visible placeholder for when Jellyfin support lands — disabled,
 /// same treatment everywhere it appears (the server switcher's server
@@ -73,7 +72,9 @@ class JellyfinComingSoonRow extends StatelessWidget {
                   ),
                   decoration: BoxDecoration(
                     border: _badgeBorder,
-                    borderRadius: BorderRadius.circular(AppShape.radiusSm.du(context)),
+                    borderRadius: BorderRadius.circular(
+                      AppShape.radiusSm.du(context),
+                    ),
                   ),
                   child: AppText(
                     'COMING SOON',

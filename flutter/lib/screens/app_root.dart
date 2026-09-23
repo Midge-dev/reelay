@@ -94,9 +94,12 @@ class _AppRootState extends ConsumerState<AppRoot> {
     // ListenableBuilder's builder callback (i.e. during AppRoot's own
     // build), and calling setState synchronously there throws
     // "setState() or markNeedsBuild() called during build".
-    Future.delayed(remaining > 0 ? Duration(milliseconds: remaining) : Duration.zero, () {
-      if (mounted) setState(() => _showSplash = false);
-    });
+    Future.delayed(
+      remaining > 0 ? Duration(milliseconds: remaining) : Duration.zero,
+      () {
+        if (mounted) setState(() => _showSplash = false);
+      },
+    );
   }
 
   @override
@@ -113,7 +116,13 @@ class _AppRootState extends ConsumerState<AppRoot> {
             duration: _splashCrossfadeDuration,
             child: _showSplash
                 ? const SplashScreen(key: ValueKey('splash'))
-                : KeyedSubtree(key: const ValueKey('content'), child: _AppContent(controller: controller, roomsPanelOpen: _roomsPanelOpen)),
+                : KeyedSubtree(
+                    key: const ValueKey('content'),
+                    child: _AppContent(
+                      controller: controller,
+                      roomsPanelOpen: _roomsPanelOpen,
+                    ),
+                  ),
           );
         },
       ),
@@ -133,21 +142,21 @@ class _AppContent extends StatelessWidget {
   /// otherwise whichever destination it was opened from (a detail page
   /// reached from Home keeps Home lit, not the library its title lives in).
   static RailDestination _destinationFor(AppState state) => switch (state) {
-        Home() || LoadingHome() => RailDestination.home,
-        Library() || LoadingSection() => RailDestination.section,
-        Search() => RailDestination.search,
-        Watchlist() => RailDestination.watchlist,
-        Settings() => RailDestination.settings,
-        MovieDetail(:final returnState) ||
-        PersonFilmography(:final returnState) ||
-        CollectionDetail(:final returnState) ||
-        EpisodeDetail(:final returnState) ||
-        WatchTogetherStart(:final returnState) =>
-          _destinationFor(returnState),
-        _ => RailDestination.none,
-      };
+    Home() || LoadingHome() => RailDestination.home,
+    Library() || LoadingSection() => RailDestination.section,
+    Search() => RailDestination.search,
+    Watchlist() => RailDestination.watchlist,
+    Settings() => RailDestination.settings,
+    MovieDetail(:final returnState) ||
+    PersonFilmography(:final returnState) ||
+    CollectionDetail(:final returnState) ||
+    EpisodeDetail(:final returnState) ||
+    WatchTogetherStart(:final returnState) => _destinationFor(returnState),
+    _ => RailDestination.none,
+  };
 
-  RoomsPanelData _roomsData(AppState current, List<ReachableServer> servers) => RoomsPanelData(
+  RoomsPanelData _roomsData(AppState current, List<ReachableServer> servers) =>
+      RoomsPanelData(
         relays: controller.liveRelays,
         relayHealth: controller.relayHealth,
         rooms: controller.liveRooms,
@@ -165,56 +174,106 @@ class _AppContent extends StatelessWidget {
   Widget _screenFor(BuildContext context, AppState state) {
     return switch (state) {
       Checking() => const LoadingScreen(),
-      ConnectingToServer(:final firstRun, :final done, :final current, :final headline) when firstRun =>
+      ConnectingToServer(
+        :final firstRun,
+        :final done,
+        :final current,
+        :final headline,
+      )
+          when firstRun =>
         SetupReadyScreen(done: done, current: current, headline: headline),
-      ConnectingToServer(:final username) =>
-        LoadingScreen(username != null ? 'Logged in as $username — connecting to library…' : 'Connecting to library…'),
-      LoggedOut() => OnboardingScreen(onComplete: controller.completeFirstLogin),
+      ConnectingToServer(:final username) => LoadingScreen(
+        username != null
+            ? 'Logged in as $username — connecting to library…'
+            : 'Connecting to library…',
+      ),
+      LoggedOut() => OnboardingScreen(
+        onComplete: controller.completeFirstLogin,
+      ),
       ProfilePicker(:final profiles) => ProfilePickerScreen(
-          profiles: profiles,
-          onSelectProfile: controller.selectProfile,
-          onAddProfile: controller.addProfileAndActivate,
-        ),
+        profiles: profiles,
+        onSelectProfile: controller.selectProfile,
+        onAddProfile: controller.addProfileAndActivate,
+      ),
       NoServersReachable(:final token, :final resources) => NoServersScreen(
-          resources: resources,
-          onRetry: () => controller.connect(token),
-          onStartOver: () => controller.returnTo(const LoggedOut()),
-        ),
-      PlaybackFailed(:final ctx, :final server, :final targetRatingKey, :final fromStart, :final reason, :final returnState) => PlaybackFailedScreen(
+        resources: resources,
+        onRetry: () => controller.connect(token),
+        onStartOver: () => controller.returnTo(const LoggedOut()),
+      ),
+      PlaybackFailed(
+        :final ctx,
+        :final server,
+        :final targetRatingKey,
+        :final fromStart,
+        :final reason,
+        :final returnState,
+      ) =>
+        PlaybackFailedScreen(
           reason: reason,
-          onRetry: () => controller.playMovie(ctx, server, targetRatingKey, returnState, fromStart: fromStart),
-          alternateServerName: _alternateSourceFor(returnState, server)?.server.name,
+          onRetry: () => controller.playMovie(
+            ctx,
+            server,
+            targetRatingKey,
+            returnState,
+            fromStart: fromStart,
+          ),
+          alternateServerName: _alternateSourceFor(
+            returnState,
+            server,
+          )?.server.name,
           onPlayAlternate: _alternateSourceFor(returnState, server) == null
               ? null
               : () {
                   final alternate = _alternateSourceFor(returnState, server)!;
-                  controller.playMovie(ctx, alternate.server, alternate.value.ratingKey, returnState, fromStart: fromStart);
+                  controller.playMovie(
+                    ctx,
+                    alternate.server,
+                    alternate.value.ratingKey,
+                    returnState,
+                    fromStart: fromStart,
+                  );
                 },
           onBack: () => controller.returnTo(returnState),
         ),
       AppError(:final message, :final retryState) => BackHandler(
-          onBack: () => controller.returnTo(retryState),
-          child: ColoredBox(
-            color: AppColors.background,
-            child: Center(child: AppText('Error: $message', style: AppTypography.body)),
+        onBack: () => controller.returnTo(retryState),
+        child: ColoredBox(
+          color: AppColors.background,
+          child: Center(
+            child: AppText('Error: $message', style: AppTypography.body),
           ),
         ),
+      ),
       // An install set up before the Watch Together step existed meets it
       // once, framed as the setup step it is.
-      RelaySetup(:final ctx) => WatchTogetherStep(onDone: () => controller.goHome(ctx.servers, ctx.sectionGroups)),
+      RelaySetup(:final ctx) => WatchTogetherStep(
+        onDone: () => controller.goHome(ctx.servers, ctx.sectionGroups),
+      ),
       Home() => _buildHome(state),
       Library(:final ctx) => _drawer(
-          ctx: ctx,
-          child: LibraryScreen(
-            servers: ctx.servers,
-            selectedSectionGroup: ctx.selectedSectionGroup,
-            items: ctx.items,
-            onSelectItem: (item) => controller.returnTo(MovieDetail(ctx: ctx, work: item, activeCopy: item.primary, returnState: Library(ctx: ctx))),
-            loadCollections: () => _fetchGroupCollections(ctx),
-            onSelectCollection: (collection) => _openCollection(ctx, collection),
+        ctx: ctx,
+        child: LibraryScreen(
+          servers: ctx.servers,
+          selectedSectionGroup: ctx.selectedSectionGroup,
+          items: ctx.items,
+          onSelectItem: (item) => controller.returnTo(
+            MovieDetail(
+              ctx: ctx,
+              work: item,
+              activeCopy: item.primary,
+              returnState: Library(ctx: ctx),
+            ),
           ),
+          loadCollections: () => _fetchGroupCollections(ctx),
+          onSelectCollection: (collection) => _openCollection(ctx, collection),
         ),
-      LoadingSection(:final sectionGroups, :final selectedSectionGroupKey, :final returnState) => BackHandler(
+      ),
+      LoadingSection(
+        :final sectionGroups,
+        :final selectedSectionGroupKey,
+        :final returnState,
+      ) =>
+        BackHandler(
           onBack: () => controller.returnTo(returnState),
           child: AppNavigationDrawer(
             sectionGroups: sectionGroups,
@@ -236,76 +295,88 @@ class _AppContent extends StatelessWidget {
           ),
         ),
       LoadingHome(:final sectionGroups) => AppNavigationDrawer(
-          sectionGroups: sectionGroups,
-          selectedSectionGroupKey: null,
-          destination: RailDestination.home,
-          onSelectSection: (_) {},
-          onOpenSettings: () {},
-          onOpenHome: () {},
-          onOpenSearch: () {},
-          account: controller.localAccount,
-          versionName: _appVersionName,
-          connectedServers: controller.connectedServers,
-          disabledServerIds: controller.currentSettings.disabledServerIds,
-          loadServers: _loadServers,
-          probeServer: _probeServer,
-          loadLibraryCount: _loadLibraryCount,
-          onToggleServer: _toggleServer,
-          child: const HomeLoadingSkeleton(),
-        ),
+        sectionGroups: sectionGroups,
+        selectedSectionGroupKey: null,
+        destination: RailDestination.home,
+        onSelectSection: (_) {},
+        onOpenSettings: () {},
+        onOpenHome: () {},
+        onOpenSearch: () {},
+        account: controller.localAccount,
+        versionName: _appVersionName,
+        connectedServers: controller.connectedServers,
+        disabledServerIds: controller.currentSettings.disabledServerIds,
+        loadServers: _loadServers,
+        probeServer: _probeServer,
+        loadLibraryCount: _loadLibraryCount,
+        onToggleServer: _toggleServer,
+        child: const HomeLoadingSkeleton(),
+      ),
       Settings(:final ctx, :final returnState, :final relayHint) => _drawer(
-          ctx: ctx,
-          child: SettingsScreen(
-            accountToken: controller.accountTokenOrEmpty,
-            clientIdentifier: controller.clientIdentifier,
-            hint: relayHint,
-            versionName: _appVersionName,
-            onBack: () => controller.returnTo(returnState),
-            onServersChanged: () {
-              final token = controller.accountToken;
-              if (token != null) {
-                controller.connect(token);
-              } else {
-                controller.returnTo(returnState);
-              }
-            },
-          ),
+        ctx: ctx,
+        child: SettingsScreen(
+          accountToken: controller.accountTokenOrEmpty,
+          clientIdentifier: controller.clientIdentifier,
+          hint: relayHint,
+          versionName: _appVersionName,
+          onBack: () => controller.returnTo(returnState),
+          onServersChanged: () {
+            final token = controller.accountToken;
+            if (token != null) {
+              controller.connect(token);
+            } else {
+              controller.returnTo(returnState);
+            }
+          },
         ),
+      ),
       Search(:final ctx, :final returnState) => _drawer(
-          ctx: ctx,
-          child: SearchScreen(
-            servers: ctx.servers,
-            search: (query) => _fanOutSearch(ctx, query),
-            onSelectResult: (item) {
-              final work = _libraryWorkFrom(item, libraryItemFrom);
-              controller.returnTo(
-                MovieDetail(
-                  ctx: ctx.copyWith(selectedSectionGroup: sectionGroupFor(ctx.sectionGroups, work.primary.value.type ?? '')),
-                  work: work,
-                  activeCopy: work.primary,
-                  returnState: state,
+        ctx: ctx,
+        child: SearchScreen(
+          servers: ctx.servers,
+          search: (query) => _fanOutSearch(ctx, query),
+          onSelectResult: (item) {
+            final work = _libraryWorkFrom(item, libraryItemFrom);
+            controller.returnTo(
+              MovieDetail(
+                ctx: ctx.copyWith(
+                  selectedSectionGroup: sectionGroupFor(
+                    ctx.sectionGroups,
+                    work.primary.value.type ?? '',
+                  ),
                 ),
-              );
-            },
-            onBack: () => controller.returnTo(returnState),
-          ),
+                work: work,
+                activeCopy: work.primary,
+                returnState: state,
+              ),
+            );
+          },
+          onBack: () => controller.returnTo(returnState),
         ),
+      ),
       Watchlist(:final ctx) => _drawer(
-          ctx: ctx,
-          child: WatchlistScreen(
-            items: controller.watchlist,
-            onSelectItem: (entry) => controller.openWatchlistItem(
-              servers: ctx.servers,
-              sectionGroups: ctx.sectionGroups,
-              entry: entry,
-              returnState: state,
-            ),
-            onRemove: controller.removeFromWatchlist,
-            accountName: controller.localAccount?.username,
-            availability: controller.watchlistAvailability,
+        ctx: ctx,
+        child: WatchlistScreen(
+          items: controller.watchlist,
+          onSelectItem: (entry) => controller.openWatchlistItem(
+            servers: ctx.servers,
+            sectionGroups: ctx.sectionGroups,
+            entry: entry,
+            returnState: state,
           ),
+          onRemove: controller.removeFromWatchlist,
+          accountName: controller.localAccount?.username,
+          availability: controller.watchlistAvailability,
         ),
-      MovieDetail(:final ctx, :final work, :final activeCopy, :final returnState) when ctx.selectedSectionGroup.type == _sectionTypeShow => _drawer(
+      ),
+      MovieDetail(
+        :final ctx,
+        :final work,
+        :final activeCopy,
+        :final returnState,
+      )
+          when ctx.selectedSectionGroup.type == _sectionTypeShow =>
+        _drawer(
           ctx: ctx,
           child: ShowDetailScreen(
             server: activeCopy.server,
@@ -315,104 +386,192 @@ class _AppContent extends StatelessWidget {
             onToggleWatchlist: controller.toggleWatchlist,
             resolveNextEpisode: () async {
               try {
-                return await PlexServerApi(activeCopy.server, controller.clientIdentifier).fetchNextEpisodeForShow(activeCopy.value.ratingKey);
+                return await PlexServerApi(
+                  activeCopy.server,
+                  controller.clientIdentifier,
+                ).fetchNextEpisodeForShow(activeCopy.value.ratingKey);
               } catch (_) {
                 return null;
               }
             },
             loadDetail: () async {
               try {
-                return await PlexServerApi(activeCopy.server, controller.clientIdentifier).fetchMovieDetail(activeCopy.value.ratingKey);
+                return await PlexServerApi(
+                  activeCopy.server,
+                  controller.clientIdentifier,
+                ).fetchMovieDetail(activeCopy.value.ratingKey);
               } catch (_) {
                 return null;
               }
             },
             loadSeasons: () async {
               try {
-                return await PlexServerApi(activeCopy.server, controller.clientIdentifier).fetchSeasons(activeCopy.value.ratingKey);
+                return await PlexServerApi(
+                  activeCopy.server,
+                  controller.clientIdentifier,
+                ).fetchSeasons(activeCopy.value.ratingKey);
               } catch (_) {
                 return const [];
               }
             },
             loadEpisodes: (seasonRatingKey) async {
               try {
-                return await PlexServerApi(activeCopy.server, controller.clientIdentifier).fetchEpisodes(seasonRatingKey);
+                return await PlexServerApi(
+                  activeCopy.server,
+                  controller.clientIdentifier,
+                ).fetchEpisodes(seasonRatingKey);
               } catch (_) {
                 return const [];
               }
             },
-            onPlay: (targetRatingKey) => controller.playMovie(ctx, activeCopy.server, targetRatingKey, state),
-            onWatchTogether: (targetRatingKey) => controller.openWatchTogetherStart(
-              ctx: ctx,
-              server: activeCopy.server,
-              returnState: state,
-              roomTitle: activeCopy.value.title,
-              thumb: activeCopy.value.thumb,
-              targetRatingKey: targetRatingKey,
+            onPlay: (targetRatingKey) => controller.playMovie(
+              ctx,
+              activeCopy.server,
+              targetRatingKey,
+              state,
             ),
-            onSelectEpisode: (episode) => controller.returnTo(EpisodeDetail(ctx: ctx, work: work, activeCopy: activeCopy, episode: episode, returnState: state)),
+            onWatchTogether: (targetRatingKey) =>
+                controller.openWatchTogetherStart(
+                  ctx: ctx,
+                  server: activeCopy.server,
+                  returnState: state,
+                  roomTitle: activeCopy.value.title,
+                  thumb: activeCopy.value.thumb,
+                  targetRatingKey: targetRatingKey,
+                ),
+            onSelectEpisode: (episode) => controller.returnTo(
+              EpisodeDetail(
+                ctx: ctx,
+                work: work,
+                activeCopy: activeCopy,
+                episode: episode,
+                returnState: state,
+              ),
+            ),
           ),
         ),
-      MovieDetail(:final ctx, :final work, :final activeCopy, :final returnState) => _drawer(
+      MovieDetail(
+        :final ctx,
+        :final work,
+        :final activeCopy,
+        :final returnState,
+      ) =>
+        _drawer(
           ctx: ctx,
           child: MovieDetailScreen(
             server: activeCopy.server,
             movie: activeCopy.value,
             work: work,
-            onSwitchSource: (copy) => controller.returnTo(MovieDetail(ctx: ctx, work: work, activeCopy: copy, returnState: returnState)),
+            onSwitchSource: (copy) => controller.returnTo(
+              MovieDetail(
+                ctx: ctx,
+                work: work,
+                activeCopy: copy,
+                returnState: returnState,
+              ),
+            ),
             onBack: () => controller.returnTo(returnState),
             isOnWatchlist: controller.isOnWatchlist,
             onToggleWatchlist: controller.toggleWatchlist,
             loadDetail: () async {
               try {
-                return await PlexServerApi(activeCopy.server, controller.clientIdentifier).fetchMovieDetail(activeCopy.value.ratingKey);
+                return await PlexServerApi(
+                  activeCopy.server,
+                  controller.clientIdentifier,
+                ).fetchMovieDetail(activeCopy.value.ratingKey);
               } catch (_) {
                 return null;
               }
             },
             loadRelatedHubs: () async {
               try {
-                return await PlexServerApi(activeCopy.server, controller.clientIdentifier).fetchRelatedHubs(activeCopy.value.ratingKey);
+                return await PlexServerApi(
+                  activeCopy.server,
+                  controller.clientIdentifier,
+                ).fetchRelatedHubs(activeCopy.value.ratingKey);
               } catch (_) {
                 return const [];
               }
             },
             onSelectRelated: (item) {
-              final newWork = FoldedWork<PlexLibraryItem>(item.guid, [Sourced(libraryItemFrom(item), activeCopy.server, activeCopy.reachability)]);
+              final newWork = FoldedWork<PlexLibraryItem>(item.guid, [
+                Sourced(
+                  libraryItemFrom(item),
+                  activeCopy.server,
+                  activeCopy.reachability,
+                ),
+              ]);
               controller.returnTo(
                 MovieDetail(
                   ctx: ctx,
                   work: newWork,
                   activeCopy: newWork.primary,
-                  returnState: MovieDetail(ctx: ctx, work: work, activeCopy: activeCopy, returnState: returnState),
+                  returnState: MovieDetail(
+                    ctx: ctx,
+                    work: work,
+                    activeCopy: activeCopy,
+                    returnState: returnState,
+                  ),
                 ),
               );
             },
             onSelectPerson: (person) async {
               final actorId = person.id;
-              final section = ctx.selectedSectionGroup.sectionOn(activeCopy.server.machineIdentifier);
+              final section = ctx.selectedSectionGroup.sectionOn(
+                activeCopy.server.machineIdentifier,
+              );
               try {
                 final items = actorId == null || section == null
                     ? const <PlexLibraryItem>[]
-                    : await PlexServerApi(activeCopy.server, controller.clientIdentifier).fetchLibraryItemsByActor(section.key, actorId);
-                controller.returnTo(PersonFilmography(ctx: ctx, server: activeCopy.server, person: person, items: items, returnState: state));
+                    : await PlexServerApi(
+                        activeCopy.server,
+                        controller.clientIdentifier,
+                      ).fetchLibraryItemsByActor(section.key, actorId);
+                controller.returnTo(
+                  PersonFilmography(
+                    ctx: ctx,
+                    server: activeCopy.server,
+                    person: person,
+                    items: items,
+                    returnState: state,
+                  ),
+                );
               } catch (e) {
                 controller.returnTo(AppError(message: '$e', retryState: state));
               }
             },
-            onPlay: (targetRatingKey) => controller.playMovie(ctx, activeCopy.server, targetRatingKey, state),
-            onWatchTogether: (targetRatingKey) => controller.openWatchTogetherStart(
-              ctx: ctx,
-              server: activeCopy.server,
-              returnState: state,
-              roomTitle: activeCopy.value.title,
-              thumb: activeCopy.value.thumb,
-              targetRatingKey: targetRatingKey,
+            onPlay: (targetRatingKey) => controller.playMovie(
+              ctx,
+              activeCopy.server,
+              targetRatingKey,
+              state,
             ),
-            onRestartSolo: (targetRatingKey) => controller.playMovie(ctx, activeCopy.server, targetRatingKey, state, fromStart: true),
+            onWatchTogether: (targetRatingKey) =>
+                controller.openWatchTogetherStart(
+                  ctx: ctx,
+                  server: activeCopy.server,
+                  returnState: state,
+                  roomTitle: activeCopy.value.title,
+                  thumb: activeCopy.value.thumb,
+                  targetRatingKey: targetRatingKey,
+                ),
+            onRestartSolo: (targetRatingKey) => controller.playMovie(
+              ctx,
+              activeCopy.server,
+              targetRatingKey,
+              state,
+              fromStart: true,
+            ),
           ),
         ),
-      PersonFilmography(:final ctx, :final server, :final person, :final items, :final returnState) => _drawer(
+      PersonFilmography(
+        :final ctx,
+        :final server,
+        :final person,
+        :final items,
+        :final returnState,
+      ) =>
+        _drawer(
           ctx: ctx,
           child: PersonFilmographyScreen(
             server: server,
@@ -420,26 +579,56 @@ class _AppContent extends StatelessWidget {
             personThumb: person.thumb,
             items: items,
             onSelectItem: (item) {
-              final work = FoldedWork<PlexLibraryItem>(item.guid, [Sourced(item, server, _reachabilityOf(ctx, server))]);
-              controller.returnTo(MovieDetail(ctx: ctx, work: work, activeCopy: work.primary, returnState: state));
+              final work = FoldedWork<PlexLibraryItem>(item.guid, [
+                Sourced(item, server, _reachabilityOf(ctx, server)),
+              ]);
+              controller.returnTo(
+                MovieDetail(
+                  ctx: ctx,
+                  work: work,
+                  activeCopy: work.primary,
+                  returnState: state,
+                ),
+              );
             },
             onBack: () => controller.returnTo(returnState),
           ),
         ),
-      CollectionDetail(:final ctx, :final collection, :final items, :final returnState) => _drawer(
+      CollectionDetail(
+        :final ctx,
+        :final collection,
+        :final items,
+        :final returnState,
+      ) =>
+        _drawer(
           ctx: ctx,
           child: CollectionDetailScreen(
             server: collection.server,
             collection: collection.value,
             items: items,
             onSelectItem: (item) {
-              final work = FoldedWork<PlexLibraryItem>(item.guid, [Sourced(item, collection.server, collection.reachability)]);
-              controller.returnTo(MovieDetail(ctx: ctx, work: work, activeCopy: work.primary, returnState: state));
+              final work = FoldedWork<PlexLibraryItem>(item.guid, [
+                Sourced(item, collection.server, collection.reachability),
+              ]);
+              controller.returnTo(
+                MovieDetail(
+                  ctx: ctx,
+                  work: work,
+                  activeCopy: work.primary,
+                  returnState: state,
+                ),
+              );
             },
             onBack: () => controller.returnTo(returnState),
           ),
         ),
-      EpisodeDetail(:final ctx, :final activeCopy, :final episode, :final returnState) => _drawer(
+      EpisodeDetail(
+        :final ctx,
+        :final activeCopy,
+        :final episode,
+        :final returnState,
+      ) =>
+        _drawer(
           ctx: ctx,
           child: EpisodeDetailScreen(
             server: activeCopy.server,
@@ -450,13 +639,29 @@ class _AppContent extends StatelessWidget {
             onToggleWatchlist: controller.toggleWatchlist,
             loadShowGuid: () async {
               try {
-                return (await PlexServerApi(activeCopy.server, controller.clientIdentifier).fetchMovieDetail(activeCopy.value.ratingKey)).guid;
+                return (await PlexServerApi(
+                  activeCopy.server,
+                  controller.clientIdentifier,
+                ).fetchMovieDetail(activeCopy.value.ratingKey)).guid;
               } catch (_) {
                 return null;
               }
             },
-            onPlay: () => controller.playMovie(ctx, activeCopy.server, episode.ratingKey, state, showRatingKey: activeCopy.value.ratingKey),
-            onPlayFromStart: () => controller.playMovie(ctx, activeCopy.server, episode.ratingKey, state, fromStart: true, showRatingKey: activeCopy.value.ratingKey),
+            onPlay: () => controller.playMovie(
+              ctx,
+              activeCopy.server,
+              episode.ratingKey,
+              state,
+              showRatingKey: activeCopy.value.ratingKey,
+            ),
+            onPlayFromStart: () => controller.playMovie(
+              ctx,
+              activeCopy.server,
+              episode.ratingKey,
+              state,
+              fromStart: true,
+              showRatingKey: activeCopy.value.ratingKey,
+            ),
             onWatchTogether: () => controller.openWatchTogetherStart(
               ctx: ctx,
               server: activeCopy.server,
@@ -478,39 +683,62 @@ class _AppContent extends StatelessWidget {
         ),
       // BackHandler: without it Back fell through to Android and closed
       // the app instead of cancelling the dialog.
-      WatchTogetherStart(:final ctx, :final server, :final returnState, :final roomTitle, :final thumb, :final targetRatingKey, :final defaultRestart) =>
+      WatchTogetherStart(
+        :final ctx,
+        :final server,
+        :final returnState,
+        :final roomTitle,
+        :final thumb,
+        :final targetRatingKey,
+        :final defaultRestart,
+      ) =>
         Stack(
           fit: StackFit.expand,
           children: [
             // Screen 09: a dialog over the page it was opened from, so the
             // feature stays attached to what you are watching. The page is
             // drawn but inert — no focus, no pointer.
-            ExcludeFocus(child: IgnorePointer(child: _screenFor(context, returnState))),
+            ExcludeFocus(
+              child: IgnorePointer(child: _screenFor(context, returnState)),
+            ),
             BackHandler(
-        onBack: () => controller.returnTo(returnState),
-        child: WatchTogetherStartScreen(
-          roomTitle: roomTitle,
-          defaultRestart: defaultRestart,
-          maxSeats: controller.currentSettings.maxHostSeats,
-          relayNickname: controller.currentSettings.defaultRelay?.nickname,
-          checkRelayReachable: controller.currentSettings.defaultRelay == null
-              ? null
-              : () => RelayDirectoryApi().testReachable(controller.currentSettings.defaultRelay!.url),
-          onConfirm: ({required restart, required showPhoneChat}) => controller.startWatchTogether(
-            ctx: ctx,
-            server: server,
-            returnState: returnState,
-            roomTitle: roomTitle,
-            thumb: thumb,
-            targetRatingKey: targetRatingKey,
-            restart: restart,
-          ),
-          onCancel: () => controller.returnTo(returnState),
-        ),
-        ),
+              onBack: () => controller.returnTo(returnState),
+              child: WatchTogetherStartScreen(
+                roomTitle: roomTitle,
+                defaultRestart: defaultRestart,
+                maxSeats: controller.currentSettings.maxHostSeats,
+                relayNickname:
+                    controller.currentSettings.defaultRelay?.nickname,
+                checkRelayReachable:
+                    controller.currentSettings.defaultRelay == null
+                    ? null
+                    : () => RelayDirectoryApi().testReachable(
+                        controller.currentSettings.defaultRelay!.url,
+                      ),
+                onConfirm: ({required restart, required showPhoneChat}) =>
+                    controller.startWatchTogether(
+                      ctx: ctx,
+                      server: server,
+                      returnState: returnState,
+                      roomTitle: roomTitle,
+                      thumb: thumb,
+                      targetRatingKey: targetRatingKey,
+                      restart: restart,
+                    ),
+                onCancel: () => controller.returnTo(returnState),
+              ),
+            ),
           ],
         ),
-      Lobby(:final detail, :final returnState, :final relay, :final hostName, :final relayNickname, :final isHost) => LobbyScreen(
+      Lobby(
+        :final detail,
+        :final returnState,
+        :final relay,
+        :final hostName,
+        :final relayNickname,
+        :final isHost,
+      ) =>
+        LobbyScreen(
           key: ValueKey('lobby-${detail.ratingKey}'),
           server: state.server,
           detail: detail,
@@ -518,17 +746,33 @@ class _AppContent extends StatelessWidget {
           localAvatarUrl: controller.localAccount?.thumb,
           hostName: hostName,
           relayNickname: relayNickname,
+          measureLatency: () => controller.measureRelayLatency(relay.relayUrl),
           relay: relay,
-          onHostOnAnother: isHost ? () => controller.hostOnAnotherRelay(state) : null,
+          onHostOnAnother: isHost
+              ? () => controller.hostOnAnotherRelay(state)
+              : null,
           onStart: (restartFromBeginning) => controller.returnTo(
-            Player(server: state.server, detail: restartFromBeginning ? detail.copyWith(viewOffset: 0) : detail, returnState: returnState, relay: relay),
+            Player(
+              server: state.server,
+              detail: restartFromBeginning
+                  ? detail.copyWith(viewOffset: 0)
+                  : detail,
+              returnState: returnState,
+              relay: relay,
+            ),
           ),
           onBack: () {
             controller.releaseRelayClient();
             controller.returnTo(returnState);
           },
         ),
-      Player(:final detail, :final returnState, :final relay, :final showRatingKey) => PlayerScreen(
+      Player(
+        :final detail,
+        :final returnState,
+        :final relay,
+        :final showRatingKey,
+      ) =>
+        PlayerScreen(
           key: ValueKey('player-${detail.ratingKey}'),
           server: state.server,
           detail: detail,
@@ -547,9 +791,18 @@ class _AppContent extends StatelessWidget {
           // came from).
           loadNextEpisode: showRatingKey == null
               ? null
-              : () => PlexServerApi(state.server, controller.clientIdentifier).fetchNextEpisodeForShow(showRatingKey),
+              : () => PlexServerApi(
+                  state.server,
+                  controller.clientIdentifier,
+                ).fetchNextEpisodeForShow(showRatingKey),
           onPlayNext: returnState is EpisodeDetail
-              ? (next) => controller.playMovie(returnState.ctx, state.server, next.ratingKey, returnState, showRatingKey: showRatingKey)
+              ? (next) => controller.playMovie(
+                  returnState.ctx,
+                  state.server,
+                  next.ratingKey,
+                  returnState,
+                  showRatingKey: showRatingKey,
+                )
               : null,
         ),
     };
@@ -557,21 +810,28 @@ class _AppContent extends StatelessWidget {
 
   Widget _buildHome(Home home) {
     LibraryContext emptyCtx(SectionGroup group) => LibraryContext(
-          servers: home.servers,
-          sectionGroups: home.sectionGroups,
-          selectedSectionGroup: group,
-          items: const [],
-        );
+      servers: home.servers,
+      sectionGroups: home.sectionGroups,
+      selectedSectionGroup: group,
+      items: const [],
+    );
 
     return AppNavigationDrawer(
       sectionGroups: home.sectionGroups,
       destination: RailDestination.home,
       rooms: _roomsData(home, home.servers),
       roomsPanelOpen: roomsPanelOpen,
-      onSelectSection: (group) => controller.openSection(home.servers, home.sectionGroups, group),
-      onOpenSettings: () => controller.returnTo(Settings(ctx: emptyCtx(home.sectionGroups.first), returnState: home)),
-      onOpenSearch: () => controller.returnTo(Search(ctx: emptyCtx(home.sectionGroups.first), returnState: home)),
-      onOpenWatchlist: () => controller.returnTo(Watchlist(ctx: emptyCtx(home.sectionGroups.first))),
+      onSelectSection: (group) =>
+          controller.openSection(home.servers, home.sectionGroups, group),
+      onOpenSettings: () => controller.returnTo(
+        Settings(ctx: emptyCtx(home.sectionGroups.first), returnState: home),
+      ),
+      onOpenSearch: () => controller.returnTo(
+        Search(ctx: emptyCtx(home.sectionGroups.first), returnState: home),
+      ),
+      onOpenWatchlist: () => controller.returnTo(
+        Watchlist(ctx: emptyCtx(home.sectionGroups.first)),
+      ),
       // Clicking Home while already on Home used to be a pure no-op —
       // no state change at all means nothing ever reclaims focus from the
       // nav rail, so the drawer never collapses back down (it only
@@ -600,14 +860,18 @@ class _AppContent extends StatelessWidget {
         myRoomId: controller.myRoomId,
         hostedRoomIds: controller.hostedRoomIds,
         onEndSession: controller.closeHostedRoom,
-        onSelectRoom: (merged) => controller.joinRoom(home, home.servers, merged),
+        onSelectRoom: (merged) =>
+            controller.joinRoom(home, home.servers, merged),
         onOpenRooms: () => roomsPanelOpen.value = true,
         onResume: (item) => controller.resumeOnDeckItem(home, item),
         onRemove: (item) => controller.removeFromContinueWatching(home, item),
-        onSelectWatchlistItem: (entry) => controller.selectWatchlistItem(home, entry),
+        onSelectWatchlistItem: (entry) =>
+            controller.selectWatchlistItem(home, entry),
         onRemoveFromWatchlist: controller.removeFromWatchlist,
-        onSelectRecentlyAdded: (item) => controller.selectRecentlyAdded(home, item),
-        onSelectRecentActivity: (item) => controller.selectOnDeckLike(home, item),
+        onSelectRecentlyAdded: (item) =>
+            controller.selectRecentlyAdded(home, item),
+        onSelectRecentActivity: (item) =>
+            controller.selectOnDeckLike(home, item),
         onSelectSuggestion: (item) => controller.selectOnDeckLike(home, item),
         onHeroWatchTogether: (item) => controller.openWatchTogetherStart(
           ctx: emptyCtx(sectionGroupFor(home.sectionGroups, item.value.type)),
@@ -625,14 +889,12 @@ class _AppContent extends StatelessWidget {
     final season = item.parentIndex;
     final ep = item.index;
     final show = item.grandparentTitle;
-    if (show != null && season != null && ep != null) return '$show · S${season}E$ep';
+    if (show != null && season != null && ep != null)
+      return '$show · S${season}E$ep';
     return item.title;
   }
 
-  Widget _drawer({
-    required LibraryContext ctx,
-    required Widget child,
-  }) {
+  Widget _drawer({required LibraryContext ctx, required Widget child}) {
     final state = controller.state;
     return AppNavigationDrawer(
       sectionGroups: ctx.sectionGroups,
@@ -641,9 +903,19 @@ class _AppContent extends StatelessWidget {
       rooms: _roomsData(state, ctx.servers),
       roomsPanelOpen: roomsPanelOpen,
       onSelectSection: (group) => controller.selectSection(ctx, group),
-      onOpenSettings: () => controller.returnTo(Settings(ctx: ctx, returnState: Library(ctx: ctx))),
+      onOpenSettings: () => controller.returnTo(
+        Settings(
+          ctx: ctx,
+          returnState: Library(ctx: ctx),
+        ),
+      ),
       onOpenHome: () => controller.goHome(ctx.servers, ctx.sectionGroups),
-      onOpenSearch: () => controller.returnTo(Search(ctx: ctx, returnState: Library(ctx: ctx))),
+      onOpenSearch: () => controller.returnTo(
+        Search(
+          ctx: ctx,
+          returnState: Library(ctx: ctx),
+        ),
+      ),
       onOpenWatchlist: () => controller.returnTo(Watchlist(ctx: ctx)),
       account: controller.localAccount,
       versionName: _appVersionName,
@@ -660,26 +932,47 @@ class _AppContent extends StatelessWidget {
   void _toggleServer(PlexResource resource, bool enabled) =>
       controller.setServerEnabled(resource.machineIdentifier, enabled);
 
-  Future<List<PlexResource>> _loadServers() => PlexResourcesApi(controller.clientIdentifier).listServers(controller.accountTokenOrEmpty);
+  Future<List<PlexResource>> _loadServers() =>
+      PlexResourcesApi(controller.clientIdentifier)
+          .listServers(controller.accountTokenOrEmpty);
 
-  Future<ReachableServer?> _probeServer(PlexResource resource) => PlexResourcesApi(controller.clientIdentifier).connectToResource(resource);
+  Future<ReachableServer?> _probeServer(PlexResource resource) =>
+      PlexResourcesApi(controller.clientIdentifier).connectToResource(resource);
 
-  Future<int?> _loadLibraryCount(PlexServer server) async => (await PlexServerApi(server, controller.clientIdentifier).fetchSections()).length;
+  Future<int?> _loadLibraryCount(PlexServer server) async =>
+      (await PlexServerApi(
+        server,
+        controller.clientIdentifier,
+      ).fetchSections()).length;
 
   /// Fans a search query out across every connected server concurrently —
   /// DESIGN.md screen 05 is explicitly "global across servers", grouped and
   /// labelled by which server each result came from — then folds duplicate
   /// works into one card, same as every other merge boundary.
-  Future<List<FoldedWork<PlexOnDeckItem>>> _fanOutSearch(LibraryContext ctx, String query) async {
-    final results = await Future.wait(ctx.servers.map((cs) async {
-      try {
-        final hits = await PlexServerApi(cs.server, controller.clientIdentifier).search(query);
-        return hits.map((i) => Sourced(i, cs.server, cs.reachability)).toList();
-      } catch (_) {
-        return const <Sourced<PlexOnDeckItem>>[];
-      }
-    }));
-    return foldByGuid(results.expand((l) => l).toList(), guidOf: (i) => i.guid, alternateIdsOf: (i) => i.guids.map((g) => g.id).toList());
+  Future<List<FoldedWork<PlexOnDeckItem>>> _fanOutSearch(
+    LibraryContext ctx,
+    String query,
+  ) async {
+    final results = await Future.wait(
+      ctx.servers.map((cs) async {
+        try {
+          final hits = await PlexServerApi(
+            cs.server,
+            controller.clientIdentifier,
+          ).search(query);
+          return hits
+              .map((i) => Sourced(i, cs.server, cs.reachability))
+              .toList();
+        } catch (_) {
+          return const <Sourced<PlexOnDeckItem>>[];
+        }
+      }),
+    );
+    return foldByGuid(
+      results.expand((l) => l).toList(),
+      guidOf: (i) => i.guid,
+      alternateIdsOf: (i) => i.guids.map((g) => g.id).toList(),
+    );
   }
 
   /// Converts every copy of a [FoldedWork]&lt;PlexOnDeckItem&gt; through
@@ -687,32 +980,70 @@ class _AppContent extends StatelessWidget {
   /// fold's guid and copy set — mirrors the same-named private helper in
   /// app_root_controller.dart, duplicated here since that one is
   /// library-private.
-  FoldedWork<PlexLibraryItem> _libraryWorkFrom(FoldedWork<PlexOnDeckItem> work, PlexLibraryItem Function(PlexOnDeckItem) convert) =>
-      FoldedWork(work.guid, work.copies.map((c) => Sourced(convert(c.value), c.server, c.reachability)).toList());
+  FoldedWork<PlexLibraryItem> _libraryWorkFrom(
+    FoldedWork<PlexOnDeckItem> work,
+    PlexLibraryItem Function(PlexOnDeckItem) convert,
+  ) => FoldedWork(
+    work.guid,
+    work.copies
+        .map((c) => Sourced(convert(c.value), c.server, c.reachability))
+        .toList(),
+  );
 
   /// Same fan-out shape as items themselves (_fetchGroupItems in the
   /// controller) — collections aren't foldable works (no guid), so they're
   /// merged across servers but never deduplicated.
-  Future<List<Sourced<PlexCollection>>> _fetchGroupCollections(LibraryContext ctx) async {
-    final results = await Future.wait(ctx.servers.map((cs) async {
-      final section = ctx.selectedSectionGroup.sectionOn(cs.server.machineIdentifier);
-      if (section == null) return const <Sourced<PlexCollection>>[];
-      try {
-        final collections = await PlexServerApi(cs.server, controller.clientIdentifier).fetchCollections(section.key);
-        return collections.map((c) => Sourced(c, cs.server, cs.reachability)).toList();
-      } catch (_) {
-        return const <Sourced<PlexCollection>>[];
-      }
-    }));
+  Future<List<Sourced<PlexCollection>>> _fetchGroupCollections(
+    LibraryContext ctx,
+  ) async {
+    final results = await Future.wait(
+      ctx.servers.map((cs) async {
+        final section = ctx.selectedSectionGroup.sectionOn(
+          cs.server.machineIdentifier,
+        );
+        if (section == null) return const <Sourced<PlexCollection>>[];
+        try {
+          final collections = await PlexServerApi(
+            cs.server,
+            controller.clientIdentifier,
+          ).fetchCollections(section.key);
+          return collections
+              .map((c) => Sourced(c, cs.server, cs.reachability))
+              .toList();
+        } catch (_) {
+          return const <Sourced<PlexCollection>>[];
+        }
+      }),
+    );
     return results.expand((l) => l).toList();
   }
 
-  void _openCollection(LibraryContext ctx, Sourced<PlexCollection> collection) async {
+  void _openCollection(
+    LibraryContext ctx,
+    Sourced<PlexCollection> collection,
+  ) async {
     try {
-      final items = await PlexServerApi(collection.server, controller.clientIdentifier).fetchCollectionItems(collection.value.ratingKey);
-      controller.returnTo(CollectionDetail(ctx: ctx, collection: collection, items: items, returnState: Library(ctx: ctx)));
+      final items = await PlexServerApi(
+        collection.server,
+        controller.clientIdentifier,
+      ).fetchCollectionItems(collection.value.ratingKey);
+      controller.returnTo(
+        CollectionDetail(
+          ctx: ctx,
+          collection: collection,
+          items: items,
+          returnState: Library(ctx: ctx),
+        ),
+      );
     } catch (_) {
-      controller.returnTo(CollectionDetail(ctx: ctx, collection: collection, items: const [], returnState: Library(ctx: ctx)));
+      controller.returnTo(
+        CollectionDetail(
+          ctx: ctx,
+          collection: collection,
+          items: const [],
+          returnState: Library(ctx: ctx),
+        ),
+      );
     }
   }
 
@@ -729,7 +1060,11 @@ class _AppContent extends StatelessWidget {
   /// somehow no longer present — best-effort, since the server was already
   /// known reachable enough to have gotten this far.
   ServerReachability _reachabilityOf(LibraryContext ctx, PlexServer server) =>
-      ctx.servers.firstWhereOrNull((s) => s.server.machineIdentifier == server.machineIdentifier)?.reachability ??
+      ctx.servers
+          .firstWhereOrNull(
+            (s) => s.server.machineIdentifier == server.machineIdentifier,
+          )
+          ?.reachability ??
       ServerReachability.local;
 
   /// Screen 25's "Play from Loft" offer — the next reachable copy of the
@@ -740,10 +1075,15 @@ class _AppContent extends StatelessWidget {
   /// comment on why this is wired at the call site, not stored on the
   /// state, so this scope limit stays a local decision rather than a
   /// structural one).
-  Sourced<PlexLibraryItem>? _alternateSourceFor(AppState returnState, PlexServer failedServer) {
+  Sourced<PlexLibraryItem>? _alternateSourceFor(
+    AppState returnState,
+    PlexServer failedServer,
+  ) {
     if (returnState is! MovieDetail) return null;
     return returnState.work.copies.firstWhereOrNull(
-      (c) => c.reachability != ServerReachability.unreachable && c.server.machineIdentifier != failedServer.machineIdentifier,
+      (c) =>
+          c.reachability != ServerReachability.unreachable &&
+          c.server.machineIdentifier != failedServer.machineIdentifier,
     );
   }
 }

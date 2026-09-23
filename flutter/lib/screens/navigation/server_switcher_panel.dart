@@ -123,7 +123,9 @@ class _ServerSwitcherPanelState extends State<ServerSwitcherPanel> {
     // whichever resources aren't already part of the hub (disabled, or
     // failed to connect last time).
     final already = widget.connectedServers
-        .where((c) => c.server.machineIdentifier == row.resource.machineIdentifier)
+        .where(
+          (c) => c.server.machineIdentifier == row.resource.machineIdentifier,
+        )
         .firstOrNull;
     if (already != null) {
       setState(() {
@@ -250,11 +252,14 @@ class _ServerSwitcherPanelState extends State<ServerSwitcherPanel> {
                               for (final (index, row) in _rows.indexed) ...[
                                 _ServerResultRow(
                                   row: row,
-                                  enabled: !widget.disabledServerIds
-                                      .contains(row.resource.machineIdentifier),
+                                  enabled: !widget.disabledServerIds.contains(
+                                    row.resource.machineIdentifier,
+                                  ),
                                   focusNode: index == 0 ? _firstFocus : null,
-                                  onToggle: (enabled) =>
-                                      widget.onToggleServer(row.resource, enabled),
+                                  onToggle: (enabled) => widget.onToggleServer(
+                                    row.resource,
+                                    enabled,
+                                  ),
                                 ),
                                 SizedBox(height: AppSpacing.md.du(context)),
                               ],
@@ -441,8 +446,13 @@ class _SwitchIndicator extends StatelessWidget {
       height: _switchTrackHeight.du(context),
       decoration: BoxDecoration(
         color: checked ? AppColors.accent700 : AppColors.surface,
-        border: Border.all(color: AppColors.line, width: AppShape.borderWidth.du(context)),
-        borderRadius: BorderRadius.circular((_switchTrackHeight / 2).du(context)),
+        border: Border.all(
+          color: AppColors.line,
+          width: AppShape.borderWidth.du(context),
+        ),
+        borderRadius: BorderRadius.circular(
+          (_switchTrackHeight / 2).du(context),
+        ),
       ),
       alignment: checked ? Alignment.centerRight : Alignment.centerLeft,
       padding: EdgeInsets.symmetric(horizontal: thumbInset),

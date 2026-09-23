@@ -59,22 +59,37 @@ void main() {
     await _pump(tester);
 
     expect(find.text('Arrival'), findsOneWidget);
-    expect(find.text('Home Relay'), findsOneWidget);
+    // Never connected in tests, so the header line is still connecting.
+    expect(find.text('Connecting to Home Relay…'), findsOneWidget);
+  });
+
+  testWidgets('screen 10 header: whose room and how many seats are taken', (tester) async {
+    await _pump(tester);
+
+    expect(find.text('ALEX’S ROOM · 2 OF 8 SEATS'), findsOneWidget);
+  });
+
+  testWidgets('empty seats are drawn, not implied — five circles in all', (tester) async {
+    await _pump(tester);
+
+    // Host + us, so three drawn empty seats.
+    expect(find.text('Empty seat'), findsNWidgets(3));
   });
 
   testWidgets('shows a host card and, since we are not host yet, our own pinned card', (tester) async {
     await _pump(tester);
 
     expect(find.text('Alex'), findsOneWidget);
-    expect(find.text('host'), findsOneWidget);
+    expect(find.text('Host'), findsOneWidget);
     expect(find.text('Sean'), findsOneWidget);
+    expect(find.text('You'), findsOneWidget);
   });
 
   testWidgets('tapping Start invokes onStart(false)', (tester) async {
     bool? restarted;
     await _pump(tester, onStart: (r) => restarted = r);
 
-    await tester.tap(find.text('Start'));
+    await tester.tap(find.text('Start for everyone'));
     await tester.pump();
 
     expect(restarted, isFalse);
@@ -86,12 +101,12 @@ void main() {
     expect(find.byIcon(PhosphorIconsRegular.arrowCounterClockwise), findsNothing);
   });
 
-  testWidgets('tapping "Chat QR code" opens the modal', (tester) async {
+  testWidgets('tapping "Chat QR" opens the modal', (tester) async {
     await _pump(tester);
 
     expect(find.text('Join the chat'), findsNothing);
 
-    await tester.tap(find.text('Chat QR code'));
+    await tester.tap(find.text('Chat QR'));
     await tester.pump();
 
     expect(find.text('Join the chat'), findsOneWidget);
@@ -100,7 +115,7 @@ void main() {
   testWidgets('the chat modal shows "still connecting" before a room id is known', (tester) async {
     await _pump(tester);
 
-    await tester.tap(find.text('Chat QR code'));
+    await tester.tap(find.text('Chat QR'));
     await tester.pump();
 
     expect(find.text('Still connecting to the room — try again in a moment.'), findsOneWidget);
@@ -109,7 +124,7 @@ void main() {
   testWidgets('closing the chat modal dismisses it', (tester) async {
     await _pump(tester);
 
-    await tester.tap(find.text('Chat QR code'));
+    await tester.tap(find.text('Chat QR'));
     await tester.pump();
     expect(find.text('Join the chat'), findsOneWidget);
 
@@ -149,10 +164,14 @@ void main() {
       final client = _relay();
       addTearDown(client.dispose);
 
+      tester.view.physicalSize = const Size(1920, 1080);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
       await tester.pumpWidget(testApp(() => wentBack = true, client));
       await tester.pump();
 
-      await tester.tap(find.text('Chat QR code'));
+      await tester.tap(find.text('Chat QR'));
       await tester.pump();
       expect(find.text('Join the chat'), findsOneWidget);
 
@@ -168,6 +187,10 @@ void main() {
       final client = _relay();
       addTearDown(client.dispose);
 
+      tester.view.physicalSize = const Size(1920, 1080);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
       await tester.pumpWidget(testApp(() => wentBack = true, client));
       await tester.pump();
 

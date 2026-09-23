@@ -17,13 +17,17 @@ class SplashScreen extends StatefulWidget {
   State<SplashScreen> createState() => _SplashScreenState();
 }
 
-class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderStateMixin {
+class _SplashScreenState extends State<SplashScreen>
+    with SingleTickerProviderStateMixin {
   late final AnimationController _fadeIn;
 
   @override
   void initState() {
     super.initState();
-    _fadeIn = AnimationController(duration: const Duration(milliseconds: _fadeInMs), vsync: this)..forward();
+    _fadeIn = AnimationController(
+      duration: const Duration(milliseconds: _fadeInMs),
+      vsync: this,
+    )..forward();
   }
 
   @override
@@ -35,12 +39,17 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
   @override
   Widget build(BuildContext context) {
     final titleStyle = AppTypography.title1.copyWith(color: AppColors.inkOnArt);
-    final bodyStyle = AppTypography.body.copyWith(color: AppColors.inkOnArt.withValues(alpha: 0.7));
+    final bodyStyle = AppTypography.body.copyWith(
+      color: AppColors.inkOnArt.withValues(alpha: 0.7),
+    );
     return ColoredBox(
       color: AppColors.background,
       child: Center(
         child: FadeTransition(
-          opacity: CurvedAnimation(parent: _fadeIn, curve: Curves.fastOutSlowIn),
+          opacity: CurvedAnimation(
+            parent: _fadeIn,
+            curve: Curves.fastOutSlowIn,
+          ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [

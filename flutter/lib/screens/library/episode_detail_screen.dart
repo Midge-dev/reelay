@@ -121,7 +121,8 @@ class _EpisodeDetailScreenState extends State<EpisodeDetailScreen> {
     if (episode.index != null) kickerParts.add('Episode ${episode.index}');
 
     final metaParts = <String>[
-      if (episode.originallyAvailableAt != null) formatAirDate(episode.originallyAvailableAt!),
+      if (episode.originallyAvailableAt != null)
+        formatAirDate(episode.originallyAvailableAt!),
       if (episode.duration != null) formatRuntime(episode.duration!),
     ];
 
@@ -133,9 +134,7 @@ class _EpisodeDetailScreenState extends State<EpisodeDetailScreen> {
           child: Stack(
             fit: StackFit.expand,
             children: [
-              Artwork(
-                imageUrl: PlexImageUrl.of(widget.server, episode.thumb),
-              ),
+              Artwork(imageUrl: PlexImageUrl.of(widget.server, episode.thumb)),
               // scrim.edge — the ground colour holds solid under the text
               // column and fades away toward the artwork. DESIGN.md #2.
               Positioned.fill(
@@ -184,7 +183,11 @@ class _EpisodeDetailScreenState extends State<EpisodeDetailScreen> {
                     ),
                     if (metaParts.isNotEmpty) ...[
                       SizedBox(height: 14.du(context)),
-                      AppText(metaParts.join('  ·  '), style: AppTypography.caption, color: AppColors.ink2),
+                      AppText(
+                        metaParts.join('  ·  '),
+                        style: AppTypography.caption,
+                        color: AppColors.ink2,
+                      ),
                     ],
                     if (hasProgress) ...[
                       SizedBox(height: AppSpacing.md.du(context)),
@@ -192,7 +195,9 @@ class _EpisodeDetailScreenState extends State<EpisodeDetailScreen> {
                         children: [
                           Flexible(
                             child: ConstrainedBox(
-                              constraints: BoxConstraints(maxWidth: 380.du(context)),
+                              constraints: BoxConstraints(
+                                maxWidth: 380.du(context),
+                              ),
                               child: SizedBox(
                                 height: 4.du(context),
                                 child: DecoratedBox(
@@ -200,7 +205,9 @@ class _EpisodeDetailScreenState extends State<EpisodeDetailScreen> {
                                     color: AppColors.ink.withValues(
                                       alpha: 0.22,
                                     ),
-                                    borderRadius: BorderRadius.circular(2.du(context)),
+                                    borderRadius: BorderRadius.circular(
+                                      2.du(context),
+                                    ),
                                   ),
                                   child: FractionallySizedBox(
                                     alignment: Alignment.centerLeft,
@@ -264,7 +271,9 @@ class _EpisodeDetailScreenState extends State<EpisodeDetailScreen> {
                                 const AppIcon(PhosphorIconsFill.play, size: 22),
                                 SizedBox(width: AppSpacing.md.du(context)),
                                 AppText(
-                                  hasResume ? 'Resume ${formatTimecode(episode.viewOffset ?? 0)}' : 'Play',
+                                  hasResume
+                                      ? 'Resume ${formatTimecode(episode.viewOffset ?? 0)}'
+                                      : 'Play',
                                   style: AppTypography.label,
                                   color: null,
                                 ),
@@ -281,7 +290,10 @@ class _EpisodeDetailScreenState extends State<EpisodeDetailScreen> {
                             child: Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                const AppIcon(PhosphorIconsRegular.usersThree, size: 22),
+                                const AppIcon(
+                                  PhosphorIconsRegular.usersThree,
+                                  size: 22,
+                                ),
                                 Padding(
                                   padding: EdgeInsets.only(
                                     left: AppSpacing.sm.du(context),

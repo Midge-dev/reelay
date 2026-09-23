@@ -825,7 +825,10 @@ class _Chip extends StatelessWidget {
     return DecoratedBox(
       decoration: BoxDecoration(color: AppScrims.dialog.withValues(alpha: 0.6)),
       child: Padding(
-        padding: EdgeInsets.symmetric(horizontal: 12.du(context), vertical: 6.du(context)),
+        padding: EdgeInsets.symmetric(
+          horizontal: 12.du(context),
+          vertical: 6.du(context),
+        ),
         child: child,
       ),
     );
@@ -857,7 +860,12 @@ class _TitleBar extends StatelessWidget {
 
     return Container(
       width: double.infinity,
-      padding: EdgeInsets.fromLTRB(24.du(context), 24.du(context), 24.du(context), 48.du(context)),
+      padding: EdgeInsets.fromLTRB(
+        24.du(context),
+        24.du(context),
+        24.du(context),
+        48.du(context),
+      ),
       decoration: BoxDecoration(
         gradient: LinearGradient(
           begin: Alignment.topCenter,

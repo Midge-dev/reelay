@@ -61,7 +61,9 @@ class _RemoveConfirmOverlayState extends State<RemoveConfirmOverlay> {
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) => _removeFocus.requestFocus());
+    WidgetsBinding.instance.addPostFrameCallback(
+      (_) => _removeFocus.requestFocus(),
+    );
   }
 
   @override
@@ -104,29 +106,57 @@ class _RemoveConfirmOverlayState extends State<RemoveConfirmOverlay> {
     if (event is! KeyDownEvent) return KeyEventResult.ignored;
     final key = event.logicalKey;
     final escaping = widget.compact
-        ? (key == LogicalKeyboardKey.arrowLeft || key == LogicalKeyboardKey.arrowRight)
-        : (key == LogicalKeyboardKey.arrowUp || key == LogicalKeyboardKey.arrowDown);
+        ? (key == LogicalKeyboardKey.arrowLeft ||
+              key == LogicalKeyboardKey.arrowRight)
+        : (key == LogicalKeyboardKey.arrowUp ||
+              key == LogicalKeyboardKey.arrowDown);
     return escaping ? KeyEventResult.handled : KeyEventResult.ignored;
   }
 
   KeyEventResult _trapFirstEdge(FocusNode node, KeyEvent event) {
     if (event is! KeyDownEvent) return KeyEventResult.ignored;
-    final key = widget.compact ? LogicalKeyboardKey.arrowUp : LogicalKeyboardKey.arrowLeft;
-    return event.logicalKey == key ? KeyEventResult.handled : KeyEventResult.ignored;
+    final key = widget.compact
+        ? LogicalKeyboardKey.arrowUp
+        : LogicalKeyboardKey.arrowLeft;
+    return event.logicalKey == key
+        ? KeyEventResult.handled
+        : KeyEventResult.ignored;
   }
 
   KeyEventResult _trapLastEdge(FocusNode node, KeyEvent event) {
     if (event is! KeyDownEvent) return KeyEventResult.ignored;
-    final key = widget.compact ? LogicalKeyboardKey.arrowDown : LogicalKeyboardKey.arrowRight;
-    return event.logicalKey == key ? KeyEventResult.handled : KeyEventResult.ignored;
+    final key = widget.compact
+        ? LogicalKeyboardKey.arrowDown
+        : LogicalKeyboardKey.arrowRight;
+    return event.logicalKey == key
+        ? KeyEventResult.handled
+        : KeyEventResult.ignored;
   }
 
   @override
   Widget build(BuildContext context) {
     final buttons = [
-      Focus(canRequestFocus: false, onKeyEvent: _trapFirstEdge, child: AppButton(onClick: _guardedConfirm, compact: true, focusNode: _removeFocus, child: const AppText('Remove'))),
+      Focus(
+        canRequestFocus: false,
+        onKeyEvent: _trapFirstEdge,
+        child: AppButton(
+          onClick: _guardedConfirm,
+          compact: true,
+          focusNode: _removeFocus,
+          child: const AppText('Remove'),
+        ),
+      ),
       SizedBox(width: 16.du(context), height: 8.du(context)),
-      Focus(canRequestFocus: false, onKeyEvent: _trapLastEdge, child: AppButton(onClick: _guardedCancel, compact: true, focusNode: _cancelFocus, child: const AppText('Cancel'))),
+      Focus(
+        canRequestFocus: false,
+        onKeyEvent: _trapLastEdge,
+        child: AppButton(
+          onClick: _guardedCancel,
+          compact: true,
+          focusNode: _cancelFocus,
+          child: const AppText('Cancel'),
+        ),
+      ),
     ];
 
     return Positioned.fill(
@@ -140,7 +170,9 @@ class _RemoveConfirmOverlayState extends State<RemoveConfirmOverlay> {
             color: AppScrims.dialog.withValues(alpha: 0.85),
             child: Center(
               child: Padding(
-                padding: widget.compact ? EdgeInsets.symmetric(horizontal: 8.du(context)) : EdgeInsets.zero,
+                padding: widget.compact
+                    ? EdgeInsets.symmetric(horizontal: 8.du(context))
+                    : EdgeInsets.zero,
                 // Compose's Box silently clips content too big for a small
                 // card's overlay instead of throwing; Flutter's Column would
                 // hard-overflow in the same spot (seen on the narrow
@@ -153,7 +185,9 @@ class _RemoveConfirmOverlayState extends State<RemoveConfirmOverlay> {
                     crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
                       ConstrainedBox(
-                        constraints: BoxConstraints(maxWidth: (widget.compact ? 140 : 260).du(context)),
+                        constraints: BoxConstraints(
+                          maxWidth: (widget.compact ? 140 : 260).du(context),
+                        ),
                         child: AppText(
                           widget.message,
                           textAlign: TextAlign.center,
@@ -164,7 +198,10 @@ class _RemoveConfirmOverlayState extends State<RemoveConfirmOverlay> {
                       ),
                       SizedBox(height: 8.du(context)),
                       if (widget.compact)
-                        Column(mainAxisSize: MainAxisSize.min, children: [buttons[0], buttons[1], buttons[2]])
+                        Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [buttons[0], buttons[1], buttons[2]],
+                        )
                       else
                         Row(mainAxisSize: MainAxisSize.min, children: buttons),
                     ],

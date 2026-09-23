@@ -94,7 +94,8 @@ class _PlaybackFailedScreenState extends State<PlaybackFailedScreen> {
                 builder: (context) {
                   final alternateName = widget.alternateServerName;
                   final onPlayAlternate = widget.onPlayAlternate;
-                  final hasAlternate = alternateName != null && onPlayAlternate != null;
+                  final hasAlternate =
+                      alternateName != null && onPlayAlternate != null;
                   return Wrap(
                     // Wrap, not Row — three buttons (alternate offer, retry,
                     // back) can exceed this dialog's width at some scale

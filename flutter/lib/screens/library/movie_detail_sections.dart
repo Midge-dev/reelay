@@ -28,18 +28,34 @@ class MetaRow extends StatelessWidget {
       runSpacing: AppSpacing.sm.du(context),
       children: [
         for (final (i, part) in parts.indexed) ...[
-          if (i > 0) ...[gap, AppText('·', style: AppTypography.caption, color: AppColors.ink4), gap],
+          if (i > 0) ...[
+            gap,
+            AppText('·', style: AppTypography.caption, color: AppColors.ink4),
+            gap,
+          ],
           AppText(part, style: AppTypography.caption, color: AppColors.ink2),
         ],
         for (final chip in chips) ...[
           gap,
           Container(
-            padding: EdgeInsets.symmetric(horizontal: 9.du(context), vertical: 3.du(context)),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(AppShape.radiusSm.du(context)),
-              border: Border.all(color: AppColors.lineStrong, width: 1.du(context)),
+            padding: EdgeInsets.symmetric(
+              horizontal: 9.du(context),
+              vertical: 3.du(context),
             ),
-            child: AppText(chip, style: AppTypography.micro.copyWith(letterSpacing: 0), color: AppColors.ink2),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(
+                AppShape.radiusSm.du(context),
+              ),
+              border: Border.all(
+                color: AppColors.lineStrong,
+                width: 1.du(context),
+              ),
+            ),
+            child: AppText(
+              chip,
+              style: AppTypography.micro.copyWith(letterSpacing: 0),
+              color: AppColors.ink2,
+            ),
           ),
         ],
       ],
@@ -67,7 +83,14 @@ class RowHeading extends StatelessWidget {
           AppText(title, style: AppTypography.rowLabel),
           if (hint != null) ...[
             SizedBox(width: 22.du(context)),
-            Flexible(child: AppText(hint!, style: AppTypography.caption, maxLines: 1, overflow: TextOverflow.ellipsis)),
+            Flexible(
+              child: AppText(
+                hint!,
+                style: AppTypography.caption,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
           ],
         ],
       ),
@@ -123,7 +146,11 @@ class CastCrewRow extends StatelessWidget {
           padding: EdgeInsets.symmetric(horizontal: AppSpacing.xs.du(context)),
           child: Align(
             alignment: Alignment.topCenter,
-            child: Container(width: 1.du(context), height: _personCircle.du(context), color: AppColors.line),
+            child: Container(
+              width: 1.du(context),
+              height: _personCircle.du(context),
+              color: AppColors.line,
+            ),
           ),
         ),
       for (final (person, job) in crewEntries)
@@ -140,12 +167,18 @@ class CastCrewRow extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
       children: [
-        const RowHeading(title: 'Cast & crew', hint: 'Select a name for everything they are in on your servers'),
-        SizedBox(height: (AppSpacing.lg - AppSpacing.rowHeadroom / 2).du(context)),
+        const RowHeading(
+          title: 'Cast & crew',
+          hint: 'Select a name for everything they are in on your servers',
+        ),
+        SizedBox(
+          height: (AppSpacing.lg - AppSpacing.rowHeadroom / 2).du(context),
+        ),
         SizedBox(
           // 130 circle + 10 + name 26 + role 24, +8 for text rounding at
           // fractional scales, + rowHeadroom for the focused circle.
-          height: (_personCircle + 10 + 26 + 24 + 8 + AppSpacing.rowHeadroom).du(context),
+          height: (_personCircle + 10 + 26 + 24 + 8 + AppSpacing.rowHeadroom)
+              .du(context),
           child: EdgeFadeRow(
             child: ListView.separated(
               scrollDirection: Axis.horizontal,
@@ -155,7 +188,11 @@ class CastCrewRow extends StatelessWidget {
                 vertical: (AppSpacing.rowHeadroom / 2).du(context),
               ),
               itemCount: entries.length,
-              separatorBuilder: (context, index) => SizedBox(width: (_personGap - (_personWidth - _personCircle)).du(context)),
+              separatorBuilder: (context, index) => SizedBox(
+                width: (_personGap - (_personWidth - _personCircle)).du(
+                  context,
+                ),
+              ),
               itemBuilder: (context, index) => entries[index],
             ),
           ),
@@ -167,7 +204,10 @@ class CastCrewRow extends StatelessWidget {
 
 SurfaceBorder get _personBorder => SurfaceBorder(
   idle: SurfaceBorderSide.solid(AppColors.lineStrong, width: 1),
-  focused: SurfaceBorderSide.solid(AppColors.accent, width: AppShape.artFrameWidth),
+  focused: SurfaceBorderSide.solid(
+    AppColors.accent,
+    width: AppShape.artFrameWidth,
+  ),
   noSpine: true,
 );
 
@@ -208,12 +248,18 @@ class _CastMemberAvatarState extends State<_CastMemberAvatar> {
               border: _personBorder,
               onFocusChange: (f) => setState(() => _focused = f),
               child: person.thumb != null
-                  ? SizedBox.expand(child: Artwork(imageUrl: PlexImageUrl.of(widget.server, person.thumb)))
+                  ? SizedBox.expand(
+                      child: Artwork(
+                        imageUrl: PlexImageUrl.of(widget.server, person.thumb),
+                      ),
+                    )
                   : ColoredBox(
                       color: AppColors.surface,
                       child: Center(
                         child: AppText(
-                          person.tag.isNotEmpty ? person.tag[0].toUpperCase() : '?',
+                          person.tag.isNotEmpty
+                              ? person.tag[0].toUpperCase()
+                              : '?',
                           style: AppTypography.title2,
                           color: AppColors.ink2,
                         ),
@@ -224,7 +270,9 @@ class _CastMemberAvatarState extends State<_CastMemberAvatar> {
           SizedBox(height: 10.du(context)),
           AppText(
             person.tag,
-            style: AppTypography.label.copyWith(fontWeight: _focused ? FontWeight.w500 : FontWeight.w400),
+            style: AppTypography.label.copyWith(
+              fontWeight: _focused ? FontWeight.w500 : FontWeight.w400,
+            ),
             color: _focused ? AppColors.ink : AppColors.ink2,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,

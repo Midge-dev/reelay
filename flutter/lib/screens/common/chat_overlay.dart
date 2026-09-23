@@ -19,7 +19,11 @@ class ChatOverlay extends StatefulWidget {
   final Stream<ChatMessage> messages;
   final ChatOverlayCorner corner;
 
-  const ChatOverlay({super.key, required this.messages, this.corner = ChatOverlayCorner.bottomEnd});
+  const ChatOverlay({
+    super.key,
+    required this.messages,
+    this.corner = ChatOverlayCorner.bottomEnd,
+  });
 
   @override
   State<ChatOverlay> createState() => _ChatOverlayState();
@@ -53,17 +57,28 @@ class _ChatOverlayState extends State<ChatOverlay> {
 
   @override
   Widget build(BuildContext context) {
-    final isTop = widget.corner == ChatOverlayCorner.topStart || widget.corner == ChatOverlayCorner.topEnd;
-    final isStart = widget.corner == ChatOverlayCorner.topStart || widget.corner == ChatOverlayCorner.bottomStart;
+    final isTop =
+        widget.corner == ChatOverlayCorner.topStart ||
+        widget.corner == ChatOverlayCorner.topEnd;
+    final isStart =
+        widget.corner == ChatOverlayCorner.topStart ||
+        widget.corner == ChatOverlayCorner.bottomStart;
     final ordered = isTop ? _visible.reversed.toList() : _visible;
     final textAlign = isStart ? TextAlign.start : TextAlign.end;
 
     return Column(
       mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: isStart ? CrossAxisAlignment.start : CrossAxisAlignment.end,
+      crossAxisAlignment: isStart
+          ? CrossAxisAlignment.start
+          : CrossAxisAlignment.end,
       children: [
         for (final message in ordered) ...[
-          _ChatBubble(key: ValueKey(message), message: message, textAlign: textAlign, onExpired: () => _expire(message)),
+          _ChatBubble(
+            key: ValueKey(message),
+            message: message,
+            textAlign: textAlign,
+            onExpired: () => _expire(message),
+          ),
           if (message != ordered.last) SizedBox(height: 6.du(context)),
         ],
       ],
@@ -76,7 +91,12 @@ class _ChatBubble extends StatefulWidget {
   final TextAlign textAlign;
   final VoidCallback onExpired;
 
-  const _ChatBubble({super.key, required this.message, required this.textAlign, required this.onExpired});
+  const _ChatBubble({
+    super.key,
+    required this.message,
+    required this.textAlign,
+    required this.onExpired,
+  });
 
   @override
   State<_ChatBubble> createState() => _ChatBubbleState();
@@ -91,7 +111,10 @@ class _ChatBubbleState extends State<_ChatBubble> {
     Future.delayed(const Duration(milliseconds: _messageVisibleMs), () {
       if (!mounted) return;
       setState(() => _shown = false);
-      Future.delayed(const Duration(milliseconds: _fadeOutMs), widget.onExpired);
+      Future.delayed(
+        const Duration(milliseconds: _fadeOutMs),
+        widget.onExpired,
+      );
     });
   }
 
@@ -103,9 +126,14 @@ class _ChatBubbleState extends State<_ChatBubble> {
       child: ConstrainedBox(
         constraints: BoxConstraints(maxWidth: 420.du(context)),
         child: DecoratedBox(
-          decoration: BoxDecoration(color: AppScrims.dialog.withValues(alpha: 0.6)),
+          decoration: BoxDecoration(
+            color: AppScrims.dialog.withValues(alpha: 0.6),
+          ),
           child: Padding(
-            padding: EdgeInsets.symmetric(horizontal: 12.du(context), vertical: 6.du(context)),
+            padding: EdgeInsets.symmetric(
+              horizontal: 12.du(context),
+              vertical: 6.du(context),
+            ),
             child: AppText(
               '${widget.message.username}: ${widget.message.text}',
               color: AppColors.inkOnArt,

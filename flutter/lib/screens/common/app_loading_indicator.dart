@@ -18,13 +18,17 @@ class AppLoadingIndicator extends StatefulWidget {
   State<AppLoadingIndicator> createState() => _AppLoadingIndicatorState();
 }
 
-class _AppLoadingIndicatorState extends State<AppLoadingIndicator> with SingleTickerProviderStateMixin {
+class _AppLoadingIndicatorState extends State<AppLoadingIndicator>
+    with SingleTickerProviderStateMixin {
   late final AnimationController _controller;
 
   @override
   void initState() {
     super.initState();
-    _controller = AnimationController(duration: const Duration(milliseconds: 1000), vsync: this)..repeat();
+    _controller = AnimationController(
+      duration: const Duration(milliseconds: 1000),
+      vsync: this,
+    )..repeat();
   }
 
   @override
@@ -41,7 +45,10 @@ class _AppLoadingIndicatorState extends State<AppLoadingIndicator> with SingleTi
       child: AnimatedBuilder(
         animation: _controller,
         builder: (context, _) => CustomPaint(
-          painter: _ArcPainter(_controller.value * 360, _strokeWidth.du(context)),
+          painter: _ArcPainter(
+            _controller.value * 360,
+            _strokeWidth.du(context),
+          ),
         ),
       ),
     );

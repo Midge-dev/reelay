@@ -63,7 +63,11 @@ class WatchTogetherRow extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       children: [
         Padding(
-          padding: EdgeInsets.only(left: 32.du(context), top: 32.du(context), bottom: 16.du(context)),
+          padding: EdgeInsets.only(
+            left: 32.du(context),
+            top: 32.du(context),
+            bottom: 16.du(context),
+          ),
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.center,
             mainAxisSize: MainAxisSize.min,
@@ -108,10 +112,14 @@ class WatchTogetherRow extends StatelessWidget {
               // and RoomCard also has a focus-scale that can bleed past its
               // own bounds.
               clipBehavior: Clip.none,
-              padding: EdgeInsets.symmetric(horizontal: 48.du(context), vertical: 10.du(context)),
+              padding: EdgeInsets.symmetric(
+                horizontal: 48.du(context),
+                vertical: 10.du(context),
+              ),
               itemCount:
                   rooms.length + (rooms.length > _visibleRoomCards ? 1 : 0),
-              separatorBuilder: (context, index) => SizedBox(width: 20.du(context)),
+              separatorBuilder: (context, index) =>
+                  SizedBox(width: 20.du(context)),
               itemBuilder: (context, index) {
                 if (index >= rooms.length) {
                   return _OverflowTile(

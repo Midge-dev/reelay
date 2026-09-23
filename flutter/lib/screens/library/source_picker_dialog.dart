@@ -62,7 +62,9 @@ class SourcePickerDialog extends StatelessWidget {
                 padding: EdgeInsets.all(AppSpacing.xxxl.du(context)),
                 decoration: BoxDecoration(
                   color: AppColors.surfaceOverlay,
-                  borderRadius: BorderRadius.circular(AppShape.radiusLg.du(context)),
+                  borderRadius: BorderRadius.circular(
+                    AppShape.radiusLg.du(context),
+                  ),
                   border: Border.all(color: AppColors.lineStrong),
                   boxShadow: AppElevation.overlay,
                 ),
@@ -97,10 +99,13 @@ class SourcePickerDialog extends StatelessWidget {
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           for (final (index, copy) in copies.indexed) ...[
-                            if (index > 0) SizedBox(height: AppSpacing.md.du(context)),
+                            if (index > 0)
+                              SizedBox(height: AppSpacing.md.du(context)),
                             _SourceRow(
                               copy: copy,
-                              isActive: copy.server.machineIdentifier == activeCopy.server.machineIdentifier,
+                              isActive:
+                                  copy.server.machineIdentifier ==
+                                  activeCopy.server.machineIdentifier,
                               autofocus: index == 0,
                               onClick: () {
                                 onSelect(copy);
@@ -185,7 +190,11 @@ class _SourceRow extends StatelessWidget {
                   ),
                 ),
                 SizedBox(width: AppSpacing.lg.du(context)),
-                AppText(statusLabel, style: AppTypography.caption, color: statusColor),
+                AppText(
+                  statusLabel,
+                  style: AppTypography.caption,
+                  color: statusColor,
+                ),
               ],
             ),
           ),

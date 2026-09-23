@@ -98,7 +98,9 @@ class _ClickToTypeTextFieldState extends State<ClickToTypeTextField> {
 
   void _handleEditFocusChange() {
     if (!mounted) return;
-    widget.onFocusChange?.call(_displayFocusNode.hasFocus || _editFocusNode.hasFocus);
+    widget.onFocusChange?.call(
+      _displayFocusNode.hasFocus || _editFocusNode.hasFocus,
+    );
     if (!_editFocusNode.hasFocus && _editingEnabled) {
       setState(() => _editingEnabled = false);
     }
@@ -154,7 +156,12 @@ class _ClickToTypeTextFieldState extends State<ClickToTypeTextField> {
 
     return Container(
       decoration: widget.showBorder
-          ? BoxDecoration(border: Border.all(color: borderColor, width: _borderWidth.du(context)))
+          ? BoxDecoration(
+              border: Border.all(
+                color: borderColor,
+                width: _borderWidth.du(context),
+              ),
+            )
           : null,
       child: _editingEnabled
           ? BackHandler(
@@ -181,7 +188,12 @@ class _ClickToTypeTextFieldState extends State<ClickToTypeTextField> {
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     )
-                  : Text(widget.value, style: style, maxLines: 1, overflow: TextOverflow.ellipsis),
+                  : Text(
+                      widget.value,
+                      style: style,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
             ),
     );
   }

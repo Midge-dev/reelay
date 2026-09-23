@@ -105,7 +105,9 @@ class _AddProfileDialogState extends State<AddProfileDialog> {
                 padding: EdgeInsets.all(AppSpacing.xxxl.du(context)),
                 decoration: BoxDecoration(
                   color: AppColors.surfaceOverlay,
-                  borderRadius: BorderRadius.circular(AppShape.radiusLg.du(context)),
+                  borderRadius: BorderRadius.circular(
+                    AppShape.radiusLg.du(context),
+                  ),
                   border: Border.all(color: AppColors.lineStrong),
                   boxShadow: AppElevation.overlay,
                 ),
@@ -176,7 +178,9 @@ class _AddProfileDialogState extends State<AddProfileDialog> {
                       ),
                       if (_linking && _token == null)
                         Padding(
-                          padding: EdgeInsets.only(top: AppSpacing.lg.du(context)),
+                          padding: EdgeInsets.only(
+                            top: AppSpacing.lg.du(context),
+                          ),
                           child: widget.linkPanelBuilder(
                             (token) => setState(() {
                               _token = token;

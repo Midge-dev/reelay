@@ -18,23 +18,36 @@ class SearchKey {
   final SearchKeyAction action;
   final int span;
 
-  const SearchKey({required this.label, this.insert, this.action = SearchKeyAction.char, this.span = 1});
+  const SearchKey({
+    required this.label,
+    this.insert,
+    this.action = SearchKeyAction.char,
+    this.span = 1,
+  });
 }
 
 const _columns = 6;
 
-List<SearchKey> _chars(String chars) => [for (final c in chars.split('')) SearchKey(label: c, insert: c)];
+List<SearchKey> _chars(String chars) => [
+  for (final c in chars.split('')) SearchKey(label: c, insert: c),
+];
 
 /// Screen 05's keyboard: six columns — A-Z, a "123" switch and backspace,
 /// then space and clear across the bottom. The symbols page has exactly
 /// the same shape, so switching never moves focus off the key under it.
 List<List<SearchKey>> searchKeyRows({required bool symbols}) {
-  final glyphs = symbols ? _chars("1234567890&-':!?.,()#+/\"%@") : _chars('ABCDEFGHIJKLMNOPQRSTUVWXYZ');
+  final glyphs = symbols
+      ? _chars("1234567890&-':!?.,()#+/\"%@")
+      : _chars('ABCDEFGHIJKLMNOPQRSTUVWXYZ');
   return [
     for (var i = 0; i < 24; i += _columns) glyphs.sublist(i, i + _columns),
     [
       ...glyphs.sublist(24, 26),
-      SearchKey(label: symbols ? 'ABC' : '123', action: SearchKeyAction.toggleSymbols, span: 2),
+      SearchKey(
+        label: symbols ? 'ABC' : '123',
+        action: SearchKeyAction.toggleSymbols,
+        span: 2,
+      ),
       const SearchKey(label: 'delete', action: SearchKeyAction.delete, span: 2),
     ],
     const [
@@ -47,7 +60,9 @@ List<List<SearchKey>> searchKeyRows({required bool symbols}) {
 const _keyHeight = 76.0;
 const _keyGap = 10.0;
 RoundedRectangleBorder _keyShape(BuildContext context) =>
-    RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppShape.radiusSm.du(context)));
+    RoundedRectangleBorder(
+      borderRadius: BorderRadius.circular(AppShape.radiusSm.du(context)),
+    );
 SurfaceColors get _keyColors => SurfaceColors(
   container: AppColors.surface,
   content: AppColors.ink2,
@@ -74,7 +89,13 @@ class SearchKeyboard extends StatefulWidget {
   final VoidCallback onClear;
   final FocusNode? firstKeyFocusNode;
 
-  const SearchKeyboard({super.key, required this.onChar, required this.onBackspace, required this.onClear, this.firstKeyFocusNode});
+  const SearchKeyboard({
+    super.key,
+    required this.onChar,
+    required this.onBackspace,
+    required this.onClear,
+    this.firstKeyFocusNode,
+  });
 
   @override
   State<SearchKeyboard> createState() => _SearchKeyboardState();
@@ -158,11 +179,18 @@ class _SearchKeyboardState extends State<SearchKeyboard> {
     );
   }
 
-  Widget _buildKey(BuildContext context, List<List<SearchKey>> rows, int r, int c, SearchKey key) {
+  Widget _buildKey(
+    BuildContext context,
+    List<List<SearchKey>> rows,
+    int r,
+    int c,
+    SearchKey key,
+  ) {
     final last = rows.length - 1;
     final end = c + key.span - 1;
     KeyEventResult onKey(FocusNode node, KeyEvent event) {
-      if (event is! KeyDownEvent && event is! KeyRepeatEvent) return KeyEventResult.ignored;
+      if (event is! KeyDownEvent && event is! KeyRepeatEvent)
+        return KeyEventResult.ignored;
       final k = event.logicalKey;
       FocusNode? target;
       if (k == LogicalKeyboardKey.arrowUp) {
@@ -190,7 +218,9 @@ class _SearchKeyboardState extends State<SearchKeyboard> {
         : AppText(
             key.label,
             textAlign: TextAlign.center,
-            style: isWord ? AppTypography.label : AppTypography.rowLabel.copyWith(fontWeight: FontWeight.w400),
+            style: isWord
+                ? AppTypography.label
+                : AppTypography.rowLabel.copyWith(fontWeight: FontWeight.w400),
             color: isWord ? AppColors.ink3 : null,
             maxLines: 1,
           );
@@ -203,12 +233,17 @@ class _SearchKeyboardState extends State<SearchKeyboard> {
         child: FocusableSurface(
           key: ValueKey('key-$r-$c'),
           onClick: () => _press(key),
-          onLongClick: key.action == SearchKeyAction.delete ? widget.onClear : null,
+          onLongClick: key.action == SearchKeyAction.delete
+              ? widget.onClear
+              : null,
           focusNode: _nodes[(r, c)],
           shape: _keyShape(context),
           colors: _keyColors,
           border: _keyBorder,
-          child: Semantics(label: key.action == SearchKeyAction.delete ? 'delete' : null, child: label),
+          child: Semantics(
+            label: key.action == SearchKeyAction.delete ? 'delete' : null,
+            child: label,
+          ),
         ),
       ),
     );

@@ -194,9 +194,8 @@ SurfaceColors get _tabColors => SurfaceColors(
   selectedContainer: AppColors.surfaceRaised,
   selectedContent: AppColors.ink,
 );
-SurfaceBorder get _tabBorder => SurfaceBorder(
-  focused: SurfaceBorderSide.solid(AppColors.accent),
-);
+SurfaceBorder get _tabBorder =>
+    SurfaceBorder(focused: SurfaceBorderSide.solid(AppColors.accent));
 
 class _TabButton extends StatelessWidget {
   final String label;
@@ -243,9 +242,8 @@ SurfaceColors get _rowColors => SurfaceColors(
   selectedContainer: AppColors.surfaceRaised,
   selectedContent: AppColors.ink,
 );
-SurfaceBorder get _rowBorder => SurfaceBorder(
-  focused: SurfaceBorderSide.solid(AppColors.accent),
-);
+SurfaceBorder get _rowBorder =>
+    SurfaceBorder(focused: SurfaceBorderSide.solid(AppColors.accent));
 
 class _MenuRow extends StatelessWidget {
   final String label;

@@ -64,7 +64,9 @@ class _RoomsPanelState extends State<RoomsPanel> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       _scope.requestFocus();
-      final first = _scope.traversalDescendants.where((n) => n.canRequestFocus).firstOrNull;
+      final first = _scope.traversalDescendants
+          .where((n) => n.canRequestFocus)
+          .firstOrNull;
       first?.requestFocus();
     });
   }
@@ -88,7 +90,8 @@ class _RoomsPanelState extends State<RoomsPanel> {
   // swallowed too so the rail can't be reached while it's open. Back is
   // the way out.
   KeyEventResult _trapLeft(FocusNode node, KeyEvent event) {
-    if (event is KeyDownEvent && event.logicalKey == LogicalKeyboardKey.arrowLeft) {
+    if (event is KeyDownEvent &&
+        event.logicalKey == LogicalKeyboardKey.arrowLeft) {
       node.focusInDirection(TraversalDirection.left);
       return KeyEventResult.handled;
     }
@@ -105,7 +108,9 @@ class _RoomsPanelState extends State<RoomsPanel> {
     // it. An unreachable one always shows, since it explains missing rooms.
     final groups = [
       for (final relay in widget.relays)
-        if ((byRelay[relay.id]?.isNotEmpty ?? false) || widget.relayHealth[relay.id]?.isReachable == false) relay,
+        if ((byRelay[relay.id]?.isNotEmpty ?? false) ||
+            widget.relayHealth[relay.id]?.isReachable == false)
+          relay,
     ];
 
     return Stack(
@@ -135,13 +140,19 @@ class _RoomsPanelState extends State<RoomsPanel> {
                   boxShadow: AppElevation.overlay,
                 ),
                 child: Padding(
-                  padding: EdgeInsets.symmetric(horizontal: AppSpacing.xxxl.du(context), vertical: 56.du(context)),
+                  padding: EdgeInsets.symmetric(
+                    horizontal: AppSpacing.xxxl.du(context),
+                    vertical: 56.du(context),
+                  ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
                       AppText('WATCH TOGETHER', style: AppTypography.micro),
                       SizedBox(height: AppSpacing.sm.du(context)),
-                      AppText(_headline(widget.rooms.length), style: AppTypography.title2),
+                      AppText(
+                        _headline(widget.rooms.length),
+                        style: AppTypography.title2,
+                      ),
                       SizedBox(height: AppSpacing.xxl.du(context)),
                       Expanded(
                         child: SingleChildScrollView(
@@ -211,7 +222,9 @@ class _RelayGroup extends StatelessWidget {
     final down = health?.isReachable == false;
     final statusColor = down ? AppColors.error : AppColors.success;
     final name = relay.nickname.isNotEmpty ? relay.nickname : 'Relay';
-    final detail = down ? 'UNREACHABLE' : (health?.latencyMs != null ? '${health!.latencyMs} MS' : null);
+    final detail = down
+        ? 'UNREACHABLE'
+        : (health?.latencyMs != null ? '${health!.latencyMs} MS' : null);
     final label = [name.toUpperCase(), ?detail].join(' · ');
 
     return Column(
@@ -222,23 +235,37 @@ class _RelayGroup extends StatelessWidget {
             Container(
               width: AppSpacing.sm.du(context),
               height: AppSpacing.sm.du(context),
-              decoration: BoxDecoration(color: statusColor, shape: BoxShape.circle),
+              decoration: BoxDecoration(
+                color: statusColor,
+                shape: BoxShape.circle,
+              ),
             ),
             SizedBox(width: AppSpacing.md.du(context)),
-            AppText(label, style: AppTypography.micro, color: down ? AppColors.error : AppColors.ink3),
+            AppText(
+              label,
+              style: AppTypography.micro,
+              color: down ? AppColors.error : AppColors.ink3,
+            ),
             SizedBox(width: AppSpacing.md.du(context)),
-            Expanded(child: Container(height: 1.du(context), color: AppColors.line)),
+            Expanded(
+              child: Container(height: 1.du(context), color: AppColors.line),
+            ),
           ],
         ),
         SizedBox(height: 14.du(context)),
         if (down)
-          _UnreachableRow(lastAnsweredAt: health?.lastAnsweredAt, onRetry: onRetry)
+          _UnreachableRow(
+            lastAnsweredAt: health?.lastAnsweredAt,
+            onRetry: onRetry,
+          )
         else
           for (final (i, merged) in rooms.indexed) ...[
             if (i > 0) SizedBox(height: 14.du(context)),
             _RoomRow(
               merged: merged,
-              seated: merged.room.roomId == myRoomId || hostedRoomIds.contains(merged.room.roomId),
+              seated:
+                  merged.room.roomId == myRoomId ||
+                  hostedRoomIds.contains(merged.room.roomId),
               onJoin: () => onJoin(merged),
             ),
           ],
@@ -253,7 +280,8 @@ SurfaceColors get _roomRowColors => SurfaceColors(
   focusedContainer: AppColors.surfaceRaised,
   focusedContent: AppColors.ink,
 );
-SurfaceBorder get _roomRowBorder => SurfaceBorder(idle: SurfaceBorderSide.solid(AppColors.line));
+SurfaceBorder get _roomRowBorder =>
+    SurfaceBorder(idle: SurfaceBorderSide.solid(AppColors.line));
 
 /// One room: thumbnail, "Maya's room", title line, drawn seats (empty seats
 /// are dashed, not implied — screen 10's rule), and the Join affordance.
@@ -265,7 +293,11 @@ class _RoomRow extends StatefulWidget {
   final bool seated;
   final VoidCallback onJoin;
 
-  const _RoomRow({required this.merged, required this.seated, required this.onJoin});
+  const _RoomRow({
+    required this.merged,
+    required this.seated,
+    required this.onJoin,
+  });
 
   @override
   State<_RoomRow> createState() => _RoomRowState();
@@ -286,16 +318,23 @@ class _RoomRowState extends State<_RoomRow> {
       child: FocusableSurface(
         onClick: full ? () {} : widget.onJoin,
         onFocusChange: (f) => setState(() => _focused = f),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppShape.radiusMd.du(context))),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppShape.radiusMd.du(context)),
+        ),
         colors: _roomRowColors,
         border: _roomRowBorder,
         contentAlignment: AlignmentDirectional.centerStart,
         child: Padding(
-          padding: EdgeInsets.symmetric(horizontal: AppSpacing.xl.du(context), vertical: 18.du(context)),
+          padding: EdgeInsets.symmetric(
+            horizontal: AppSpacing.xl.du(context),
+            vertical: 18.du(context),
+          ),
           child: Row(
             children: [
               ClipRRect(
-                borderRadius: BorderRadius.circular(AppShape.radiusSm.du(context)),
+                borderRadius: BorderRadius.circular(
+                  AppShape.radiusSm.du(context),
+                ),
                 child: SizedBox(
                   width: _thumbWidth.du(context),
                   height: _thumbHeight.du(context),
@@ -310,7 +349,12 @@ class _RoomRowState extends State<_RoomRow> {
                   children: [
                     AppText(
                       "${room.hostName}'s room",
-                      style: AppTypography.body.copyWith(height: 1.3, fontWeight: _focused ? FontWeight.w500 : FontWeight.w400),
+                      style: AppTypography.body.copyWith(
+                        height: 1.3,
+                        fontWeight: _focused
+                            ? FontWeight.w500
+                            : FontWeight.w400,
+                      ),
                       color: _focused ? AppColors.ink : AppColors.ink2,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
@@ -340,10 +384,14 @@ class _RoomRowState extends State<_RoomRow> {
               SizedBox(width: 22.du(context)),
               Container(
                 height: 52.du(context),
-                padding: EdgeInsets.symmetric(horizontal: AppSpacing.xl.du(context)),
+                padding: EdgeInsets.symmetric(
+                  horizontal: AppSpacing.xl.du(context),
+                ),
                 alignment: Alignment.center,
                 decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(AppShape.radiusMd.du(context)),
+                  borderRadius: BorderRadius.circular(
+                    AppShape.radiusMd.du(context),
+                  ),
                   border: Border.all(
                     color: _focused ? AppColors.accent : AppColors.lineStrong,
                     width: AppShape.borderWidth.du(context),
@@ -351,7 +399,9 @@ class _RoomRowState extends State<_RoomRow> {
                 ),
                 child: AppText(
                   action,
-                  style: AppTypography.caption.copyWith(fontWeight: _focused ? FontWeight.w500 : FontWeight.w400),
+                  style: AppTypography.caption.copyWith(
+                    fontWeight: _focused ? FontWeight.w500 : FontWeight.w400,
+                  ),
                   color: _focused ? AppColors.ink : AppColors.ink2,
                 ),
               ),
@@ -376,7 +426,10 @@ class _Seat extends StatelessWidget {
       return Container(
         width: size,
         height: size,
-        decoration: BoxDecoration(shape: BoxShape.circle, color: active ? AppColors.accent300 : AppColors.ink4),
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: active ? AppColors.accent300 : AppColors.ink4,
+        ),
       );
     }
     // Empty seats are drawn, not implied.
@@ -385,7 +438,10 @@ class _Seat extends StatelessWidget {
       height: size,
       decoration: BoxDecoration(
         shape: BoxShape.circle,
-        border: Border.all(color: AppColors.ink4, width: AppShape.borderWidth.du(context)),
+        border: Border.all(
+          color: AppColors.ink4,
+          width: AppShape.borderWidth.du(context),
+        ),
       ),
     );
   }
@@ -409,12 +465,17 @@ class _UnreachableRow extends StatelessWidget {
   Widget build(BuildContext context) {
     return CustomPaint(
       foregroundPainter: LeadingSpinePainter(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppShape.radiusMd.du(context))),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppShape.radiusMd.du(context)),
+        ),
         color: AppColors.error,
         width: AppSpacing.xs.du(context),
       ),
       child: Container(
-        padding: EdgeInsets.symmetric(horizontal: AppSpacing.xl.du(context), vertical: 22.du(context)),
+        padding: EdgeInsets.symmetric(
+          horizontal: AppSpacing.xl.du(context),
+          vertical: 22.du(context),
+        ),
         decoration: BoxDecoration(
           color: AppColors.surface,
           borderRadius: BorderRadius.circular(AppShape.radiusMd.du(context)),
@@ -429,12 +490,19 @@ class _UnreachableRow extends StatelessWidget {
                 children: [
                   AppText(_since(context), color: AppColors.ink2),
                   SizedBox(height: AppSpacing.xs.du(context)),
-                  AppText('Rooms hosted here cannot be joined until it comes back.', style: AppTypography.caption),
+                  AppText(
+                    'Rooms hosted here cannot be joined until it comes back.',
+                    style: AppTypography.caption,
+                  ),
                 ],
               ),
             ),
             SizedBox(width: 20.du(context)),
-            AppOutlinedButton(compact: true, onClick: onRetry, child: const AppText('Retry now')),
+            AppOutlinedButton(
+              compact: true,
+              onClick: onRetry,
+              child: const AppText('Retry now'),
+            ),
           ],
         ),
       ),

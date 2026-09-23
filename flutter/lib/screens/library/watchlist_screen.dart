@@ -145,7 +145,13 @@ class _WatchlistScreenState extends State<WatchlistScreen> {
   @override
   Widget build(BuildContext context) {
     final items = _sorted;
-    final missing = _items.where((i) => widget.availability.containsKey(i.ratingKey) && widget.availability[i.ratingKey] == null).length;
+    final missing = _items
+        .where(
+          (i) =>
+              widget.availability.containsKey(i.ratingKey) &&
+              widget.availability[i.ratingKey] == null,
+        )
+        .length;
     final count = [
       '${formatCount(_items.length)} title${_items.length == 1 ? '' : 's'}',
       if (missing > 0) '$missing not on your servers',

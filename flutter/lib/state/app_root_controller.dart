@@ -83,7 +83,8 @@ class AppRootController extends ChangeNotifier {
   Profile? _activeProfile;
   Profile? get activeProfile => _activeProfile;
 
-  AppSettings get currentSettings => _settingsStore.current ?? const AppSettings();
+  AppSettings get currentSettings =>
+      _settingsStore.current ?? const AppSettings();
 
   Future<void> saveBitratePreference(int kbps) {
     final updated = currentSettings.copyWith(maxVideoBitrateKbps: kbps);
@@ -141,10 +142,11 @@ class AppRootController extends ChangeNotifier {
   void retryRelays() => unawaited(_pollRooms());
 
   List<MergedRoom> get liveRooms => [
-        for (final entry in _liveRoomsByRelay.entries)
-          if (_liveRelaysById[entry.key] != null)
-            for (final room in entry.value) MergedRoom(_liveRelaysById[entry.key]!, room),
-      ];
+    for (final entry in _liveRoomsByRelay.entries)
+      if (_liveRelaysById[entry.key] != null)
+        for (final room in entry.value)
+          MergedRoom(_liveRelaysById[entry.key]!, room),
+  ];
 
   @override
   void dispose() {
@@ -202,26 +204,45 @@ class AppRootController extends ChangeNotifier {
     final profile = Profile(
       id: _randomProfileId(),
       name: resolvedName,
-      watchTogetherName: (watchTogetherName?.isNotEmpty ?? false) ? watchTogetherName! : resolvedName,
+      watchTogetherName: (watchTogetherName?.isNotEmpty ?? false)
+          ? watchTogetherName!
+          : resolvedName,
       plexUsername: account?.username ?? resolvedName,
       thumb: account?.thumb,
     );
 
     await _tokenStore.saveTokenForProfile(profile.id, token);
     final settings = await _settingsStore.observe().first;
-    await _settingsStore.save(settings.copyWith(profiles: [...settings.profiles, profile]));
+    await _settingsStore.save(
+      settings.copyWith(profiles: [...settings.profiles, profile]),
+    );
     return profile;
   }
 
   /// Settings' "add a profile" — provisions one for someone else to pick
   /// later without switching away from whoever is currently signed in.
-  Future<Profile> addProfile({required String name, required String watchTogetherName, required String token}) =>
-      _createProfile(token: token, name: name, watchTogetherName: watchTogetherName);
+  Future<Profile> addProfile({
+    required String name,
+    required String watchTogetherName,
+    required String token,
+  }) => _createProfile(
+    token: token,
+    name: name,
+    watchTogetherName: watchTogetherName,
+  );
 
   /// Screen 07b via the picker — creating a profile there means becoming
   /// it immediately, reusing the same PIN-link flow first-run login uses.
-  Future<void> addProfileAndActivate({required String name, required String watchTogetherName, required String token}) async {
-    final profile = await _createProfile(token: token, name: name, watchTogetherName: watchTogetherName);
+  Future<void> addProfileAndActivate({
+    required String name,
+    required String watchTogetherName,
+    required String token,
+  }) async {
+    final profile = await _createProfile(
+      token: token,
+      name: name,
+      watchTogetherName: watchTogetherName,
+    );
     _activeProfile = profile;
     await connect(token);
   }
@@ -231,12 +252,28 @@ class AppRootController extends ChangeNotifier {
   /// signed in and activates it (there's no one else to fall back to),
   /// same as the migration path in start() does for a pre-profiles install.
   Future<void> completeFirstLogin(String token) async {
-    final profile = await _createProfile(token: token, name: null, watchTogetherName: null);
+    final profile = await _createProfile(
+      token: token,
+      name: null,
+      watchTogetherName: null,
+    );
     _activeProfile = profile;
     await connect(token, firstRun: true);
   }
 
-  static const _numberWords = ['No', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine', 'Ten'];
+  static const _numberWords = [
+    'No',
+    'One',
+    'Two',
+    'Three',
+    'Four',
+    'Five',
+    'Six',
+    'Seven',
+    'Eight',
+    'Nine',
+    'Ten',
+  ];
 
   /// "Two servers", "One library" — O5's headline reads as a sentence.
   static String _countWord(int n, String singular, {String? plural}) {
@@ -266,9 +303,20 @@ class AppRootController extends ChangeNotifier {
       _localAccount = null;
     }
     final username = _localAccount?.username;
-    final done = <String>[if (username != null) 'Signed in to Plex as $username' else 'Signed in to Plex'];
+    final done = <String>[
+      if (username != null)
+        'Signed in to Plex as $username'
+      else
+        'Signed in to Plex',
+    ];
     void progress(String? current, {String? headline}) => _setState(
-      ConnectingToServer(username: username, firstRun: firstRun, done: List.of(done), current: current, headline: headline),
+      ConnectingToServer(
+        username: username,
+        firstRun: firstRun,
+        done: List.of(done),
+        current: current,
+        headline: headline,
+      ),
     );
     progress('Looking for your servers');
 
@@ -280,7 +328,9 @@ class AppRootController extends ChangeNotifier {
         disabledMachineIdentifiers: settings.disabledServerIds,
       );
       final reached = probed.connected.length;
-      done.add('Reached $reached server${reached == 1 ? '' : 's'}${probed.unreachable.isEmpty ? '' : ' · ${probed.unreachable.length} not answering'}');
+      done.add(
+        'Reached $reached server${reached == 1 ? '' : 's'}${probed.unreachable.isEmpty ? '' : ' · ${probed.unreachable.length} not answering'}',
+      );
       progress('Reading libraries');
       _connectedServers = probed.connected;
       _unreachableResources = probed.unreachable;
@@ -306,15 +356,24 @@ class AppRootController extends ChangeNotifier {
       final sectionGroups = groupSections(sectionsByServerId);
       final firstGroup = sectionGroups.firstOrNull;
       if (firstGroup == null) {
-        throw _FriendlyError('No movie or show library found on any connected server');
+        throw _FriendlyError(
+          'No movie or show library found on any connected server',
+        );
       }
       final libraries = sectionGroups.length;
-      done.add('Found $libraries librar${libraries == 1 ? 'y' : 'ies'} across $reached server${reached == 1 ? '' : 's'}');
+      done.add(
+        'Found $libraries librar${libraries == 1 ? 'y' : 'ies'} across $reached server${reached == 1 ? '' : 's'}',
+      );
       progress(
         'Loading ${firstGroup.title}',
-        headline: '${_countWord(reached, 'server')}, ${_countWord(libraries, 'library', plural: 'libraries')}',
+        headline:
+            '${_countWord(reached, 'server')}, ${_countWord(libraries, 'library', plural: 'libraries')}',
       );
-      final items = foldByGuid(await _fetchGroupItems(probed.connected, firstGroup), guidOf: (i) => i.guid, alternateIdsOf: (i) => i.guids.map((g) => g.id).toList());
+      final items = foldByGuid(
+        await _fetchGroupItems(probed.connected, firstGroup),
+        guidOf: (i) => i.guid,
+        alternateIdsOf: (i) => i.guids.map((g) => g.id).toList(),
+      );
       final ctx = LibraryContext(
         servers: probed.connected,
         sectionGroups: sectionGroups,
@@ -324,7 +383,11 @@ class AppRootController extends ChangeNotifier {
       // The Watch Together step is offered once: skipping it during setup
       // ("Not now") is an answer, not something to ask again every launch.
       final offerRelayStep = settings.relays.isEmpty && !settings.setupComplete;
-      _setState(offerRelayStep ? RelaySetup(ctx: ctx) : await _loadHome(probed.connected, sectionGroups));
+      _setState(
+        offerRelayStep
+            ? RelaySetup(ctx: ctx)
+            : await _loadHome(probed.connected, sectionGroups),
+      );
     } catch (e) {
       _setState(AppError(message: '$e', retryState: const LoggedOut()));
     }
@@ -357,16 +420,23 @@ class AppRootController extends ChangeNotifier {
   /// per-server failure (a server that stops answering mid-fetch simply
   /// contributes no sections, same as any other per-call `.catchError` in
   /// this file — it doesn't fail the other servers' results).
-  Future<Map<String, List<PlexSection>>> _fetchAllSections(List<ReachableServer> servers) async {
-    final results = await Future.wait(servers.map((cs) async {
-      List<PlexSection> sections;
-      try {
-        sections = await PlexServerApi(cs.server, _clientIdentifier).fetchSections();
-      } catch (_) {
-        sections = const [];
-      }
-      return MapEntry(cs.server.machineIdentifier, sections);
-    }));
+  Future<Map<String, List<PlexSection>>> _fetchAllSections(
+    List<ReachableServer> servers,
+  ) async {
+    final results = await Future.wait(
+      servers.map((cs) async {
+        List<PlexSection> sections;
+        try {
+          sections = await PlexServerApi(
+            cs.server,
+            _clientIdentifier,
+          ).fetchSections();
+        } catch (_) {
+          sections = const [];
+        }
+        return MapEntry(cs.server.machineIdentifier, sections);
+      }),
+    );
     return Map.fromEntries(results);
   }
 
@@ -374,17 +444,27 @@ class AppRootController extends ChangeNotifier {
   /// physical section, fanned out concurrently and merged — not yet folded
   /// into one card per work, just tagged with which server each copy came
   /// from (see [Sourced]).
-  Future<List<Sourced<PlexLibraryItem>>> _fetchGroupItems(List<ReachableServer> servers, SectionGroup group) async {
-    final results = await Future.wait(servers.map((cs) async {
-      final section = group.sectionOn(cs.server.machineIdentifier);
-      if (section == null) return const <Sourced<PlexLibraryItem>>[];
-      try {
-        final items = await PlexServerApi(cs.server, _clientIdentifier).fetchLibraryItems(section.key);
-        return items.map((i) => Sourced(i, cs.server, cs.reachability)).toList();
-      } catch (_) {
-        return const <Sourced<PlexLibraryItem>>[];
-      }
-    }));
+  Future<List<Sourced<PlexLibraryItem>>> _fetchGroupItems(
+    List<ReachableServer> servers,
+    SectionGroup group,
+  ) async {
+    final results = await Future.wait(
+      servers.map((cs) async {
+        final section = group.sectionOn(cs.server.machineIdentifier);
+        if (section == null) return const <Sourced<PlexLibraryItem>>[];
+        try {
+          final items = await PlexServerApi(
+            cs.server,
+            _clientIdentifier,
+          ).fetchLibraryItems(section.key);
+          return items
+              .map((i) => Sourced(i, cs.server, cs.reachability))
+              .toList();
+        } catch (_) {
+          return const <Sourced<PlexLibraryItem>>[];
+        }
+      }),
+    );
     return results.expand((l) => l).toList();
   }
 
@@ -392,14 +472,25 @@ class AppRootController extends ChangeNotifier {
   /// used where a piece of content is known only by its ratingKey with no
   /// server hint at all (a Watch Together room only carries a ratingKey,
   /// not which server hosted it).
-  Future<(PlexServer, PlexMovieDetail)?> _fetchMovieDetailFromAnyServer(List<ReachableServer> servers, String ratingKey) async {
-    final results = await Future.wait(servers.map((cs) async {
-      try {
-        return (cs.server, await PlexServerApi(cs.server, _clientIdentifier).fetchMovieDetail(ratingKey));
-      } catch (_) {
-        return null;
-      }
-    }));
+  Future<(PlexServer, PlexMovieDetail)?> _fetchMovieDetailFromAnyServer(
+    List<ReachableServer> servers,
+    String ratingKey,
+  ) async {
+    final results = await Future.wait(
+      servers.map((cs) async {
+        try {
+          return (
+            cs.server,
+            await PlexServerApi(
+              cs.server,
+              _clientIdentifier,
+            ).fetchMovieDetail(ratingKey),
+          );
+        } catch (_) {
+          return null;
+        }
+      }),
+    );
     return results.whereType<(PlexServer, PlexMovieDetail)>().firstOrNull;
   }
 
@@ -409,7 +500,8 @@ class AppRootController extends ChangeNotifier {
     final token = _accountToken;
     if (token == null) return;
     try {
-      _watchlistItems = await PlexWatchlistApi(_clientIdentifier).fetchWatchlist(token);
+      _watchlistItems = await PlexWatchlistApi(_clientIdentifier)
+          .fetchWatchlist(token);
       notifyListeners();
     } catch (_) {
       // keep the last-known list, matching Kotlin's `.getOrNull() ?: watchlistItems`
@@ -426,29 +518,35 @@ class AppRootController extends ChangeNotifier {
     final servers = _connectedServers;
     if (items.isEmpty || servers.isEmpty) return;
     final resolved = <String, String?>{};
-    await Future.wait(items.map((entry) async {
-      final guid = entry.guid;
-      String? holder;
-      if (guid != null) {
-        for (final cs in servers) {
-          try {
-            final found = await PlexServerApi(cs.server, _clientIdentifier).fetchLibraryItemsByGuid(guid);
-            if (found.isNotEmpty) {
-              holder = cs.server.name;
-              break;
+    await Future.wait(
+      items.map((entry) async {
+        final guid = entry.guid;
+        String? holder;
+        if (guid != null) {
+          for (final cs in servers) {
+            try {
+              final found = await PlexServerApi(
+                cs.server,
+                _clientIdentifier,
+              ).fetchLibraryItemsByGuid(guid);
+              if (found.isNotEmpty) {
+                holder = cs.server.name;
+                break;
+              }
+            } catch (_) {
+              // An unanswering server just doesn't count as holding it.
             }
-          } catch (_) {
-            // An unanswering server just doesn't count as holding it.
           }
         }
-      }
-      resolved[entry.ratingKey] = holder;
-    }));
+        resolved[entry.ratingKey] = holder;
+      }),
+    );
     _watchlistAvailability = resolved;
     notifyListeners();
   }
 
-  bool isOnWatchlist(String? guid) => guid != null && (_watchlistItems?.any((i) => i.guid == guid) ?? false);
+  bool isOnWatchlist(String? guid) =>
+      guid != null && (_watchlistItems?.any((i) => i.guid == guid) ?? false);
 
   Future<void> toggleWatchlist(String? guid) async {
     final token = _accountToken;
@@ -465,18 +563,27 @@ class AppRootController extends ChangeNotifier {
   }
 
   void removeFromWatchlist(PlexWatchlistItem entry) {
-    _watchlistItems = _watchlistItems?.where((i) => i.ratingKey != entry.ratingKey).toList();
+    _watchlistItems = _watchlistItems
+        ?.where((i) => i.ratingKey != entry.ratingKey)
+        .toList();
     notifyListeners();
     final token = _accountToken;
     final guid = entry.guid;
     if (token != null && guid != null) {
-      unawaited(PlexWatchlistApi(_clientIdentifier).removeFromWatchlist(token, guid).catchError((_) {}));
+      unawaited(
+        PlexWatchlistApi(_clientIdentifier)
+            .removeFromWatchlist(token, guid)
+            .catchError((_) {}),
+      );
     }
   }
 
   // ---- Relay / live rooms ----
 
-  Future<RelayClient?> _ensureRelayClient(String relayUrl, RoomIntent intent) async {
+  Future<RelayClient?> _ensureRelayClient(
+    String relayUrl,
+    RoomIntent intent,
+  ) async {
     final existing = _relayClient;
     if (existing != null) return existing;
     if (relayUrl.trim().isEmpty) return null;
@@ -489,7 +596,8 @@ class AppRootController extends ChangeNotifier {
       onIdentityUpdated: (updated) {
         _relayIdentity = updated;
         final token = updated.reconnectToken;
-        if (token != null) unawaited(_relayIdentityStore.saveReconnectToken(token));
+        if (token != null)
+          unawaited(_relayIdentityStore.saveReconnectToken(token));
       },
       onHostedRoomIdUpdated: (hostedId, token) {
         unawaited(_relayIdentityStore.addHostedRoom(relayUrl, hostedId, token));
@@ -516,7 +624,10 @@ class AppRootController extends ChangeNotifier {
   void _startRoomPolling() {
     _roomPollTimer?.cancel();
     _pollRooms();
-    _roomPollTimer = Timer.periodic(const Duration(milliseconds: _roomPollIntervalMs), (_) => _pollRooms());
+    _roomPollTimer = Timer.periodic(
+      const Duration(milliseconds: _roomPollIntervalMs),
+      (_) => _pollRooms(),
+    );
   }
 
   void _stopRoomPolling() {
@@ -526,14 +637,30 @@ class AppRootController extends ChangeNotifier {
     _relayHealth = {};
   }
 
+  /// One directory round trip to [relayUrl], in ms — null if it didn't
+  /// answer. The lobby (screen 10) shows it beside the relay's name; the
+  /// Home poll's own health is cleared once Home is left.
+  Future<int?> measureRelayLatency(String relayUrl) async {
+    final stopwatch = Stopwatch()..start();
+    final rooms = await _relayDirectoryApi.tryListRooms(relayUrl);
+    return rooms != null ? stopwatch.elapsedMilliseconds : null;
+  }
+
   Future<void> _pollRooms() async {
     final settings = await _settingsStore.observe().first;
     final byUrl = groupBy(settings.relays, (RelayEntry e) => e.url);
-    final relays = byUrl.values.map((entries) => entries.firstWhereOrNull((e) => e.isDefault) ?? entries.first).toList();
+    final relays = byUrl.values
+        .map(
+          (entries) =>
+              entries.firstWhereOrNull((e) => e.isDefault) ?? entries.first,
+        )
+        .toList();
 
     _liveRelaysById = {for (final r in relays) r.id: r};
     final stillConfigured = relays.map((r) => r.id).toSet();
-    _liveRoomsByRelay = Map.fromEntries(_liveRoomsByRelay.entries.where((e) => stillConfigured.contains(e.key)));
+    _liveRoomsByRelay = Map.fromEntries(
+      _liveRoomsByRelay.entries.where((e) => stillConfigured.contains(e.key)),
+    );
     final identity = await _relayIdentityStore.load();
     _hostedRoomIds = identity.hostedRooms.map((r) => r.roomId).toSet();
     notifyListeners();
@@ -542,41 +669,64 @@ class AppRootController extends ChangeNotifier {
       if (_pollInFlight.contains(entry.id)) continue;
       _pollInFlight.add(entry.id);
       final stopwatch = Stopwatch()..start();
-      unawaited(_relayDirectoryApi.tryListRooms(entry.url).then((rooms) {
-        _pollInFlight.remove(entry.id);
-        final previous = _relayHealth[entry.id];
-        _relayHealth = {
-          ..._relayHealth,
-          entry.id: rooms != null
-              ? RelayHealth.reachable(latencyMs: stopwatch.elapsedMilliseconds, at: DateTime.now())
-              : RelayHealth.unreachable(lastAnsweredAt: previous?.lastAnsweredAt),
-        };
-        _liveRoomsByRelay = {..._liveRoomsByRelay, entry.id: rooms ?? const []};
-        notifyListeners();
-      }));
+      unawaited(
+        _relayDirectoryApi.tryListRooms(entry.url).then((rooms) {
+          _pollInFlight.remove(entry.id);
+          final previous = _relayHealth[entry.id];
+          _relayHealth = {
+            ..._relayHealth,
+            entry.id: rooms != null
+                ? RelayHealth.reachable(
+                    latencyMs: stopwatch.elapsedMilliseconds,
+                    at: DateTime.now(),
+                  )
+                : RelayHealth.unreachable(
+                    lastAnsweredAt: previous?.lastAnsweredAt,
+                  ),
+          };
+          _liveRoomsByRelay = {
+            ..._liveRoomsByRelay,
+            entry.id: rooms ?? const [],
+          };
+          notifyListeners();
+        }),
+      );
     }
   }
 
   Future<bool> closeHostedRoom(MergedRoom merged) async {
     final identity = await _relayIdentityStore.load();
-    final hosted = identity.hostedRooms.firstWhereOrNull((r) => r.roomId == merged.room.roomId);
+    final hosted = identity.hostedRooms.firstWhereOrNull(
+      (r) => r.roomId == merged.room.roomId,
+    );
     if (hosted == null) return false;
-    final ok = await _relayDirectoryApi.closeRoom(merged.relay.url, merged.room.roomId, identity.peerId, hosted.reconnectToken);
+    final ok = await _relayDirectoryApi.closeRoom(
+      merged.relay.url,
+      merged.room.roomId,
+      identity.peerId,
+      hosted.reconnectToken,
+    );
     if (ok) {
       await _relayIdentityStore.removeHostedRoom(merged.room.roomId);
       _hostedRoomIds = {..._hostedRoomIds}..remove(merged.room.roomId);
       _liveRoomsByRelay = {
-        for (final e in _liveRoomsByRelay.entries) e.key: e.value.where((r) => r.roomId != merged.room.roomId).toList(),
+        for (final e in _liveRoomsByRelay.entries)
+          e.key: e.value.where((r) => r.roomId != merged.room.roomId).toList(),
       };
       notifyListeners();
     }
     return ok;
   }
 
-  Future<(RelayEntry, RelayRoomSummary)?> _findHostedRoomForMedia(String ratingKey) async {
+  Future<(RelayEntry, RelayRoomSummary)?> _findHostedRoomForMedia(
+    String ratingKey,
+  ) async {
     final identity = await _relayIdentityStore.load();
     if (identity.hostedRooms.isEmpty) return null;
-    final hostedByRelay = groupBy(identity.hostedRooms, (HostedRoom r) => r.relayUrl);
+    final hostedByRelay = groupBy(
+      identity.hostedRooms,
+      (HostedRoom r) => r.relayUrl,
+    );
     final settings = await _settingsStore.observe().first;
     final relaysByUrl = {for (final r in settings.relays) r.url: r};
 
@@ -589,9 +739,13 @@ class AppRootController extends ChangeNotifier {
       } catch (_) {
         continue;
       }
-      final match = rooms.firstWhereOrNull((r) => r.ratingKey == ratingKey && hostedIds.contains(r.roomId));
+      final match = rooms.firstWhereOrNull(
+        (r) => r.ratingKey == ratingKey && hostedIds.contains(r.roomId),
+      );
       if (match != null) {
-        final relayEntry = relaysByUrl[relayUrl] ?? RelayEntry(id: relayUrl, nickname: relayUrl, url: relayUrl);
+        final relayEntry =
+            relaysByUrl[relayUrl] ??
+            RelayEntry(id: relayUrl, nickname: relayUrl, url: relayUrl);
         return (relayEntry, match);
       }
     }
@@ -614,15 +768,17 @@ class AppRootController extends ChangeNotifier {
     required String targetRatingKey,
     bool defaultRestart = false,
   }) {
-    _setState(WatchTogetherStart(
-      ctx: ctx,
-      server: server,
-      returnState: returnState,
-      roomTitle: roomTitle,
-      thumb: thumb,
-      targetRatingKey: targetRatingKey,
-      defaultRestart: defaultRestart,
-    ));
+    _setState(
+      WatchTogetherStart(
+        ctx: ctx,
+        server: server,
+        returnState: returnState,
+        roomTitle: roomTitle,
+        thumb: thumb,
+        targetRatingKey: targetRatingKey,
+        defaultRestart: defaultRestart,
+      ),
+    );
   }
 
   Future<void> startWatchTogether({
@@ -634,17 +790,27 @@ class AppRootController extends ChangeNotifier {
     required String targetRatingKey,
     required bool restart,
   }) async {
-    final hostName = _activeProfile?.watchTogetherName ?? _localAccount?.username ?? 'Host';
+    final hostName =
+        _activeProfile?.watchTogetherName ?? _localAccount?.username ?? 'Host';
     final settings = await _settingsStore.observe().first;
     final defaultRelay = settings.defaultRelay;
     if (defaultRelay == null) {
-      _setState(Settings(ctx: ctx, returnState: returnState, relayHint: 'Add a relay to watch with friends.'));
+      _setState(
+        Settings(
+          ctx: ctx,
+          returnState: returnState,
+          relayHint: 'Add a relay to watch with friends.',
+        ),
+      );
       return;
     }
 
     final existing = await _findHostedRoomForMedia(targetRatingKey);
     final relay = existing != null
-        ? await _ensureRelayClient(existing.$1.url, JoinRoom(existing.$2.roomId))
+        ? await _ensureRelayClient(
+            existing.$1.url,
+            JoinRoom(existing.$2.roomId),
+          )
         : await _ensureRelayClient(
             defaultRelay.url,
             CreateRoom(
@@ -656,22 +822,33 @@ class AppRootController extends ChangeNotifier {
             ),
           );
     if (relay == null) {
-      _setState(Settings(ctx: ctx, returnState: returnState, relayHint: 'Add a relay to watch with friends.'));
+      _setState(
+        Settings(
+          ctx: ctx,
+          returnState: returnState,
+          relayHint: 'Add a relay to watch with friends.',
+        ),
+      );
       return;
     }
 
     try {
-      final detail = await PlexServerApi(server, _clientIdentifier).fetchMovieDetail(targetRatingKey);
-      _setState(Lobby(
-        server: server,
-        detail: restart ? detail.copyWith(viewOffset: 0) : detail,
-        returnState: returnState,
-        relay: relay,
-        hostName: existing?.$2.hostName ?? hostName,
-        relayNickname: existing?.$1.nickname ?? defaultRelay.nickname,
-        thumb: thumb,
-        isHost: true,
-      ));
+      final detail = await PlexServerApi(
+        server,
+        _clientIdentifier,
+      ).fetchMovieDetail(targetRatingKey);
+      _setState(
+        Lobby(
+          server: server,
+          detail: restart ? detail.copyWith(viewOffset: 0) : detail,
+          returnState: returnState,
+          relay: relay,
+          hostName: existing?.$2.hostName ?? hostName,
+          relayNickname: existing?.$1.nickname ?? defaultRelay.nickname,
+          thumb: thumb,
+          isHost: true,
+        ),
+      );
     } catch (e) {
       _setState(AppError(message: '$e', retryState: returnState));
     }
@@ -679,10 +856,13 @@ class AppRootController extends ChangeNotifier {
 
   Future<void> hostOnAnotherRelay(Lobby current) async {
     final settings = await _settingsStore.observe().first;
-    final next = settings.relays.firstWhereOrNull((r) => r.url != current.relay.relayUrl);
+    final next = settings.relays.firstWhereOrNull(
+      (r) => r.url != current.relay.relayUrl,
+    );
     if (next == null) return;
     releaseRelayClient();
-    final hostName = _activeProfile?.watchTogetherName ?? _localAccount?.username ?? 'Host';
+    final hostName =
+        _activeProfile?.watchTogetherName ?? _localAccount?.username ?? 'Host';
     final newClient = await _ensureRelayClient(
       next.url,
       CreateRoom(
@@ -694,16 +874,18 @@ class AppRootController extends ChangeNotifier {
       ),
     );
     if (newClient != null) {
-      _setState(Lobby(
-        server: current.server,
-        detail: current.detail,
-        returnState: current.returnState,
-        relay: newClient,
-        hostName: hostName,
-        relayNickname: next.nickname,
-        thumb: current.thumb,
-        isHost: true,
-      ));
+      _setState(
+        Lobby(
+          server: current.server,
+          detail: current.detail,
+          returnState: current.returnState,
+          relay: newClient,
+          hostName: hostName,
+          relayNickname: next.nickname,
+          thumb: current.thumb,
+          isHost: true,
+        ),
+      );
     }
   }
 
@@ -718,15 +900,28 @@ class AppRootController extends ChangeNotifier {
   /// directory. Recently Added is sorted by addedAt before folding/capping
   /// — concatenating per-server lists in server order (their fetch order)
   /// would otherwise interleave wrong once a second server contributes.
-  Future<Home> _loadHome(List<ReachableServer> servers, List<SectionGroup> sectionGroups) async {
-    final perServer = await Future.wait(servers.map((cs) async {
-      final api = PlexServerApi(cs.server, _clientIdentifier);
-      final onDeck = await api.fetchOnDeck().catchError((_) => <PlexOnDeckItem>[]);
-      final recentlyAdded = await api.fetchRecentlyAdded().catchError((_) => <PlexLibraryItem>[]);
-      final recentActivity = await api.fetchRecentActivity().catchError((_) => <PlexOnDeckItem>[]);
-      final suggestions = await api.fetchSuggestions().catchError((_) => <PlexOnDeckItem>[]);
-      return (cs, onDeck, recentlyAdded, recentActivity, suggestions);
-    }));
+  Future<Home> _loadHome(
+    List<ReachableServer> servers,
+    List<SectionGroup> sectionGroups,
+  ) async {
+    final perServer = await Future.wait(
+      servers.map((cs) async {
+        final api = PlexServerApi(cs.server, _clientIdentifier);
+        final onDeck = await api.fetchOnDeck().catchError(
+          (_) => <PlexOnDeckItem>[],
+        );
+        final recentlyAdded = await api.fetchRecentlyAdded().catchError(
+          (_) => <PlexLibraryItem>[],
+        );
+        final recentActivity = await api.fetchRecentActivity().catchError(
+          (_) => <PlexOnDeckItem>[],
+        );
+        final suggestions = await api.fetchSuggestions().catchError(
+          (_) => <PlexOnDeckItem>[],
+        );
+        return (cs, onDeck, recentlyAdded, recentActivity, suggestions);
+      }),
+    );
 
     final onDeck = <Sourced<PlexOnDeckItem>>[];
     final recentlyAdded = <Sourced<PlexLibraryItem>>[];
@@ -734,24 +929,51 @@ class AppRootController extends ChangeNotifier {
     final suggestions = <Sourced<PlexOnDeckItem>>[];
     for (final (cs, od, ra, rac, sug) in perServer) {
       onDeck.addAll(od.map((i) => Sourced(i, cs.server, cs.reachability)));
-      recentlyAdded.addAll(ra.map((i) => Sourced(i, cs.server, cs.reachability)));
-      recentActivity.addAll(rac.map((i) => Sourced(i, cs.server, cs.reachability)));
-      suggestions.addAll(sug.map((i) => Sourced(i, cs.server, cs.reachability)));
+      recentlyAdded.addAll(
+        ra.map((i) => Sourced(i, cs.server, cs.reachability)),
+      );
+      recentActivity.addAll(
+        rac.map((i) => Sourced(i, cs.server, cs.reachability)),
+      );
+      suggestions.addAll(
+        sug.map((i) => Sourced(i, cs.server, cs.reachability)),
+      );
     }
-    recentlyAdded.sort((a, b) => (b.value.addedAt ?? 0).compareTo(a.value.addedAt ?? 0));
+    recentlyAdded.sort(
+      (a, b) => (b.value.addedAt ?? 0).compareTo(a.value.addedAt ?? 0),
+    );
 
     return Home(
       servers: servers,
       sectionGroups: sectionGroups,
-      onDeck: foldByGuid(onDeck, guidOf: (i) => i.guid, alternateIdsOf: (i) => i.guids.map((g) => g.id).toList()),
-      recentlyAdded: foldByGuid(recentlyAdded, guidOf: (i) => i.guid, alternateIdsOf: (i) => i.guids.map((g) => g.id).toList()).take(15).toList(),
-      recentActivity: foldByGuid(recentActivity, guidOf: (i) => i.guid, alternateIdsOf: (i) => i.guids.map((g) => g.id).toList()),
-      suggestions: foldByGuid(suggestions, guidOf: (i) => i.guid, alternateIdsOf: (i) => i.guids.map((g) => g.id).toList()),
+      onDeck: foldByGuid(
+        onDeck,
+        guidOf: (i) => i.guid,
+        alternateIdsOf: (i) => i.guids.map((g) => g.id).toList(),
+      ),
+      recentlyAdded: foldByGuid(
+        recentlyAdded,
+        guidOf: (i) => i.guid,
+        alternateIdsOf: (i) => i.guids.map((g) => g.id).toList(),
+      ).take(15).toList(),
+      recentActivity: foldByGuid(
+        recentActivity,
+        guidOf: (i) => i.guid,
+        alternateIdsOf: (i) => i.guids.map((g) => g.id).toList(),
+      ),
+      suggestions: foldByGuid(
+        suggestions,
+        guidOf: (i) => i.guid,
+        alternateIdsOf: (i) => i.guids.map((g) => g.id).toList(),
+      ),
       unreachableResources: _unreachableResources,
     );
   }
 
-  Future<void> goHome(List<ReachableServer> servers, List<SectionGroup> sectionGroups) async {
+  Future<void> goHome(
+    List<ReachableServer> servers,
+    List<SectionGroup> sectionGroups,
+  ) async {
     _setState(LoadingHome(servers: servers, sectionGroups: sectionGroups));
     _setState(await _loadHome(servers, sectionGroups));
   }
@@ -772,18 +994,40 @@ class AppRootController extends ChangeNotifier {
     openSection(ctx.servers, ctx.sectionGroups, group);
   }
 
-  void openSection(List<ReachableServer> servers, List<SectionGroup> sectionGroups, SectionGroup group) {
+  void openSection(
+    List<ReachableServer> servers,
+    List<SectionGroup> sectionGroups,
+    SectionGroup group,
+  ) {
     final previous = _state;
-    final loading = LoadingSection(servers: servers, sectionGroups: sectionGroups, selectedSectionGroupKey: group.key, returnState: previous);
+    final loading = LoadingSection(
+      servers: servers,
+      sectionGroups: sectionGroups,
+      selectedSectionGroupKey: group.key,
+      returnState: previous,
+    );
     _setState(loading);
     () async {
-      final items = foldByGuid(await _fetchGroupItems(servers, group), guidOf: (i) => i.guid, alternateIdsOf: (i) => i.guids.map((g) => g.id).toList());
+      final items = foldByGuid(
+        await _fetchGroupItems(servers, group),
+        guidOf: (i) => i.guid,
+        alternateIdsOf: (i) => i.guids.map((g) => g.id).toList(),
+      );
       // A slow fetch (e.g. a very large library) can outlast the user's
       // patience — BackHandler on LoadingSection lets them bail out via
       // returnState before this resolves. Don't clobber wherever they've
       // navigated to since with a stale result.
       if (identical(_state, loading)) {
-        _setState(Library(ctx: LibraryContext(servers: servers, sectionGroups: sectionGroups, selectedSectionGroup: group, items: items)));
+        _setState(
+          Library(
+            ctx: LibraryContext(
+              servers: servers,
+              sectionGroups: sectionGroups,
+              selectedSectionGroup: group,
+              items: items,
+            ),
+          ),
+        );
       }
     }();
   }
@@ -791,7 +1035,14 @@ class AppRootController extends ChangeNotifier {
   Future<AppState> _refreshReturnState(AppState target) async {
     if (target is Home) return _loadHome(target.servers, target.sectionGroups);
     if (target is Library) {
-      final items = foldByGuid(await _fetchGroupItems(target.ctx.servers, target.ctx.selectedSectionGroup), guidOf: (i) => i.guid, alternateIdsOf: (i) => i.guids.map((g) => g.id).toList());
+      final items = foldByGuid(
+        await _fetchGroupItems(
+          target.ctx.servers,
+          target.ctx.selectedSectionGroup,
+        ),
+        guidOf: (i) => i.guid,
+        alternateIdsOf: (i) => i.guids.map((g) => g.id).toList(),
+      );
       return Library(ctx: target.ctx.copyWith(items: items));
     }
     return target;
@@ -807,12 +1058,24 @@ class AppRootController extends ChangeNotifier {
 
   void removeFromContinueWatching(Home home, FoldedWork<PlexOnDeckItem> work) {
     final target = work.primary;
-    _setState(home.copyWith(
-      onDeck: home.onDeck
-          .where((w) => w.primary.server.machineIdentifier != target.server.machineIdentifier || w.primary.value.ratingKey != target.value.ratingKey)
-          .toList(),
-    ));
-    unawaited(PlexServerApi(target.server, _clientIdentifier).removeFromContinueWatching(target.value.ratingKey).catchError((_) {}));
+    _setState(
+      home.copyWith(
+        onDeck: home.onDeck
+            .where(
+              (w) =>
+                  w.primary.server.machineIdentifier !=
+                      target.server.machineIdentifier ||
+                  w.primary.value.ratingKey != target.value.ratingKey,
+            )
+            .toList(),
+      ),
+    );
+    unawaited(
+      PlexServerApi(
+        target.server,
+        _clientIdentifier,
+      ).removeFromContinueWatching(target.value.ratingKey).catchError((_) {}),
+    );
   }
 
   // ---- Player entry points ----
@@ -830,28 +1093,35 @@ class AppRootController extends ChangeNotifier {
     String? showRatingKey,
   }) async {
     try {
-      final detail = await PlexServerApi(server, _clientIdentifier).fetchMovieDetail(targetRatingKey);
-      _setState(Player(
-        server: server,
-        detail: fromStart ? detail.copyWith(viewOffset: 0) : detail,
-        returnState: returnState,
-        relay: null,
-        showRatingKey: showRatingKey,
-      ));
+      final detail = await PlexServerApi(
+        server,
+        _clientIdentifier,
+      ).fetchMovieDetail(targetRatingKey);
+      _setState(
+        Player(
+          server: server,
+          detail: fromStart ? detail.copyWith(viewOffset: 0) : detail,
+          returnState: returnState,
+          relay: null,
+          showRatingKey: showRatingKey,
+        ),
+      );
     } catch (_) {
       // Screen 25 — name what failed plainly rather than the raw
       // exception; the actual cause is almost always "the server
       // stopped answering partway through starting", which is also the
       // one phrase from the mockup that's true regardless of the
       // specific underlying network error.
-      _setState(PlaybackFailed(
-        ctx: ctx,
-        server: server,
-        targetRatingKey: targetRatingKey,
-        fromStart: fromStart,
-        reason: '${server.name} stopped answering partway through starting.',
-        returnState: returnState,
-      ));
+      _setState(
+        PlaybackFailed(
+          ctx: ctx,
+          server: server,
+          targetRatingKey: targetRatingKey,
+          fromStart: fromStart,
+          reason: '${server.name} stopped answering partway through starting.',
+          returnState: returnState,
+        ),
+      );
     }
   }
 
@@ -864,37 +1134,62 @@ class AppRootController extends ChangeNotifier {
   /// Screen 12 opens over any screen, so [current] is whatever was showing
   /// (it becomes the error retry target and the lobby's return state) and
   /// [servers] is the hub the room's title is looked up across.
-  Future<void> joinRoom(AppState current, List<ReachableServer> servers, MergedRoom merged) async {
+  Future<void> joinRoom(
+    AppState current,
+    List<ReachableServer> servers,
+    MergedRoom merged,
+  ) async {
     final ratingKey = merged.room.ratingKey;
     if (ratingKey == null) {
-      _setState(AppError(message: 'Room has no movie reference', retryState: current));
+      _setState(
+        AppError(message: 'Room has no movie reference', retryState: current),
+      );
       return;
     }
     final found = await _fetchMovieDetailFromAnyServer(servers, ratingKey);
     if (found == null) {
-      _setState(AppError(message: 'Could not find that title on any connected server', retryState: current));
+      _setState(
+        AppError(
+          message: 'Could not find that title on any connected server',
+          retryState: current,
+        ),
+      );
       return;
     }
     final (server, detail) = found;
-    final relay = await _ensureRelayClient(merged.relay.url, JoinRoom(merged.room.roomId));
+    final relay = await _ensureRelayClient(
+      merged.relay.url,
+      JoinRoom(merged.room.roomId),
+    );
     if (relay == null) {
       _setState(AppError(message: 'No relay configured', retryState: current));
       return;
     }
     final resolved = await relay.connectionState
-        .firstWhere((s) => s == ConnectionState.connected || s == ConnectionState.roomNotFound)
-        .timeout(const Duration(milliseconds: _joinRoomTimeoutMs), onTimeout: () => ConnectionState.disconnected);
+        .firstWhere(
+          (s) =>
+              s == ConnectionState.connected ||
+              s == ConnectionState.roomNotFound,
+        )
+        .timeout(
+          const Duration(milliseconds: _joinRoomTimeoutMs),
+          onTimeout: () => ConnectionState.disconnected,
+        );
     if (resolved == ConnectionState.roomNotFound) {
-      _setState(AppError(message: 'That room just ended.', retryState: current));
+      _setState(
+        AppError(message: 'That room just ended.', retryState: current),
+      );
     } else {
-      _setState(Lobby(
-        server: server,
-        detail: detail,
-        returnState: current,
-        relay: relay,
-        hostName: merged.room.hostName,
-        relayNickname: merged.relay.nickname,
-      ));
+      _setState(
+        Lobby(
+          server: server,
+          detail: detail,
+          returnState: current,
+          relay: relay,
+          hostName: merged.room.hostName,
+          relayNickname: merged.relay.nickname,
+        ),
+      );
     }
   }
 
@@ -903,20 +1198,52 @@ class AppRootController extends ChangeNotifier {
     final ctx = LibraryContext(
       servers: current.servers,
       sectionGroups: current.sectionGroups,
-      selectedSectionGroup: sectionGroupFor(current.sectionGroups, activeOnDeck.value.type == 'episode' ? _sectionTypeShow : activeOnDeck.value.type),
+      selectedSectionGroup: sectionGroupFor(
+        current.sectionGroups,
+        activeOnDeck.value.type == 'episode'
+            ? _sectionTypeShow
+            : activeOnDeck.value.type,
+      ),
       items: const [],
     );
     if (activeOnDeck.value.type == 'episode') {
-      final work = _libraryWorkFrom(onDeckWork, (v) => libraryItemFrom(v, type: _sectionTypeShow, title: v.grandparentTitle ?? v.title));
-      _setState(EpisodeDetail(ctx: ctx, work: work, activeCopy: work.primary, episode: episodeFrom(activeOnDeck.value), returnState: current));
+      final work = _libraryWorkFrom(
+        onDeckWork,
+        (v) => libraryItemFrom(
+          v,
+          type: _sectionTypeShow,
+          title: v.grandparentTitle ?? v.title,
+        ),
+      );
+      _setState(
+        EpisodeDetail(
+          ctx: ctx,
+          work: work,
+          activeCopy: work.primary,
+          episode: episodeFrom(activeOnDeck.value),
+          returnState: current,
+        ),
+      );
     } else {
       final work = _libraryWorkFrom(onDeckWork, libraryItemFrom);
-      _setState(MovieDetail(ctx: ctx, work: work, activeCopy: work.primary, returnState: current));
+      _setState(
+        MovieDetail(
+          ctx: ctx,
+          work: work,
+          activeCopy: work.primary,
+          returnState: current,
+        ),
+      );
     }
   }
 
   Future<void> selectWatchlistItem(Home current, PlexWatchlistItem entry) =>
-      openWatchlistItem(servers: current.servers, sectionGroups: current.sectionGroups, entry: entry, returnState: current);
+      openWatchlistItem(
+        servers: current.servers,
+        sectionGroups: current.sectionGroups,
+        entry: entry,
+        returnState: current,
+      );
 
   /// Resolves a watchlist entry (an account-wide Plex Discover guid, not
   /// tied to any one server) against every connected server's library by
@@ -933,28 +1260,54 @@ class AppRootController extends ChangeNotifier {
     final guid = entry.guid;
     final matches = <Sourced<PlexLibraryItem>>[];
     if (guid != null) {
-      final results = await Future.wait(servers.map((cs) async {
-        try {
-          final items = await PlexServerApi(cs.server, _clientIdentifier).fetchLibraryItemsByGuid(guid);
-          return items.map((i) => Sourced(i, cs.server, cs.reachability)).toList();
-        } catch (_) {
-          return const <Sourced<PlexLibraryItem>>[];
-        }
-      }));
+      final results = await Future.wait(
+        servers.map((cs) async {
+          try {
+            final items = await PlexServerApi(
+              cs.server,
+              _clientIdentifier,
+            ).fetchLibraryItemsByGuid(guid);
+            return items
+                .map((i) => Sourced(i, cs.server, cs.reachability))
+                .toList();
+          } catch (_) {
+            return const <Sourced<PlexLibraryItem>>[];
+          }
+        }),
+      );
       matches.addAll(results.expand((l) => l));
     }
     if (matches.isEmpty) {
-      _setState(AppError(message: '"${entry.title}" isn\'t in your Plex library yet.', retryState: returnState));
+      _setState(
+        AppError(
+          message: '"${entry.title}" isn\'t in your Plex library yet.',
+          retryState: returnState,
+        ),
+      );
       return;
     }
-    final work = foldByGuid(matches, guidOf: (item) => item.guid, alternateIdsOf: (item) => item.guids.map((g) => g.id).toList()).first;
+    final work = foldByGuid(
+      matches,
+      guidOf: (item) => item.guid,
+      alternateIdsOf: (item) => item.guids.map((g) => g.id).toList(),
+    ).first;
     final ctx = LibraryContext(
       servers: servers,
       sectionGroups: sectionGroups,
-      selectedSectionGroup: sectionGroupFor(sectionGroups, work.primary.value.type ?? ''),
+      selectedSectionGroup: sectionGroupFor(
+        sectionGroups,
+        work.primary.value.type ?? '',
+      ),
       items: const [],
     );
-    _setState(MovieDetail(ctx: ctx, work: work, activeCopy: work.primary, returnState: returnState));
+    _setState(
+      MovieDetail(
+        ctx: ctx,
+        work: work,
+        activeCopy: work.primary,
+        returnState: returnState,
+      ),
+    );
   }
 
   /// A season in Recently Added promotes to its parent show, same as
@@ -966,7 +1319,8 @@ class AppRootController extends ChangeNotifier {
   void selectRecentlyAdded(Home current, FoldedWork<PlexLibraryItem> work) {
     final primary = work.primary;
     final parentRatingKey = primary.value.parentRatingKey;
-    final effectiveWork = primary.value.type == 'season' && parentRatingKey != null
+    final effectiveWork =
+        primary.value.type == 'season' && parentRatingKey != null
         ? FoldedWork<PlexLibraryItem>(null, [
             Sourced(
               libraryItemFrom(
@@ -986,10 +1340,20 @@ class AppRootController extends ChangeNotifier {
     final ctx = LibraryContext(
       servers: current.servers,
       sectionGroups: current.sectionGroups,
-      selectedSectionGroup: sectionGroupFor(current.sectionGroups, effectiveWork.primary.value.type ?? ''),
+      selectedSectionGroup: sectionGroupFor(
+        current.sectionGroups,
+        effectiveWork.primary.value.type ?? '',
+      ),
       items: const [],
     );
-    _setState(MovieDetail(ctx: ctx, work: effectiveWork, activeCopy: effectiveWork.primary, returnState: current));
+    _setState(
+      MovieDetail(
+        ctx: ctx,
+        work: effectiveWork,
+        activeCopy: effectiveWork.primary,
+        returnState: current,
+      ),
+    );
   }
 
   void selectOnDeckLike(Home current, FoldedWork<PlexOnDeckItem> onDeckWork) {
@@ -997,10 +1361,20 @@ class AppRootController extends ChangeNotifier {
     final ctx = LibraryContext(
       servers: current.servers,
       sectionGroups: current.sectionGroups,
-      selectedSectionGroup: sectionGroupFor(current.sectionGroups, work.primary.value.type ?? ''),
+      selectedSectionGroup: sectionGroupFor(
+        current.sectionGroups,
+        work.primary.value.type ?? '',
+      ),
       items: const [],
     );
-    _setState(MovieDetail(ctx: ctx, work: work, activeCopy: work.primary, returnState: current));
+    _setState(
+      MovieDetail(
+        ctx: ctx,
+        work: work,
+        activeCopy: work.primary,
+        returnState: current,
+      ),
+    );
   }
 }
 
@@ -1008,34 +1382,45 @@ class AppRootController extends ChangeNotifier {
 /// into a library-item-shaped [FoldedWork], preserving the fold's guid and
 /// copy set — used wherever a Home row's on-deck-shaped selection needs to
 /// become a MovieDetail/EpisodeDetail work.
-FoldedWork<PlexLibraryItem> _libraryWorkFrom(FoldedWork<PlexOnDeckItem> work, PlexLibraryItem Function(PlexOnDeckItem) convert) =>
-    FoldedWork(work.guid, work.copies.map((c) => Sourced(convert(c.value), c.server, c.reachability)).toList());
+FoldedWork<PlexLibraryItem> _libraryWorkFrom(
+  FoldedWork<PlexOnDeckItem> work,
+  PlexLibraryItem Function(PlexOnDeckItem) convert,
+) => FoldedWork(
+  work.guid,
+  work.copies
+      .map((c) => Sourced(convert(c.value), c.server, c.reachability))
+      .toList(),
+);
 
 /// Builds a `PlexLibraryItem`/show-typed placeholder from an on-deck-shaped
 /// item — ports the manual reconstruction MainActivity.kt does at several
 /// onSelect callbacks (recently-added, suggestions, recent-activity,
 /// resume) so a MovieDetail/EpisodeDetail navigation has something to
 /// render immediately while the real detail loads.
-PlexLibraryItem libraryItemFrom(PlexOnDeckItem item, {String? type, String? title}) => PlexLibraryItem(
-      ratingKey: item.ratingKey,
-      type: type ?? item.type,
-      title: title ?? item.title,
-      thumb: item.thumb,
-      art: item.art,
-      guid: item.guid,
-      guids: item.guids,
-    );
+PlexLibraryItem libraryItemFrom(
+  PlexOnDeckItem item, {
+  String? type,
+  String? title,
+}) => PlexLibraryItem(
+  ratingKey: item.ratingKey,
+  type: type ?? item.type,
+  title: title ?? item.title,
+  thumb: item.thumb,
+  art: item.art,
+  guid: item.guid,
+  guids: item.guids,
+);
 
 PlexEpisode episodeFrom(PlexOnDeckItem item) => PlexEpisode(
-      ratingKey: item.ratingKey,
-      title: item.title,
-      index: item.index,
-      thumb: item.thumb,
-      duration: item.duration,
-      viewOffset: item.viewOffset,
-      parentIndex: item.parentIndex,
-      grandparentTitle: item.grandparentTitle,
-    );
+  ratingKey: item.ratingKey,
+  title: item.title,
+  index: item.index,
+  thumb: item.thumb,
+  duration: item.duration,
+  viewOffset: item.viewOffset,
+  parentIndex: item.parentIndex,
+  grandparentTitle: item.grandparentTitle,
+);
 
 /// Picks the section group matching an item's type, falling back to the
 /// first group — mirrors the `sections.firstOrNull { it.type == X } ?:

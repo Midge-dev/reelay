@@ -20,7 +20,10 @@ class NeonScrollbar extends StatelessWidget {
       child: AnimatedBuilder(
         animation: controller,
         builder: (context, _) => CustomPaint(
-          painter: _NeonScrollbarPainter(controller, _minThumbHeight.du(context)),
+          painter: _NeonScrollbarPainter(
+            controller,
+            _minThumbHeight.du(context),
+          ),
         ),
       ),
     );
@@ -39,12 +42,16 @@ class _NeonScrollbarPainter extends CustomPainter {
     final trackRect = RRect.fromRectAndRadius(Offset.zero & size, cornerRadius);
     canvas.drawRRect(trackRect, Paint()..color = AppColors.line);
 
-    if (!controller.hasClients || !controller.position.hasContentDimensions) return;
+    if (!controller.hasClients || !controller.position.hasContentDimensions)
+      return;
     final maxExtent = controller.position.maxScrollExtent;
     if (maxExtent <= 0) return;
 
     final totalExtent = size.height + maxExtent;
-    final thumbHeight = (size.height * size.height / totalExtent).clamp(minThumbHeight, size.height);
+    final thumbHeight = (size.height * size.height / totalExtent).clamp(
+      minThumbHeight,
+      size.height,
+    );
     final offset = controller.offset.clamp(0.0, maxExtent);
     final thumbTop = (size.height - thumbHeight) * (offset / maxExtent);
 

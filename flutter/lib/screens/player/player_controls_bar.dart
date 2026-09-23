@@ -177,7 +177,12 @@ class PlayerControlsBar extends StatelessWidget {
         ),
       ),
       child: Padding(
-        padding: EdgeInsets.fromLTRB(24.du(context), 48.du(context), 24.du(context), 16.du(context)),
+        padding: EdgeInsets.fromLTRB(
+          24.du(context),
+          48.du(context),
+          24.du(context),
+          16.du(context),
+        ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -331,8 +336,10 @@ class _ProgressTrack extends StatelessWidget {
       child: LayoutBuilder(
         builder: (context, constraints) {
           final trackWidth = constraints.maxWidth;
-          final thumbLeft = (trackWidth * playedFraction - thumbSize / 2)
-              .clamp(0.0, trackWidth - thumbSize);
+          final thumbLeft = (trackWidth * playedFraction - thumbSize / 2).clamp(
+            0.0,
+            trackWidth - thumbSize,
+          );
           return Stack(
             alignment: Alignment.centerLeft,
             children: [

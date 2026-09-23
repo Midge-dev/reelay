@@ -29,14 +29,18 @@ class HomeLoadingSkeleton extends StatefulWidget {
   State<HomeLoadingSkeleton> createState() => _HomeLoadingSkeletonState();
 }
 
-class _HomeLoadingSkeletonState extends State<HomeLoadingSkeleton> with SingleTickerProviderStateMixin {
+class _HomeLoadingSkeletonState extends State<HomeLoadingSkeleton>
+    with SingleTickerProviderStateMixin {
   late final AnimationController _controller;
   late final Animation<double> _pulse;
 
   @override
   void initState() {
     super.initState();
-    _controller = AnimationController(duration: AppMotion.skeletonPulse, vsync: this)..repeat(reverse: true);
+    _controller = AnimationController(
+      duration: AppMotion.skeletonPulse,
+      vsync: this,
+    )..repeat(reverse: true);
     _pulse = Tween<double>(begin: 1.0, end: 0.6).animate(_controller);
   }
 
@@ -50,7 +54,12 @@ class _HomeLoadingSkeletonState extends State<HomeLoadingSkeleton> with SingleTi
   // a little over halfway from ground to surface.
   Color get _dim => Color.lerp(AppColors.background, AppColors.surface, 0.57)!;
 
-  Widget _block({required double width, required double height, double radius = 4, Color? color}) {
+  Widget _block({
+    required double width,
+    required double height,
+    double radius = 4,
+    Color? color,
+  }) {
     return Container(
       width: width.du(context),
       height: height.du(context),
@@ -71,7 +80,11 @@ class _HomeLoadingSkeletonState extends State<HomeLoadingSkeleton> with SingleTi
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisSize: MainAxisSize.min,
           children: [
-            _block(width: _cardWidth, height: _cardHeight, radius: AppShape.radiusMd),
+            _block(
+              width: _cardWidth,
+              height: _cardHeight,
+              radius: AppShape.radiusMd,
+            ),
             SizedBox(height: AppSpacing.md.du(context)),
             _block(width: _cardWidth * title, height: 18),
             SizedBox(height: AppSpacing.sm.du(context)),
@@ -113,7 +126,11 @@ class _HomeLoadingSkeletonState extends State<HomeLoadingSkeleton> with SingleTi
                       children: [
                         _block(width: 110, height: 17),
                         gap,
-                        _block(width: 640, height: 62, radius: AppShape.radiusSm),
+                        _block(
+                          width: 640,
+                          height: 62,
+                          radius: AppShape.radiusSm,
+                        ),
                         gap,
                         _block(width: 520, height: 19, color: _dim),
                         gap,
@@ -124,11 +141,25 @@ class _HomeLoadingSkeletonState extends State<HomeLoadingSkeleton> with SingleTi
                         Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            _block(width: 180, height: 62, radius: AppShape.radiusMd),
+                            _block(
+                              width: 180,
+                              height: 62,
+                              radius: AppShape.radiusMd,
+                            ),
                             SizedBox(width: AppSpacing.lg.du(context)),
-                            _block(width: 230, height: 62, radius: AppShape.radiusMd, color: _dim),
+                            _block(
+                              width: 230,
+                              height: 62,
+                              radius: AppShape.radiusMd,
+                              color: _dim,
+                            ),
                             SizedBox(width: AppSpacing.lg.du(context)),
-                            _block(width: 170, height: 62, radius: AppShape.radiusMd, color: _dim),
+                            _block(
+                              width: 170,
+                              height: 62,
+                              radius: AppShape.radiusMd,
+                              color: _dim,
+                            ),
                           ],
                         ),
                       ],
@@ -156,8 +187,15 @@ class _HomeLoadingSkeletonState extends State<HomeLoadingSkeleton> with SingleTi
                             child: Row(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                for (var i = 0; i < _cardBaseOpacities.length; i++) ...[
-                                  if (i > 0) SizedBox(width: AppSpacing.cardGap.du(context)),
+                                for (
+                                  var i = 0;
+                                  i < _cardBaseOpacities.length;
+                                  i++
+                                ) ...[
+                                  if (i > 0)
+                                    SizedBox(
+                                      width: AppSpacing.cardGap.du(context),
+                                    ),
                                   _card(i),
                                 ],
                               ],

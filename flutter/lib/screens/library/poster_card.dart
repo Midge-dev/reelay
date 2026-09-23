@@ -50,7 +50,8 @@ int posterGridColumns(BuildContext context, double contentWidth) {
 /// The grid width those columns actually occupy, so a grid can hug its
 /// cards from the leading edge (screen 17's wrap) instead of stretching.
 double posterGridWidth(BuildContext context, int columns) =>
-    columns * posterWidth.du(context) + (columns - 1) * AppSpacing.xl.du(context);
+    columns * posterWidth.du(context) +
+    (columns - 1) * AppSpacing.xl.du(context);
 
 SliverGridDelegate posterGridDelegate(BuildContext context, int columns) =>
     SliverGridDelegateWithFixedCrossAxisCount(
@@ -69,7 +70,8 @@ class GridSideBleedClipper extends CustomClipper<Rect> {
   const GridSideBleedClipper(this.bleed);
 
   @override
-  Rect getClip(Size size) => Rect.fromLTRB(-bleed, 0, size.width + bleed, size.height);
+  Rect getClip(Size size) =>
+      Rect.fromLTRB(-bleed, 0, size.width + bleed, size.height);
 
   @override
   bool shouldReclip(covariant GridSideBleedClipper old) => old.bleed != bleed;
@@ -84,7 +86,12 @@ class PosterGrid extends StatefulWidget {
   final IndexedWidgetBuilder itemBuilder;
   final ScrollController? controller;
 
-  const PosterGrid({super.key, required this.itemCount, required this.itemBuilder, this.controller});
+  const PosterGrid({
+    super.key,
+    required this.itemCount,
+    required this.itemBuilder,
+    this.controller,
+  });
 
   @override
   State<PosterGrid> createState() => _PosterGridState();
@@ -93,7 +100,8 @@ class PosterGrid extends StatefulWidget {
 class _PosterGridState extends State<PosterGrid> {
   ScrollController? _ownController;
 
-  ScrollController get _controller => widget.controller ?? (_ownController ??= ScrollController());
+  ScrollController get _controller =>
+      widget.controller ?? (_ownController ??= ScrollController());
 
   @override
   void dispose() {
@@ -215,7 +223,8 @@ class _PosterCardState extends State<PosterCard> {
     // row-aware reveal again from here, at the whole-card level, includes
     // the title and leaves the next row peeking rather than fully hidden.
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) ensureRowVisible(context, peekExtent: posterRowPeekExtent.du(context));
+      if (mounted)
+        ensureRowVisible(context, peekExtent: posterRowPeekExtent.du(context));
     });
   }
 
@@ -259,7 +268,10 @@ class _PosterCardState extends State<PosterCard> {
                         bottom: 0,
                         child: Container(
                           color: AppScrims.dialog,
-                          padding: EdgeInsets.symmetric(horizontal: 14.du(context), vertical: AppSpacing.md.du(context)),
+                          padding: EdgeInsets.symmetric(
+                            horizontal: 14.du(context),
+                            vertical: AppSpacing.md.du(context),
+                          ),
                           child: widget.marker,
                         ),
                       ),
@@ -281,7 +293,9 @@ class _PosterCardState extends State<PosterCard> {
                             fontWeight: FontWeight.w500,
                           )
                         : AppTypography.label,
-                    color: _focused ? AppColors.ink : (widget.muted ? AppColors.ink3 : AppColors.ink2),
+                    color: _focused
+                        ? AppColors.ink
+                        : (widget.muted ? AppColors.ink3 : AppColors.ink2),
                   ),
                   if (widget.subtitle != null)
                     Padding(
@@ -289,7 +303,9 @@ class _PosterCardState extends State<PosterCard> {
                       child: AppText(
                         widget.subtitle!,
                         style: AppTypography.caption,
-                        color: _focused ? AppColors.ink2 : (widget.muted ? AppColors.ink4 : AppColors.ink3),
+                        color: _focused
+                            ? AppColors.ink2
+                            : (widget.muted ? AppColors.ink4 : AppColors.ink3),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),

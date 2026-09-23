@@ -466,10 +466,15 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     await store.save(change(persisted));
   }
 
-  final _paneNode = FocusNode(debugLabel: 'settings-pane', canRequestFocus: false, skipTraversal: true);
+  final _paneNode = FocusNode(
+    debugLabel: 'settings-pane',
+    canRequestFocus: false,
+    skipTraversal: true,
+  );
 
   KeyEventResult _groupsKey(FocusNode node, KeyEvent event) {
-    if (event is KeyDownEvent && event.logicalKey == LogicalKeyboardKey.arrowRight) {
+    if (event is KeyDownEvent &&
+        event.logicalKey == LogicalKeyboardKey.arrowRight) {
       _enterPane();
       return KeyEventResult.handled;
     }
@@ -484,10 +489,13 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       _appearanceEntryFocus.requestFocus();
       return;
     }
-    final nodes = _paneNode.traversalDescendants
-        .where((n) => n.canRequestFocus && !n.skipTraversal && n.context != null)
-        .toList()
-      ..sort((a, b) => a.rect.top.compareTo(b.rect.top));
+    final nodes =
+        _paneNode.traversalDescendants
+            .where(
+              (n) => n.canRequestFocus && !n.skipTraversal && n.context != null,
+            )
+            .toList()
+          ..sort((a, b) => a.rect.top.compareTo(b.rect.top));
     if (nodes.isNotEmpty) nodes.first.requestFocus();
   }
 
@@ -529,7 +537,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 ],
                 SizedBox(height: AppSpacing.xxl.du(context)),
                 AppText(
-                  ['Reelay ${widget.versionName ?? ''}'.trim(), 'Android TV'].join('\n'),
+                  [
+                    'Reelay ${widget.versionName ?? ''}'.trim(),
+                    'Android TV',
+                  ].join('\n'),
                   style: AppTypography.caption.copyWith(height: 1.6),
                   color: AppColors.ink4,
                 ),
@@ -563,10 +574,16 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             crossAxisAlignment: CrossAxisAlignment.baseline,
             textBaseline: TextBaseline.alphabetic,
             children: [
-              AppText(_group == _Group.appearance ? 'Theme' : _group.label, style: AppTypography.title2),
+              AppText(
+                _group == _Group.appearance ? 'Theme' : _group.label,
+                style: AppTypography.title2,
+              ),
               if (_group == _Group.appearance) ...[
                 const Spacer(),
-                AppText('Applies to every screen · takes effect at once', style: AppTypography.caption),
+                AppText(
+                  'Applies to every screen · takes effect at once',
+                  style: AppTypography.caption,
+                ),
               ],
             ],
           ),
@@ -738,14 +755,21 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   }
 
   List<Widget> _appearanceRows() => [
-    ThemeList(current: _settings.themeId, onSelect: _selectTheme, currentFocus: _appearanceEntryFocus),
+    ThemeList(
+      current: _settings.themeId,
+      onSelect: _selectTheme,
+      currentFocus: _appearanceEntryFocus,
+    ),
   ];
 
   List<Widget> _displayRows() => [
     _SettingRow(
       label: 'UI size',
       description: 'Scales the whole interface. Turn it up if things look small from where you sit — a TV can’t report its own screen size.',
-      trailing: UiScaleStepper(value: _settings.uiScale, onChanged: _selectUiScale),
+      trailing: UiScaleStepper(
+        value: _settings.uiScale,
+        onChanged: _selectUiScale,
+      ),
     ),
   ];
 

@@ -44,7 +44,8 @@ class LoadingScreen extends StatefulWidget {
 }
 
 class _LoadingScreenState extends State<LoadingScreen> {
-  late final _flavor = _flavorMessages[Random().nextInt(_flavorMessages.length)];
+  late final _flavor =
+      _flavorMessages[Random().nextInt(_flavorMessages.length)];
 
   @override
   Widget build(BuildContext context) {
@@ -61,7 +62,11 @@ class _LoadingScreenState extends State<LoadingScreen> {
               AppText(message),
               SizedBox(height: 4.du(context)),
             ],
-            AppText(_flavor, style: AppTypography.caption, color: AppColors.ink3),
+            AppText(
+              _flavor,
+              style: AppTypography.caption,
+              color: AppColors.ink3,
+            ),
           ],
         ),
       ),

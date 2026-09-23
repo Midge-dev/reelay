@@ -22,7 +22,9 @@ enum DateAddedBucket {
 const _secondsPerDay = 86400;
 
 int? _releaseYear(PlexLibraryItem item) {
-  final fromDate = item.originallyAvailableAt != null && item.originallyAvailableAt!.length >= 4
+  final fromDate =
+      item.originallyAvailableAt != null &&
+          item.originallyAvailableAt!.length >= 4
       ? int.tryParse(item.originallyAvailableAt!.substring(0, 4))
       : null;
   return fromDate ?? item.year;
@@ -34,7 +36,11 @@ int? decadeOf(PlexLibraryItem item) {
   return (year ~/ 10) * 10;
 }
 
-bool matchesDateAddedBucket(PlexLibraryItem item, DateAddedBucket bucket, int nowEpochSeconds) {
+bool matchesDateAddedBucket(
+  PlexLibraryItem item,
+  DateAddedBucket bucket,
+  int nowEpochSeconds,
+) {
   final addedAt = item.addedAt;
   if (addedAt == null) return false;
   final ageDays = (nowEpochSeconds - addedAt) ~/ _secondsPerDay;
@@ -62,26 +68,40 @@ List<PlexLibraryItem> applyLibraryFilters({
 
   if (query.trim().isNotEmpty) {
     final lowerQuery = query.toLowerCase();
-    result = result.where((item) => item.title.toLowerCase().contains(lowerQuery)).toList();
+    result = result
+        .where((item) => item.title.toLowerCase().contains(lowerQuery))
+        .toList();
   }
   if (genre != null) {
-    result = result.where((item) => item.genres.any((g) => g.tag == genre)).toList();
+    result = result
+        .where((item) => item.genres.any((g) => g.tag == genre))
+        .toList();
   }
   if (collection != null) {
-    result = result.where((item) => item.collections.any((c) => c.tag == collection)).toList();
+    result = result
+        .where((item) => item.collections.any((c) => c.tag == collection))
+        .toList();
   }
   if (decade != null) {
     result = result.where((item) => decadeOf(item) == decade).toList();
   }
   if (dateAddedBucket != null) {
-    result = result.where((item) => matchesDateAddedBucket(item, dateAddedBucket, now)).toList();
+    result = result
+        .where((item) => matchesDateAddedBucket(item, dateAddedBucket, now))
+        .toList();
   }
 
   switch (sortMode) {
     case SortMode.title:
-      result.sort((a, b) => a.title.toLowerCase().compareTo(b.title.toLowerCase()));
+      result.sort(
+        (a, b) => a.title.toLowerCase().compareTo(b.title.toLowerCase()),
+      );
     case SortMode.releaseDate:
-      result.sort((a, b) => (_releaseYear(b) ?? -1 << 31).compareTo(_releaseYear(a) ?? -1 << 31));
+      result.sort(
+        (a, b) => (_releaseYear(b) ?? -1 << 31).compareTo(
+          _releaseYear(a) ?? -1 << 31,
+        ),
+      );
     case SortMode.dateAdded:
       result.sort((a, b) => (b.addedAt ?? 0).compareTo(a.addedAt ?? 0));
   }

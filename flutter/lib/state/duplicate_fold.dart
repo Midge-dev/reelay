@@ -109,10 +109,11 @@ List<FoldedWork<T>> foldByGuid<T>(
         groups[root]!
             .map((i) => guidOf(items[i].value))
             .firstWhere((g) => g != null && g.isNotEmpty, orElse: () => null),
-        groups[root]!
-            .map((i) => items[i])
-            .toList()
-          ..sort((a, b) => _reachabilityRank[a.reachability]!.compareTo(_reachabilityRank[b.reachability]!)),
+        groups[root]!.map((i) => items[i]).toList()..sort(
+          (a, b) => _reachabilityRank[a.reachability]!.compareTo(
+            _reachabilityRank[b.reachability]!,
+          ),
+        ),
       ),
   ];
 }

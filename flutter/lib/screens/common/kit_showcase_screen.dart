@@ -74,7 +74,9 @@ class _KitShowcaseScreenState extends State<KitShowcaseScreen> {
                 child: Row(
                   children: List.generate(4, (i) {
                     return Padding(
-                      padding: EdgeInsets.only(right: AppSpacing.lg.du(context)),
+                      padding: EdgeInsets.only(
+                        right: AppSpacing.lg.du(context),
+                      ),
                       child: SizedBox(
                         width: 140.du(context),
                         child: AppCard(

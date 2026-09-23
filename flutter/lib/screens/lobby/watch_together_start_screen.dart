@@ -215,9 +215,8 @@ SurfaceColors get _choiceColors => SurfaceColors(
   selectedContainer: AppColors.surfaceRaised,
   selectedContent: AppColors.ink,
 );
-SurfaceBorder get _choiceBorder => SurfaceBorder(
-  focused: SurfaceBorderSide.solid(AppColors.accent),
-);
+SurfaceBorder get _choiceBorder =>
+    SurfaceBorder(focused: SurfaceBorderSide.solid(AppColors.accent));
 
 class _ChoiceRow extends StatelessWidget {
   final String title;
@@ -347,7 +346,10 @@ class _RelayStatusRow extends StatelessWidget {
       decoration: BoxDecoration(
         color: AppColors.surfaceRaised,
         border: Border(
-          left: BorderSide(color: color, width: AppShape.spineWidth.du(context)),
+          left: BorderSide(
+            color: color,
+            width: AppShape.spineWidth.du(context),
+          ),
         ),
         borderRadius: BorderRadius.circular(AppShape.radiusSm.du(context)),
       ),
