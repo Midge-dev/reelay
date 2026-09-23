@@ -68,9 +68,7 @@ void main() {
     await _pump(tester, ready: Completer<void>().future, onDone: () {});
     await tester.pump(const Duration(milliseconds: 1300));
 
-    // Twice: the visible wordmark, plus an invisible copy that holds the
-    // glow pass's layout in step with it.
-    expect(find.text('Reelay'), findsNWidgets(2));
+    expect(find.text('Reelay'), findsOneWidget);
     // Let pending timers finish so the test ends cleanly.
     await tester.pump(const Duration(seconds: 3));
   });
