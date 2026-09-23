@@ -296,6 +296,21 @@ class AppRootController extends ChangeNotifier {
   Future<void> connect(String token, {bool firstRun = false}) async {
     _accountToken = token;
     _clientIdentifier = await _plexIdentity.getOrCreateClientIdentifier();
+    // Start probing servers now, alongside the account fetch — the probe
+    // doesn't need the account, and doing them one after the other added
+    // the account round trip to every cold start. Errors are carried to
+    // the await below rather than escaping unhandled meanwhile.
+    final settings = await _settingsStore.observe().first;
+    final resourcesApi = PlexResourcesApi(_clientIdentifier);
+    final probing = resourcesApi
+        .connectToAllServers(
+          token,
+          disabledMachineIdentifiers: settings.disabledServerIds,
+        )
+        .then<(ConnectedServers?, Object?)>(
+          (v) => (v, null),
+          onError: (Object e) => (null, e),
+        );
     final authApi = PlexAuthApi(_clientIdentifier);
     try {
       _localAccount = await authApi.fetchAccount(token);
@@ -321,12 +336,9 @@ class AppRootController extends ChangeNotifier {
     progress('Looking for your servers');
 
     try {
-      final settings = await _settingsStore.observe().first;
-      final resourcesApi = PlexResourcesApi(_clientIdentifier);
-      final probed = await resourcesApi.connectToAllServers(
-        token,
-        disabledMachineIdentifiers: settings.disabledServerIds,
-      );
+      final (probedOrNull, probeError) = await probing;
+      if (probeError != null) throw probeError;
+      final probed = probedOrNull!;
       final reached = probed.connected.length;
       done.add(
         'Reached $reached server${reached == 1 ? '' : 's'}${probed.unreachable.isEmpty ? '' : ' · ${probed.unreachable.length} not answering'}',
@@ -365,20 +377,18 @@ class AppRootController extends ChangeNotifier {
         'Found $libraries librar${libraries == 1 ? 'y' : 'ies'} across $reached server${reached == 1 ? '' : 's'}',
       );
       progress(
-        'Loading ${firstGroup.title}',
+        'Loading your home screen',
         headline:
             '${_countWord(reached, 'server')}, ${_countWord(libraries, 'library', plural: 'libraries')}',
       );
-      final items = foldByGuid(
-        await _fetchGroupItems(probed.connected, firstGroup),
-        guidOf: (i) => i.guid,
-        alternateIdsOf: (i) => i.guids.map((g) => g.id).toList(),
-      );
+      // Home is built from on-deck/recent/suggestion hubs alone — a
+      // library's full title list is fetched when that library is opened,
+      // never at startup (it held the splash for seconds on a large one).
       final ctx = LibraryContext(
         servers: probed.connected,
         sectionGroups: sectionGroups,
         selectedSectionGroup: firstGroup,
-        items: items,
+        items: const [],
       );
       // The Watch Together step is offered once: skipping it during setup
       // ("Not now") is an answer, not something to ask again every launch.
@@ -907,18 +917,13 @@ class AppRootController extends ChangeNotifier {
     final perServer = await Future.wait(
       servers.map((cs) async {
         final api = PlexServerApi(cs.server, _clientIdentifier);
-        final onDeck = await api.fetchOnDeck().catchError(
-          (_) => <PlexOnDeckItem>[],
-        );
-        final recentlyAdded = await api.fetchRecentlyAdded().catchError(
-          (_) => <PlexLibraryItem>[],
-        );
-        final recentActivity = await api.fetchRecentActivity().catchError(
-          (_) => <PlexOnDeckItem>[],
-        );
-        final suggestions = await api.fetchSuggestions().catchError(
-          (_) => <PlexOnDeckItem>[],
-        );
+        // All four hubs at once, not one after another.
+        final (onDeck, recentlyAdded, recentActivity, suggestions) = await (
+          api.fetchOnDeck().catchError((_) => <PlexOnDeckItem>[]),
+          api.fetchRecentlyAdded().catchError((_) => <PlexLibraryItem>[]),
+          api.fetchRecentActivity().catchError((_) => <PlexOnDeckItem>[]),
+          api.fetchSuggestions().catchError((_) => <PlexOnDeckItem>[]),
+        ).wait;
         return (cs, onDeck, recentlyAdded, recentActivity, suggestions);
       }),
     );
