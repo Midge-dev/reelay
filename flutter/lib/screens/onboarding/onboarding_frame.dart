@@ -164,7 +164,33 @@ class OnboardingFrame extends StatelessWidget {
                           padding: EdgeInsets.only(
                             top: AppSpacing.xxl.du(context),
                           ),
-                          child: footer,
+                          // Focus inside the footer (O4's Not now) shows the
+                          // whole bar and the margin under it — the focused
+                          // button's own ensureVisible stopped at the button,
+                          // leaving the bar cut by the screen's edge.
+                          child: Builder(
+                            builder: (context) => Focus(
+                              canRequestFocus: false,
+                              skipTraversal: true,
+                              onFocusChange: (focused) {
+                                if (!focused) return;
+                                WidgetsBinding.instance.addPostFrameCallback((
+                                  _,
+                                ) {
+                                  if (!context.mounted) return;
+                                  final position = Scrollable.of(
+                                    context,
+                                  ).position;
+                                  position.animateTo(
+                                    position.maxScrollExtent,
+                                    duration: AppMotion.rowScroll,
+                                    curve: AppMotion.enter,
+                                  );
+                                });
+                              },
+                              child: footer!,
+                            ),
+                          ),
                         ),
                     ],
                   ),

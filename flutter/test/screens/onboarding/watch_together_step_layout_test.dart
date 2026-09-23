@@ -53,4 +53,17 @@ void main() {
       expect(tester.takeException(), isNull);
     });
   }
+
+  testWidgets('focusing Not now brings the whole skip bar into view at 130%', (tester) async {
+    await _pump(tester, const Size(960, 540), 540 / 1080 * 1.3);
+    final notNow = find.ancestor(of: find.text('Not now'), matching: find.byType(Focus)).first;
+    Focus.of(tester.element(find.text('Not now'))).requestFocus();
+    await tester.pumpAndSettle();
+    final bar = find.ancestor(
+      of: find.text('Skipping is fine'),
+      matching: find.byWidgetPredicate((w) => w is CustomPaint && w.foregroundPainter is LeadingSpinePainter),
+    );
+    expect(tester.getRect(bar).bottom, lessThanOrEqualTo(540), reason: 'the bar is fully on screen');
+    expect(notNow, findsOneWidget);
+  });
 }

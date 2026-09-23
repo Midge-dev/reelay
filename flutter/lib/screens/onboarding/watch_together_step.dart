@@ -165,75 +165,83 @@ class _WatchTogetherStepState extends ConsumerState<WatchTogetherStep> {
   }
 
   Widget _choices(BuildContext context) {
-    return Wrap(
-      spacing: AppSpacing.xl.du(context),
-      runSpacing: AppSpacing.xl.du(context),
+    // Side by side as in O4; at large UI sizes the cards narrow rather than
+    // stacking, which pushed the skip bar off the bottom of the screen.
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        SizedBox(
-          width: 480.du(context),
-          child: _WayInCard(
-            focusNode: _phoneFocus,
-            icon: PhosphorIconsRegular.deviceMobile,
-            title: 'Set it up from my phone',
-            body: 'Shows a code to scan; paste your relay’s address on the phone and it arrives here. No typing on the TV.',
-            footer: AppText(
-              'Recommended',
-              style: AppTypography.caption,
-              color: AppColors.accent300,
+        Flexible(
+          flex: 48,
+          child: ConstrainedBox(
+            constraints: BoxConstraints(maxWidth: 480.du(context)),
+            child: _WayInCard(
+              focusNode: _phoneFocus,
+              icon: PhosphorIconsRegular.deviceMobile,
+              title: 'Set it up from my phone',
+              body: 'Shows a code to scan; paste your relay’s address on the phone and it arrives here. No typing on the TV.',
+              footer: AppText(
+                'Recommended',
+                style: AppTypography.caption,
+                color: AppColors.accent300,
+              ),
+              onClick: _startPairing,
             ),
-            onClick: _startPairing,
           ),
         ),
-        SizedBox(
-          width: 420.du(context),
-          child: _WayInCard(
-            icon: PhosphorIconsRegular.linkSimple,
-            title: 'I already have one',
-            body: 'Type or paste the relay URL.',
-            onClick: () => _urlFocus.requestFocus(),
-            footer: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Container(
-                  height: 56.du(context),
-                  padding: EdgeInsets.symmetric(horizontal: 18.du(context)),
-                  alignment: AlignmentDirectional.centerStart,
-                  decoration: BoxDecoration(
-                    color: _urlFocused
-                        ? AppColors.surfaceRaised
-                        : AppColors.background,
-                    border: Border.all(
-                      color: _urlFocused ? AppColors.accent : AppColors.line,
-                      width: AppShape.borderWidth.du(context),
+        SizedBox(width: AppSpacing.xl.du(context)),
+        Flexible(
+          flex: 42,
+          child: ConstrainedBox(
+            constraints: BoxConstraints(maxWidth: 420.du(context)),
+            child: _WayInCard(
+              icon: PhosphorIconsRegular.linkSimple,
+              title: 'I already have one',
+              body: 'Type or paste the relay URL.',
+              onClick: () => _urlFocus.requestFocus(),
+              footer: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Container(
+                    height: 56.du(context),
+                    padding: EdgeInsets.symmetric(horizontal: 18.du(context)),
+                    alignment: AlignmentDirectional.centerStart,
+                    decoration: BoxDecoration(
+                      color: _urlFocused
+                          ? AppColors.surfaceRaised
+                          : AppColors.background,
+                      border: Border.all(
+                        color: _urlFocused ? AppColors.accent : AppColors.line,
+                        width: AppShape.borderWidth.du(context),
+                      ),
+                      borderRadius: BorderRadius.circular(
+                        AppShape.radiusMd.du(context),
+                      ),
                     ),
-                    borderRadius: BorderRadius.circular(
-                      AppShape.radiusMd.du(context),
-                    ),
-                  ),
-                  child: ClickToTypeTextField(
-                    onFocusChange: (f) => setState(() => _urlFocused = f),
-                    value: _url,
-                    onValueChange: (v) => setState(() => _url = v),
-                    focusNode: _urlFocus,
-                    hintText: 'wss://…',
-                    showBorder: false,
-                    textStyle: AppTypography.caption.copyWith(
-                      color: AppColors.ink,
-                    ),
-                  ),
-                ),
-                if (_url.trim().isNotEmpty) ...[
-                  SizedBox(height: AppSpacing.md.du(context)),
-                  AppButton(
-                    onClick: () => _finish(url: _url),
-                    child: AppText(
-                      'Use this relay',
-                      style: AppTypography.label,
-                      color: null,
+                    child: ClickToTypeTextField(
+                      onFocusChange: (f) => setState(() => _urlFocused = f),
+                      value: _url,
+                      onValueChange: (v) => setState(() => _url = v),
+                      focusNode: _urlFocus,
+                      hintText: 'wss://…',
+                      showBorder: false,
+                      textStyle: AppTypography.caption.copyWith(
+                        color: AppColors.ink,
+                      ),
                     ),
                   ),
+                  if (_url.trim().isNotEmpty) ...[
+                    SizedBox(height: AppSpacing.md.du(context)),
+                    AppButton(
+                      onClick: () => _finish(url: _url),
+                      child: AppText(
+                        'Use this relay',
+                        style: AppTypography.label,
+                        color: null,
+                      ),
+                    ),
+                  ],
                 ],
-              ],
+              ),
             ),
           ),
         ),
