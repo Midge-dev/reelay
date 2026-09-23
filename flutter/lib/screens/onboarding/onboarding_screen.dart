@@ -119,31 +119,36 @@ class _ServersStepState extends State<_ServersStep> {
                 'Jellyfin is not connectable yet — the card is here so the shape of the choice is right from the first release.',
           ),
           SizedBox(height: 42.du(context)),
-          Wrap(
-            spacing: AppSpacing.xl.du(context),
-            runSpacing: AppSpacing.xl.du(context),
+          // Side by side as in O1; at large UI sizes the cards narrow rather
+          // than stacking, which pushed Jellyfin and Continue off-screen.
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _ChoiceCard(
-                focusNode: _plexFocus,
-                selected: widget.plexSelected,
-                icon: PhosphorIconsFill.hardDrives,
-                title: 'Plex',
-                body:
-                    'Sign in once on your phone. Shared servers come with you.',
-                onClick: widget.onTogglePlex,
+              Flexible(
+                child: _ChoiceCard(
+                  focusNode: _plexFocus,
+                  selected: widget.plexSelected,
+                  icon: PhosphorIconsFill.hardDrives,
+                  title: 'Plex',
+                  body: 'Sign in once on your phone. Shared servers come with you.',
+                  onClick: widget.onTogglePlex,
+                ),
               ),
+              SizedBox(width: AppSpacing.xl.du(context)),
               // Disabled per DESIGN.md until Jellyfin support ships —
               // FocusableSurface's disabled state is exactly the rule: 45%
               // opacity and out of the focus order. A stated dead end, not
               // a live card that leads nowhere.
-              _ChoiceCard(
-                selected: false,
-                enabled: false,
-                icon: PhosphorIconsRegular.hardDrives,
-                title: 'Jellyfin',
-                body: 'Your own server address and account, paired from your phone. Not connectable yet.',
-                badge: 'COMING SOON',
-                onClick: () {},
+              Flexible(
+                child: _ChoiceCard(
+                  selected: false,
+                  enabled: false,
+                  icon: PhosphorIconsRegular.hardDrives,
+                  title: 'Jellyfin',
+                  body: 'Your own server address and account, paired from your phone. Not connectable yet.',
+                  badge: 'COMING SOON',
+                  onClick: () {},
+                ),
               ),
             ],
           ),
@@ -214,68 +219,73 @@ class _ChoiceCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      width: 400.du(context),
-      child: ConstrainedBox(
-        constraints: BoxConstraints(minHeight: 230.du(context)),
-        child: FocusableSurface(
-          onClick: onClick,
-          enabled: enabled,
-          selected: selected,
-          focusNode: focusNode,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(AppShape.radiusMd.du(context)),
-          ),
-          colors: _cardColors,
-          border: _cardBorder,
-          contentAlignment: AlignmentDirectional.topStart,
-          child: Padding(
-            padding: EdgeInsets.all(AppSpacing.xxl.du(context)),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Row(
-                  children: [
-                    AppIcon(icon, size: 34),
-                    const Spacer(),
-                    if (selected)
-                      AppIcon(
-                        PhosphorIconsFill.checkCircle,
-                        size: 28,
-                        tint: AppColors.accent300,
-                      ),
-                    if (badge != null)
-                      Container(
-                        height: 34.du(context),
-                        padding: EdgeInsets.symmetric(
-                          horizontal: AppSpacing.md.du(context),
-                        ),
-                        alignment: Alignment.center,
-                        decoration: BoxDecoration(
-                          color: AppColors.line,
-                          borderRadius: BorderRadius.circular(
-                            AppShape.radiusSm.du(context),
+    return ConstrainedBox(
+      constraints: BoxConstraints(
+        maxWidth: 400.du(context),
+        minHeight: 230.du(context),
+      ),
+      child: FocusableSurface(
+        onClick: onClick,
+        enabled: enabled,
+        selected: selected,
+        focusNode: focusNode,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppShape.radiusMd.du(context)),
+        ),
+        colors: _cardColors,
+        border: _cardBorder,
+        contentAlignment: AlignmentDirectional.topStart,
+        child: Padding(
+          padding: EdgeInsets.all(AppSpacing.xxl.du(context)),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Row(
+                children: [
+                  AppIcon(icon, size: 34),
+                  const Spacer(),
+                  if (selected)
+                    AppIcon(
+                      PhosphorIconsFill.checkCircle,
+                      size: 28,
+                      tint: AppColors.accent300,
+                    ),
+                  if (badge != null)
+                    Flexible(
+                      child: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        child: Container(
+                          height: 34.du(context),
+                          padding: EdgeInsets.symmetric(
+                            horizontal: AppSpacing.md.du(context),
+                          ),
+                          alignment: Alignment.center,
+                          decoration: BoxDecoration(
+                            color: AppColors.line,
+                            borderRadius: BorderRadius.circular(
+                              AppShape.radiusSm.du(context),
+                            ),
+                          ),
+                          child: AppText(
+                            badge!,
+                            style: AppTypography.micro,
+                            color: AppColors.ink2,
                           ),
                         ),
-                        child: AppText(
-                          badge!,
-                          style: AppTypography.micro,
-                          color: AppColors.ink2,
-                        ),
                       ),
-                  ],
-                ),
-                SizedBox(height: 20.du(context)),
-                AppText(title, style: AppTypography.title2, color: null),
-                SizedBox(height: AppSpacing.md.du(context)),
-                AppText(
-                  body,
-                  style: AppTypography.caption.copyWith(height: 1.5),
-                  color: AppColors.ink2,
-                ),
-              ],
-            ),
+                    ),
+                ],
+              ),
+              SizedBox(height: 20.du(context)),
+              AppText(title, style: AppTypography.title2, color: null),
+              SizedBox(height: AppSpacing.md.du(context)),
+              AppText(
+                body,
+                style: AppTypography.caption.copyWith(height: 1.5),
+                color: AppColors.ink2,
+              ),
+            ],
           ),
         ),
       ),
@@ -363,6 +373,9 @@ class _LinkStepState extends ConsumerState<_LinkStep> {
     final code = _code;
     return OnboardingFrame(
       step: SetupStep.link,
+      // The title runs to two lines at large UI sizes; the tighter top keeps
+      // New code / Back on screen without scrolling.
+      contentTop: 80,
       summaries: const {SetupStep.servers: 'Plex', SetupStep.link: '1 of 1'},
       footnote: 'Reelay never sees your password. Plex hands back a token for this TV only, and it stays on the device.',
       child: Column(
@@ -372,10 +385,11 @@ class _LinkStepState extends ConsumerState<_LinkStep> {
             kicker: 'STEP 2 OF 4 · PLEX',
             title: 'Link this TV to your Plex account',
           ),
-          SizedBox(height: 46.du(context)),
-          Wrap(
-            spacing: 56.du(context),
-            runSpacing: AppSpacing.xxl.du(context),
+          SizedBox(height: 32.du(context)),
+          // QR beside the code, as in O2 — stacking them pushed the code and
+          // the buttons below the fold at large UI sizes.
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Column(
                 mainAxisSize: MainAxisSize.min,
@@ -402,97 +416,106 @@ class _LinkStepState extends ConsumerState<_LinkStep> {
                   ),
                 ],
               ),
-              ConstrainedBox(
-                constraints: BoxConstraints(maxWidth: 640.du(context)),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    AppText(
-                      'Scanning opens plex.tv/link on your phone. Sign in there if you need to, and enter the code below.',
-                      style: AppTypography.body,
-                    ),
-                    SizedBox(height: 26.du(context)),
-                    Container(
-                      padding: EdgeInsets.all(28.du(context)),
-                      decoration: BoxDecoration(
-                        color: AppColors.surface,
-                        border: Border.all(
-                          color: AppColors.line,
-                          width: 1.du(context),
+              SizedBox(width: 56.du(context)),
+              Flexible(
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(maxWidth: 640.du(context)),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      AppText(
+                        'Scanning opens plex.tv/link on your phone. Sign in there if you need to, and enter the code below.',
+                        style: AppTypography.body,
+                      ),
+                      SizedBox(height: 26.du(context)),
+                      Container(
+                        padding: EdgeInsets.all(28.du(context)),
+                        decoration: BoxDecoration(
+                          color: AppColors.surface,
+                          border: Border.all(
+                            color: AppColors.line,
+                            width: 1.du(context),
+                          ),
+                          borderRadius: BorderRadius.circular(
+                            AppShape.radiusMd.du(context),
+                          ),
                         ),
-                        borderRadius: BorderRadius.circular(
-                          AppShape.radiusMd.du(context),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            AppText(
+                              'No camera? On any device open plex.tv/link and enter',
+                              style: AppTypography.caption,
+                            ),
+                            SizedBox(height: 14.du(context)),
+                            FittedBox(
+                              fit: BoxFit.scaleDown,
+                              alignment: AlignmentDirectional.centerStart,
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  for (final (i, ch)
+                                      in (code ?? '····')
+                                          .split('')
+                                          .indexed) ...[
+                                    if (i > 0) SizedBox(width: 14.du(context)),
+                                    Container(
+                                      width: 86.du(context),
+                                      height: 110.du(context),
+                                      alignment: Alignment.center,
+                                      decoration: BoxDecoration(
+                                        color: AppColors.surfaceRaised,
+                                        border: Border.all(
+                                          color: AppColors.lineStrong,
+                                          width: 1.du(context),
+                                        ),
+                                        borderRadius: BorderRadius.circular(
+                                          AppShape.radiusMd.du(context),
+                                        ),
+                                      ),
+                                      child: AppText(
+                                        ch,
+                                        style: AppTypography.display,
+                                        color: code == null
+                                            ? AppColors.ink4
+                                            : AppColors.ink,
+                                      ),
+                                    ),
+                                  ],
+                                ],
+                              ),
+                            ),
+                          ],
                         ),
                       ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+                      SizedBox(height: 26.du(context)),
+                      Row(
                         children: [
-                          AppText(
-                            'No camera? On any device open plex.tv/link and enter',
-                            style: AppTypography.caption,
+                          Container(
+                            width: 9.du(context),
+                            height: 9.du(context),
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: _error != null
+                                  ? AppColors.error
+                                  : AppColors.warning,
+                            ),
                           ),
-                          SizedBox(height: 14.du(context)),
-                          Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              for (final (i, ch)
-                                  in (code ?? '····').split('').indexed) ...[
-                                if (i > 0) SizedBox(width: 14.du(context)),
-                                Container(
-                                  width: 86.du(context),
-                                  height: 110.du(context),
-                                  alignment: Alignment.center,
-                                  decoration: BoxDecoration(
-                                    color: AppColors.surfaceRaised,
-                                    border: Border.all(
-                                      color: AppColors.lineStrong,
-                                      width: 1.du(context),
-                                    ),
-                                    borderRadius: BorderRadius.circular(
-                                      AppShape.radiusMd.du(context),
-                                    ),
-                                  ),
-                                  child: AppText(
-                                    ch,
-                                    style: AppTypography.display,
-                                    color: code == null
-                                        ? AppColors.ink4
-                                        : AppColors.ink,
-                                  ),
-                                ),
-                              ],
-                            ],
+                          SizedBox(width: 14.du(context)),
+                          Flexible(
+                            child: AppText(
+                              _error ??
+                                  (code == null
+                                      ? 'Asking Plex for a code…'
+                                      : 'Waiting for you to approve it · the code refreshes on its own'),
+                              style: AppTypography.label,
+                              color: AppColors.ink2,
+                            ),
                           ),
                         ],
                       ),
-                    ),
-                    SizedBox(height: 26.du(context)),
-                    Row(
-                      children: [
-                        Container(
-                          width: 9.du(context),
-                          height: 9.du(context),
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: _error != null
-                                ? AppColors.error
-                                : AppColors.warning,
-                          ),
-                        ),
-                        SizedBox(width: 14.du(context)),
-                        Flexible(
-                          child: AppText(
-                            _error ??
-                                (code == null
-                                    ? 'Asking Plex for a code…'
-                                    : 'Waiting for you to approve it · the code refreshes on its own'),
-                            style: AppTypography.label,
-                            color: AppColors.ink2,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
             ],
