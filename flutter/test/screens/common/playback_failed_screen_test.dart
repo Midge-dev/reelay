@@ -1,6 +1,10 @@
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:reelay/data/plex/plex_models.dart';
+import 'package:reelay/data/plex/plex_resources_api.dart';
 import 'package:reelay/screens/common/playback_failed_screen.dart';
+import 'package:reelay/state/copy_facts.dart';
+import 'package:reelay/state/duplicate_fold.dart';
 
 Future<void> _pump(
   WidgetTester tester, {
@@ -9,6 +13,7 @@ Future<void> _pump(
   VoidCallback? onBack,
   String? alternateServerName,
   VoidCallback? onPlayAlternate,
+  VoidCallback? onAllSources,
 }) async {
   tester.view.physicalSize = const Size(1920, 1080);
   tester.view.devicePixelRatio = 1.0;
@@ -23,8 +28,19 @@ Future<void> _pump(
         reason: reason,
         onRetry: onRetry ?? () {},
         onBack: onBack ?? () {},
-        alternateServerName: alternateServerName,
+        title: 'The Quiet Coast',
+        otherCopies: alternateServerName == null ? 0 : 2,
+        alternate: alternateServerName == null
+            ? null
+            : Sourced(
+                const PlexLibraryItem(ratingKey: '9', title: 'The Quiet Coast'),
+                PlexServer(name: alternateServerName, baseUrl: 'http://l', accessToken: 't'),
+                ServerReachability.local,
+              ),
+        loadFacts: (_) async => const CopyFacts(picture: '1080p', directPlay: true),
+        resumeAtMs: 46 * 60000 + 12000,
         onPlayAlternate: onPlayAlternate,
+        onAllSources: onAllSources,
       ),
     ),
   );
@@ -71,6 +87,23 @@ void main() {
 
     expect(find.text('Play from Loft'), findsOneWidget);
     expect(find.text('Try Attic again'), findsOneWidget);
+  });
+
+  testWidgets('the offer says what the other copy is and where you carry on', (tester) async {
+    await _pump(tester, alternateServerName: 'Loft', onPlayAlternate: () {}, onAllSources: () {});
+    await tester.pump();
+
+    expect(
+      find.text(
+        'The Quiet Coast is on two other servers. Loft has a 1080p copy this '
+        'television can play directly, and you would carry on from 46:12.',
+      ),
+      findsOneWidget,
+    );
+    expect(find.text('Plex · local · answered just now'), findsOneWidget);
+    expect(find.text('Direct play'), findsOneWidget);
+    expect(find.text('All sources'), findsOneWidget);
+    expect(find.text('Back'), findsNothing);
   });
 
   testWidgets('tapping Play from X invokes onPlayAlternate', (tester) async {

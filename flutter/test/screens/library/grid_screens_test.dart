@@ -78,12 +78,12 @@ void main() {
 
   group('PersonFilmographyScreen (03c)', () {
     setUp(() {
-      final view = TestWidgetsFlutterBinding.instance.platformDispatcher.views.first as TestFlutterView;
+      final view = TestWidgetsFlutterBinding.instance.platformDispatcher.views.first;
       view.physicalSize = const Size(1920, 1080);
       view.devicePixelRatio = 1.0;
     });
     tearDown(() {
-      final view = TestWidgetsFlutterBinding.instance.platformDispatcher.views.first as TestFlutterView;
+      final view = TestWidgetsFlutterBinding.instance.platformDispatcher.views.first;
       view.resetPhysicalSize();
       view.resetDevicePixelRatio();
     });

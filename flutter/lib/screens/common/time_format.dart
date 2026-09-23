@@ -65,3 +65,20 @@ String formatAirDate(String iso) {
   if (d == null) return iso;
   return '${_months[d.month - 1]} ${d.day}, ${d.year}';
 }
+
+/// "two", "three" — copy spells small counts out ("on three of your
+/// servers"); anything past ten stays a numeral.
+String countWord(int n) => switch (n) {
+  0 => 'no',
+  1 => 'one',
+  2 => 'two',
+  3 => 'three',
+  4 => 'four',
+  5 => 'five',
+  6 => 'six',
+  7 => 'seven',
+  8 => 'eight',
+  9 => 'nine',
+  10 => 'ten',
+  _ => '$n',
+};

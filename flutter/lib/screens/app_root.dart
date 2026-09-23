@@ -14,6 +14,7 @@ import '../kit/text.dart';
 import '../state/app_root_controller.dart';
 import '../state/app_state.dart';
 import '../state/data_providers.dart';
+import '../state/copy_facts.dart';
 import '../state/duplicate_fold.dart';
 import '../state/person_credits.dart';
 import '../sync/relay_directory_api.dart';
@@ -212,6 +213,7 @@ class _AppContent extends StatelessWidget {
         :final fromStart,
         :final reason,
         :final returnState,
+        :final resumeAtMs,
       ) =>
         Stack(
           fit: StackFit.expand,
@@ -223,37 +225,63 @@ class _AppContent extends StatelessWidget {
             ),
             BackHandler(
               onBack: () => controller.returnTo(returnState),
-              child: PlaybackFailedScreen(
-                reason: reason,
-                serverName: server.name,
-                onRetry: () => controller.playMovie(
-                  ctx,
-                  server,
-                  targetRatingKey,
-                  returnState,
-                  fromStart: fromStart,
-                ),
-                alternateServerName: _alternateSourceFor(
-                  returnState,
-                  server,
-                )?.server.name,
-                onPlayAlternate:
-                    _alternateSourceFor(returnState, server) == null
-                    ? null
-                    : () {
-                        final alternate = _alternateSourceFor(
-                          returnState,
-                          server,
-                        )!;
-                        controller.playMovie(
-                          ctx,
-                          alternate.server,
-                          alternate.value.ratingKey,
-                          returnState,
-                          fromStart: fromStart,
-                        );
-                      },
-                onBack: () => controller.returnTo(returnState),
+              child: Builder(
+                builder: (context) {
+                  final alternate = _alternateSourceFor(returnState, server);
+                  final detail = returnState is MovieDetail
+                      ? returnState
+                      : null;
+                  return PlaybackFailedScreen(
+                    reason: reason,
+                    serverName: server.name,
+                    title: detail?.activeCopy.value.title,
+                    otherCopies:
+                        detail?.work.copies
+                            .where(
+                              (c) =>
+                                  c.server.machineIdentifier !=
+                                  server.machineIdentifier,
+                            )
+                            .length ??
+                        0,
+                    alternate: alternate,
+                    loadFacts: _copyFacts,
+                    resumeAtMs: resumeAtMs,
+                    onRetry: () => controller.playMovie(
+                      ctx,
+                      server,
+                      targetRatingKey,
+                      returnState,
+                      fromStart: fromStart,
+                      resumeAtMs: resumeAtMs,
+                    ),
+                    onPlayAlternate: alternate == null
+                        ? null
+                        : () => controller.playMovie(
+                            ctx,
+                            alternate.server,
+                            alternate.value.ratingKey,
+                            returnState,
+                            fromStart: fromStart,
+                            resumeAtMs: resumeAtMs,
+                          ),
+                    // 03d over the same page, keeping where you were on it.
+                    onAllSources: detail == null
+                        ? null
+                        : () {
+                            final withSources = MovieDetail(
+                              ctx: detail.ctx,
+                              work: detail.work,
+                              activeCopy: detail.activeCopy,
+                              returnState: detail.returnState,
+                              resumeAtMs: detail.resumeAtMs,
+                              showSources: true,
+                            );
+                            controller.returnTo(withSources);
+                          },
+                    onBack: () => controller.returnTo(returnState),
+                  );
+                },
               ),
             ),
           ],
@@ -490,6 +518,8 @@ class _AppContent extends StatelessWidget {
         :final work,
         :final activeCopy,
         :final returnState,
+        :final resumeAtMs,
+        :final showSources,
       ) =>
         _drawer(
           state: state,
@@ -498,14 +528,18 @@ class _AppContent extends StatelessWidget {
             server: activeCopy.server,
             movie: activeCopy.value,
             work: work,
-            onSwitchSource: (copy) => controller.returnTo(
+            resumeAtMs: resumeAtMs,
+            showSources: showSources,
+            onSwitchSource: (copy, at) => controller.returnTo(
               MovieDetail(
                 ctx: ctx,
                 work: work,
                 activeCopy: copy,
                 returnState: returnState,
+                resumeAtMs: at,
               ),
             ),
+            loadCopyFacts: _copyFacts,
             onBack: () => controller.returnTo(returnState),
             isOnWatchlist: controller.isOnWatchlist,
             onToggleWatchlist: controller.toggleWatchlist,
@@ -542,12 +576,7 @@ class _AppContent extends StatelessWidget {
                   ctx: ctx,
                   work: newWork,
                   activeCopy: newWork.primary,
-                  returnState: MovieDetail(
-                    ctx: ctx,
-                    work: work,
-                    activeCopy: activeCopy,
-                    returnState: returnState,
-                  ),
+                  returnState: state,
                 ),
               );
             },
@@ -559,11 +588,12 @@ class _AppContent extends StatelessWidget {
                 returnState: state,
               ),
             ),
-            onPlay: (targetRatingKey) => controller.playMovie(
+            onPlay: (targetRatingKey, at) => controller.playMovie(
               ctx,
               activeCopy.server,
               targetRatingKey,
               state,
+              resumeAtMs: at,
             ),
             onWatchTogether: (targetRatingKey) =>
                 controller.openWatchTogetherStart(
@@ -1125,5 +1155,15 @@ class _AppContent extends StatelessWidget {
         clientIdentifier: controller.clientIdentifier,
         origin: page.server,
         person: page.person,
+      );
+
+  /// Screens 03d and 25: what one copy would be to play here.
+  Future<CopyFacts> _copyFacts(Sourced<PlexLibraryItem> copy) async =>
+      CopyFacts.of(
+        await PlexServerApi(
+          copy.server,
+          controller.clientIdentifier,
+        ).fetchMovieDetail(copy.value.ratingKey),
+        forceBurn: controller.currentSettings.forceBurnSubtitles,
       );
 }

@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 
@@ -12,6 +14,7 @@ import '../../kit/icon.dart';
 import '../../kit/icon_button.dart';
 import '../../kit/surface_style.dart';
 import '../../kit/text.dart';
+import '../../state/copy_facts.dart';
 import '../../state/duplicate_fold.dart';
 import '../../theme/phosphor_icons.dart';
 import '../../theme/scale.dart';
@@ -59,7 +62,10 @@ class MovieDetailScreen extends StatefulWidget {
   final PlexLibraryItem movie;
   final FoldedWork<PlexLibraryItem> work;
   final VoidCallback onBack;
-  final ValueChanged<String> onPlay;
+
+  /// The ratingKey, and how far in to start — the title's progress,
+  /// which can be further than this copy's own.
+  final void Function(String ratingKey, int resumeAtMs) onPlay;
   final ValueChanged<String> onWatchTogether;
   final ValueChanged<String> onRestartSolo;
   final bool Function(String?) isOnWatchlist;
@@ -68,7 +74,15 @@ class MovieDetailScreen extends StatefulWidget {
   final Future<List<PlexHub>> Function() loadRelatedHubs;
   final ValueChanged<PlexOnDeckItem> onSelectRelated;
   final ValueChanged<PlexPerson> onSelectPerson;
-  final ValueChanged<Sourced<PlexLibraryItem>> onSwitchSource;
+  final void Function(Sourced<PlexLibraryItem> copy, int resumeAtMs)
+  onSwitchSource;
+  final Future<CopyFacts> Function(Sourced<PlexLibraryItem> copy) loadCopyFacts;
+
+  /// Progress on the title carried from another copy; see MovieDetail.
+  final int? resumeAtMs;
+
+  /// Open 03d over the page on arrival (screen 25's "All sources").
+  final bool showSources;
 
   const MovieDetailScreen({
     super.key,
@@ -86,6 +100,9 @@ class MovieDetailScreen extends StatefulWidget {
     required this.onSelectRelated,
     required this.onSelectPerson,
     required this.onSwitchSource,
+    required this.loadCopyFacts,
+    this.resumeAtMs,
+    this.showSources = false,
   });
 
   @override
@@ -118,7 +135,13 @@ class _MovieDetailScreenState extends State<MovieDetailScreen> {
       _detail = kept.$1;
       _moreLikeThis = kept.$2;
     }
-    if (!ScreenMemory.restoringOf(context)) {
+    // 03d on arrival (screen 25's "All sources") is one-shot: coming Back
+    // to this page later shouldn't open it again.
+    if (widget.showSources &&
+        ScreenMemory.read<bool>(context, 'movie.sourcesShown') != true) {
+      _showingSourcePicker = true;
+      ScreenMemory.write(context, 'movie.sourcesShown', true);
+    } else if (!ScreenMemory.restoringOf(context)) {
       WidgetsBinding.instance.addPostFrameCallback(
         (_) => _playFocus.requestFocus(),
       );
@@ -211,7 +234,7 @@ class _MovieDetailScreenState extends State<MovieDetailScreen> {
   Widget build(BuildContext context) {
     final detail = _detail;
     final duration = detail?.duration;
-    final viewOffset = detail?.viewOffset ?? 0;
+    final viewOffset = max(detail?.viewOffset ?? 0, widget.resumeAtMs ?? 0);
     final hasResume = viewOffset > 0;
     final remaining = (duration ?? 0) - viewOffset;
     final media = detail?.media.isNotEmpty == true
@@ -253,7 +276,8 @@ class _MovieDetailScreenState extends State<MovieDetailScreen> {
                           ? (viewOffset / duration!).clamp(0.0, 1.0)
                           : 0.0,
                       playFocus: _playFocus,
-                      onPlay: () => widget.onPlay(widget.movie.ratingKey),
+                      onPlay: () =>
+                          widget.onPlay(widget.movie.ratingKey, viewOffset),
                       onWatchTogether: () =>
                           widget.onWatchTogether(widget.movie.ratingKey),
                       onRestartSolo: () =>
@@ -327,7 +351,10 @@ class _MovieDetailScreenState extends State<MovieDetailScreen> {
                       widget.server.machineIdentifier,
                   orElse: () => widget.work.primary,
                 ),
-                onSelect: widget.onSwitchSource,
+                loadFacts: widget.loadCopyFacts,
+                resumeAtMs: viewOffset,
+                onSelect: (copy) => widget.onSwitchSource(copy, viewOffset),
+                onPlay: () => widget.onPlay(widget.movie.ratingKey, viewOffset),
                 onClose: () => setState(() => _showingSourcePicker = false),
               ),
           ],

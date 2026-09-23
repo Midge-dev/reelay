@@ -199,6 +199,9 @@ class PlaybackFailed extends AppState {
   final String reason;
   final AppState returnState;
 
+  /// Where you were on the title, so the offered copy carries on there.
+  final int? resumeAtMs;
+
   const PlaybackFailed({
     required this.ctx,
     required this.server,
@@ -206,6 +209,7 @@ class PlaybackFailed extends AppState {
     required this.fromStart,
     required this.reason,
     required this.returnState,
+    this.resumeAtMs,
   });
 }
 
@@ -333,17 +337,26 @@ class Watchlist extends AppState {
 /// reachability-priority pick by default — see duplicate_fold.dart).
 /// Screen 03d's source picker (when built) lets the user override
 /// [activeCopy] to another of [work]'s copies without losing [work] itself.
+///
+/// [resumeAtMs] is how far in you are on the *title* when that came from
+/// another copy (a source switch, screen 25's offer) — progress belongs to
+/// the title, not the file, so the page resumes from the furthest of it
+/// and this copy's own. [showSources] opens 03d over the page on arrival.
 class MovieDetail extends AppState {
   final LibraryContext ctx;
   final FoldedWork<PlexLibraryItem> work;
   final Sourced<PlexLibraryItem> activeCopy;
   final AppState returnState;
+  final int? resumeAtMs;
+  final bool showSources;
 
   const MovieDetail({
     required this.ctx,
     required this.work,
     required this.activeCopy,
     required this.returnState,
+    this.resumeAtMs,
+    this.showSources = false,
   });
 }
 

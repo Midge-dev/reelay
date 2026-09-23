@@ -173,18 +173,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
         ? subtitleOptions(_resolvedPart!)
         : const [];
 
-    final defaultId = defaultSubtitleStreamId(widget.detail);
-    final defaultOption = _subtitleOptions.firstWhereOrNull(
-      (o) => o.streamId == defaultId,
-    );
-    // Only auto-select Plex's remembered subtitle if it doesn't force a
-    // transcode: embedded tracks are offered in the CC menu (see
-    // subtitleOptions) but a burn-required transcode should be something
-    // the user opts into there, not something that silently kicks off on
-    // first play just because Plex remembered a language preference.
-    _subtitleStreamId = (defaultOption != null && !defaultOption.requiresBurn)
-        ? defaultId
-        : null;
+    _subtitleStreamId = firstSubtitleStreamId(widget.detail);
 
     _maxVideoBitrateKbps = widget.settings.maxVideoBitrateKbps;
     _decision = decidePlayback(

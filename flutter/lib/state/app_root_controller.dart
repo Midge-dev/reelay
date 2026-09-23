@@ -1105,16 +1105,21 @@ class AppRootController extends ChangeNotifier {
     AppState returnState, {
     bool fromStart = false,
     String? showRatingKey,
+    int? resumeAtMs,
   }) async {
     try {
       final detail = await PlexServerApi(
         server,
         _clientIdentifier,
       ).fetchMovieDetail(targetRatingKey);
+      // Progress belongs to the title: another copy may have you further in
+      // than this server does.
+      final own = detail.viewOffset ?? 0;
+      final at = fromStart ? 0 : max(own, resumeAtMs ?? 0);
       _setState(
         Player(
           server: server,
-          detail: fromStart ? detail.copyWith(viewOffset: 0) : detail,
+          detail: at == own ? detail : detail.copyWith(viewOffset: at),
           returnState: returnState,
           relay: null,
           showRatingKey: showRatingKey,
@@ -1132,7 +1137,8 @@ class AppRootController extends ChangeNotifier {
           server: server,
           targetRatingKey: targetRatingKey,
           fromStart: fromStart,
-          reason: '${server.name} stopped answering partway through starting.',
+          reason: '${server.name} stopped answering partway through starting',
+          resumeAtMs: resumeAtMs,
           returnState: returnState,
         ),
       );
