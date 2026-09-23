@@ -47,19 +47,32 @@ int posterGridColumns(BuildContext context, double contentWidth) {
   return math.max(1, ((contentWidth + gutter) / (card + gutter)).floor());
 }
 
-/// The grid width those columns actually occupy, so a grid can hug its
-/// cards from the leading edge (screen 17's wrap) instead of stretching.
-double posterGridWidth(BuildContext context, int columns) =>
-    columns * posterWidth.du(context) +
-    (columns - 1) * AppSpacing.xl.du(context);
+/// The gap between columns when [columns] fill [contentWidth] edge to edge:
+/// cards stay at their fixed 220 du, and the width left over after them
+/// goes into the gaps, so the last column ends flush with the header's
+/// trailing edge (the search field) as the first starts flush with its
+/// leading one. Never tighter than the standard gutter.
+double posterGridSpacing(
+  BuildContext context,
+  int columns,
+  double contentWidth,
+) {
+  final gutter = AppSpacing.xl.du(context);
+  if (columns < 2) return gutter;
+  final spare = contentWidth - columns * posterWidth.du(context);
+  return math.max(gutter, spare / (columns - 1));
+}
 
-SliverGridDelegate posterGridDelegate(BuildContext context, int columns) =>
-    SliverGridDelegateWithFixedCrossAxisCount(
-      crossAxisCount: columns,
-      mainAxisSpacing: AppSpacing.xl.du(context),
-      crossAxisSpacing: AppSpacing.xl.du(context),
-      mainAxisExtent: posterCardExtent.du(context),
-    );
+SliverGridDelegate posterGridDelegate(
+  BuildContext context,
+  int columns, {
+  required double crossAxisSpacing,
+}) => SliverGridDelegateWithFixedCrossAxisCount(
+  crossAxisCount: columns,
+  mainAxisSpacing: AppSpacing.xl.du(context),
+  crossAxisSpacing: crossAxisSpacing,
+  mainAxisExtent: posterCardExtent.du(context),
+);
 
 /// A clip that lets a focused card's 1.03x scale and 3 du frame spill
 /// sideways past the grid's own bounds (the cards sit flush with the
@@ -79,7 +92,7 @@ class GridSideBleedClipper extends CustomClipper<Rect> {
 
 /// The one poster grid every grid screen uses (library, watchlist,
 /// collection, filmography): as many 220 du columns as the width holds,
-/// hugging the leading edge, rowHeadroom/2 above the first row so a
+/// spread to span it edge to edge, rowHeadroom/2 above the first row so a
 /// focused card's scale isn't clipped, and the scrolled-away edge faded.
 class PosterGrid extends StatefulWidget {
   final int itemCount;
@@ -115,6 +128,11 @@ class _PosterGridState extends State<PosterGrid> {
     return LayoutBuilder(
       builder: (context, constraints) {
         final columns = posterGridColumns(context, constraints.maxWidth);
+        final spacing = posterGridSpacing(
+          context,
+          columns,
+          constraints.maxWidth,
+        );
         return ClipRect(
           clipper: GridSideBleedClipper(AppSpacing.safeX.du(context)),
           child: AnimatedBuilder(
@@ -128,7 +146,8 @@ class _PosterGridState extends State<PosterGrid> {
             child: Align(
               alignment: AlignmentDirectional.topStart,
               child: SizedBox(
-                width: posterGridWidth(context, columns),
+                width:
+                    columns * posterWidth.du(context) + (columns - 1) * spacing,
                 child: GridView.builder(
                   controller: controller,
                   padding: EdgeInsets.only(
@@ -136,7 +155,11 @@ class _PosterGridState extends State<PosterGrid> {
                     bottom: AppSpacing.safeY.du(context),
                   ),
                   clipBehavior: Clip.none,
-                  gridDelegate: posterGridDelegate(context, columns),
+                  gridDelegate: posterGridDelegate(
+                    context,
+                    columns,
+                    crossAxisSpacing: spacing,
+                  ),
                   itemCount: widget.itemCount,
                   itemBuilder: widget.itemBuilder,
                 ),
