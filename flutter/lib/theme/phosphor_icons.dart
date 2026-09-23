@@ -13,6 +13,30 @@ import 'package:flutter/widgets.dart';
 class PhosphorIconsRegular {
   const PhosphorIconsRegular._();
 
+  static const arrowRight = IconData(
+    0xe06c,
+    fontFamily: 'PhosphorRegular',
+    fontPackage: 'phosphor_flutter',
+    matchTextDirection: true,
+  );
+  static const arrowsClockwise = IconData(
+    0xe094,
+    fontFamily: 'PhosphorRegular',
+    fontPackage: 'phosphor_flutter',
+    matchTextDirection: true,
+  );
+  static const deviceMobile = IconData(
+    0xe1e0,
+    fontFamily: 'PhosphorRegular',
+    fontPackage: 'phosphor_flutter',
+    matchTextDirection: true,
+  );
+  static const linkSimple = IconData(
+    0xe2e6,
+    fontFamily: 'PhosphorRegular',
+    fontPackage: 'phosphor_flutter',
+    matchTextDirection: true,
+  );
   static const playCircle = IconData(
     0xe3d2,
     fontFamily: 'PhosphorRegular',
@@ -218,6 +242,12 @@ class PhosphorIconsRegular {
 class PhosphorIconsFill {
   const PhosphorIconsFill._();
 
+  static const hardDrives = IconData(
+    0xe2a0,
+    fontFamily: 'PhosphorFill',
+    fontPackage: 'phosphor_flutter',
+    matchTextDirection: true,
+  );
   static const bookmarkSimple = IconData(
     0xe0ea,
     fontFamily: 'PhosphorFill',

@@ -30,7 +30,7 @@ class _LinkError extends _LinkUiState {
 }
 
 /// The actual Plex PIN-linking UI + polling loop, factored out of
-/// AuthScreen so screen 07b's add-profile dialog can embed the same "sign
+/// first-run setup so screen 07b's add-profile dialog can embed the same "sign
 /// in with Plex" step inline rather than duplicating it. Does not persist
 /// the resulting token anywhere itself — callers decide where it belongs
 /// (the legacy single key for first-run login, or a specific profile's

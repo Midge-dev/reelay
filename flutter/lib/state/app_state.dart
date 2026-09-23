@@ -132,7 +132,18 @@ class ProfilePicker extends AppState {
 class ConnectingToServer extends AppState {
   final String? username;
 
-  const ConnectingToServer({this.username});
+  /// Part of first-run setup — rendered as screen O5 ("Ready — the work,
+  /// itemised") rather than the plain loading screen.
+  final bool firstRun;
+
+  /// What has finished so far, in order, and what is under way — O5's
+  /// checklist. Headline once the shape of the hub is known ("Two
+  /// servers, five libraries").
+  final List<String> done;
+  final String? current;
+  final String? headline;
+
+  const ConnectingToServer({this.username, this.firstRun = false, this.done = const [], this.current, this.headline});
 }
 
 /// Kotlin's `Error` state has no way back at all (just a bare `Text`, no

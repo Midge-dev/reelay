@@ -14,7 +14,9 @@ import '../state/duplicate_fold.dart';
 import '../sync/relay_directory_api.dart';
 import '../theme/tokens.dart';
 import '../theme/typography.dart';
-import 'auth/auth_screen.dart';
+import 'onboarding/onboarding_screen.dart';
+import 'onboarding/setup_ready_screen.dart';
+import 'onboarding/watch_together_step.dart';
 import 'common/loading_screen.dart';
 import 'common/no_servers_screen.dart';
 import 'common/playback_failed_screen.dart';
@@ -33,7 +35,6 @@ import 'lobby/watch_together_start_screen.dart';
 import 'navigation/app_navigation_drawer.dart';
 import 'player/player_screen.dart';
 import 'profiles/profile_picker_screen.dart';
-import 'settings/relay_setup_screen.dart';
 import 'settings/settings_screen.dart';
 import 'splash/splash_screen.dart';
 
@@ -160,9 +161,11 @@ class _AppContent extends StatelessWidget {
     final state = controller.state;
     return switch (state) {
       Checking() => const LoadingScreen(),
+      ConnectingToServer(:final firstRun, :final done, :final current, :final headline) when firstRun =>
+        SetupReadyScreen(done: done, current: current, headline: headline),
       ConnectingToServer(:final username) =>
         LoadingScreen(username != null ? 'Logged in as $username — connecting to library…' : 'Connecting to library…'),
-      LoggedOut() => AuthScreen(onLoggedIn: controller.completeFirstLogin),
+      LoggedOut() => OnboardingScreen(onComplete: controller.completeFirstLogin),
       ProfilePicker(:final profiles) => ProfilePickerScreen(
           profiles: profiles,
           onSelectProfile: controller.selectProfile,
@@ -192,7 +195,9 @@ class _AppContent extends StatelessWidget {
             child: Center(child: AppText('Error: $message', style: AppTypography.body)),
           ),
         ),
-      RelaySetup(:final ctx) => RelaySetupScreen(onDone: () => controller.goHome(ctx.servers, ctx.sectionGroups)),
+      // An install set up before the Watch Together step existed meets it
+      // once, framed as the setup step it is.
+      RelaySetup(:final ctx) => WatchTogetherStep(onDone: () => controller.goHome(ctx.servers, ctx.sectionGroups)),
       Home() => _buildHome(state),
       Library(:final ctx) => _drawer(
           ctx: ctx,

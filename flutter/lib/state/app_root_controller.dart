@@ -220,14 +220,22 @@ class AppRootController extends ChangeNotifier {
     await connect(token);
   }
 
-  /// AuthScreen's onLoggedIn, for the case start() found no profiles and
+  /// OnboardingScreen's onComplete, for the case start() found no profiles and
   /// no legacy token — creates profile #1 from whatever account just
   /// signed in and activates it (there's no one else to fall back to),
   /// same as the migration path in start() does for a pre-profiles install.
   Future<void> completeFirstLogin(String token) async {
     final profile = await _createProfile(token: token, name: null, watchTogetherName: null);
     _activeProfile = profile;
-    await connect(token);
+    await connect(token, firstRun: true);
+  }
+
+  static const _numberWords = ['No', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine', 'Ten'];
+
+  /// "Two servers", "One library" — O5's headline reads as a sentence.
+  static String _countWord(int n, String singular, {String? plural}) {
+    final word = n < _numberWords.length ? _numberWords[n] : '$n';
+    return '$word ${n == 1 ? singular : (plural ?? '${singular}s')}';
   }
 
   Future<void> selectProfile(Profile profile) async {
@@ -242,7 +250,7 @@ class AppRootController extends ChangeNotifier {
     await connect(token);
   }
 
-  Future<void> connect(String token) async {
+  Future<void> connect(String token, {bool firstRun = false}) async {
     _accountToken = token;
     _clientIdentifier = await _plexIdentity.getOrCreateClientIdentifier();
     final authApi = PlexAuthApi(_clientIdentifier);
@@ -251,7 +259,12 @@ class AppRootController extends ChangeNotifier {
     } catch (_) {
       _localAccount = null;
     }
-    _setState(ConnectingToServer(username: _localAccount?.username));
+    final username = _localAccount?.username;
+    final done = <String>[if (username != null) 'Signed in to Plex as $username' else 'Signed in to Plex'];
+    void progress(String? current, {String? headline}) => _setState(
+      ConnectingToServer(username: username, firstRun: firstRun, done: List.of(done), current: current, headline: headline),
+    );
+    progress('Looking for your servers');
 
     try {
       final settings = await _settingsStore.observe().first;
@@ -260,6 +273,9 @@ class AppRootController extends ChangeNotifier {
         token,
         disabledMachineIdentifiers: settings.disabledServerIds,
       );
+      final reached = probed.connected.length;
+      done.add('Reached $reached server${reached == 1 ? '' : 's'}${probed.unreachable.isEmpty ? '' : ' · ${probed.unreachable.length} not answering'}');
+      progress('Reading libraries');
       _connectedServers = probed.connected;
       _unreachableResources = probed.unreachable;
       if (probed.connected.isEmpty) {
@@ -286,6 +302,12 @@ class AppRootController extends ChangeNotifier {
       if (firstGroup == null) {
         throw _FriendlyError('No movie or show library found on any connected server');
       }
+      final libraries = sectionGroups.length;
+      done.add('Found $libraries librar${libraries == 1 ? 'y' : 'ies'} across $reached server${reached == 1 ? '' : 's'}');
+      progress(
+        'Loading ${firstGroup.title}',
+        headline: '${_countWord(reached, 'server')}, ${_countWord(libraries, 'library', plural: 'libraries')}',
+      );
       final items = foldByGuid(await _fetchGroupItems(probed.connected, firstGroup), guidOf: (i) => i.guid, alternateIdsOf: (i) => i.guids.map((g) => g.id).toList());
       final ctx = LibraryContext(
         servers: probed.connected,
@@ -293,8 +315,10 @@ class AppRootController extends ChangeNotifier {
         selectedSectionGroup: firstGroup,
         items: items,
       );
-      final relayConfigured = settings.relays.isNotEmpty;
-      _setState(relayConfigured ? await _loadHome(probed.connected, sectionGroups) : RelaySetup(ctx: ctx));
+      // The Watch Together step is offered once: skipping it during setup
+      // ("Not now") is an answer, not something to ask again every launch.
+      final offerRelayStep = settings.relays.isEmpty && !settings.setupComplete;
+      _setState(offerRelayStep ? RelaySetup(ctx: ctx) : await _loadHome(probed.connected, sectionGroups));
     } catch (e) {
       _setState(AppError(message: '$e', retryState: const LoggedOut()));
     }

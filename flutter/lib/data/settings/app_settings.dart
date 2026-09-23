@@ -121,6 +121,12 @@ class AppSettings {
   final ThemeId themeId;
   final double uiScale;
 
+  /// First-run setup (screens O1-O5) has been finished — including the
+  /// optional Watch Together step, whether a relay was added or "Not now"
+  /// was chosen. Without it, a skipped relay step would be offered again on
+  /// every launch; the design says skipping means no more prompts.
+  final bool setupComplete;
+
   const AppSettings({
     this.relays = const [],
     this.maxHostSeats = defaultMaxHostSeats,
@@ -132,6 +138,7 @@ class AppSettings {
     this.profiles = const [],
     this.themeId = ThemeId.nocturne,
     this.uiScale = defaultUiScale,
+    this.setupComplete = false,
   });
 
   AppSettings copyWith({
@@ -145,6 +152,7 @@ class AppSettings {
     List<Profile>? profiles,
     ThemeId? themeId,
     double? uiScale,
+    bool? setupComplete,
   }) {
     return AppSettings(
       relays: relays ?? this.relays,
@@ -157,6 +165,7 @@ class AppSettings {
       profiles: profiles ?? this.profiles,
       themeId: themeId ?? this.themeId,
       uiScale: uiScale ?? this.uiScale,
+      setupComplete: setupComplete ?? this.setupComplete,
     );
   }
 

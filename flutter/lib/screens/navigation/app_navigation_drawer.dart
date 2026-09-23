@@ -17,6 +17,7 @@ import '../../theme/scale.dart';
 import '../../theme/tokens.dart';
 import '../../theme/typography.dart';
 import '../common/digital_clock.dart';
+import '../common/reelay_mark.dart';
 import '../home/watch_together_row.dart' show MergedRoom;
 import 'rooms_panel.dart';
 import 'server_switcher_panel.dart';
@@ -404,7 +405,7 @@ class _AppNavigationDrawerState extends State<AppNavigationDrawer> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    const _LogoMark(),
+                    const Center(child: ReelayMark(size: _logoSize)),
                     SizedBox(height: _logoGap.du(context)),
                     Expanded(
                       // Scrollable so a household with many libraries
@@ -534,41 +535,6 @@ class _AppNavigationDrawerState extends State<AppNavigationDrawer> {
       ],
     );
   }
-}
-
-/// The Reelay mark from the design: two offset rounded bars, accent over
-/// ink, in a 46-unit box drawn at 32 du. Painted rather than an image so
-/// it follows the theme's accent and ink.
-class _LogoMark extends StatelessWidget {
-  const _LogoMark();
-
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: SizedBox.square(
-        dimension: _logoSize.du(context),
-        child: CustomPaint(painter: _LogoPainter(accent: AppColors.accent, ink: AppColors.ink)),
-      ),
-    );
-  }
-}
-
-class _LogoPainter extends CustomPainter {
-  final Color accent;
-  final Color ink;
-
-  const _LogoPainter({required this.accent, required this.ink});
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final u = size.width / 46;
-    final r = Radius.circular(4 * u);
-    canvas.drawRRect(RRect.fromRectAndRadius(Rect.fromLTWH(5 * u, 9 * u, 36 * u, 12 * u), r), Paint()..color = accent);
-    canvas.drawRRect(RRect.fromRectAndRadius(Rect.fromLTWH(5 * u, 25 * u, 22 * u, 12 * u), r), Paint()..color = ink);
-  }
-
-  @override
-  bool shouldRepaint(covariant _LogoPainter old) => old.accent != accent || old.ink != ink;
 }
 
 RoundedRectangleBorder _railItemShape(BuildContext context) => RoundedRectangleBorder(
