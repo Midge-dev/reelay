@@ -411,7 +411,12 @@ class _PlayerScreenState extends State<PlayerScreen> {
       _controlsHideTimer = Timer(
         const Duration(milliseconds: _controlsHideDelayMs),
         () {
-          if (mounted) setState(() => _controlsVisible = false);
+          if (!mounted) return;
+          setState(() => _controlsVisible = false);
+          // Never pull focus out of an open panel: focus decides which Back
+          // handler answers, and with it on the screen node Back left the
+          // player instead of closing the menu.
+          if (_menuOpen || _chatQrOpen) return;
           _screenFocusNode.requestFocus();
         },
       );
@@ -500,6 +505,9 @@ class _PlayerScreenState extends State<PlayerScreen> {
     final isFresh = repeatCount == 0;
 
     if (_controlsVisible) return KeyEventResult.ignored;
+    // Keys from inside an open panel bubble up here too; with the controls
+    // hidden, Up/Down would summon them and take focus out of the panel.
+    if (_menuOpen || _chatQrOpen) return KeyEventResult.ignored;
 
     if (key == LogicalKeyboardKey.arrowLeft ||
         key == LogicalKeyboardKey.arrowRight) {
@@ -787,10 +795,16 @@ class _PlayerScreenState extends State<PlayerScreen> {
                   selectedBitrateKbps: _maxVideoBitrateKbps,
                   onSelectBitrate: _selectBitrate,
                   onClose: () {
-                    setState(() => _menuOpen = false);
+                    // Back to the controls with the menu button focused —
+                    // they may have auto-hidden while the panel was open.
+                    setState(() {
+                      _menuOpen = false;
+                      _controlsVisible = true;
+                    });
                     WidgetsBinding.instance.addPostFrameCallback((_) {
                       if (mounted) _menuFocusNode.requestFocus();
                     });
+                    _scheduleAutoHide();
                   },
                 ),
             ],

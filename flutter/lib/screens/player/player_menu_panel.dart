@@ -91,7 +91,9 @@ class _PlayerMenuPanelState extends State<PlayerMenuPanel> {
               top: 0,
               bottom: 0,
               right: 0,
-              width: 680.du(context),
+              // Half the handoff's 680: the tracks are short labels, and a
+              // narrower panel leaves more of the picture in view.
+              width: 360.du(context),
               child: DecoratedBox(
                 decoration: BoxDecoration(
                   color: AppColors.canvas,
@@ -99,7 +101,10 @@ class _PlayerMenuPanelState extends State<PlayerMenuPanel> {
                   boxShadow: AppElevation.overlay,
                 ),
                 child: Padding(
-                  padding: EdgeInsets.all(AppSpacing.xxxl.du(context)),
+                  padding: EdgeInsets.symmetric(
+                    horizontal: AppSpacing.xxl.du(context),
+                    vertical: AppSpacing.xxxl.du(context),
+                  ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -107,22 +112,25 @@ class _PlayerMenuPanelState extends State<PlayerMenuPanel> {
                         canRequestFocus: false,
                         onKeyEvent: _trapUpAboveTabs,
                         child: Row(
-                          mainAxisSize: MainAxisSize.min,
                           children: [
-                            _TabButton(
-                              label: 'Subtitles',
-                              selected: _tab == _MenuTab.subtitles,
-                              focusNode: _subtitlesTabFocus,
-                              onClick: () =>
-                                  setState(() => _tab = _MenuTab.subtitles),
+                            Expanded(
+                              child: _TabButton(
+                                label: 'Subtitles',
+                                selected: _tab == _MenuTab.subtitles,
+                                focusNode: _subtitlesTabFocus,
+                                onClick: () =>
+                                    setState(() => _tab = _MenuTab.subtitles),
+                              ),
                             ),
                             SizedBox(width: AppSpacing.md.du(context)),
-                            _TabButton(
-                              label: 'Quality',
-                              selected: _tab == _MenuTab.quality,
-                              focusNode: _qualityTabFocus,
-                              onClick: () =>
-                                  setState(() => _tab = _MenuTab.quality),
+                            Expanded(
+                              child: _TabButton(
+                                label: 'Quality',
+                                selected: _tab == _MenuTab.quality,
+                                focusNode: _qualityTabFocus,
+                                onClick: () =>
+                                    setState(() => _tab = _MenuTab.quality),
+                              ),
                             ),
                           ],
                         ),
@@ -223,7 +231,7 @@ class _TabButton extends StatelessWidget {
         border: _tabBorder,
         child: Padding(
           padding: EdgeInsets.symmetric(horizontal: AppSpacing.lg.du(context)),
-          child: AppText(label),
+          child: FittedBox(fit: BoxFit.scaleDown, child: AppText(label)),
         ),
       ),
     );
