@@ -250,8 +250,9 @@ class _AppContent extends StatelessWidget {
             accountToken: controller.accountTokenOrEmpty,
             clientIdentifier: controller.clientIdentifier,
             hint: relayHint,
+            versionName: _appVersionName,
             onBack: () => controller.returnTo(returnState),
-            onSaved: () {
+            onServersChanged: () {
               final token = controller.accountToken;
               if (token != null) {
                 controller.connect(token);

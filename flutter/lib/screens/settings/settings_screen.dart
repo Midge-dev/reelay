@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uuid/uuid.dart';
@@ -7,50 +8,54 @@ import 'package:uuid/uuid.dart';
 import '../../data/plex/plex_models.dart';
 import '../../data/plex/plex_resources_api.dart';
 import '../../data/settings/app_settings.dart';
-import '../../kit/button.dart';
-import '../../kit/filter_chip.dart';
 import '../../kit/focusable_surface.dart';
-import '../../kit/list_item.dart';
+import '../../focus/back_handler.dart';
+import '../../kit/icon.dart';
 import '../../kit/surface_style.dart';
-import '../../kit/switch.dart';
 import '../../kit/text.dart';
 import '../../pairing/pairing_server.dart';
 import '../../state/data_providers.dart';
 import '../../sync/relay_directory_api.dart';
+import '../../theme/phosphor_icons.dart';
 import '../../theme/scale.dart';
 import '../../theme/tokens.dart';
 import '../../theme/typography.dart';
 import '../common/loading_screen.dart';
-import '../common/neon_scrollbar.dart';
 import '../common/relay_status.dart';
 import '../profiles/add_profile_dialog.dart';
 import 'appearance_screen.dart';
-import 'chat_corner_picker.dart';
 import 'max_seats_menu.dart';
 import 'relay_settings_pane.dart';
 
 const _uuid = Uuid();
 
-/// Ports ui/settings/SettingsScreen.kt. The Kotlin source's explicit
-/// focusProperties up/down wiring across every row is not ported 1:1 —
-/// same rationale as RelaySetupScreen: it's a vertically-stacked form and
-/// Flutter's default directional traversal already gets this shape right
-/// (proven in the flutter-reelay PoC). MaxSeatsMenu keeps its explicit
-/// focus-trap (checklist #8) since that's a real hazard, not just wiring.
+/// Screen 08 — Settings. Two columns: groups on the left holding
+/// selection (moving focus through them switches the pane), the pane on
+/// the right taking focus only when you cross into it. Every setting states
+/// its current value in its row, so nothing needs opening to be read, and
+/// every change applies and persists the moment it's made — there is no
+/// Save. Server on/off is the one change that needs the hub to reconnect,
+/// which happens on the way out (see [SettingsScreen.onServersChanged]).
+/// MaxSeatsMenu keeps its explicit focus trap (checklist #8).
 class SettingsScreen extends ConsumerStatefulWidget {
   final String accountToken;
   final String clientIdentifier;
   final String? hint;
+  final String? versionName;
   final VoidCallback onBack;
-  final VoidCallback onSaved;
+
+  /// Leaving Settings after turning a server on or off — the hub has to
+  /// reconnect to pick the change up (see AppRootController.connect).
+  final VoidCallback onServersChanged;
 
   const SettingsScreen({
     super.key,
     required this.accountToken,
     required this.clientIdentifier,
     this.hint,
+    this.versionName,
     required this.onBack,
-    required this.onSaved,
+    required this.onServersChanged,
   });
 
   @override
@@ -69,6 +74,14 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   bool _showingAppearance = false;
   bool _maxSeatsMenuExpanded = false;
   bool _showingAddProfile = false;
+  late _Group _group = widget.hint != null
+      ? _Group.watchTogether
+      : _Group.watchTogether;
+  final Map<_Group, FocusNode> _groupFocus = {
+    for (final g in _Group.values)
+      g: FocusNode(debugLabel: 'settings-group-${g.name}'),
+  };
+  bool _serversChanged = false;
 
   PairingServer? _pairingServer;
   String? _pairingUrl;
@@ -91,7 +104,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   final _maxHostSeatsFocus = FocusNode(debugLabel: 'max-host-seats');
   final _addRelayFocus = FocusNode(debugLabel: 'add-relay');
   final _cancelPairingFocus = FocusNode(debugLabel: 'cancel-pairing');
-  final _saveFocus = FocusNode(debugLabel: 'save');
   final _scrollController = ScrollController();
 
   @override
@@ -107,11 +119,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     Future.wait([_loadSettings(), _loadSources()]).then((_) {
       if (!mounted) return;
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (_sources.isNotEmpty) {
-          _firstSourceFocus.requestFocus();
-        } else {
-          _relaySettingsEntryFocus.requestFocus();
-        }
+        if (mounted) _groupFocus[_group]!.requestFocus();
       });
     });
   }
@@ -170,8 +178,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     _maxHostSeatsFocus.dispose();
     _addRelayFocus.dispose();
     _cancelPairingFocus.dispose();
-    _saveFocus.dispose();
     _scrollController.dispose();
+    for (final node in _groupFocus.values) {
+      node.dispose();
+    }
     super.dispose();
   }
 
@@ -381,234 +391,371 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       );
     }
 
-    return ColoredBox(
-      color: AppColors.background,
-      child: Stack(
-        children: [
-          // Excluded from focus whenever an overlay is open — otherwise
-          // D-pad navigation inside the overlay can escape into this row's
-          // still-mounted content, since Flutter's directional focus
-          // traversal doesn't account for what's actually painted on top.
-          ExcludeFocus(
-            excluding: _maxSeatsMenuExpanded || _showingAddProfile,
-            child: Row(
+    return BackHandler(
+      onBack: _leave,
+      child: ColoredBox(
+        color: AppColors.background,
+        child: Stack(
+          children: [
+            ExcludeFocus(
+              excluding: _maxSeatsMenuExpanded || _showingAddProfile,
+              child: Padding(
+                // Screen 08: 64 du from the top, 48 from the rail, 80 from
+                // the right; a 380 du group column 56 du from the pane.
+                padding: EdgeInsets.fromLTRB(
+                  AppSpacing.safeX.du(context),
+                  64.du(context),
+                  80.du(context),
+                  AppSpacing.safeY.du(context),
+                ),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    SizedBox(width: 380.du(context), child: _buildGroups()),
+                    SizedBox(width: 56.du(context)),
+                    Expanded(
+                      child: Focus(
+                        canRequestFocus: false,
+                        skipTraversal: true,
+                        onKeyEvent: _paneKey,
+                        child: _buildPane(),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            if (_maxSeatsMenuExpanded) ...[
+              Positioned.fill(child: ColoredBox(color: AppScrims.dialog)),
+              Center(
+                child: MaxSeatsMenu(
+                  selected: _settings.maxHostSeats,
+                  onSelect: (value) {
+                    _update((s) => s.copyWith(maxHostSeats: value));
+                    setState(() => _maxSeatsMenuExpanded = false);
+                    WidgetsBinding.instance.addPostFrameCallback(
+                      (_) => _maxHostSeatsFocus.requestFocus(),
+                    );
+                  },
+                ),
+              ),
+            ],
+            if (_showingAddProfile)
+              AddProfileDialog(
+                onCreate: _addProfile,
+                onCancel: () => setState(() => _showingAddProfile = false),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _leave() {
+    if (_maxSeatsMenuExpanded) {
+      setState(() => _maxSeatsMenuExpanded = false);
+      WidgetsBinding.instance.addPostFrameCallback(
+        (_) => _maxHostSeatsFocus.requestFocus(),
+      );
+      return;
+    }
+    if (_serversChanged) {
+      widget.onServersChanged();
+    } else {
+      widget.onBack();
+    }
+  }
+
+  /// Applies a change on screen and persists it at once, merged over what
+  /// is stored (so this screen never overwrites a field something else
+  /// changed meanwhile).
+  Future<void> _update(AppSettings Function(AppSettings) change) async {
+    setState(() => _settings = change(_settings));
+    final store = ref.read(settingsStoreProvider);
+    final persisted = await store.observe().first;
+    await store.save(change(persisted));
+  }
+
+  // Left out of the pane returns to the group that owns it, not whichever
+  // group row happens to be geometrically nearest.
+  KeyEventResult _paneKey(FocusNode node, KeyEvent event) {
+    if (event is KeyDownEvent &&
+        event.logicalKey == LogicalKeyboardKey.arrowLeft) {
+      _groupFocus[_group]!.requestFocus();
+      return KeyEventResult.handled;
+    }
+    return KeyEventResult.ignored;
+  }
+
+  Widget _buildGroups() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        AppText('Settings', style: AppTypography.title1),
+        SizedBox(height: 22.du(context)),
+        // Scrolls when eight groups don't fit (a large UI size); the
+        // version line rides at the end of the list rather than being
+        // pinned under it.
+        Expanded(
+          child: SingleChildScrollView(
+            clipBehavior: Clip.none,
+            child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Expanded(
-                  child: SingleChildScrollView(
-                    controller: _scrollController,
-                    padding: EdgeInsets.all(48.du(context)),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        AppText('Settings', style: AppTypography.title1),
-                        SizedBox(height: 32.du(context)),
-                        _SettingsGroup(
-                          title: 'Libraries',
-                          showRule: false,
-                          child: _buildSourcesSection(),
-                        ),
-                        _SettingsGroup(
-                          title: 'Appearance',
-                          showRule: true,
-                          child: _buildAppearanceSection(),
-                        ),
-                        _SettingsGroup(
-                          title: 'Profiles',
-                          showRule: true,
-                          child: _buildProfilesSection(),
-                        ),
-                        _SettingsGroup(
-                          title: 'Watch Together',
-                          showRule: true,
-                          child: _buildWatchTogetherSection(),
-                        ),
-                        _SettingsGroup(
-                          title: 'Playback',
-                          showRule: true,
-                          child: _buildPlaybackSection(),
-                        ),
-                        _SettingsGroup(
-                          title: 'Chat',
-                          showRule: true,
-                          child: _buildChatSection(),
-                        ),
-                        SizedBox(height: 32.du(context)),
-                        AppButton(
-                          onClick: () async {
-                            await ref
-                                .read(settingsStoreProvider)
-                                .save(_settings);
-                            if (mounted) widget.onSaved();
-                          },
-                          focusNode: _saveFocus,
-                          child: const AppText('Save'),
-                        ),
-                      ],
-                    ),
+                for (final (i, g) in _Group.values.indexed) ...[
+                  if (i > 0) SizedBox(height: AppSpacing.sm.du(context)),
+                  _GroupRow(
+                    group: g,
+                    selected: g == _group,
+                    focusNode: _groupFocus[g]!,
+                    onFocused: () => setState(() => _group = g),
+                    onClick: () => FocusScope.of(context).focusInDirection(TraversalDirection.right),
                   ),
-                ),
-                Padding(
-                  padding: EdgeInsets.symmetric(
-                    vertical: 48.du(context),
-                    horizontal: 12.du(context),
-                  ),
-                  child: NeonScrollbar(controller: _scrollController),
+                ],
+                SizedBox(height: AppSpacing.xxl.du(context)),
+                AppText(
+                  ['Reelay ${widget.versionName ?? ''}'.trim(), 'Android TV'].join('\n'),
+                  style: AppTypography.caption.copyWith(height: 1.6),
+                  color: AppColors.ink4,
                 ),
               ],
             ),
           ),
-          if (_maxSeatsMenuExpanded) ...[
-            Positioned.fill(
-              child: ColoredBox(color: AppScrims.dialog.withValues(alpha: 0.4)),
-            ),
-            Positioned(
-              left: 220.du(context),
-              top: 220.du(context),
-              child: MaxSeatsMenu(
-                selected: _settings.maxHostSeats,
-                onSelect: (value) {
-                  setState(() {
-                    _settings = _settings.copyWith(maxHostSeats: value);
-                    _maxSeatsMenuExpanded = false;
-                  });
-                  WidgetsBinding.instance.addPostFrameCallback(
-                    (_) => _maxHostSeatsFocus.requestFocus(),
-                  );
-                },
-              ),
-            ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildPane() {
+    final rows = switch (_group) {
+      _Group.watchTogether => _watchTogetherRows(),
+      _Group.playback => _playbackRows(),
+      _Group.subtitles => _subtitleRows(),
+      _Group.servers => _serverRows(),
+      _Group.appearance => _appearanceRows(),
+      _Group.display => _displayRows(),
+      _Group.profiles => _profileRows(),
+      _Group.about => _aboutRows(),
+    };
+    return SingleChildScrollView(
+      key: ValueKey(_group),
+      controller: _scrollController,
+      clipBehavior: Clip.none,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          AppText(_group.label, style: AppTypography.title2),
+          SizedBox(height: (AppSpacing.sm + 14).du(context)),
+          for (final (i, row) in rows.indexed) ...[
+            if (i > 0) SizedBox(height: 14.du(context)),
+            row,
           ],
-          if (_showingAddProfile)
-            AddProfileDialog(
-              onCreate: _addProfile,
-              onCancel: () => setState(() => _showingAddProfile = false),
-            ),
         ],
       ),
     );
   }
 
-  Widget _buildSourcesSection() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const AppText('Available sources'),
-        SizedBox(height: 4.du(context)),
+  List<Widget> _watchTogetherRows() {
+    final relay = _settings.defaultRelay;
+    final status = relay == null ? null : _relayStatuses[relay.id];
+    final (statusColor, statusLabel) = switch ((relay, status)) {
+      (null, _) => (AppColors.ink4, 'Not set up'),
+      (_, null) => (AppColors.ink4, 'Checking…'),
+      (_, final s?) when s.reachable => (AppColors.success, 'Connected'),
+      _ => (AppColors.error, 'Unreachable'),
+    };
+    return [
+      if (widget.hint != null)
         AppText(
-          'Every reachable source feeds the hub at once — turn one off to leave it out.',
-          color: AppColors.ink3,
+          widget.hint!,
+          style: AppTypography.caption,
+          color: AppColors.accent300,
         ),
-        SizedBox(height: 8.du(context)),
-        if (!_sourcesLoaded)
-          const AppText('Loading sources…')
-        else if (_sourcesError != null)
-          AppText("Couldn't load sources: $_sourcesError")
-        else if (_sources.isEmpty)
-          const AppText('No sources found')
-        else
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              for (final (index, source) in _sources.indexed)
-                Padding(
-                  padding: EdgeInsets.only(bottom: 8.du(context)),
-                  child: AppListItem(
-                    selected: false,
-                    onClick: () => setState(() {
-                      final enabled = _settings.disabledServerIds.contains(
-                        source.machineIdentifier,
-                      );
-                      final disabled = {..._settings.disabledServerIds};
-                      if (enabled) {
-                        disabled.remove(source.machineIdentifier);
-                      } else {
-                        disabled.add(source.machineIdentifier);
-                      }
-                      _settings = _settings.copyWith(disabledServerIds: disabled);
-                    }),
-                    focusNode: index == 0 ? _firstSourceFocus : null,
-                    leading: _SourceToggleIndicator(
-                      enabled: !_settings.disabledServerIds.contains(
-                        source.machineIdentifier,
-                      ),
-                    ),
-                    headline: AppText(
-                      '${source.name}${source.owned ? ' (owned)' : ''}',
-                    ),
-                  ),
-                ),
-            ],
-          ),
-      ],
-    );
-  }
-
-  Widget _buildAppearanceSection() {
-    return SizedBox(
-      height: 64.du(context),
-      child: FocusableSurface(
+      _SettingRow(
+        label: 'Relay server',
+        description: relay != null
+            ? '${relay.nickname} · ${Uri.tryParse(relay.url)?.host ?? relay.url}'
+            : 'Add one to host or join rooms',
+        focusNode: _relaySettingsEntryFocus,
         onClick: () {
-          setState(() => _showingAppearance = true);
+          setState(() => _showingRelaySettings = true);
           WidgetsBinding.instance.addPostFrameCallback(
-            (_) => _appearanceBackFocus.requestFocus(),
+            (_) => _relaySettingsBackFocus.requestFocus(),
           );
         },
-        focusNode: _appearanceEntryFocus,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.all(Radius.circular(8.du(context))),
-        ),
-        colors: SurfaceColors(
-          container: AppColors.background,
-          content: AppColors.ink3,
-          focusedContent: AppColors.inkOnArt,
-        ),
-        border: SurfaceBorder(
-          idle: SurfaceBorderSide.solid(AppColors.line),
-          focused: SurfaceBorderSide.solid(AppColors.accent),
-        ),
-        contentAlignment: AlignmentDirectional.centerStart,
-        child: Padding(
-          padding: EdgeInsets.symmetric(horizontal: 20.du(context)),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const AppText('Theme & UI size'),
-              const Spacer(),
-              AppText(
-                '${_settings.themeId.label} · ${(_settings.uiScale * 100).round()}%',
-                color: AppColors.ink3,
+        trailing: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 9.du(context),
+              height: 9.du(context),
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: statusColor,
               ),
-            ],
-          ),
+            ),
+            SizedBox(width: 10.du(context)),
+            AppText(
+              statusLabel,
+              style: AppTypography.caption,
+              color: statusColor == AppColors.ink4
+                  ? AppColors.ink3
+                  : statusColor,
+            ),
+          ],
         ),
       ),
-    );
+      _SettingRow(
+        label: 'Maximum seats',
+        description: 'People who can join a room you host',
+        value: '${_settings.maxHostSeats}',
+        focusNode: _maxHostSeatsFocus,
+        onClick: () => setState(() => _maxSeatsMenuExpanded = true),
+      ),
+      _SettingRow(
+        label: 'Show phone chat during playback',
+        description: 'Messages from guests appear over the picture',
+        toggle: _settings.showChatOverlay,
+        onClick: () =>
+            _update((s) => s.copyWith(showChatOverlay: !s.showChatOverlay)),
+      ),
+      _SettingRow(
+        label: 'Chat overlay corner',
+        description: 'Where phone messages appear during playback',
+        value: _cornerLabel(_settings.chatOverlayCorner),
+        onClick: () => _update((s) {
+          const order = ChatOverlayCorner.values;
+          return s.copyWith(
+            chatOverlayCorner:
+                order[(s.chatOverlayCorner.index + 1) % order.length],
+          );
+        }),
+      ),
+    ];
   }
 
-  Widget _buildProfilesSection() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        for (final profile in _settings.profiles)
-          Padding(
-            padding: EdgeInsets.only(bottom: 8.du(context)),
-            child: AppText('${profile.name} · Plex · ${profile.plexUsername}'),
-          ),
-        if (_settings.profiles.isEmpty)
-          Padding(
-            padding: EdgeInsets.only(bottom: 8.du(context)),
-            child: const AppText('No profiles yet'),
-          ),
-        SizedBox(height: 8.du(context)),
-        AppButton(
-          onClick: () => setState(() => _showingAddProfile = true),
-          child: const AppText('Add profile'),
+  String _cornerLabel(ChatOverlayCorner c) => switch (c) {
+    ChatOverlayCorner.topStart => 'Top left',
+    ChatOverlayCorner.topEnd => 'Top right',
+    ChatOverlayCorner.bottomStart => 'Bottom left',
+    ChatOverlayCorner.bottomEnd => 'Bottom right',
+  };
+
+  List<Widget> _playbackRows() {
+    const presets = AppSettings.bitratePresets;
+    final current = presets
+        .where((p) => p.kbps == _settings.maxVideoBitrateKbps)
+        .firstOrNull;
+    return [
+      _SettingRow(
+        label: 'Maximum transcode bitrate',
+        description: 'Only used when a file can’t direct play',
+        value: current?.label ?? '${_settings.maxVideoBitrateKbps} kbps',
+        onClick: () => _update((s) {
+          final i = presets.indexWhere((p) => p.kbps == s.maxVideoBitrateKbps);
+          return s.copyWith(
+            maxVideoBitrateKbps: presets[(i + 1) % presets.length].kbps,
+          );
+        }),
+      ),
+    ];
+  }
+
+  List<Widget> _subtitleRows() => [
+    _SettingRow(
+      label: 'Always burn in subtitles',
+      description: 'Draw them into the picture even when the TV could render them itself',
+      toggle: _settings.forceBurnSubtitles,
+      onClick: () =>
+          _update((s) => s.copyWith(forceBurnSubtitles: !s.forceBurnSubtitles)),
+    ),
+  ];
+
+  List<Widget> _serverRows() {
+    if (!_sourcesLoaded)
+      return [AppText('Looking for servers…', style: AppTypography.body)];
+    if (_sourcesError != null) {
+      return [
+        AppText(
+          'Couldn’t reach plex.tv to list your servers. Everything already connected still works.',
+          style: AppTypography.body,
         ),
-      ],
+      ];
+    }
+    if (_sources.isEmpty)
+      return [
+        AppText('No servers on this account.', style: AppTypography.body),
+      ];
+    return [
+      AppText(
+        'Every reachable server feeds the hub at once — turn one off to leave it out.',
+        style: AppTypography.caption,
+      ),
+      for (final (index, source) in _sources.indexed)
+        _SettingRow(
+          label: source.name,
+          description: 'Plex · ${source.owned ? 'Owned' : 'Shared with you'}',
+          focusNode: index == 0 ? _firstSourceFocus : null,
+          toggle: !_settings.disabledServerIds.contains(
+            source.machineIdentifier,
+          ),
+          onClick: () {
+            _serversChanged = true;
+            _update((s) {
+              final disabled = {...s.disabledServerIds};
+              if (!disabled.remove(source.machineIdentifier))
+                disabled.add(source.machineIdentifier);
+              return s.copyWith(disabledServerIds: disabled);
+            });
+          },
+        ),
+    ];
+  }
+
+  void _openAppearance() {
+    setState(() => _showingAppearance = true);
+    WidgetsBinding.instance.addPostFrameCallback(
+      (_) => _appearanceBackFocus.requestFocus(),
     );
   }
 
+  List<Widget> _appearanceRows() => [
+    _SettingRow(
+      label: 'Theme',
+      description: 'Seven palettes · takes effect at once',
+      value: _settings.themeId.label,
+      focusNode: _appearanceEntryFocus,
+      onClick: _openAppearance,
+    ),
+  ];
+
+  List<Widget> _displayRows() => [
+    _SettingRow(
+      label: 'UI size',
+      description:
+          'Scales the whole interface for your screen and how far away you sit',
+      value: '${(_settings.uiScale * 100).round()}%',
+      onClick: _openAppearance,
+    ),
+  ];
+
+  List<Widget> _profileRows() => [
+    for (final profile in _settings.profiles)
+      _SettingRow(
+        label: profile.name,
+        description:
+            'Plex · ${profile.plexUsername} · “${profile.watchTogetherName}” in rooms',
+      ),
+    _SettingRow(
+      label: 'Add a profile',
+      description: 'Sign in as someone else in the house',
+      onClick: () => setState(() => _showingAddProfile = true),
+    ),
+  ];
+
+  List<Widget> _aboutRows() => [
+    _SettingRow(label: 'Version', value: widget.versionName ?? '—'),
+  ];
   Future<void> _addProfile({
     required String name,
     required String watchTogetherName,
@@ -628,251 +775,241 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       _showingAddProfile = false;
     });
   }
-
-  Widget _buildWatchTogetherSection() {
-    final defaultRelay = _settings.defaultRelay;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        if (widget.hint != null) ...[
-          AppText(widget.hint!, color: AppColors.accent),
-          SizedBox(height: 12.du(context)),
-        ],
-        ConstrainedBox(
-          constraints: BoxConstraints(minHeight: 64.du(context)),
-          child: FocusableSurface(
-            onClick: () {
-              setState(() => _showingRelaySettings = true);
-              WidgetsBinding.instance.addPostFrameCallback(
-                (_) => _relaySettingsBackFocus.requestFocus(),
-              );
-            },
-            focusNode: _relaySettingsEntryFocus,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.all(Radius.circular(8.du(context))),
-            ),
-            colors: SurfaceColors(
-              container: AppColors.background,
-              content: AppColors.ink3,
-              focusedContent: AppColors.inkOnArt,
-            ),
-            border: SurfaceBorder(
-              idle: SurfaceBorderSide.solid(AppColors.line),
-              focused: SurfaceBorderSide.solid(AppColors.accent),
-            ),
-            contentAlignment: AlignmentDirectional.centerStart,
-            child: Padding(
-              padding: EdgeInsets.symmetric(horizontal: 20.du(context)),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const AppText('Relay settings'),
-                      AppText(
-                        defaultRelay != null
-                            ? '${defaultRelay.nickname} · Default'
-                            : 'None configured',
-                        color: AppColors.ink3,
-                      ),
-                    ],
-                  ),
-                  const Spacer(),
-                  AppText('›', color: AppColors.ink3),
-                ],
-              ),
-            ),
-          ),
-        ),
-        SizedBox(height: 12.du(context)),
-        SizedBox(
-          height: 64.du(context),
-          child: FocusableSurface(
-            onClick: () => setState(() => _maxSeatsMenuExpanded = true),
-            focusNode: _maxHostSeatsFocus,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.all(Radius.circular(8.du(context))),
-            ),
-            colors: SurfaceColors(
-              container: AppColors.background,
-              content: AppColors.ink3,
-              focusedContent: AppColors.inkOnArt,
-            ),
-            border: SurfaceBorder(
-              idle: SurfaceBorderSide.solid(AppColors.line),
-              focused: SurfaceBorderSide.solid(AppColors.accent),
-            ),
-            contentAlignment: AlignmentDirectional.centerStart,
-            child: Padding(
-              padding: EdgeInsets.symmetric(horizontal: 20.du(context)),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const AppText('Maximum seats'),
-                  const Spacer(),
-                  AppText('${_settings.maxHostSeats}', color: AppColors.ink3),
-                ],
-              ),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildPlaybackSection() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const AppText('Max transcode video bitrate'),
-        SizedBox(height: 8.du(context)),
-        Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            for (final preset in AppSettings.bitratePresets) ...[
-              Builder(
-                builder: (context) {
-                  final selected = _settings.maxVideoBitrateKbps == preset.kbps;
-                  return AppFilterChip(
-                    selected: selected,
-                    onClick: () => setState(
-                      () => _settings = _settings.copyWith(
-                        maxVideoBitrateKbps: preset.kbps,
-                      ),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        if (selected)
-                          Padding(
-                            padding: EdgeInsets.only(right: 8.du(context)),
-                            child: const AppText('✓'),
-                          ),
-                        AppText(preset.label),
-                      ],
-                    ),
-                  );
-                },
-              ),
-              SizedBox(width: 16.du(context)),
-            ],
-          ],
-        ),
-        SizedBox(height: 24.du(context)),
-        const AppText('Force-burn subtitles into video even when not required'),
-        SizedBox(height: 8.du(context)),
-        AppSwitch(
-          checked: _settings.forceBurnSubtitles,
-          onCheckedChange: (v) => setState(
-            () => _settings = _settings.copyWith(forceBurnSubtitles: v),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildChatSection() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const AppText(
-          'Show watch-together chat messages on screen during playback',
-        ),
-        SizedBox(height: 8.du(context)),
-        AppSwitch(
-          checked: _settings.showChatOverlay,
-          onCheckedChange: (v) => setState(
-            () => _settings = _settings.copyWith(showChatOverlay: v),
-          ),
-        ),
-        SizedBox(height: 24.du(context)),
-        const AppText('Chat position'),
-        SizedBox(height: 4.du(context)),
-        AppText('Pick the corner messages appear in', color: AppColors.ink3),
-        SizedBox(height: 14.du(context)),
-        ChatCornerPicker(
-          selected: _settings.chatOverlayCorner,
-          onSelect: (corner) => setState(
-            () => _settings = _settings.copyWith(chatOverlayCorner: corner),
-          ),
-        ),
-      ],
-    );
-  }
 }
 
-class _SettingsGroup extends StatelessWidget {
-  final String title;
-  final bool showRule;
-  final Widget child;
+enum _Group {
+  watchTogether('Watch Together', PhosphorIconsRegular.usersThree),
+  playback('Playback', PhosphorIconsRegular.playCircle),
+  subtitles('Subtitles', PhosphorIconsRegular.closedCaptioning),
+  servers('Servers', PhosphorIconsRegular.hardDrives),
+  appearance('Appearance', PhosphorIconsRegular.palette),
+  display('Display', PhosphorIconsRegular.monitor),
+  profiles('Profiles', PhosphorIconsRegular.user),
+  about('About', PhosphorIconsRegular.info);
 
-  const _SettingsGroup({
-    required this.title,
-    required this.showRule,
-    required this.child,
+  final String label;
+  final IconData icon;
+  const _Group(this.label, this.icon);
+}
+
+RoundedRectangleBorder _rowShape(BuildContext context) =>
+    RoundedRectangleBorder(
+      borderRadius: BorderRadius.circular(AppShape.radiusMd.du(context)),
+    );
+
+SurfaceColors get _groupColors => SurfaceColors(
+  container: AppColors.transparent,
+  content: AppColors.ink3,
+  focusedContainer: AppColors.surfaceRaised,
+  focusedContent: AppColors.ink,
+  selectedContainer: AppColors.surface,
+  selectedContent: AppColors.ink,
+);
+SurfaceBorder get _groupBorder => SurfaceBorder(
+  idle: SurfaceBorderSide.solid(AppColors.transparent),
+  focused: SurfaceBorderSide.solid(AppColors.accent),
+);
+
+/// A group in the left column: 72 du, icon and name; the selected group
+/// keeps a surface fill and ink spine while focus is in the pane.
+class _GroupRow extends StatelessWidget {
+  final _Group group;
+  final bool selected;
+  final FocusNode focusNode;
+  final VoidCallback onFocused;
+  final VoidCallback onClick;
+
+  const _GroupRow({
+    required this.group,
+    required this.selected,
+    required this.focusNode,
+    required this.onFocused,
+    required this.onClick,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        if (showRule) ...[
-          SizedBox(height: 26.du(context)),
-          Container(height: 1.du(context), color: AppColors.surface),
-          SizedBox(height: 14.du(context)),
-        ],
-        AppText(
-          title.toUpperCase(),
-          style: const TextStyle(
-            fontFamily: 'Inter',
-            fontSize: 12,
-            letterSpacing: 1.2,
-            fontWeight: FontWeight.w500,
+    return ConstrainedBox(
+      constraints: BoxConstraints(minHeight: 72.du(context)),
+      child: FocusableSurface(
+        onClick: onClick,
+        selected: selected,
+        focusNode: focusNode,
+        onFocusChange: (f) {
+          if (f) onFocused();
+        },
+        shape: _rowShape(context),
+        colors: _groupColors,
+        border: _groupBorder,
+        contentAlignment: AlignmentDirectional.centerStart,
+        child: Padding(
+          padding: EdgeInsets.symmetric(horizontal: 20.du(context)),
+          child: Row(
+            children: [
+              AppIcon(group.icon, size: 24),
+              SizedBox(width: AppSpacing.lg.du(context)),
+              AppText(group.label, style: AppTypography.body, color: null),
+            ],
           ),
-          color: AppColors.ink3,
         ),
-        SizedBox(height: 6.du(context)),
-        child,
-      ],
+      ),
     );
   }
 }
 
-const _sourceToggleWidth = 44.0;
-const _sourceToggleHeight = 24.0;
-const _sourceToggleThumbSize = 18.0;
-const _sourceToggleThumbInset = 3.0;
+SurfaceColors get _settingColors => SurfaceColors(
+  container: AppColors.surface,
+  content: AppColors.ink2,
+  focusedContainer: AppColors.surfaceRaised,
+  focusedContent: AppColors.ink,
+);
+SurfaceBorder get _settingBorder => SurfaceBorder(
+  idle: SurfaceBorderSide.solid(AppColors.line),
+  focused: SurfaceBorderSide.solid(AppColors.accent),
+);
 
-/// A track-and-thumb visual with no focus/gesture handling of its own — the
-/// enclosing AppListItem is the row's one focusable target (see
-/// AppRadioButton's matching "purely decorative" precedent, and
-/// server_switcher_panel.dart's identical indicator for the same reason).
-class _SourceToggleIndicator extends StatelessWidget {
-  final bool enabled;
+/// One setting (screen 08): 96 du minimum, label and a line saying what it
+/// does, and its current value stated at the trailing edge — a value, a
+/// switch, or a status. With no [onClick] it's a plain, unfocusable fact.
+class _SettingRow extends StatefulWidget {
+  final String label;
+  final String? description;
+  final String? value;
+  final bool? toggle;
+  final Widget? trailing;
+  final FocusNode? focusNode;
+  final VoidCallback? onClick;
 
-  const _SourceToggleIndicator({required this.enabled});
+  const _SettingRow({
+    required this.label,
+    this.description,
+    this.value,
+    this.toggle,
+    this.trailing,
+    this.focusNode,
+    this.onClick,
+  });
+
+  @override
+  State<_SettingRow> createState() => _SettingRowState();
+}
+
+class _SettingRowState extends State<_SettingRow> {
+  bool _focused = false;
 
   @override
   Widget build(BuildContext context) {
-    final thumbSize = _sourceToggleThumbSize.du(context);
-    final thumbInset = _sourceToggleThumbInset.du(context);
-    return Container(
-      width: _sourceToggleWidth.du(context),
-      height: _sourceToggleHeight.du(context),
-      decoration: BoxDecoration(
-        color: enabled ? AppColors.accent700 : AppColors.surface,
-        border: Border.all(color: AppColors.line, width: AppShape.borderWidth.du(context)),
-        borderRadius: BorderRadius.circular((_sourceToggleHeight / 2).du(context)),
+    final trailing =
+        widget.trailing ??
+        (widget.toggle != null
+            ? _ToggleIndicator(enabled: widget.toggle!)
+            : widget.value != null
+            ? AppText(
+                widget.value!,
+                style: AppTypography.label,
+                color: _focused ? AppColors.ink : AppColors.ink2,
+              )
+            : null);
+    final content = Padding(
+      padding: EdgeInsets.symmetric(
+        horizontal: AppSpacing.xl.du(context),
+        vertical: AppSpacing.lg.du(context),
       ),
-      alignment: enabled ? Alignment.centerRight : Alignment.centerLeft,
-      padding: EdgeInsets.symmetric(horizontal: thumbInset),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                AppText(
+                  widget.label,
+                  style: AppTypography.body.copyWith(
+                    height: 1.3,
+                    fontWeight: _focused ? FontWeight.w500 : FontWeight.w400,
+                  ),
+                  color: _focused ? AppColors.ink : AppColors.ink2,
+                ),
+                if (widget.description != null) ...[
+                  SizedBox(height: 3.du(context)),
+                  AppText(
+                    widget.description!,
+                    style: AppTypography.caption,
+                    color: _focused ? AppColors.ink2 : AppColors.ink3,
+                  ),
+                ],
+              ],
+            ),
+          ),
+          if (trailing != null) ...[SizedBox(width: 20.du(context)), trailing],
+        ],
+      ),
+    );
+    final onClick = widget.onClick;
+    return ConstrainedBox(
+      constraints: BoxConstraints(minHeight: 96.du(context)),
+      child: onClick == null
+          ? DecoratedBox(
+              decoration: ShapeDecoration(
+                color: AppColors.surface,
+                shape: _rowShape(context).copyWith(
+                  side: BorderSide(
+                    color: AppColors.line,
+                    width: AppShape.borderWidth.du(context),
+                  ),
+                ),
+              ),
+              child: Align(
+                alignment: AlignmentDirectional.centerStart,
+                child: content,
+              ),
+            )
+          : FocusableSurface(
+              onClick: onClick,
+              focusNode: widget.focusNode,
+              onFocusChange: (f) => setState(() => _focused = f),
+              shape: _rowShape(context),
+              colors: _settingColors,
+              border: _settingBorder,
+              contentAlignment: AlignmentDirectional.centerStart,
+              child: content,
+            ),
+    );
+  }
+}
+
+/// Screen 08's switch, drawn: 72x40 track, 28 du thumb. Decorative — the
+/// row is the focus target and Select flips it.
+class _ToggleIndicator extends StatelessWidget {
+  final bool enabled;
+
+  const _ToggleIndicator({required this.enabled});
+
+  @override
+  Widget build(BuildContext context) {
+    final inset = 4.du(context);
+    return Container(
+      width: 72.du(context),
+      height: 40.du(context),
+      padding: EdgeInsets.all(inset),
+      alignment: enabled
+          ? AlignmentDirectional.centerEnd
+          : AlignmentDirectional.centerStart,
+      decoration: BoxDecoration(
+        color: enabled ? AppColors.accent700 : AppColors.canvas,
+        border: Border.all(
+          color: AppColors.lineStrong,
+          width: AppShape.borderWidth.du(context),
+        ),
+        borderRadius: BorderRadius.circular(20.du(context)),
+      ),
       child: Container(
-        width: thumbSize,
-        height: thumbSize,
-        decoration: BoxDecoration(shape: BoxShape.circle, color: AppColors.ink),
+        width: 28.du(context),
+        height: 28.du(context),
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: enabled ? AppColors.ink : AppColors.ink4,
+        ),
       ),
     );
   }
