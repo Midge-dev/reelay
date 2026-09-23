@@ -1,3 +1,4 @@
+import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:reelay/screens/player/player_controls_bar.dart';
@@ -17,6 +18,8 @@ Future<void> _pump(
   VoidCallback? onCycleBitrate,
   VoidCallback? onOpenChatQr,
   VoidCallback? onOpenMenu,
+  FocusNode? progressFocusNode,
+  FocusNode? playPauseFocusNode,
 }) async {
   tester.view.physicalSize = const Size(1920, 1080);
   tester.view.devicePixelRatio = 1.0;
@@ -31,9 +34,11 @@ Future<void> _pump(
         positionMs: positionMs,
         durationMs: durationMs,
         subtitlesAvailable: subtitlesAvailable,
-        progressFocusNode: FocusNode(),
+        subtitleLabel: 'English',
+        qualityLabel: '20 Mbps',
+        progressFocusNode: progressFocusNode ?? FocusNode(),
         rewindFocusNode: FocusNode(),
-        playPauseFocusNode: FocusNode(),
+        playPauseFocusNode: playPauseFocusNode ?? FocusNode(),
         forwardFocusNode: FocusNode(),
         subtitlesFocusNode: FocusNode(),
         bitrateFocusNode: FocusNode(),
@@ -55,9 +60,10 @@ Future<void> _pump(
 }
 
 void main() {
-  testWidgets('shows position/duration formatted as timecodes', (tester) async {
+  testWidgets('shows position and duration as timecodes either side of the scrubber', (tester) async {
     await _pump(tester, positionMs: 65000, durationMs: 3665000);
-    expect(find.text('1:05 / 1:01:05'), findsOneWidget);
+    expect(find.text('1:05'), findsOneWidget);
+    expect(find.text('1:01:05'), findsOneWidget);
   });
 
   testWidgets('shows a pause icon while playing, play icon while paused', (tester) async {
@@ -126,14 +132,17 @@ void main() {
     expect(opened, isTrue);
   });
 
-  testWidgets('chat button does not invoke onOpenChatQr when unavailable', (tester) async {
-    var opened = false;
-    await _pump(tester, chatAvailable: false, onOpenChatQr: () => opened = true);
+  testWidgets('no chat button outside a Watch Together session', (tester) async {
+    await _pump(tester, chatAvailable: false);
 
-    await tester.tap(find.byIcon(PhosphorIconsRegular.chatCircleText));
-    await tester.pump();
+    expect(find.byIcon(PhosphorIconsRegular.chatCircleText), findsNothing);
+  });
 
-    expect(opened, isFalse);
+  testWidgets('subtitle and quality pills state their current values', (tester) async {
+    await _pump(tester);
+
+    expect(find.text('English'), findsOneWidget);
+    expect(find.text('20 Mbps'), findsOneWidget);
   });
 
   testWidgets('menu button invokes onOpenMenu', (tester) async {
@@ -144,5 +153,22 @@ void main() {
     await tester.pump();
 
     expect(opened, isTrue);
+  });
+
+  testWidgets('Up from the buttons focuses the scrubber, which shows the seek time', (tester) async {
+    final progress = FocusNode();
+    final playPause = FocusNode();
+    addTearDown(progress.dispose);
+    addTearDown(playPause.dispose);
+    await _pump(tester, progressFocusNode: progress, playPauseFocusNode: playPause);
+
+    playPause.requestFocus();
+    await tester.pump();
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowUp);
+    await tester.pump();
+
+    expect(progress.hasFocus, isTrue);
+    // Position 0:30 is shown beside the scrubber and again in the bubble.
+    expect(find.text('0:30'), findsNWidgets(2));
   });
 }

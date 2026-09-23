@@ -379,6 +379,12 @@ class PlexMovieDetail {
   final int? viewOffset;
   final String? studio;
   final String? contentRating;
+  final int? year;
+
+  /// Episode context (null for movies) — the player's "SHOW · S2 E4" kicker.
+  final String? grandparentTitle;
+  final int? parentIndex;
+  final int? index;
 
   @JsonKey(name: 'Media', defaultValue: [])
   final List<PlexMedia> media;
@@ -411,6 +417,10 @@ class PlexMovieDetail {
     this.viewOffset,
     this.studio,
     this.contentRating,
+    this.year,
+    this.grandparentTitle,
+    this.parentIndex,
+    this.index,
     this.media = const [],
     this.rating,
     this.audienceRating,
@@ -438,6 +448,10 @@ class PlexMovieDetail {
         viewOffset: viewOffset ?? this.viewOffset,
         studio: studio,
         contentRating: contentRating,
+        year: year,
+        grandparentTitle: grandparentTitle,
+        parentIndex: parentIndex,
+        index: index,
         media: media,
         rating: rating,
         audienceRating: audienceRating,

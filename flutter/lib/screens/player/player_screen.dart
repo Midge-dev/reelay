@@ -26,6 +26,7 @@ import '../../theme/tokens.dart';
 import '../../theme/typography.dart';
 import '../common/app_loading_indicator.dart';
 import '../common/chat_overlay.dart';
+import '../library/media_facts.dart';
 import 'chat_qr_overlay.dart';
 import 'player_controls_bar.dart';
 import 'player_menu_panel.dart';
@@ -598,14 +599,41 @@ class _PlayerScreenState extends State<PlayerScreen> {
     final option = options.firstWhereOrNull(
       (o) => o.streamId == _subtitleStreamId,
     );
-    return 'CC: ${option?.label ?? 'Off'}';
+    return option?.label ?? 'Off';
+  }
+
+  /// "THE LONG FIELD · S2 E4" for an episode, the year for a movie.
+  String? get _kicker {
+    final d = widget.detail;
+    final show = d.grandparentTitle;
+    if (show != null) {
+      final se = [
+        if (d.parentIndex != null) 'S${d.parentIndex}',
+        if (d.index != null) 'E${d.index}',
+      ].join(' ');
+      return [show.toUpperCase(), if (se.isNotEmpty) se].join(' · ');
+    }
+    return d.year?.toString();
+  }
+
+  /// Screen 13's top-right chips: how it is being played, then what.
+  List<String> get _infoChips {
+    final media = widget.detail.media.firstOrNull;
+    final facts = media == null ? null : MediaFacts(media);
+    return [
+      _decision is DirectPlay ? 'Direct play' : 'Transcoding',
+      ?facts?.picture,
+      ?facts?.audio,
+    ];
   }
 
   String get _currentBitrateLabel {
     final preset = AppSettings.bitratePresets.firstWhereOrNull(
       (p) => p.kbps == _maxVideoBitrateKbps,
     );
-    return preset?.label ?? '${_maxVideoBitrateKbps ~/ 1000} Mbps';
+    // "20 Mbps (High)" -> "20 Mbps": the pill states the value, not its tier.
+    return preset?.label.split(' (').first ??
+        '${_maxVideoBitrateKbps ~/ 1000} Mbps';
   }
 
   void _applyDecisionChange({required int restartPositionMs}) {
@@ -710,9 +738,9 @@ class _PlayerScreenState extends State<PlayerScreen> {
                             right: 0,
                             top: 0,
                             child: _TitleBar(
+                              kicker: _kicker,
                               title: widget.detail.title,
-                              subtitleLabel: _currentSubtitleLabel,
-                              qualityLabel: _currentBitrateLabel,
+                              chips: _infoChips,
                             ),
                           ),
                           if (widget.relay != null &&
@@ -737,6 +765,8 @@ class _PlayerScreenState extends State<PlayerScreen> {
                               durationMs: _durationMs,
                               bufferedFraction: _bufferedFraction,
                               subtitlesAvailable: subtitlesAvailable,
+                              subtitleLabel: _currentSubtitleLabel,
+                              qualityLabel: _currentBitrateLabel,
                               progressFocusNode: _progressFocusNode,
                               rewindFocusNode: _rewindFocusNode,
                               playPauseFocusNode: _playPauseFocusNode,
@@ -837,11 +867,14 @@ class _Chip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return DecoratedBox(
-      decoration: BoxDecoration(color: AppScrims.dialog.withValues(alpha: 0.6)),
+      decoration: BoxDecoration(
+        color: AppColors.canvas.withValues(alpha: 0.78),
+        borderRadius: BorderRadius.circular(AppShape.radiusSm.du(context)),
+      ),
       child: Padding(
         padding: EdgeInsets.symmetric(
-          horizontal: 12.du(context),
-          vertical: 6.du(context),
+          horizontal: 14.du(context),
+          vertical: 8.du(context),
         ),
         child: child,
       ),
@@ -849,60 +882,73 @@ class _Chip extends StatelessWidget {
   }
 }
 
-/// A full-width header, mirroring [PlayerControlsBar]'s bottom scrim but
-/// inverted — solid at the screen edge, fading to transparent toward the
-/// video — instead of the small floating [_Chip] the title used to sit in.
-/// Also carries the current CC/quality status, right-aligned: cycling
-/// through either via its button in [PlayerControlsBar] (rather than
-/// opening a picker menu) needs somewhere to show which option is active.
+/// Screen 13's header: a top scrim with the show/episode kicker and title
+/// on the left and how it is playing (direct or transcoded, picture,
+/// audio) as chips on the right. The subtitle and quality values now live
+/// on their own pills in [PlayerControlsBar].
 class _TitleBar extends StatelessWidget {
+  final String? kicker;
   final String title;
-  final String subtitleLabel;
-  final String qualityLabel;
+  final List<String> chips;
 
-  const _TitleBar({
-    required this.title,
-    required this.subtitleLabel,
-    required this.qualityLabel,
-  });
+  const _TitleBar({this.kicker, required this.title, required this.chips});
 
   @override
   Widget build(BuildContext context) {
-    final statusStyle = AppTypography.body.copyWith(
-      color: AppColors.inkOnArt.withValues(alpha: 0.75),
-    );
-
+    final kicker = this.kicker;
     return Container(
       width: double.infinity,
       padding: EdgeInsets.fromLTRB(
-        24.du(context),
-        24.du(context),
-        24.du(context),
-        48.du(context),
+        64.du(context),
+        56.du(context),
+        64.du(context),
+        72.du(context),
       ),
       decoration: BoxDecoration(
         gradient: LinearGradient(
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
           colors: [
-            AppScrims.dialog.withValues(alpha: 0.6),
-            AppScrims.dialog.withValues(alpha: 0),
+            AppColors.canvas.withValues(alpha: 0.9),
+            AppColors.canvas.withValues(alpha: 0),
           ],
         ),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Expanded(child: AppText(title, color: AppColors.inkOnArt)),
-          SizedBox(width: 24.du(context)),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              AppText(qualityLabel, style: statusStyle),
-              SizedBox(height: 4.du(context)),
-              AppText(subtitleLabel, style: statusStyle),
-            ],
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (kicker != null) ...[
+                  AppText(
+                    kicker,
+                    style: AppTypography.micro,
+                    color: AppColors.ink2,
+                  ),
+                  SizedBox(height: 8.du(context)),
+                ],
+                AppText(
+                  title,
+                  style: AppTypography.title1.copyWith(fontSize: 40),
+                  color: AppColors.inkOnArt,
+                  maxLines: 1,
+                ),
+              ],
+            ),
           ),
+          SizedBox(width: 24.du(context)),
+          for (final (i, chip) in chips.indexed) ...[
+            if (i > 0) SizedBox(width: 10.du(context)),
+            _Chip(
+              child: AppText(
+                chip,
+                style: AppTypography.caption,
+                color: AppColors.inkOnArt,
+              ),
+            ),
+          ],
         ],
       ),
     );

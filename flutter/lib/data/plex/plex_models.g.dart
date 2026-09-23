@@ -325,6 +325,10 @@ PlexMovieDetail _$PlexMovieDetailFromJson(Map<String, dynamic> json) =>
       viewOffset: (json['viewOffset'] as num?)?.toInt(),
       studio: json['studio'] as String?,
       contentRating: json['contentRating'] as String?,
+      year: (json['year'] as num?)?.toInt(),
+      grandparentTitle: json['grandparentTitle'] as String?,
+      parentIndex: (json['parentIndex'] as num?)?.toInt(),
+      index: (json['index'] as num?)?.toInt(),
       media:
           (json['Media'] as List<dynamic>?)
               ?.map((e) => PlexMedia.fromJson(e as Map<String, dynamic>))
@@ -368,6 +372,10 @@ Map<String, dynamic> _$PlexMovieDetailToJson(PlexMovieDetail instance) =>
       'viewOffset': instance.viewOffset,
       'studio': instance.studio,
       'contentRating': instance.contentRating,
+      'year': instance.year,
+      'grandparentTitle': instance.grandparentTitle,
+      'parentIndex': instance.parentIndex,
+      'index': instance.index,
       'Media': instance.media,
       'rating': instance.rating,
       'audienceRating': instance.audienceRating,
