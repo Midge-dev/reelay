@@ -694,19 +694,9 @@ class _PlayerScreenState extends State<PlayerScreen> {
               if (_isBuffering) const Center(child: AppLoadingIndicator()),
               if (_phase == PlaybackPhase.waitingForPeers &&
                   _waitingOn.isNotEmpty)
-                Positioned(
-                  top: 24.du(context),
-                  left: 0,
-                  right: 0,
-                  child: Center(
-                    child: _Chip(
-                      child: AppText(
-                        'Waiting for the room to catch up…',
-                        color: AppColors.inkOnArt,
-                      ),
-                    ),
-                  ),
-                ),
+                // Screen 15: the one moment Watch Together is allowed to be
+                // loud — the reason the room paused takes the centre.
+                Center(child: _RoomPausedCard(waitingCount: _waitingOn.length)),
               if (widget.settings.showChatOverlay && _sync != null)
                 Align(
                   alignment: _chatAlignment(),
@@ -781,6 +771,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
                               onCycleSubtitles: _cycleSubtitle,
                               onCycleBitrate: _cycleBitrate,
                               chatAvailable: _chatUrl != null,
+                              inRoom: widget.relay != null,
                               onOpenChatQr: () =>
                                   setState(() => _chatQrOpen = true),
                               menuFocusNode: _menuFocusNode,
@@ -949,6 +940,66 @@ class _TitleBar extends StatelessWidget {
               ),
             ),
           ],
+        ],
+      ),
+    );
+  }
+}
+
+class _RoomPausedCard extends StatelessWidget {
+  final int waitingCount;
+
+  const _RoomPausedCard({required this.waitingCount});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: EdgeInsets.symmetric(
+        horizontal: 48.du(context),
+        vertical: 36.du(context),
+      ),
+      decoration: BoxDecoration(
+        color: AppColors.canvas.withValues(alpha: 0.86),
+        border: Border.all(color: AppColors.lineStrong, width: 1.du(context)),
+        borderRadius: BorderRadius.circular(AppShape.radiusLg.du(context)),
+        boxShadow: AppElevation.overlay,
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 10.du(context),
+                height: 10.du(context),
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: AppColors.warning,
+                ),
+              ),
+              SizedBox(width: 14.du(context)),
+              AppText(
+                'PAUSED FOR THE ROOM',
+                style: AppTypography.micro,
+                color: AppColors.warning,
+              ),
+            ],
+          ),
+          SizedBox(height: 14.du(context)),
+          AppText(
+            waitingCount == 1
+                ? 'Someone is buffering'
+                : '$waitingCount people are buffering',
+            style: AppTypography.title2.copyWith(fontSize: 34),
+            color: AppColors.inkOnArt,
+          ),
+          SizedBox(height: 14.du(context)),
+          AppText(
+            'Everyone resumes together',
+            style: AppTypography.label,
+            color: AppColors.ink2,
+          ),
         ],
       ),
     );

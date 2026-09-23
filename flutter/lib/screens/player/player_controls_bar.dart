@@ -64,6 +64,9 @@ class PlayerControlsBar extends StatelessWidget {
   final VoidCallback onCycleSubtitles;
   final VoidCallback onCycleBitrate;
   final bool chatAvailable;
+
+  /// A Watch Together session: seeking moves everyone, so it says so.
+  final bool inRoom;
   final VoidCallback onOpenChatQr;
   final FocusNode menuFocusNode;
   final VoidCallback onOpenMenu;
@@ -91,6 +94,7 @@ class PlayerControlsBar extends StatelessWidget {
     required this.onCycleSubtitles,
     required this.onCycleBitrate,
     required this.chatAvailable,
+    this.inRoom = false,
     required this.onOpenChatQr,
     required this.menuFocusNode,
     required this.onOpenMenu,
@@ -264,6 +268,14 @@ class PlayerControlsBar extends StatelessWidget {
                     icon: PhosphorIconsRegular.fastForward,
                   ),
                 ),
+                if (inRoom) ...[
+                  SizedBox(width: 24.du(context)),
+                  AppText(
+                    'Seeking moves the whole room',
+                    style: AppTypography.caption,
+                    color: AppColors.ink2,
+                  ),
+                ],
                 const Spacer(),
                 trapped(
                   3,
