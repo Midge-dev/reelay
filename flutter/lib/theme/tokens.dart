@@ -12,7 +12,8 @@ enum ThemeId {
   harbour('Harbour', 'Steel blue, barely there. The coolest of the set.'),
   sage('Sage', 'Grey-green on near-black. Quiet and slightly organic.'),
   clay('Clay', 'Warm ground, dusty terracotta. The only warm-on-warm.'),
-  quartz('Quartz', 'Dusty rose on a faint violet ground.');
+  quartz('Quartz', 'Dusty rose on a faint violet ground.'),
+  horror('The Horror', 'Deep blood red on a red-black ground. Lights off.');
 
   final String label;
   final String blurb;
@@ -192,6 +193,27 @@ const _nocturnePalettes = <ThemeId, NocturnePalette>{
     accent900: Color(0xFF272124),
     accent700: Color(0xFF735E68),
     accent300: Color(0xFFC9ABB9),
+  ),
+  // design_handoff_reelay_horror. The one accent outside the mid-ramp (red
+  // reads pink on a TV at the others' chroma); its text colour, accent300,
+  // is a pale rose so a kicker never reads as the error colour.
+  ThemeId.horror: NocturnePalette(
+    background: Color(0xFF110B0C),
+    surface: Color(0xFF1A1112),
+    surfaceRaised: Color(0xFF24171A),
+    line: Color(0xFF301F22),
+    ink3: Color(0xFF9A8889),
+    accent: Color(0xFFA8363D),
+    canvas: Color(0xFF0A0607),
+    surfaceOverlay: Color(0xFF2E1C1F),
+    lineStrong: Color(0xFF432C30),
+    ink: Color(0xFFE6DDD5),
+    ink2: Color(0xFFCDBFB6),
+    ink4: Color(0xFF6E5C5E),
+    inkOnArt: Color(0xFFEFE8E1),
+    accent900: Color(0xFF2A1013),
+    accent700: Color(0xFF6E2328),
+    accent300: Color(0xFFE0A4A4),
   ),
 };
 

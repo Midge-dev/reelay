@@ -514,6 +514,17 @@ class _AppNavigationDrawerState extends State<AppNavigationDrawer> {
                         ),
                       ),
                     ),
+                    // A hairline above Settings: with enough libraries the
+                    // list scrolls behind it, and this marks the edge gently.
+                    Padding(
+                      padding: EdgeInsets.symmetric(
+                        vertical: AppSpacing.md.du(context),
+                      ),
+                      child: Container(
+                        height: 1.du(context),
+                        color: AppColors.line,
+                      ),
+                    ),
                     _SidebarItem(
                       icon: PhosphorIconsRegular.gear,
                       selectedIcon: PhosphorIconsFill.gear,

@@ -760,6 +760,21 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       onSelect: _selectTheme,
       currentFocus: _appearanceEntryFocus,
     ),
+    // Screen 22's footnote under the list.
+    Padding(
+      padding: EdgeInsets.only(top: 4.du(context)),
+      child: Row(
+        children: [
+          AppIcon(PhosphorIconsRegular.info, size: 20, tint: AppColors.ink4),
+          SizedBox(width: 14.du(context)),
+          AppText(
+            'Artwork is never tinted. Only the interface changes.',
+            style: AppTypography.caption,
+            color: AppColors.ink4,
+          ),
+        ],
+      ),
+    ),
   ];
 
   List<Widget> _displayRows() => [
