@@ -8,6 +8,7 @@ import '../../kit/icon.dart';
 import '../../kit/surface_style.dart';
 import '../../kit/text.dart';
 import '../../theme/scale.dart';
+import '../common/reelay_mark.dart';
 import '../../theme/tokens.dart';
 import '../../theme/typography.dart';
 import 'add_profile_dialog.dart';
@@ -86,12 +87,8 @@ class _ProfilePickerScreenState extends State<ProfilePickerScreen> {
                 Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    AppText(
-                      'Reelay',
-                      style: AppTypography.title2,
-                      color: AppColors.ink3,
-                    ),
-                    SizedBox(height: AppSpacing.md.du(context)),
+                    const ReelayMark(size: 44),
+                    SizedBox(height: 18.du(context)),
                     AppText("Who's watching?", style: AppTypography.title1),
                   ],
                 ),

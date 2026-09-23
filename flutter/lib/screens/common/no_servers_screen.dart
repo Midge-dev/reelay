@@ -193,7 +193,7 @@ class _ServerRow extends StatelessWidget {
                   AppText(resource.name, color: AppColors.ink2),
                   SizedBox(height: 3.du(context)),
                   AppText(
-                    'Plex',
+                    _detail(resource),
                     style: AppTypography.caption,
                     color: AppColors.ink3,
                   ),
@@ -224,4 +224,25 @@ class _ServerRow extends StatelessWidget {
       ),
     );
   }
+}
+
+/// "Plex · 192.168.0.12 · no answer on the local network" — the address
+/// this TV tried first and where it lives, for the person who owns the
+/// machine and can act on it (screen 24).
+String _detail(PlexResource resource) {
+  final connections = resource.connections;
+  final first =
+      connections.where((c) => c.local && !c.relay).firstOrNull ??
+      connections.where((c) => !c.relay).firstOrNull;
+  var host = first == null ? null : Uri.tryParse(first.uri)?.host;
+  // Plex hands out "192-168-0-12.<hash>.plex.direct"; the IP is the part
+  // the owner recognises.
+  if (host != null && host.endsWith('.plex.direct')) {
+    host = host.split('.').first.replaceAll('-', '.');
+  }
+  if (host == null || host.isEmpty) return 'Plex';
+  final where = first!.local
+      ? 'no answer on the local network'
+      : 'no answer over the internet';
+  return 'Plex · $host · $where';
 }
