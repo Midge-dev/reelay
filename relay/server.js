@@ -1,6 +1,11 @@
 const http = require('http');
 const crypto = require('crypto');
 const WebSocket = require('ws');
+const fs = require('fs');
+const path = require('path');
+
+// The phone chat page (Nocturne, themed from ?theme= in the TV's QR link).
+const CHAT_PAGE_HTML = fs.readFileSync(path.join(__dirname, 'chat.html'), 'utf8');
 
 const PORT = process.env.PORT || 8080;
 const TOKEN = process.env.RELAY_TOKEN || null;
@@ -176,7 +181,7 @@ function handleChatHello(ws, msg) {
   ws.chatConnectedAt = Date.now();
   room.chatPeers.add(ws);
   ws.send(JSON.stringify({ type: 'welcome', peerId: crypto.randomUUID(), seatIndex: null }));
-  ws.send(JSON.stringify({ type: 'chatHistory', messages: room.chatHistory }));
+  ws.send(JSON.stringify({ type: 'chatHistory', messages: room.chatHistory, title: room.title }));
 }
 
 function broadcastEvent(sender, payload) {
@@ -220,7 +225,7 @@ function releaseConnection(ws) {
 const server = http.createServer((req, res) => {
   const { pathname, searchParams } = new URL(req.url, `http://${req.headers.host}`);
   if (pathname === '/chat') {
-    res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+    res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-cache' });
     res.end(CHAT_PAGE_HTML);
     return;
   }
@@ -376,152 +381,6 @@ const heartbeatInterval = setInterval(() => {
 }, HEARTBEAT_INTERVAL_MS);
 
 wss.on('close', () => clearInterval(heartbeatInterval));
-
-const CHAT_PAGE_HTML = `<!doctype html>
-<html><head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, interactive-widget=resizes-content">
-<title>Reelay — Chat</title>
-<style>
-  :root { color-scheme: dark; }
-  * { box-sizing: border-box; }
-  html, body { height: 100%; }
-  body {
-    margin: 0; height: 100vh; height: 100dvh; display: flex; flex-direction: column;
-    background: #0D0D12; color: #F2F2F5; font-family: -apple-system, system-ui, sans-serif;
-  }
-  header { padding: 16px 20px; border-bottom: 1px solid #2A2A33; }
-  h1 { font-size: 16px; margin: 0; }
-  #status { font-size: 12px; color: #C7C7D1; margin-top: 4px; }
-  #nameField {
-    background: transparent; border: none; border-bottom: 1px dashed #C7C7D1;
-    color: #E795FC; font-weight: 600; font-size: 12px; padding: 0 2px; width: 120px;
-  }
-  #nameField:focus { outline: none; border-bottom-color: #AD2BD7; }
-  #log { flex: 1; overflow-y: auto; padding: 16px 20px; display: flex; flex-direction: column; gap: 8px; }
-  .msg { display: flex; flex-direction: column; max-width: 75%; }
-  .msg.mine { align-self: flex-end; align-items: flex-end; }
-  .msg.theirs { align-self: flex-start; align-items: flex-start; }
-  .msg .who { font-size: 11px; color: #C7C7D1; margin: 0 4px 2px; }
-  .msg .bubble {
-    padding: 8px 12px; border-radius: 16px; font-size: 14px;
-    overflow-wrap: break-word; white-space: pre-wrap;
-  }
-  .msg.mine .bubble { background: linear-gradient(135deg, #E795FC, #AD2BD7); color: #0D0D12; border-bottom-right-radius: 4px; }
-  .msg.theirs .bubble { background: #2A2A33; color: #F2F2F5; border-bottom-left-radius: 4px; }
-  form { display: flex; gap: 8px; padding: 16px 20px; border-top: 1px solid #2A2A33; }
-  input[type=text] {
-    flex: 1; padding: 12px; border-radius: 10px; border: 1px solid #2A2A33;
-    background: #2A2A33; color: #F2F2F5; font-size: 16px;
-  }
-  input[type=text]:focus { outline: none; border-color: #AD2BD7; }
-  button {
-    padding: 12px 20px; border-radius: 10px; border: none; font-size: 16px; font-weight: 600;
-    color: #0D0D12; cursor: pointer; background: linear-gradient(135deg, #E795FC, #AD2BD7);
-  }
-</style>
-</head><body>
-  <header>
-    <h1>Reelay — Chat</h1>
-    <div id="status">Connecting…</div>
-    <div>Chatting as <input type="text" id="nameField" maxlength="24"></div>
-  </header>
-  <div id="log"></div>
-  <form id="form">
-    <input type="text" id="text" placeholder="Say something…" autocomplete="off" maxlength="200">
-    <button type="submit">Send</button>
-  </form>
-  <script>
-    const statusEl = document.getElementById('status');
-    const logEl = document.getElementById('log');
-    const form = document.getElementById('form');
-    const textInput = document.getElementById('text');
-    const nameField = document.getElementById('nameField');
-    const roomId = new URLSearchParams(location.search).get('room');
-
-    const urlName = new URLSearchParams(location.search).get('name');
-    let username = localStorage.getItem('reelay_chat_name')
-      || urlName
-      || ('Phone ' + Math.floor(Math.random() * 900 + 100));
-    nameField.value = username;
-
-    nameField.addEventListener('change', () => {
-      username = nameField.value.trim() || username;
-      nameField.value = username;
-      localStorage.setItem('reelay_chat_name', username);
-    });
-
-    function renderMessage(who, text, isMe) {
-      const line = document.createElement('div');
-      line.className = 'msg ' + (isMe ? 'mine' : 'theirs');
-      if (!isMe) {
-        const whoEl = document.createElement('div');
-        whoEl.className = 'who';
-        whoEl.textContent = who;
-        line.appendChild(whoEl);
-      }
-      const bubble = document.createElement('div');
-      bubble.className = 'bubble';
-      bubble.textContent = text;
-      line.appendChild(bubble);
-      logEl.appendChild(line);
-      logEl.scrollTop = logEl.scrollHeight;
-    }
-
-    let ws;
-    let backoffMs = 1000;
-    let kicked = false;
-    function connect() {
-      const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
-      ws = new WebSocket(proto + '//' + location.host + '/' + location.search);
-      ws.onopen = () => {
-        statusEl.textContent = 'Connected';
-        backoffMs = 1000;
-        ws.send(JSON.stringify({ type: 'hello', role: 'chat', roomId }));
-      };
-      ws.onclose = () => {
-        if (kicked) return;
-        statusEl.textContent = 'Disconnected — retrying…';
-        setTimeout(connect, backoffMs);
-        backoffMs = Math.min(backoffMs * 2, 15000);
-      };
-      ws.onerror = () => ws.close();
-      ws.onmessage = (event) => {
-        const msg = JSON.parse(event.data);
-        if (msg.type === 'kicked') {
-          kicked = true;
-          statusEl.textContent = 'Session ended after 30 minutes — reopen the chat from the TV to rejoin.';
-          return;
-        }
-        if (msg.type === 'notFound') {
-          statusEl.textContent = 'This room has ended.';
-          return;
-        }
-        if (msg.type === 'chatHistory') {
-          logEl.innerHTML = '';
-          for (const m of msg.messages || []) {
-            renderMessage(m.username || 'them', m.text || '', (m.username || '') === username);
-          }
-          return;
-        }
-        if (msg.type === 'event' && msg.payload && msg.payload.kind === 'chat') {
-          renderMessage(msg.payload.username || 'them', msg.payload.text || '', false);
-        }
-      };
-    }
-    connect();
-
-    form.addEventListener('submit', (e) => {
-      e.preventDefault();
-      const text = textInput.value.trim();
-      if (!text || !ws || ws.readyState !== WebSocket.OPEN) return;
-      ws.send(JSON.stringify({ type: 'event', payload: { kind: 'chat', username, text } }));
-      renderMessage(username, text, true);
-      textInput.value = '';
-    });
-  </script>
-</body></html>
-`;
 
 server.listen(PORT, () => {
   console.log(`Reelay relay listening on port ${PORT}`);

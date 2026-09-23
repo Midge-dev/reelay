@@ -35,6 +35,11 @@ void main() {
       expect(url, 'https://relay.example.com/chat?token=abc&room=room1');
     });
 
+    test('carries the TV theme so the phone page matches it', () {
+      final url = relayUrlToChatUrl('wss://relay.example.com?token=abc', 'room1', '', themeId: 'horror');
+      expect(url, 'https://relay.example.com/chat?token=abc&room=room1&theme=horror');
+    });
+
     test('returns null for an unparseable relay url', () {
       expect(relayUrlToChatUrl('not-a-url', 'room1', 'Sean'), isNull);
     });

@@ -29,7 +29,16 @@ RelayHttpUrl? relayHttpUrl(String relayUrl) {
 
 /// Builds the phone-chat page URL for a room, carrying the relay's own
 /// auth query string forward. Ports QrCode.kt's `relayUrlToChatUrl`.
-String? relayUrlToChatUrl(String relayUrl, String roomId, String defaultName) {
+///
+/// [themeId] is `ThemeId.name` of the TV's current theme (e.g. `horror`);
+/// the chat page reads it before first paint so the phone matches the TV.
+/// Passed as a string so this sync-layer file stays free of theme imports.
+String? relayUrlToChatUrl(
+  String relayUrl,
+  String roomId,
+  String defaultName, {
+  String? themeId,
+}) {
   final parsed = relayHttpUrl(relayUrl);
   if (parsed == null) return null;
 
@@ -37,6 +46,7 @@ String? relayUrlToChatUrl(String relayUrl, String roomId, String defaultName) {
     if (parsed.query != null) parsed.query!,
     'room=$roomId',
     if (defaultName.trim().isNotEmpty) 'name=${Uri.encodeQueryComponent(defaultName)}',
+    if (themeId != null && themeId.isNotEmpty) 'theme=${Uri.encodeQueryComponent(themeId)}',
   ];
   return '${parsed.base}/chat?${params.join('&')}';
 }

@@ -149,7 +149,12 @@ class _PlayerScreenState extends State<PlayerScreen> {
     final relay = widget.relay;
     final roomId = _roomId;
     if (relay == null || roomId == null) return null;
-    return relayUrlToChatUrl(relay.relayUrl, roomId, '');
+    return relayUrlToChatUrl(
+      relay.relayUrl,
+      roomId,
+      '',
+      themeId: AppColors.currentTheme.name,
+    );
   }
 
   @override

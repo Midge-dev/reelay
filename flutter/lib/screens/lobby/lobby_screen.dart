@@ -554,7 +554,12 @@ class _ChatQrModal extends StatelessWidget {
   Widget build(BuildContext context) {
     final id = roomId;
     final chatUrl = id != null
-        ? relayUrlToChatUrl(relayUrl, id, defaultName)
+        ? relayUrlToChatUrl(
+            relayUrl,
+            id,
+            defaultName,
+            themeId: AppColors.currentTheme.name,
+          )
         : null;
 
     return Positioned.fill(
