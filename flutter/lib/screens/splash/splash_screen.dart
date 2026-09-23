@@ -1,5 +1,9 @@
 import 'dart:async';
-import 'dart:ui' show ImageFilter;
+import 'dart:math' as math;
+import 'dart:typed_data';
+import 'dart:ui'
+    as ui
+    show Image, ImageFilter, PixelFormat, decodeImageFromPixels;
 
 import 'package:flutter/widgets.dart';
 
@@ -9,14 +13,16 @@ import '../../theme/tokens.dart';
 // Splash spec (design_handoff_reelay_splash/DESIGN.md) — every number below
 // is from its §2 geometry and §4 timeline, in du at the 1920×1080 reference.
 const _introMs = 1300;
-const _breatheHalfMs = 900; // 0.24 → 0.07 → 0.24 is one 1800 ms period
+const _breatheHalfMs = 900; // peak → trough → peak is one 1800 ms period
 const _exitMs = 300;
 const _breatheFromMs = 1600;
 const _minHoldMs = 2400;
 const _reducedFadeMs = 300;
 
-const _glowPeak = 0.24;
-const _glowTrough = 0.07;
+// Dimmer than the handoff's 0.24 / 0.07 so the mark reads clearly in front
+// of it; the trough keeps the same ratio to the peak.
+const _glowPeak = 0.14;
+const _glowTrough = 0.04;
 
 /// The first thing Reelay paints: the mark draws itself (~1.2 s), holds
 /// while the app loads underneath, then fades to reveal it. Exits when
@@ -117,28 +123,42 @@ class _SplashScreenState extends State<SplashScreen>
 
   @override
   Widget build(BuildContext context) {
-    Widget lockup = Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        _Mark(
-          accentBar: _accentBar,
-          inkBar: _inkBar,
-          glow: _glow,
-          breathe: _breatheCurve,
-          reducedMotion: _reducedMotion,
-        ),
-        SizedBox(width: 34.du(context)),
-        _Wordmark(progress: _word),
-      ],
-    );
-    if (_reducedMotion) {
-      lockup = TweenAnimationBuilder<double>(
-        tween: Tween(begin: 0, end: 1),
-        duration: const Duration(milliseconds: _reducedFadeMs),
-        builder: (context, t, child) => Opacity(opacity: t, child: child),
-        child: lockup,
+    // The lockup is laid out twice in the same centred spot: once painting
+    // only the glow, once only the bars and wordmark. The grain goes
+    // between them — over the ground and glow, never over the logo.
+    Widget lockupFor(_Pass pass) {
+      Widget lockup = Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          _Mark(
+            pass: pass,
+            accentBar: _accentBar,
+            inkBar: _inkBar,
+            glow: _glow,
+            breathe: _breatheCurve,
+            reducedMotion: _reducedMotion,
+          ),
+          SizedBox(width: 34.du(context)),
+          Visibility(
+            visible: pass == _Pass.logo,
+            maintainSize: true,
+            maintainAnimation: true,
+            maintainState: true,
+            child: _Wordmark(progress: _word),
+          ),
+        ],
       );
+      if (_reducedMotion) {
+        lockup = TweenAnimationBuilder<double>(
+          tween: Tween(begin: 0, end: 1),
+          duration: const Duration(milliseconds: _reducedFadeMs),
+          builder: (context, t, child) => Opacity(opacity: t, child: child),
+          child: lockup,
+        );
+      }
+      return Center(child: lockup);
     }
+
     return FadeTransition(
       // Exit: lockup and ground together, 1 → 0, easeIn — the app is
       // already painted underneath. No slide, scale or route transition.
@@ -171,7 +191,12 @@ class _SplashScreenState extends State<SplashScreen>
               ),
             ),
           ),
-          Center(child: lockup),
+          lockupFor(_Pass.glow),
+          // The ground's near-identical darks and the faint glow step
+          // visibly in 8-bit colour on a TV. A grain too fine to see breaks
+          // the steps up so they read as one smooth blend.
+          const Positioned.fill(child: _Grain()),
+          lockupFor(_Pass.logo),
         ],
       ),
     );
@@ -202,7 +227,10 @@ class _EllipseTransform extends GradientTransform {
 /// The 46-unit master mark (rect 36×12 r4 over rect 22×12 r4, gap 4)
 /// scaled by 3: 108×36 accent over 66×36 ink, gap 12, both r12, in a
 /// 108×84 box — with the accent glow behind it.
+enum _Pass { glow, logo }
+
 class _Mark extends StatelessWidget {
+  final _Pass pass;
   final Animation<double> accentBar;
   final Animation<double> inkBar;
   final Animation<double> glow;
@@ -210,6 +238,7 @@ class _Mark extends StatelessWidget {
   final bool reducedMotion;
 
   const _Mark({
+    required this.pass,
     required this.accentBar,
     required this.inkBar,
     required this.glow,
@@ -245,43 +274,46 @@ class _Mark extends StatelessWidget {
         children: [
           // The only blurred layer. ImageFiltered, not a BoxShadow — a
           // shadow has an edge; the glow shouldn't.
-          Positioned(
-            left: -48.du(context),
-            top: -44.du(context),
-            width: 204.du(context),
-            height: 124.du(context),
-            child: AnimatedBuilder(
-              animation: Listenable.merge([glow, breathe]),
-              builder: (context, child) {
-                final breath = reducedMotion ? 0.0 : breathe.value;
-                final level = _glowPeak - (_glowPeak - _glowTrough) * breath;
-                return Opacity(opacity: glow.value * level, child: child);
-              },
-              child: ImageFiltered(
-                imageFilter: ImageFilter.blur(
-                  sigmaX: 26.du(context),
-                  sigmaY: 26.du(context),
-                  tileMode: TileMode.decal,
-                ),
-                child: DecoratedBox(
-                  decoration: BoxDecoration(
-                    color: AppColors.accent,
-                    borderRadius: BorderRadius.circular(62.du(context)),
+          if (pass == _Pass.glow)
+            Positioned(
+              left: -48.du(context),
+              top: -44.du(context),
+              width: 204.du(context),
+              height: 124.du(context),
+              child: AnimatedBuilder(
+                animation: Listenable.merge([glow, breathe]),
+                builder: (context, child) {
+                  final breath = reducedMotion ? 0.0 : breathe.value;
+                  final level = _glowPeak - (_glowPeak - _glowTrough) * breath;
+                  return Opacity(opacity: glow.value * level, child: child);
+                },
+                child: ImageFiltered(
+                  imageFilter: ui.ImageFilter.blur(
+                    sigmaX: 26.du(context),
+                    sigmaY: 26.du(context),
+                    tileMode: TileMode.decal,
+                  ),
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      color: AppColors.accent,
+                      borderRadius: BorderRadius.circular(62.du(context)),
+                    ),
                   ),
                 ),
               ),
             ),
-          ),
-          Positioned(
-            left: 0,
-            top: 0,
-            child: bar(accentBar, 108, AppColors.accent),
-          ),
-          Positioned(
-            left: 0,
-            top: 48.du(context),
-            child: bar(inkBar, 66, AppColors.splashInkBar),
-          ),
+          if (pass == _Pass.logo) ...[
+            Positioned(
+              left: 0,
+              top: 0,
+              child: bar(accentBar, 108, AppColors.accent),
+            ),
+            Positioned(
+              left: 0,
+              top: 48.du(context),
+              child: bar(inkBar, 66, AppColors.splashInkBar),
+            ),
+          ],
         ],
       ),
     );
@@ -328,4 +360,82 @@ class _Wordmark extends StatelessWidget {
       ),
     );
   }
+}
+
+/// A 128 px tile of random grey, tiled over the splash with an overlay
+/// blend at low strength. Overlay scales with the colour underneath, so on
+/// these dark grounds it shifts each pixel by only a level or two — enough
+/// to dither away gradient banding, never enough to see as texture.
+class _Grain extends StatefulWidget {
+  const _Grain();
+
+  @override
+  State<_Grain> createState() => _GrainState();
+}
+
+class _GrainState extends State<_Grain> {
+  static const _tile = 128;
+  ui.Image? _image;
+
+  @override
+  void initState() {
+    super.initState();
+    final random = math.Random(7);
+    final pixels = Uint8List(_tile * _tile * 4);
+    for (var i = 0; i < pixels.length; i += 4) {
+      final v = random.nextInt(256);
+      pixels[i] = v;
+      pixels[i + 1] = v;
+      pixels[i + 2] = v;
+      pixels[i + 3] = 255;
+    }
+    ui.decodeImageFromPixels(pixels, _tile, _tile, ui.PixelFormat.rgba8888, (
+      image,
+    ) {
+      if (mounted) {
+        setState(() => _image = image);
+      } else {
+        image.dispose();
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _image?.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final image = _image;
+    if (image == null) return const SizedBox.shrink();
+    return IgnorePointer(child: CustomPaint(painter: _GrainPainter(image)));
+  }
+}
+
+class _GrainPainter extends CustomPainter {
+  final ui.Image image;
+
+  const _GrainPainter(this.image);
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    canvas.drawRect(
+      Offset.zero & size,
+      Paint()
+        ..shader = ImageShader(
+          image,
+          TileMode.repeated,
+          TileMode.repeated,
+          Matrix4.identity().storage,
+        )
+        // The paint's alpha scales the shader: 8% strength.
+        ..color = const Color(0x14000000)
+        ..blendMode = BlendMode.overlay,
+    );
+  }
+
+  @override
+  bool shouldRepaint(_GrainPainter old) => old.image != image;
 }
