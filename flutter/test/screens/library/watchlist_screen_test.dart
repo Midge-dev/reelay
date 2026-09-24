@@ -1,3 +1,4 @@
+import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:reelay/data/plex/plex_models.dart';
@@ -72,6 +73,30 @@ void main() {
     expect(find.text('Arrival'), findsOneWidget);
     expect(find.textContaining('Undo'), findsOneWidget);
     expect(removed, isFalse, reason: 'onRemove only fires once the undo window expires');
+  });
+
+  testWidgets('holding Select on the D-pad keeps the card removed after the button is released', (tester) async {
+    await _pump(tester);
+    await tester.pump(); // autofocus lands on the first card
+
+    // The hold fires while the key is still down and moves focus to the
+    // undo chip; the release then arrives there and must not read as a
+    // press of Undo.
+    await tester.sendKeyDownEvent(LogicalKeyboardKey.select);
+    await tester.pump(const Duration(milliseconds: 600));
+    await tester.pump();
+    expect(find.text('Aftershow'), findsNothing);
+
+    await tester.sendKeyUpEvent(LogicalKeyboardKey.select);
+    await tester.pump();
+
+    expect(find.text('Aftershow'), findsNothing, reason: 'the release belongs to the hold, not to Undo');
+    expect(find.textContaining('Undo'), findsOneWidget);
+
+    // A fresh press on the focused chip still undoes.
+    await tester.sendKeyEvent(LogicalKeyboardKey.select);
+    await tester.pump();
+    expect(find.text('Aftershow'), findsOneWidget);
   });
 
   testWidgets('pressing undo restores the card and never calls onRemove', (tester) async {

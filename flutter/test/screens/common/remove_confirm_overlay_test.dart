@@ -31,44 +31,20 @@ void main() {
     expect(find.text('Cancel'), findsOneWidget);
   });
 
-  testWidgets('first tap on Remove only arms it, does not confirm yet', (tester) async {
+  testWidgets('tapping Remove confirms', (tester) async {
     var confirmed = false;
     await _pump(tester, onConfirm: () => confirmed = true, onCancel: () {});
 
-    await tester.tap(find.text('Remove'));
-    await tester.pump();
-
-    expect(confirmed, isFalse);
-  });
-
-  testWidgets('second tap on Remove after arming confirms', (tester) async {
-    var confirmed = false;
-    await _pump(tester, onConfirm: () => confirmed = true, onCancel: () {});
-
-    await tester.tap(find.text('Remove'));
-    await tester.pump();
     await tester.tap(find.text('Remove'));
     await tester.pump();
 
     expect(confirmed, isTrue);
   });
 
-  testWidgets('first tap on Cancel only arms it, does not cancel yet', (tester) async {
+  testWidgets('tapping Cancel cancels', (tester) async {
     var cancelled = false;
     await _pump(tester, onConfirm: () {}, onCancel: () => cancelled = true);
 
-    await tester.tap(find.text('Cancel'));
-    await tester.pump();
-
-    expect(cancelled, isFalse);
-  });
-
-  testWidgets('second tap on Cancel after arming cancels', (tester) async {
-    var cancelled = false;
-    await _pump(tester, onConfirm: () {}, onCancel: () => cancelled = true);
-
-    await tester.tap(find.text('Cancel'));
-    await tester.pump();
     await tester.tap(find.text('Cancel'));
     await tester.pump();
 

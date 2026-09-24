@@ -11,22 +11,13 @@ import '../../theme/typography.dart';
 /// dialog, layered on top of a card's still-mounted content (checklist
 /// item #1's Stack-overlay pattern), not swapped in via if/else.
 ///
-/// Two hazards it handles deliberately:
+/// It opens focused on Remove while the long-press that opened it is still
+/// held; that press's release lands here as a bare KeyUpEvent, which
+/// FocusableSurface itself ignores (no matching KeyDown), so the first real
+/// press confirms or cancels.
 ///
-/// - **checklist item #3, cross-widget variant.** The long-press that
-///   opens this overlay is still physically held when it appears;
-///   RemoveConfirmOverlay immediately grabs focus onto Remove, so the
-///   eventual key-up of that same press lands on Remove as a "bare"
-///   KeyUpEvent with no KeyDownEvent of its own. Flutter's key
-///   dispatch bubbles from the focused leaf outward (confirmed via
-///   HardwareKeyboard.addHandler's source: its handlers run before the
-///   focus-tree dispatch but don't gate/cancel it), so an ancestor can't
-///   pre-empt a descendant FocusableSurface's own onClick. Handled instead
-///   by guarding the *semantic action*: `_armed` starts false on every
-///   fresh mount (this widget is freshly built each time it appears) and
-///   the
-///   first Confirm/Cancel activation only arms it; the action itself
-///   requires a second, deliberate press.
+/// Also handles:
+///
 /// - **Auto-dismiss on focus loss, correctly sequenced.** Only starts
 ///   watching for "focus left" after observing at least one genuine
 ///   focus-gained report — otherwise the single frame before the initial
@@ -53,7 +44,6 @@ class RemoveConfirmOverlay extends StatefulWidget {
 class _RemoveConfirmOverlayState extends State<RemoveConfirmOverlay> {
   final _removeFocus = FocusNode(debugLabel: 'remove-confirm-remove');
   final _cancelFocus = FocusNode(debugLabel: 'remove-confirm-cancel');
-  bool _armed = false;
   bool _hasBeenFocusedSinceShown = false;
 
   @override
@@ -77,22 +67,6 @@ class _RemoveConfirmOverlayState extends State<RemoveConfirmOverlay> {
     } else if (_hasBeenFocusedSinceShown) {
       widget.onCancel();
     }
-  }
-
-  void _guardedConfirm() {
-    if (!_armed) {
-      setState(() => _armed = true);
-      return;
-    }
-    widget.onConfirm();
-  }
-
-  void _guardedCancel() {
-    if (!_armed) {
-      setState(() => _armed = true);
-      return;
-    }
-    widget.onCancel();
   }
 
   // Remove/Cancel lay out as a Row when not compact (navigated with
@@ -152,7 +126,7 @@ class _RemoveConfirmOverlayState extends State<RemoveConfirmOverlay> {
         canRequestFocus: false,
         onKeyEvent: _onRemoveKey,
         child: AppButton(
-          onClick: _guardedConfirm,
+          onClick: widget.onConfirm,
           compact: true,
           focusNode: _removeFocus,
           child: const AppText('Remove'),
@@ -163,7 +137,7 @@ class _RemoveConfirmOverlayState extends State<RemoveConfirmOverlay> {
         canRequestFocus: false,
         onKeyEvent: _onCancelKey,
         child: AppButton(
-          onClick: _guardedCancel,
+          onClick: widget.onCancel,
           compact: true,
           focusNode: _cancelFocus,
           child: const AppText('Cancel'),

@@ -41,6 +41,9 @@ class DpadLongPressDetector {
       return KeyEventResult.handled;
     }
     if (event is KeyUpEvent) {
+      // No timer and nothing fired: the press started on another widget
+      // and focus moved here mid-hold. Swallow it rather than click.
+      if (_timer == null && !_fired) return KeyEventResult.handled;
       _timer?.cancel();
       _timer = null;
       if (_fired) {

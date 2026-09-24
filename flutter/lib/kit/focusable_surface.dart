@@ -128,7 +128,14 @@ class _FocusableSurfaceState extends State<FocusableSurface> {
     if (!DpadLongPressDetector.selectKeys.contains(event.logicalKey))
       return KeyEventResult.ignored;
     if (event is KeyDownEvent) _setPressed(true);
-    if (event is KeyUpEvent) _setPressed(false);
+    if (event is KeyUpEvent) {
+      final sawDown = _pressed;
+      _setPressed(false);
+      // A release whose press began elsewhere — a hold on another surface
+      // that moved focus here mid-press (Watchlist's hold-to-remove hands
+      // focus to its Undo chip) — isn't a click on this one.
+      if (!sawDown) return KeyEventResult.handled;
+    }
     return handleDpadSelect(
       event,
       longPress: _longPress,

@@ -111,13 +111,11 @@ void main() {
 
       // The physical select key is still held when the overlay grabs focus
       // onto Remove, so its eventual key-up lands there as a bare
-      // KeyUpEvent — which FocusableSurface reads as a click. That's the
-      // documented cross-widget checklist #3 hazard: this first "click" is
-      // absorbed as the overlay's arming press, not a second real one.
+      // KeyUpEvent with no KeyDown of its own — which must not confirm.
       await tester.sendKeyUpEvent(LogicalKeyboardKey.select);
       await tester.pump();
 
-      expect(removed, isFalse, reason: 'the swallowed key-up only arms the guard, it must not confirm by itself');
+      expect(removed, isFalse, reason: 'the hold\'s own release must not confirm');
       expect(find.text('Remove Arrival from your watchlist?'), findsOneWidget);
 
       await tester.tap(find.text('Remove'));
@@ -178,9 +176,8 @@ void main() {
       expect(resumed, isFalse);
       expect(find.text('Remove from Continue Watching?'), findsOneWidget);
 
-      // See the matching WatchlistPoster test for why the trailing key-up
-      // (still landing on the newly-focused Remove button) only arms the
-      // guard rather than confirming outright.
+      // See the matching WatchlistPoster test: the hold's release lands on
+      // the newly-focused Remove button and must not confirm.
       await tester.sendKeyUpEvent(LogicalKeyboardKey.select);
       await tester.pump();
 
