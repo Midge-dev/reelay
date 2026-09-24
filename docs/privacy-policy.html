@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Reelay Privacy Policy</title>
+<meta name="description" content="How the Reelay Android TV app handles your information.">
+<style>
+  /* Nocturne (docs/tokens.json). No web fonts: this page makes no
+     third-party requests. */
+  :root {
+    --bg:#161826; --surface:#1D1F30; --line:#2A2D40;
+    --ink:#E9E9ED; --ink2:#C8CAD8; --ink3:#9093A8;
+    --accent:#9184D9; --a300:#B6ACEC;
+    color-scheme:dark;
+  }
+  @media (prefers-color-scheme: light) {
+    :root {
+      --bg:#F7F7FA; --surface:#FFFFFF; --line:#DEDFE8;
+      --ink:#161826; --ink2:#2E3150; --ink3:#5B5E75;
+      --accent:#5F55A0; --a300:#5F55A0;
+      color-scheme:light;
+    }
+  }
+  * { box-sizing:border-box; }
+  body {
+    margin:0; background:var(--bg); color:var(--ink2);
+    font:400 16px/1.6 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    -webkit-font-smoothing:antialiased;
+  }
+  main { max-width:720px; margin:0 auto; padding:48px 16px 64px; }
+  .kicker { display:flex; align-items:center; gap:8px; font-size:12px; font-weight:600; letter-spacing:.1em; color:var(--a300); }
+  .kicker::before { content:""; width:14px; height:2px; background:var(--accent); }
+  h1 { margin:8px 0 4px; color:var(--ink); font-size:32px; font-weight:600; letter-spacing:-.02em; line-height:1.2; }
+  .meta { margin:0 0 32px; color:var(--ink3); font-size:14px; }
+  h2 { margin:40px 0 8px; color:var(--ink); font-size:20px; font-weight:600; letter-spacing:-.01em; }
+  h3 { margin:24px 0 4px; color:var(--ink); font-size:16px; font-weight:600; }
+  p, ul { margin:0 0 14px; }
+  ul { padding-left:22px; }
+  li { margin:4px 0; }
+  strong { color:var(--ink); font-weight:600; }
+  a { color:var(--a300); text-underline-offset:2px; }
+  a:focus-visible { outline:2px solid var(--accent); outline-offset:2px; border-radius:2px; }
+  .summary { background:var(--surface); border:1px solid var(--line); border-radius:10px; padding:20px 22px; }
+  .summary ul { margin:0; }
+  footer { margin-top:48px; padding-top:20px; border-top:1px solid var(--line); color:var(--ink3); font-size:14px; }
+</style>
+</head>
+<body>
+<main>
+  <div class="kicker">REELAY</div>
+  <h1>Privacy Policy</h1>
+  <p class="meta">Effective September 23, 2026</p>
+
+  <p>Reelay is an Android TV app for watching your Plex library, alone or together with friends ("Watch Together"). This policy explains what information Reelay handles, where it goes, and what control you have over it. Reelay is made by an independent developer, Sean Midgley ("I", "me").</p>
+
+  <div class="summary">
+    <ul>
+      <li><strong>I don't collect your data.</strong> Reelay has no accounts of its own, no analytics, no advertising, no crash reporting and no tracking. I run no server that your data passes through.</li>
+      <li>Reelay talks to <strong>Plex</strong> (to sign you in and play your media) and to <strong>relays you choose to add</strong> (for Watch Together). Nothing else.</li>
+      <li>Your Plex sign-in is stored <strong>only on your TV</strong>, in encrypted storage.</li>
+    </ul>
+  </div>
+
+  <h2>Information stored on your TV</h2>
+  <p>Reelay keeps the following on your device so it can work between sessions. None of it is sent to me.</p>
+  <ul>
+    <li><strong>Plex sign-in tokens</strong> for your account and any Plex Home profiles you add, kept in Android's encrypted storage.</li>
+    <li><strong>A random device identifier</strong> that Reelay generates once and sends to Plex, so Plex can list Reelay among your signed-in devices.</li>
+    <li><strong>Your settings</strong>: theme, playback quality, subtitle and chat preferences, profiles, and the relays you've added.</li>
+    <li><strong>Watch Together details</strong>: a random identifier for this TV and short-lived codes that let it rejoin a room it was in, plus a list of rooms you're hosting.</li>
+  </ul>
+
+  <h2>Plex</h2>
+  <p>Reelay is a Plex client. When you link Reelay to Plex (by entering a code at plex.tv/link), Reelay communicates with:</p>
+  <ul>
+    <li><strong>plex.tv</strong>, to sign you in, fetch your account's username and avatar, and find the media servers you have access to;</li>
+    <li><strong>Plex's watchlist service</strong>, to show your watchlist and add or remove titles when you ask;</li>
+    <li><strong>your Plex Media Servers</strong> (and servers shared with you), to browse and stream media. While you watch, Reelay reports playback progress to the server, as every Plex app does, so it can remember where you stopped.</li>
+  </ul>
+  <p>This information is handled by Plex and by whoever runs each server under their own policies. See <a href="https://www.plex.tv/about/privacy-legal/">Plex's privacy policy</a>.</p>
+
+  <h2>Watch Together and relays</h2>
+  <p>Watch Together keeps several TVs in sync through a <strong>relay</strong>, a small server that passes messages between them. Reelay doesn't come with a relay and I don't run one for you. The relays in your settings are ones you (or a friend) set up and added. Whoever runs a relay can see what passes through it.</p>
+  <h3>What Reelay sends to the relay</h3>
+  <ul>
+    <li>When you host a room: the title you're watching, the poster's path on your Plex server (not a link other people can use without their own access), the media's Plex ID, your display name (your profile's Watch Together name, or your Plex username), and the number of seats.</li>
+    <li>While you're in a room: playback events (play, pause, seek, position) and chat messages, including the name shown with them.</li>
+  </ul>
+  <p>Anyone who has a relay's address and access code can see the rooms that are live on it, including their titles and hosts' display names.</p>
+  <h3>What the Reelay relay software keeps</h3>
+  <p>The relay software published with Reelay keeps rooms <strong>in memory only</strong> and writes nothing to disk. Each room holds at most its last 100 chat messages. A room and its chat are deleted 10 minutes after everyone has left, and everything is lost whenever the relay restarts. The company hosting a relay (for example Render) may keep its own connection logs, such as IP addresses, under its own policies. A relay running modified software may behave differently.</p>
+
+  <h2>Phone pages: chat and pairing</h2>
+  <ul>
+    <li><strong>Chat from your phone.</strong> Scanning the chat QR code opens a web page served by the relay. The name and messages you type go to the relay as described above.</li>
+    <li><strong>Pair from my phone.</strong> When you add a relay using your phone, your TV briefly runs a small web page on your home network. It accepts only the relay's nickname and address, is reachable only from your local network, and stops as soon as you leave that screen.</li>
+  </ul>
+  <p>Both pages load the Inter typeface from Google Fonts, so your phone's browser contacts Google when it opens them. See <a href="https://policies.google.com/privacy">Google's privacy policy</a>.</p>
+
+  <h2>Permissions</h2>
+  <p>Reelay asks for one Android permission: <strong>internet access</strong>, to reach Plex and your relays. It doesn't use your microphone, camera, location, contacts or files.</p>
+
+  <h2>What I don't do</h2>
+  <ul>
+    <li>I don't collect, store, sell or share your personal information.</li>
+    <li>Reelay contains no analytics, advertising or tracking code.</li>
+    <li>Reelay doesn't track what you watch, for me or anyone else. Your viewing history stays between you and your Plex servers.</li>
+  </ul>
+
+  <h2>Your choices and deleting your data</h2>
+  <ul>
+    <li><strong>Delete everything Reelay stores:</strong> clear Reelay's storage in Android Settings → Apps → Reelay → Storage, or uninstall the app.</li>
+    <li><strong>Revoke Reelay's access to Plex:</strong> remove the device from <a href="https://app.plex.tv/desktop/#!/settings/devices/all">your Plex account's authorized devices</a>.</li>
+    <li><strong>Stop using a relay:</strong> remove it in Reelay's Settings.</li>
+  </ul>
+  <p>Because I don't hold any of your data, I have nothing to delete or hand over on request. For data held by Plex, Google or a relay's host, contact them directly.</p>
+
+  <h2>Security</h2>
+  <p>Plex sign-in tokens are kept in Android's encrypted, Keystore-backed storage. Reelay reaches plex.tv over HTTPS. A Plex server or relay that you set up to use plain HTTP, such as a server on your home network, is contacted the way it's set up.</p>
+
+  <h2>Children</h2>
+  <p>Reelay isn't directed at children under 13, and I don't knowingly collect personal information from anyone. What's available to watch is controlled by your Plex server and Plex's own restrictions for managed users.</p>
+
+  <h2>Changes to this policy</h2>
+  <p>If Reelay's handling of information changes, I'll update this page and its effective date before the change ships.</p>
+
+  <h2>Contact</h2>
+  <p>Questions about this policy or Reelay's privacy: <a href="mailto:sean.midgley.dev@gmail.com">sean.midgley.dev@gmail.com</a>.</p>
+
+  <footer>Reelay · Privacy Policy · Effective September 23, 2026</footer>
+</main>
+</body>
+</html>
