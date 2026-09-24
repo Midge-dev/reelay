@@ -1,0 +1,34 @@
+name: CI
+
+# Analyze + test. Runs on pull requests, and is called by the build and
+# deploy workflows so nothing ships from main unless it passes.
+on:
+  pull_request:
+  workflow_call:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: "3.47.4"
+          channel: stable
+
+      - name: Get packages
+        working-directory: flutter
+        run: flutter pub get
+
+      # Infos (style lints) don't fail the build; warnings and errors do.
+      - name: Analyze
+        working-directory: flutter
+        run: flutter analyze --no-fatal-infos
+
+      - name: Test
+        working-directory: flutter
+        run: flutter test
