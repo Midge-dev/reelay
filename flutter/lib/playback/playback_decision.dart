@@ -94,7 +94,15 @@ bool _requiresBurn(PlexStream stream) {
   return codec != null && !_clientRenderableSidecarCodecs.contains(codec);
 }
 
-PlaybackDecision decidePlayback(PlexMovieDetail detail, int? subtitleStreamId, {bool forceBurn = false}) {
+/// [forceTranscode] is set once direct play has already failed on this TV
+/// (PlayerScreen's fallback), so later subtitle/bitrate changes don't flip
+/// back to a direct stream known not to play.
+PlaybackDecision decidePlayback(
+  PlexMovieDetail detail,
+  int? subtitleStreamId, {
+  bool forceBurn = false,
+  bool forceTranscode = false,
+}) {
   if (detail.media.isEmpty) {
     throw StateError('No playable media found for ${detail.title}');
   }
@@ -113,7 +121,7 @@ PlaybackDecision decidePlayback(PlexMovieDetail detail, int? subtitleStreamId, {
   }
   final requiresBurn = subtitleStreamId != null && (forceBurn || (chosenStream != null && _requiresBurn(chosenStream)));
 
-  if (requiresBurn) {
+  if (requiresBurn || forceTranscode) {
     return Transcode(ratingKey: detail.ratingKey, subtitleStreamId: subtitleStreamId);
   }
   return DirectPlay(part: part, subtitleStreamId: subtitleStreamId);

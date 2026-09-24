@@ -13,12 +13,23 @@ import 'package:video_player_platform_interface/video_player_platform_interface.
 /// [videoEventsFor] (mimicking a real platform's async init completing),
 /// so `VideoPlayerController.initialize()` resolves deterministically.
 class FakeVideoPlayerPlatform extends VideoPlayerPlatform {
-  FakeVideoPlayerPlatform({this.initialDuration = const Duration(minutes: 100), this.failInit = false});
+  FakeVideoPlayerPlatform({
+    this.initialDuration = const Duration(minutes: 100),
+    this.failInit = false,
+    this.failInitWhere,
+  });
 
   final Duration initialDuration;
 
   /// Fail `initialize()` the way a stream the platform can't open does.
   final bool failInit;
+
+  /// Fail `initialize()` only for sources matching this (e.g. direct play
+  /// but not transcode).
+  final bool Function(String uri)? failInitWhere;
+
+  /// Every source opened, in order.
+  final openedUris = <String>[];
   final calls = <String>[];
 
   int _nextPlayerId = 0;
@@ -31,9 +42,12 @@ class FakeVideoPlayerPlatform extends VideoPlayerPlatform {
   @override
   Future<int?> createWithOptions(VideoCreationOptions options) async {
     final id = _nextPlayerId++;
+    final uri = options.dataSource.uri ?? '';
+    openedUris.add(uri);
+    final fail = failInit || (failInitWhere?.call(uri) ?? false);
     late final StreamController<VideoEvent> controller;
     controller = StreamController<VideoEvent>.broadcast(
-      onListen: () => failInit
+      onListen: () => fail
           ? controller.addError(PlatformException(code: 'VideoError', message: 'Source error'))
           : controller.add(VideoEvent(
               eventType: VideoEventType.initialized,

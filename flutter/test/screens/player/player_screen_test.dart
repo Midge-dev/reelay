@@ -59,12 +59,42 @@ void main() {
     await _unmount(tester);
   });
 
-  testWidgets('a stream that errors mid-play reports one failure', (tester) async {
+  testWidgets('a direct-play file this TV cannot open is retried once as a transcode, from the same spot', (tester) async {
+    final fake = FakeVideoPlayerPlatform(failInitWhere: (uri) => !uri.contains('/transcode/'));
+    final failures = await _pumpPlayer(tester, fake);
+    await tester.pump();
+
+    expect(failures, isEmpty);
+    expect(fake.openedUris, hasLength(2));
+    expect(fake.openedUris.first, contains('/library/parts/1/file.mkv'));
+    expect(fake.openedUris.last, contains('/video/:/transcode/universal/start.m3u8'));
+    expect(fake.openedUris.last, contains('offset=60&'));
+    await _unmount(tester);
+  });
+
+  testWidgets('when the transcode fallback fails too, it reports the failure', (tester) async {
+    final fake = FakeVideoPlayerPlatform(failInit: true);
+    final failures = await _pumpPlayer(tester, fake);
+    await tester.pump();
+
+    expect(fake.openedUris, hasLength(2));
+    expect(failures, [("Loft sent a stream this TV couldn't open", 60000)]);
+    await _unmount(tester);
+  });
+
+  testWidgets('a direct stream that errors mid-play falls back to a transcode; if that errors too, it reports once', (tester) async {
     final fake = FakeVideoPlayerPlatform();
     final failures = await _pumpPlayer(tester, fake);
     expect(failures, isEmpty);
 
-    fake.emitError(0);
+    fake.emitError(0); // the direct stream
+    await tester.pump();
+    await tester.pump();
+    await tester.pump();
+    expect(failures, isEmpty);
+    expect(fake.openedUris.last, contains('/transcode/'));
+
+    fake.emitError(1); // the transcode
     await tester.pump();
     await tester.pump();
 

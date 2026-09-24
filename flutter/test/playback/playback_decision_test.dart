@@ -80,6 +80,12 @@ void main() {
       expect(decision, isA<DirectPlay>());
     });
 
+    test('forceTranscode (direct play already failed) -> Transcode, even with nothing to burn', () {
+      final part = _partWith([const PlexStream(id: 1, streamType: 3, key: '/library/streams/1', codec: 'srt')]);
+      expect(decidePlayback(_detailWith(part), null, forceTranscode: true), isA<Transcode>());
+      expect(decidePlayback(_detailWith(part), 1, forceTranscode: true), isA<Transcode>());
+    });
+
     test('external sidecar track selected -> DirectPlay', () {
       final part = _partWith([const PlexStream(id: 1, streamType: 3, key: '/library/streams/1', codec: 'srt', language: 'English')]);
       final decision = decidePlayback(_detailWith(part), 1);

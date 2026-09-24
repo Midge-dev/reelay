@@ -104,6 +104,10 @@ class _PlayerScreenState extends State<PlayerScreen> {
 
   late PlexPart? _resolvedPart;
   bool _failed = false;
+
+  /// Direct play already failed once this playback; everything since is a
+  /// transcode (see [_fallBackToTranscode]).
+  bool _directPlayFailed = false;
   late List<SubtitleOption> _subtitleOptions;
   int? _subtitleStreamId;
   late int _maxVideoBitrateKbps;
@@ -197,11 +201,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
     _subtitleStreamId = firstSubtitleStreamId(widget.detail);
 
     _maxVideoBitrateKbps = widget.settings.maxVideoBitrateKbps;
-    _decision = decidePlayback(
-      widget.detail,
-      _subtitleStreamId,
-      forceBurn: widget.settings.forceBurnSubtitles,
-    );
+    _decision = _decide();
     _playerIdentity = _identityFor(_decision, _maxVideoBitrateKbps);
 
     HardwareKeyboard.instance.addHandler(_recordInteraction);
@@ -294,7 +294,9 @@ class _PlayerScreenState extends State<PlayerScreen> {
       await controller.initialize();
     } catch (_) {
       unawaited(controller.dispose());
-      if (mounted && generation == _playerGeneration) {
+      if (mounted &&
+          generation == _playerGeneration &&
+          !_fallBackToTranscode(startPositionMs)) {
         _fail(
           '${widget.server.name} sent a stream this TV couldn\'t open',
           startPositionMs,
@@ -399,10 +401,15 @@ class _PlayerScreenState extends State<PlayerScreen> {
     if (controller == null) return;
     final value = controller.value;
     if (value.hasError) {
-      _fail(
-        'The stream from ${widget.server.name} stopped partway through',
-        _positionMs > 0 ? _positionMs : widget.detail.viewOffset ?? 0,
-      );
+      final at = _positionMs > 0
+          ? _positionMs
+          : widget.detail.viewOffset ?? 0;
+      if (!_fallBackToTranscode(at)) {
+        _fail(
+          'The stream from ${widget.server.name} stopped partway through',
+          at,
+        );
+      }
       return;
     }
     final buffered = value.buffered;
@@ -609,6 +616,24 @@ class _PlayerScreenState extends State<PlayerScreen> {
     return KeyEventResult.ignored;
   }
 
+  PlaybackDecision _decide() => decidePlayback(
+    widget.detail,
+    _subtitleStreamId,
+    forceBurn: widget.settings.forceBurnSubtitles,
+    forceTranscode: _directPlayFailed,
+  );
+
+  /// The file direct-played but this TV couldn't decode it (an HEVC 10-bit
+  /// or TrueHD/DTS file the Shield's player won't take, say): have Plex
+  /// transcode it instead, once, from the same spot. False when there's
+  /// nothing left to fall back to — already transcoding, or tried.
+  bool _fallBackToTranscode(int positionMs) {
+    if (_decision is! DirectPlay || _directPlayFailed) return false;
+    _directPlayFailed = true;
+    _applyDecisionChange(restartPositionMs: positionMs);
+    return true;
+  }
+
   /// Once only: a dying controller can report its error on several ticks.
   void _fail(String reason, int positionMs) {
     if (_failed) return;
@@ -724,11 +749,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
   }
 
   void _applyDecisionChange({required int restartPositionMs}) {
-    final newDecision = decidePlayback(
-      widget.detail,
-      _subtitleStreamId,
-      forceBurn: widget.settings.forceBurnSubtitles,
-    );
+    final newDecision = _decide();
     final newIdentity = _identityFor(newDecision, _maxVideoBitrateKbps);
     _decision = newDecision;
 
