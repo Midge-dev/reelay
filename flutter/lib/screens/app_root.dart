@@ -842,6 +842,11 @@ class _AppContent extends StatelessWidget {
             controller.releaseRelayClient();
             controller.returnTo(returnState);
           },
+          onFailed: (reason, positionMs) => controller.playbackFailed(
+            state,
+            reason,
+            positionMs: positionMs,
+          ),
           // Screen 16 — only real when we actually know the show (see
           // Player.showRatingKey's doc comment: null for movies, and the
           // "next episode" lookup needs a LibraryContext to actually play

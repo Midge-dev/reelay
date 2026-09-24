@@ -1,6 +1,10 @@
 import 'dart:async';
 import 'dart:ui';
 
+import 'package:flutter/widgets.dart' show SizedBox, Widget;
+
+import 'package:flutter/services.dart' show PlatformException;
+
 import 'package:video_player_platform_interface/video_player_platform_interface.dart';
 
 /// A minimal fake `VideoPlayerPlatform` for testing [VideoPlayerSyncedPlayer]
@@ -9,9 +13,12 @@ import 'package:video_player_platform_interface/video_player_platform_interface.
 /// [videoEventsFor] (mimicking a real platform's async init completing),
 /// so `VideoPlayerController.initialize()` resolves deterministically.
 class FakeVideoPlayerPlatform extends VideoPlayerPlatform {
-  FakeVideoPlayerPlatform({this.initialDuration = const Duration(minutes: 100)});
+  FakeVideoPlayerPlatform({this.initialDuration = const Duration(minutes: 100), this.failInit = false});
 
   final Duration initialDuration;
+
+  /// Fail `initialize()` the way a stream the platform can't open does.
+  final bool failInit;
   final calls = <String>[];
 
   int _nextPlayerId = 0;
@@ -26,11 +33,13 @@ class FakeVideoPlayerPlatform extends VideoPlayerPlatform {
     final id = _nextPlayerId++;
     late final StreamController<VideoEvent> controller;
     controller = StreamController<VideoEvent>.broadcast(
-      onListen: () => controller.add(VideoEvent(
-        eventType: VideoEventType.initialized,
-        duration: initialDuration,
-        size: const Size(1920, 1080),
-      )),
+      onListen: () => failInit
+          ? controller.addError(PlatformException(code: 'VideoError', message: 'Source error'))
+          : controller.add(VideoEvent(
+              eventType: VideoEventType.initialized,
+              duration: initialDuration,
+              size: const Size(1920, 1080),
+            )),
     );
     _eventControllers[id] = controller;
     return id;
@@ -40,6 +49,14 @@ class FakeVideoPlayerPlatform extends VideoPlayerPlatform {
   Stream<VideoEvent> videoEventsFor(int playerId) => _eventControllers[playerId]!.stream;
 
   void emit(int playerId, VideoEvent event) => _eventControllers[playerId]!.add(event);
+
+  /// A playback error on a running player, as the platform reports one.
+  void emitError(int playerId) =>
+      _eventControllers[playerId]!.addError(PlatformException(code: 'VideoError', message: 'Source error'));
+
+  /// A widget test that mounts a playing [VideoPlayer] needs a view.
+  @override
+  Widget buildView(int playerId) => const SizedBox();
 
   @override
   Future<void> setLooping(int playerId, bool looping) async {}

@@ -1125,7 +1125,7 @@ class AppRootController extends ChangeNotifier {
   /// screen holds a [Sourced] item, and [ctx] alone can no longer say
   /// "the" server now that it holds every connected one).
   Future<void> playMovie(
-    LibraryContext ctx,
+    LibraryContext? ctx,
     PlexServer server,
     String targetRatingKey,
     AppState returnState, {
@@ -1144,6 +1144,7 @@ class AppRootController extends ChangeNotifier {
       final at = fromStart ? 0 : max(own, resumeAtMs ?? 0);
       _setState(
         Player(
+          ctx: ctx,
           server: server,
           detail: at == own ? detail : detail.copyWith(viewOffset: at),
           returnState: returnState,
@@ -1169,6 +1170,24 @@ class AppRootController extends ChangeNotifier {
         ),
       );
     }
+  }
+
+  /// Screen 25 from inside the player: the stream wouldn't open, or died
+  /// partway through. Leaves any Watch Together room — retry plays solo —
+  /// and carries [positionMs] so retry (or another copy) picks up there.
+  void playbackFailed(Player state, String reason, {required int positionMs}) {
+    releaseRelayClient();
+    _setState(
+      PlaybackFailed(
+        ctx: state.ctx,
+        server: state.server,
+        targetRatingKey: state.detail.ratingKey,
+        fromStart: false,
+        reason: reason,
+        returnState: state.returnState,
+        resumeAtMs: positionMs,
+      ),
+    );
   }
 
   // ---- Home row navigation ----

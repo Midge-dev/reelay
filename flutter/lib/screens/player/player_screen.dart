@@ -60,6 +60,10 @@ class PlayerScreen extends StatefulWidget {
   final AppSettings settings;
   final ValueChanged<int> onBitrateChanged;
   final VoidCallback onExit;
+
+  /// The stream wouldn't open or errored mid-play: a plain one-sentence
+  /// reason for screen 25, and where to pick up again.
+  final void Function(String reason, int positionMs) onFailed;
   // Screen 16 — both null when playing a movie or when the show context
   // isn't available (see Player.showRatingKey's doc comment).
   final Future<PlexOnDeckItem?> Function()? loadNextEpisode;
@@ -78,6 +82,7 @@ class PlayerScreen extends StatefulWidget {
     required this.settings,
     required this.onBitrateChanged,
     required this.onExit,
+    required this.onFailed,
     this.loadNextEpisode,
     this.onPlayNext,
     this.localName = 'You',
@@ -93,6 +98,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
   late final Dio _captionClient;
 
   late PlexPart? _resolvedPart;
+  bool _failed = false;
   late List<SubtitleOption> _subtitleOptions;
   int? _subtitleStreamId;
   late int _maxVideoBitrateKbps;
@@ -274,7 +280,18 @@ class _PlayerScreenState extends State<PlayerScreen> {
       offsetMs: startPositionMs,
     );
     final controller = VideoPlayerController.networkUrl(Uri.parse(url));
-    await controller.initialize();
+    try {
+      await controller.initialize();
+    } catch (_) {
+      unawaited(controller.dispose());
+      if (mounted && generation == _playerGeneration) {
+        _fail(
+          '${widget.server.name} sent a stream this TV couldn\'t open',
+          startPositionMs,
+        );
+      }
+      return;
+    }
     if (!mounted || generation != _playerGeneration) {
       unawaited(controller.dispose());
       return;
@@ -338,7 +355,13 @@ class _PlayerScreenState extends State<PlayerScreen> {
     }
     final source = resolveSubtitleSource(part, _subtitleStreamId);
     if (source is ExternalSubtitle) {
-      await controller.setClosedCaptionFile(_fetchCaptionFile(source));
+      try {
+        await controller.setClosedCaptionFile(_fetchCaptionFile(source));
+      } catch (_) {
+        // A subtitle file that won't download isn't worth stopping the
+        // film for — play on without it.
+        await controller.setClosedCaptionFile(null);
+      }
     } else {
       // NoSubtitle, or an EmbeddedSubtitle we filtered out of the picker
       // but could still reach via defaultSubtitleStreamId's clamp missing
@@ -365,6 +388,13 @@ class _PlayerScreenState extends State<PlayerScreen> {
     final controller = _controller;
     if (controller == null) return;
     final value = controller.value;
+    if (value.hasError) {
+      _fail(
+        'The stream from ${widget.server.name} stopped partway through',
+        _positionMs > 0 ? _positionMs : widget.detail.viewOffset ?? 0,
+      );
+      return;
+    }
     final buffered = value.buffered;
     final bufferedMs = buffered.isEmpty
         ? 0
@@ -567,6 +597,19 @@ class _PlayerScreenState extends State<PlayerScreen> {
       return KeyEventResult.ignored;
     }
     return KeyEventResult.ignored;
+  }
+
+  /// Once only: a dying controller can report its error on several ticks.
+  void _fail(String reason, int positionMs) {
+    if (_failed) return;
+    _failed = true;
+    _controller?.removeListener(_handleControllerTick);
+    _sync?.stop();
+    final duration = widget.detail.duration ?? _durationMs;
+    unawaited(
+      _reporter.report(widget.detail.ratingKey, 'stopped', positionMs, duration),
+    );
+    widget.onFailed(reason, positionMs);
   }
 
   Future<void> _handleBack() async {

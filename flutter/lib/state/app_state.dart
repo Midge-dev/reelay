@@ -191,9 +191,11 @@ class AppError extends AppState {
 /// playMovie's own params, so retry is the identical call; an
 /// alternate-source retry (screen 25's "Play from Loft" offer) is
 /// possible now that [FoldedWork] exists, wired at the call site rather
-/// than stored here.
+/// than stored here. Also reached from the player itself when the stream
+/// won't open or dies mid-play ([AppRootController.playbackFailed]); a
+/// Watch Together player has no [ctx], which retry doesn't need.
 class PlaybackFailed extends AppState {
-  final LibraryContext ctx;
+  final LibraryContext? ctx;
   final PlexServer server;
   final String targetRatingKey;
   final bool fromStart;
@@ -466,6 +468,9 @@ class Lobby extends AppState {
 }
 
 class Player extends AppState {
+  /// Carried only so a failure can offer retry (see [PlaybackFailed]);
+  /// null when started from a Watch Together lobby.
+  final LibraryContext? ctx;
   final PlexServer server;
   final PlexMovieDetail detail;
   final AppState returnState;
@@ -477,6 +482,7 @@ class Player extends AppState {
   final String? showRatingKey;
 
   const Player({
+    this.ctx,
     required this.server,
     required this.detail,
     required this.returnState,
