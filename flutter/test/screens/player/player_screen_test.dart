@@ -1,3 +1,4 @@
+import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:reelay/data/plex/plex_models.dart';
@@ -21,6 +22,7 @@ Future<List<(String, int)>> _pumpPlayer(
   WidgetTester tester,
   FakeVideoPlayerPlatform fake, {
   PlexMovieDetail detail = _detail,
+  AppSettings settings = const AppSettings(),
 }) async {
   VideoPlayerPlatform.instance = fake;
   tester.view.physicalSize = const Size(1920, 1080);
@@ -36,7 +38,7 @@ Future<List<(String, int)>> _pumpPlayer(
         server: _server,
         detail: detail,
         clientIdentifier: 'client-1',
-        settings: const AppSettings(),
+        settings: settings,
         onBitrateChanged: (_) {},
         onExit: () {},
         onFailed: (reason, positionMs) => failures.add((reason, positionMs)),
@@ -137,5 +139,54 @@ void main() {
 
     expect(fake.calls, contains('selectAudioTrack:1_0'));
     await _unmount(tester);
+  });
+
+  testWidgets('with Match frame rate on, the TV switches before the stream opens, and is handed back on exit', (tester) async {
+    final events = <String>[];
+    tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(const MethodChannel('reelay/display'), (call) async {
+      events.add(call.method);
+      return true;
+    });
+    addTearDown(
+      () => tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(const MethodChannel('reelay/display'), null),
+    );
+    const detail = PlexMovieDetail(
+      ratingKey: '1',
+      title: 'Arrival',
+      media: [
+        PlexMedia(
+          parts: [
+            PlexPart(
+              id: 1,
+              key: '/library/parts/1/file.mkv',
+              streams: [PlexStream(id: 1, streamType: 1, frameRate: 23.976)],
+            ),
+          ],
+        ),
+      ],
+    );
+    final fake = FakeVideoPlayerPlatform();
+    await _pumpPlayer(tester, fake, detail: detail, settings: const AppSettings(matchFrameRate: true));
+    await tester.pump();
+    events.addAll(fake.openedUris.map((_) => 'open'));
+
+    expect(events, ['matchFrameRate', 'open']);
+
+    await _unmount(tester);
+    expect(events.last, 'clearFrameRate');
+  });
+
+  testWidgets('with Match frame rate off, the display is never touched', (tester) async {
+    final events = <String>[];
+    tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(const MethodChannel('reelay/display'), (call) async {
+      events.add(call.method);
+      return true;
+    });
+    addTearDown(
+      () => tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(const MethodChannel('reelay/display'), null),
+    );
+    await _pumpPlayer(tester, FakeVideoPlayerPlatform());
+    await _unmount(tester);
+    expect(events, isEmpty);
   });
 }

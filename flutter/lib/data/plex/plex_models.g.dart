@@ -217,6 +217,9 @@ PlexStream _$PlexStreamFromJson(Map<String, dynamic> json) => PlexStream(
   streamType: (json['streamType'] as num).toInt(),
   displayTitle: json['displayTitle'] as String?,
   channels: (json['channels'] as num?)?.toInt(),
+  frameRate: (json['frameRate'] as num?)?.toDouble(),
+  width: (json['width'] as num?)?.toInt(),
+  height: (json['height'] as num?)?.toInt(),
   codec: json['codec'] as String?,
   language: json['language'] as String?,
   languageCode: json['languageCode'] as String?,
@@ -239,6 +242,9 @@ Map<String, dynamic> _$PlexStreamToJson(PlexStream instance) =>
       'forced': instance.forced,
       'displayTitle': instance.displayTitle,
       'channels': instance.channels,
+      'frameRate': instance.frameRate,
+      'width': instance.width,
+      'height': instance.height,
     };
 
 PlexPart _$PlexPartFromJson(Map<String, dynamic> json) => PlexPart(

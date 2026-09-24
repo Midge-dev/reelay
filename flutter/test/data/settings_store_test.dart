@@ -40,6 +40,18 @@ void main() {
     reloaded.dispose();
   });
 
+  test('Match frame rate starts off and survives a reload once turned on', () async {
+    final store = SettingsStore(SharedPreferencesAsync());
+    expect((await store.observe().first).matchFrameRate, isFalse);
+
+    await store.save(const AppSettings(matchFrameRate: true));
+    store.dispose();
+
+    final reloaded = SettingsStore(SharedPreferencesAsync());
+    expect((await reloaded.observe().first).matchFrameRate, isTrue);
+    reloaded.dispose();
+  });
+
   test('save persists the theme and re-emits through observe(), surviving a reload', () async {
     final store = SettingsStore(SharedPreferencesAsync());
     await store.observe().first;

@@ -700,6 +700,13 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           );
         }),
       ),
+      _SettingRow(
+        label: 'Match frame rate',
+        description: 'Switch the TV to the film’s refresh rate so motion doesn’t judder. The screen blanks briefly as it starts',
+        toggle: _settings.matchFrameRate,
+        onClick: () =>
+            _update((s) => s.copyWith(matchFrameRate: !s.matchFrameRate)),
+      ),
     ];
   }
 

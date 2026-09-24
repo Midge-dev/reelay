@@ -277,11 +277,20 @@ class PlexStream {
   final String? displayTitle;
   final int? channels;
 
+  /// Video streams only: e.g. 23.976, and the coded size — what the
+  /// player's frame-rate matching picks a display mode from.
+  final double? frameRate;
+  final int? width;
+  final int? height;
+
   const PlexStream({
     this.id = 0,
     required this.streamType,
     this.displayTitle,
     this.channels,
+    this.frameRate,
+    this.width,
+    this.height,
     this.codec,
     this.language,
     this.languageCode,

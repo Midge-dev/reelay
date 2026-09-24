@@ -15,6 +15,7 @@ import '../../data/settings/app_settings.dart';
 import '../../focus/back_handler.dart';
 import '../../kit/text.dart';
 import '../../playback/audio_tracks.dart';
+import '../../playback/display_mode.dart';
 import '../../playback/playback_decision.dart';
 import '../../playback/plex_player_factory.dart';
 import '../../playback/seek_timing.dart';
@@ -111,6 +112,9 @@ class _PlayerScreenState extends State<PlayerScreen> {
   /// Direct play already failed once this playback; everything since is a
   /// transcode (see [_fallBackToTranscode]).
   bool _directPlayFailed = false;
+
+  /// Asked the TV for the film's refresh rate; give it back on the way out.
+  bool _matchedFrameRate = false;
   late List<SubtitleOption> _subtitleOptions;
   int? _subtitleStreamId;
   late int _maxVideoBitrateKbps;
@@ -230,7 +234,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
       if (mounted) _playPauseFocusNode.requestFocus();
     });
 
-    unawaited(_initPlayer(startPositionMs: widget.detail.viewOffset ?? 0));
+    unawaited(_start());
 
     if (widget.relay != null) {
       final roster = RoomRoster(
@@ -265,6 +269,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
     _sync?.dispose();
     _controller?.removeListener(_handleControllerTick);
     unawaited(_controller?.dispose());
+    if (_matchedFrameRate) unawaited(DisplayMode.clear(owner: this));
     _screenFocusNode.dispose();
     _progressFocusNode.dispose();
     _rewindFocusNode.dispose();
@@ -284,6 +289,18 @@ class _PlayerScreenState extends State<PlayerScreen> {
       // means a new stream. Direct play switches in the player instead.
       Transcode() => (decision.ratingKey, maxVideoBitrateKbps, _audioStreamId),
     };
+  }
+
+  /// First start only — a subtitle/bitrate/audio restart keeps whatever
+  /// display mode this set, since it's the same film.
+  Future<void> _start() async {
+    final part = _resolvedPart;
+    if (widget.settings.matchFrameRate && part != null) {
+      _matchedFrameRate = true;
+      await DisplayMode.matchFrameRate(part, owner: this);
+      if (!mounted) return;
+    }
+    await _initPlayer(startPositionMs: widget.detail.viewOffset ?? 0);
   }
 
   Future<void> _initPlayer({required int startPositionMs}) async {
