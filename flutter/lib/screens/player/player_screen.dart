@@ -9,6 +9,7 @@ import 'package:video_player/video_player.dart';
 import '../../data/plex/media_facts.dart';
 import '../../data/plex/plex_http_client.dart';
 import '../../data/plex/plex_models.dart';
+import '../../data/plex/plex_server_api.dart';
 import '../../data/settings/app_settings.dart';
 import '../../focus/back_handler.dart';
 import '../../kit/text.dart';
@@ -263,6 +264,8 @@ class _PlayerScreenState extends State<PlayerScreen> {
 
   Future<void> _initPlayer({required int startPositionMs}) async {
     final generation = ++_playerGeneration;
+    await _selectBurnSubtitle();
+    if (!mounted || generation != _playerGeneration) return;
     final url = PlexPlayerFactory.mediaUrl(
       widget.server,
       _decision,
@@ -305,6 +308,26 @@ class _PlayerScreenState extends State<PlayerScreen> {
     });
     sync.start();
     controller.play();
+  }
+
+  /// A burn-in transcode paints whatever subtitle the part has selected on
+  /// the server, so select ours first (see subtitleSelectionUrl). Best
+  /// effort: if the server refuses, the transcode still starts and may burn
+  /// its stored choice — there's no direct-play fallback, since
+  /// video_player can't show an embedded track itself.
+  Future<void> _selectBurnSubtitle() async {
+    final decision = _decision;
+    final part = _resolvedPart;
+    final streamId = decision is Transcode ? decision.subtitleStreamId : null;
+    if (part == null || streamId == null) return;
+    try {
+      await PlexServerApi(
+        widget.server,
+        widget.clientIdentifier,
+      ).selectSubtitleStream(part.id, streamId);
+    } catch (_) {
+      // See above: start the transcode regardless.
+    }
   }
 
   Future<void> _attachCaptions(VideoPlayerController controller) async {

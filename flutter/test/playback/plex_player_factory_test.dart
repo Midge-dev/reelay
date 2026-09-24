@@ -31,6 +31,7 @@ void main() {
         '&directPlay=0&directStream=0'
         '&videoResolution=1920x1080&maxVideoBitrate=8000'
         '&subtitleSize=100'
+        '&subtitles=burn'
         '&subtitleStreamID=5'
         '&session=fixed-session'
         '&X-Plex-Product=Reelay'
@@ -54,10 +55,10 @@ void main() {
       expect(params['X-Plex-Client-Identifier'], 'client-1');
     });
 
-    test('defaults subtitleStreamID to 0 when no subtitle is selected', () {
+    test('defaults subtitleStreamID to 0 and burns nothing when no subtitle is selected', () {
       const decision = Transcode(ratingKey: '100');
       final url = PlexPlayerFactory.transcodeUrl(_server, decision, 8000, clientIdentifier: 'client-1', sessionId: 'fixed-session');
-      expect(url, contains('&subtitleStreamID=0&'));
+      expect(url, contains('&subtitles=none&subtitleStreamID=0&'));
     });
 
     test('generates a fresh session id per call when none is given', () {

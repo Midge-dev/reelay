@@ -86,6 +86,20 @@ void main() {
       expect(decision, isA<DirectPlay>());
     });
 
+    test('a WebVTT sidecar selected -> DirectPlay', () {
+      final part = _partWith([const PlexStream(id: 1, streamType: 3, key: '/library/streams/1', codec: 'vtt')]);
+      expect(decidePlayback(_detailWith(part), 1), isA<DirectPlay>());
+    });
+
+    test('an ASS/SSA sidecar selected -> Transcode, since video_player would misread it as SubRip', () {
+      for (final codec in ['ass', 'ssa']) {
+        final part = _partWith([PlexStream(id: 1, streamType: 3, key: '/library/streams/1', codec: codec)]);
+        final decision = decidePlayback(_detailWith(part), 1);
+        expect(decision, isA<Transcode>(), reason: codec);
+        expect(subtitleOptions(part).last.requiresBurn, isTrue, reason: codec);
+      }
+    });
+
     test('embedded soft-subtitle codec (no sidecar key) selected -> Transcode', () {
       final part = _partWith([const PlexStream(id: 1, streamType: 3, codec: 'srt', language: 'English')]);
       final decision = decidePlayback(_detailWith(part), 1);

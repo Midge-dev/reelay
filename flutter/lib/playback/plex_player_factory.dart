@@ -53,6 +53,7 @@ class PlexPlayerFactory {
         '&directPlay=0&directStream=0'
         '&videoResolution=1920x1080&maxVideoBitrate=$maxVideoBitrateKbps'
         '&subtitleSize=100'
+        '&subtitles=${decision.subtitleStreamId != null ? 'burn' : 'none'}'
         '&subtitleStreamID=${decision.subtitleStreamId ?? 0}'
         '&session=$session'
         '&X-Plex-Product=Reelay'

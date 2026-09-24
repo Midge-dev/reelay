@@ -11,6 +11,14 @@ const _suggestionHubPriority = ['suggest', 'recommend', 'topunwatched', 'startwa
 /// Per-library "Recently Watched" hubs (movie.recentlyviewed.*, tv.recentlyviewed.*).
 const _recentActivityHubPriority = ['recentlyviewed', 'recentlywatched', 'history'];
 
+/// PUT this before opening a burn-in transcode: PMS's transcoder burns
+/// whichever subtitle the part has *selected* on the server and ignores the
+/// transcode URL's subtitleStreamID (seen against a real PMS — see plezy's
+/// `selectSubtitleStreamForBurn`). Plex Web does the same PUT, so it also
+/// becomes the remembered choice for next time.
+String subtitleSelectionUrl(PlexServer server, int partId, int subtitleStreamId) =>
+    '${server.baseUrl}/library/parts/$partId?subtitleStreamID=$subtitleStreamId&allParts=1';
+
 class PlexServerApi {
   final PlexServer server;
   final String clientIdentifier;
@@ -171,6 +179,11 @@ class PlexServerApi {
 
   Future<void> removeFromContinueWatching(String ratingKey) async {
     await _client.put<void>('${server.baseUrl}/actions/removeFromContinueWatching?ratingKey=$ratingKey', options: _headers);
+  }
+
+  /// See [subtitleSelectionUrl].
+  Future<void> selectSubtitleStream(int partId, int subtitleStreamId) async {
+    await _client.put<void>(subtitleSelectionUrl(server, partId, subtitleStreamId), options: _headers);
   }
 
   Future<List<PlexLibraryItem>> fetchRecentlyAdded() async {

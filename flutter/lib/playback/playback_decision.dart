@@ -2,6 +2,10 @@ import '../data/plex/plex_models.dart';
 
 const _subtitleStreamType = 3;
 const _burnRequiredSubtitleCodecs = {'pgs', 'vobsub', 'dvdsub'};
+// The sidecar formats video_player's caption files can parse (SubRip and
+// WebVTT). Anything else — ASS/SSA, SAMI — would be read as SubRip and show
+// garbage or nothing, so it burns in like an embedded track.
+const _clientRenderableSidecarCodecs = {'srt', 'subrip', 'vtt', 'webvtt'};
 
 sealed class PlaybackDecision {
   const PlaybackDecision();
@@ -81,9 +85,14 @@ String _subtitleLabel(PlexStream stream) {
 }
 
 /// True for anything `video_player` can't render directly: a bitmap codec
-/// (never player-selectable) or an embedded track (no player-side
-/// track-selection API).
-bool _requiresBurn(PlexStream stream) => stream.key == null || _burnRequiredSubtitleCodecs.contains(stream.codec?.toLowerCase());
+/// (never player-selectable), an embedded track (no player-side
+/// track-selection API), or a sidecar in a format its caption parsers
+/// don't read. A sidecar with no codec reported is assumed SubRip.
+bool _requiresBurn(PlexStream stream) {
+  final codec = stream.codec?.toLowerCase();
+  if (stream.key == null || _burnRequiredSubtitleCodecs.contains(codec)) return true;
+  return codec != null && !_clientRenderableSidecarCodecs.contains(codec);
+}
 
 PlaybackDecision decidePlayback(PlexMovieDetail detail, int? subtitleStreamId, {bool forceBurn = false}) {
   if (detail.media.isEmpty) {
