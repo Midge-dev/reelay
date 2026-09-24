@@ -1,17 +1,18 @@
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:reelay/data/media/media_models.dart';
+import 'package:reelay/data/media/media_server.dart';
 import 'package:reelay/data/plex/plex_auth_api.dart';
 import 'package:reelay/data/plex/plex_models.dart';
-import 'package:reelay/data/plex/plex_resources_api.dart';
 import 'package:reelay/kit/card.dart';
 import 'package:reelay/kit/filter_chip.dart';
 import 'package:reelay/screens/navigation/server_switcher_panel.dart';
 import 'package:reelay/state/app_state.dart';
 
-const _atticServer = PlexServer(name: 'Attic', baseUrl: 'http://192.168.1.5:32400', accessToken: 'tok', machineIdentifier: 'm1');
+const _atticServer = MediaServer(name: 'Attic', baseUrl: 'http://192.168.1.5:32400', accessToken: 'tok', id: 'm1');
 const _sectionGroups = [
-  SectionGroup(type: 'movie', title: 'Movies', sectionsByServerId: {'m1': PlexSection(key: 's1', title: 'Movies', type: 'movie')}),
-  SectionGroup(type: 'show', title: 'TV Shows', sectionsByServerId: {'m1': PlexSection(key: 's2', title: 'TV Shows', type: 'show')}),
+  SectionGroup(kind: MediaKind.movie, title: 'Movies', sectionsByServerId: {'m1': MediaLibrary(id: 's1', title: 'Movies', kind: MediaKind.movie)}),
+  SectionGroup(kind: MediaKind.show, title: 'TV Shows', sectionsByServerId: {'m1': MediaLibrary(id: 's2', title: 'TV Shows', kind: MediaKind.show)}),
 ];
 
 const _resources = [
@@ -79,7 +80,7 @@ void main() {
     await _pump(
       tester,
       probeServer: (resource) async => ReachableServer(
-        const PlexServer(name: 'Loft', baseUrl: 'http://10.0.0.5:32400', accessToken: 'tok2'),
+        const MediaServer(name: 'Loft', baseUrl: 'http://10.0.0.5:32400', accessToken: 'tok2'),
         ServerReachability.relayed,
       ),
     );
@@ -116,7 +117,7 @@ void main() {
     await _pump(
       tester,
       probeServer: (resource) async => ReachableServer(
-        const PlexServer(name: 'Loft', baseUrl: 'http://10.0.0.5:32400', accessToken: 'tok2'),
+        const MediaServer(name: 'Loft', baseUrl: 'http://10.0.0.5:32400', accessToken: 'tok2'),
         ServerReachability.local,
       ),
       onToggleServer: (r, enabled) => toggled = (r, enabled),
@@ -136,7 +137,7 @@ void main() {
       tester,
       disabledServerIds: const {'m2'},
       probeServer: (resource) async => ReachableServer(
-        const PlexServer(name: 'Loft', baseUrl: 'http://10.0.0.5:32400', accessToken: 'tok2'),
+        const MediaServer(name: 'Loft', baseUrl: 'http://10.0.0.5:32400', accessToken: 'tok2'),
         ServerReachability.local,
       ),
       onToggleServer: (r, enabled) => toggled = (r, enabled),

@@ -1,14 +1,15 @@
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:reelay/data/plex/plex_models.dart';
+import 'package:reelay/data/media/media_models.dart';
+import 'package:reelay/data/media/media_server.dart';
 import 'package:reelay/screens/player/up_next_card.dart';
 
-const _server = PlexServer(name: 'Home', baseUrl: 'http://192.168.1.5:32400', accessToken: 'tok');
-const _item = PlexOnDeckItem(ratingKey: '2', type: 'episode', title: 'Fencelines', index: 5, parentIndex: 2);
+const _server = MediaServer(name: 'Home', baseUrl: 'http://192.168.1.5:32400', accessToken: 'tok');
+const _item = MediaItem(id: '2', kind: MediaKind.episode, title: 'Fencelines', index: 5, parentIndex: 2);
 
 Future<void> _pump(
   WidgetTester tester, {
-  PlexOnDeckItem item = _item,
+  MediaItem item = _item,
   VoidCallback? onPlayNow,
   VoidCallback? onDismiss,
 }) async {

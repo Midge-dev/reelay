@@ -1,6 +1,6 @@
 import 'package:flutter/widgets.dart';
 
-import '../../data/plex/plex_image_url.dart';
+import '../../data/media/artwork_url.dart';
 import '../../theme/tokens.dart';
 
 /// A poster, still or backdrop over its placeholder tone. The placeholder is
@@ -68,7 +68,7 @@ class Artwork extends StatelessWidget {
 
   static ImageProvider _sizedProvider(String url, int? width, int? height) {
     final provider = NetworkImage(
-      PlexImageUrl.sized(url, width: width, height: height),
+      ArtworkUrl.sized(url, width: width, height: height),
     );
     // Decode no larger than painted even if the server ignores the resize
     // (non-Plex URLs, or an old server without the transcoder). Width only,

@@ -1,11 +1,12 @@
-import '../data/plex/plex_models.dart';
-import '../data/plex/plex_resources_api.dart';
+import '../data/media/media_models.dart';
+import '../data/media/media_server.dart';
+import '../data/plex/plex_models.dart' show PlexResource;
 import '../data/settings/app_settings.dart';
 import '../sync/relay_client.dart';
 import 'duplicate_fold.dart';
 
 /// One rail-level library destination (e.g. "Movies"). May be backed by the
-/// same-named, same-typed [PlexSection] on more than one connected server —
+/// same-named, same-typed [MediaLibrary] on more than one connected server —
 /// the hub merges "Movies" on server A with "Movies" on server B into one
 /// rail entry — but keeps differently-named libraries of the same type
 /// separate (a server's "Home Videos" library stays its own rail entry
@@ -13,51 +14,50 @@ import 'duplicate_fold.dart';
 /// distinct to whoever set the server up that way, not duplicates of the
 /// same content. Keyed on (type, title), not type alone.
 class SectionGroup {
-  final String type;
+  final MediaKind kind;
   final String title;
 
-  /// The physical [PlexSection] this group resolves to on each server that
-  /// has one — keyed by [PlexServer.machineIdentifier]. A server absent
-  /// from this map simply has no matching library, not an error.
-  final Map<String, PlexSection> sectionsByServerId;
+  /// The physical [MediaLibrary] this group resolves to on each server that
+  /// has one — keyed by [MediaServer.id]. A server absent from this map
+  /// simply has no matching library, not an error.
+  final Map<String, MediaLibrary> sectionsByServerId;
 
   const SectionGroup({
-    required this.type,
+    required this.kind,
     required this.title,
     required this.sectionsByServerId,
   });
 
-  String get key => '$type::${title.toLowerCase()}';
+  String get key => '${kind.name}::${title.toLowerCase()}';
 
-  PlexSection? sectionOn(String machineIdentifier) =>
-      sectionsByServerId[machineIdentifier];
+  MediaLibrary? sectionOn(String serverId) => sectionsByServerId[serverId];
 }
 
-/// Unions same-(type,title) [PlexSection]s across every connected server
+/// Unions same-(type,title) [MediaLibrary]s across every connected server
 /// into rail-level [SectionGroup]s — see its own doc comment for why
 /// (type, title), not type alone. [sectionsByServerId] is keyed by
-/// [PlexServer.machineIdentifier]; a server with no sections fetched yet
+/// [MediaServer.id]; a server with no sections fetched yet
 /// (or none at all) is simply absent from every group.
 List<SectionGroup> groupSections(
-  Map<String, List<PlexSection>> sectionsByServerId,
+  Map<String, List<MediaLibrary>> sectionsByServerId,
 ) {
   final groups = <String, SectionGroup>{};
   final order = <String>[];
   for (final entry in sectionsByServerId.entries) {
     for (final section in entry.value) {
       final title = normalizeLibraryTitle(section.title);
-      final key = '${section.type}::${title.toLowerCase()}';
+      final key = '${section.kind.name}::${title.toLowerCase()}';
       final existing = groups[key];
       if (existing == null) {
         groups[key] = SectionGroup(
-          type: section.type,
+          kind: section.kind,
           title: title,
           sectionsByServerId: {entry.key: section},
         );
         order.add(key);
       } else {
         groups[key] = SectionGroup(
-          type: existing.type,
+          kind: existing.kind,
           title: existing.title,
           sectionsByServerId: {
             ...existing.sectionsByServerId,
@@ -98,7 +98,7 @@ class LibraryContext {
   final List<ReachableServer> servers;
   final List<SectionGroup> sectionGroups;
   final SectionGroup selectedSectionGroup;
-  final List<FoldedWork<PlexLibraryItem>> items;
+  final List<FoldedWork<MediaItem>> items;
 
   const LibraryContext({
     required this.servers,
@@ -109,7 +109,7 @@ class LibraryContext {
 
   LibraryContext copyWith({
     SectionGroup? selectedSectionGroup,
-    List<FoldedWork<PlexLibraryItem>>? items,
+    List<FoldedWork<MediaItem>>? items,
   }) => LibraryContext(
     servers: servers,
     sectionGroups: sectionGroups,
@@ -187,7 +187,7 @@ class AppError extends AppState {
 /// its own full screen instead, matching how AppError already works here
 /// rather than adding a new "render one AppState behind another" pattern
 /// to app_root.dart for a single call site — a disclosed simplification,
-/// not an oversight. [ctx]/[targetRatingKey]/[fromStart] are exactly
+/// not an oversight. [ctx]/[targetItemId]/[fromStart] are exactly
 /// playMovie's own params, so retry is the identical call; an
 /// alternate-source retry (screen 25's "Play from Loft" offer) is
 /// possible now that [FoldedWork] exists, wired at the call site rather
@@ -196,8 +196,8 @@ class AppError extends AppState {
 /// Watch Together player has no [ctx], which retry doesn't need.
 class PlaybackFailed extends AppState {
   final LibraryContext? ctx;
-  final PlexServer server;
-  final String targetRatingKey;
+  final MediaServer server;
+  final String targetItemId;
   final bool fromStart;
   final String reason;
   final AppState returnState;
@@ -208,7 +208,7 @@ class PlaybackFailed extends AppState {
   const PlaybackFailed({
     required this.ctx,
     required this.server,
-    required this.targetRatingKey,
+    required this.targetItemId,
     required this.fromStart,
     required this.reason,
     required this.returnState,
@@ -237,10 +237,10 @@ class RelaySetup extends AppState {
 class Home extends AppState {
   final List<ReachableServer> servers;
   final List<SectionGroup> sectionGroups;
-  final List<FoldedWork<PlexOnDeckItem>> onDeck;
-  final List<FoldedWork<PlexLibraryItem>> recentlyAdded;
-  final List<FoldedWork<PlexOnDeckItem>> recentActivity;
-  final List<FoldedWork<PlexOnDeckItem>> suggestions;
+  final List<FoldedWork<MediaItem>> onDeck;
+  final List<FoldedWork<MediaItem>> recentlyAdded;
+  final List<FoldedWork<MediaItem>> recentActivity;
+  final List<FoldedWork<MediaItem>> suggestions;
   // "Partial is not empty" (DESIGN.md) — servers that didn't answer at
   // connect time, named in a header line rather than treated as an error.
   final List<PlexResource> unreachableResources;
@@ -255,7 +255,7 @@ class Home extends AppState {
     this.unreachableResources = const [],
   });
 
-  Home copyWith({List<FoldedWork<PlexOnDeckItem>>? onDeck}) => Home(
+  Home copyWith({List<FoldedWork<MediaItem>>? onDeck}) => Home(
     servers: servers,
     sectionGroups: sectionGroups,
     onDeck: onDeck ?? this.onDeck,
@@ -347,8 +347,8 @@ class Watchlist extends AppState {
 /// and this copy's own. [showSources] opens 03d over the page on arrival.
 class MovieDetail extends AppState {
   final LibraryContext ctx;
-  final FoldedWork<PlexLibraryItem> work;
-  final Sourced<PlexLibraryItem> activeCopy;
+  final FoldedWork<MediaItem> work;
+  final Sourced<MediaItem> activeCopy;
   final AppState returnState;
   final int? resumeAtMs;
   final bool showSources;
@@ -368,8 +368,8 @@ class MovieDetail extends AppState {
 /// (PersonCredits); the page gathers its own titles.
 class PersonFilmography extends AppState {
   final LibraryContext ctx;
-  final PlexServer server;
-  final PlexPerson person;
+  final MediaServer server;
+  final Person person;
   final AppState returnState;
 
   const PersonFilmography({
@@ -382,8 +382,8 @@ class PersonFilmography extends AppState {
 
 class CollectionDetail extends AppState {
   final LibraryContext ctx;
-  final Sourced<PlexCollection> collection;
-  final List<PlexLibraryItem> items;
+  final Sourced<MediaItem> collection;
+  final List<MediaItem> items;
   final AppState returnState;
 
   const CollectionDetail({
@@ -399,9 +399,9 @@ class CollectionDetail extends AppState {
 /// every known copy of the show, same shape as [MovieDetail.work].
 class EpisodeDetail extends AppState {
   final LibraryContext ctx;
-  final FoldedWork<PlexLibraryItem> work;
-  final Sourced<PlexLibraryItem> activeCopy;
-  final PlexEpisode episode;
+  final FoldedWork<MediaItem> work;
+  final Sourced<MediaItem> activeCopy;
+  final MediaItem episode;
   final AppState returnState;
 
   const EpisodeDetail({
@@ -427,11 +427,11 @@ class EpisodeDetail extends AppState {
 /// mockup's specific "Start from 46:12".
 class WatchTogetherStart extends AppState {
   final LibraryContext ctx;
-  final PlexServer server;
+  final MediaServer server;
   final AppState returnState;
   final String roomTitle;
   final String? thumb;
-  final String targetRatingKey;
+  final String targetItemId;
   final bool defaultRestart;
 
   const WatchTogetherStart({
@@ -440,14 +440,14 @@ class WatchTogetherStart extends AppState {
     required this.returnState,
     required this.roomTitle,
     this.thumb,
-    required this.targetRatingKey,
+    required this.targetItemId,
     this.defaultRestart = false,
   });
 }
 
 class Lobby extends AppState {
-  final PlexServer server;
-  final PlexMovieDetail detail;
+  final MediaServer server;
+  final MediaDetail detail;
   final AppState returnState;
   final RelayClient relay;
   final String hostName;
@@ -471,15 +471,15 @@ class Player extends AppState {
   /// Carried only so a failure can offer retry (see [PlaybackFailed]);
   /// null when started from a Watch Together lobby.
   final LibraryContext? ctx;
-  final PlexServer server;
-  final PlexMovieDetail detail;
+  final MediaServer server;
+  final MediaDetail detail;
   final AppState returnState;
   final RelayClient? relay;
   // Null when playing a movie. Set when playing an episode — the only
   // piece of show/season context that reaches the player at all today
-  // (PlexMovieDetail itself carries no parent/grandparent linkage), just
+  // (MediaDetail itself carries no parent/grandparent linkage), just
   // enough for screen 16's real fetchNextEpisodeForShow lookup.
-  final String? showRatingKey;
+  final String? showId;
 
   const Player({
     this.ctx,
@@ -487,6 +487,6 @@ class Player extends AppState {
     required this.detail,
     required this.returnState,
     this.relay,
-    this.showRatingKey,
+    this.showId,
   });
 }

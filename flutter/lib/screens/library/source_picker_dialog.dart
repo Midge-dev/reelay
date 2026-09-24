@@ -2,8 +2,8 @@ import 'dart:async';
 
 import 'package:flutter/widgets.dart';
 
-import '../../data/plex/plex_models.dart';
-import '../../data/plex/plex_resources_api.dart' show ServerReachability;
+import '../../data/media/media_models.dart';
+import '../../data/media/media_server.dart';
 import '../../focus/back_handler.dart';
 import '../../kit/button.dart';
 import '../../kit/icon.dart';
@@ -29,13 +29,13 @@ const _dialogWidth = 1020.0;
 /// non-negotiable #10). Rows come in fold priority order.
 class SourcePickerDialog extends StatefulWidget {
   final String title;
-  final FoldedWork<PlexLibraryItem> work;
-  final Sourced<PlexLibraryItem> activeCopy;
-  final Future<CopyFacts> Function(Sourced<PlexLibraryItem> copy) loadFacts;
+  final FoldedWork<MediaItem> work;
+  final Sourced<MediaItem> activeCopy;
+  final Future<CopyFacts> Function(Sourced<MediaItem> copy) loadFacts;
 
   /// How far in you are on the title (0 = not started).
   final int resumeAtMs;
-  final ValueChanged<Sourced<PlexLibraryItem>> onSelect;
+  final ValueChanged<Sourced<MediaItem>> onSelect;
   final VoidCallback onPlay;
   final VoidCallback onClose;
 
@@ -60,7 +60,7 @@ class _SourcePickerDialogState extends State<SourcePickerDialog> {
   final _silent = <String>{};
   final _chosenFocus = FocusNode(debugLabel: 'source-picker-chosen');
 
-  static String _id(Sourced<PlexLibraryItem> c) => c.server.machineIdentifier;
+  static String _id(Sourced<MediaItem> c) => c.server.id;
 
   @override
   void dispose() {
@@ -90,10 +90,9 @@ class _SourcePickerDialogState extends State<SourcePickerDialog> {
     }
   }
 
-  bool _isChosen(Sourced<PlexLibraryItem> c) =>
-      _id(c) == _id(widget.activeCopy);
+  bool _isChosen(Sourced<MediaItem> c) => _id(c) == _id(widget.activeCopy);
 
-  (String, Color) _status(Sourced<PlexLibraryItem> copy) {
+  (String, Color) _status(Sourced<MediaItem> copy) {
     if (_isChosen(copy)) return ('Chosen', AppColors.success);
     final chosenRank = _facts[_id(widget.activeCopy)]?.pictureRank ?? 0;
     final rank = _facts[_id(copy)]?.pictureRank ?? 0;

@@ -1,14 +1,15 @@
 import 'package:flutter/widgets.dart' hide ConnectionState;
 import 'package:flutter_test/flutter_test.dart';
-import 'package:reelay/data/plex/plex_models.dart';
+import 'package:reelay/data/media/media_models.dart';
+import 'package:reelay/data/media/media_server.dart';
 import 'package:reelay/data/settings/relay_identity_store.dart';
 import 'package:reelay/screens/lobby/lobby_screen.dart';
 import 'package:reelay/sync/relay_client.dart';
 import 'package:reelay/theme/phosphor_icons.dart';
 
-const _server = PlexServer(name: 'Home', baseUrl: 'http://192.168.1.5:32400', accessToken: 'tok');
-const _detail = PlexMovieDetail(ratingKey: '1', title: 'Arrival');
-const _detailWithProgress = PlexMovieDetail(ratingKey: '1', title: 'Arrival', viewOffset: 500);
+const _server = MediaServer(name: 'Home', baseUrl: 'http://192.168.1.5:32400', accessToken: 'tok');
+const _detail = MediaDetail(id: '1', title: 'Arrival');
+const _detailWithProgress = MediaDetail(id: '1', title: 'Arrival', viewOffset: 500);
 
 // RelayClient is a concrete class with no test seam for injecting live
 // socket frames without a fake WebSocket server — these tests exercise
@@ -21,7 +22,7 @@ RelayClient _relay() => RelayClient('wss://relay.example.com', const RelayIdenti
 
 Future<void> _pump(
   WidgetTester tester, {
-  PlexMovieDetail detail = _detail,
+  MediaDetail detail = _detail,
   RelayClient? relay,
   VoidCallback? onBack,
   ValueChanged<bool>? onStart,

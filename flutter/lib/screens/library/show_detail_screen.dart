@@ -2,10 +2,11 @@ import 'package:collection/collection.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 
+import '../../data/media/artwork_url.dart';
+import '../../data/media/media_models.dart';
+import '../../data/media/media_server.dart';
 import '../../theme/phosphor_icons.dart';
 
-import '../../data/plex/plex_image_url.dart';
-import '../../data/plex/plex_models.dart';
 import '../../focus/back_handler.dart';
 import '../../focus/screen_memory.dart';
 import '../../kit/button.dart';
@@ -46,18 +47,18 @@ const _episodeSummaryMax = 900.0;
 /// MovieDetailScreen(isShow: true) + ShowSeasonsScreen + ShowEpisodesScreen
 /// chain entirely.
 class ShowDetailScreen extends StatefulWidget {
-  final PlexServer server;
-  final PlexLibraryItem show;
+  final MediaServer server;
+  final MediaItem show;
   final VoidCallback onBack;
   final ValueChanged<String> onPlay;
   final ValueChanged<String> onWatchTogether;
-  final ValueChanged<PlexEpisode> onSelectEpisode;
+  final ValueChanged<MediaItem> onSelectEpisode;
   final bool Function(String?) isOnWatchlist;
   final ValueChanged<String?> onToggleWatchlist;
-  final Future<PlexOnDeckItem?> Function() resolveNextEpisode;
-  final Future<PlexMovieDetail?> Function() loadDetail;
-  final Future<List<PlexSeason>> Function() loadSeasons;
-  final Future<List<PlexEpisode>> Function(String seasonRatingKey) loadEpisodes;
+  final Future<MediaItem?> Function() resolveNextEpisode;
+  final Future<MediaDetail?> Function() loadDetail;
+  final Future<List<MediaItem>> Function() loadSeasons;
+  final Future<List<MediaItem>> Function(String seasonId) loadEpisodes;
 
   const ShowDetailScreen({
     super.key,
@@ -83,11 +84,11 @@ class _ShowDetailScreenState extends State<ShowDetailScreen> {
   final _playFocus = FocusNode(debugLabel: 'show-detail-play');
   final _scrollController = ScrollController();
 
-  PlexOnDeckItem? _nextEpisode;
-  PlexMovieDetail? _detail;
-  List<PlexSeason> _seasons = const [];
-  PlexSeason? _selectedSeason;
-  List<PlexEpisode> _episodes = const [];
+  MediaItem? _nextEpisode;
+  MediaDetail? _detail;
+  List<MediaItem> _seasons = const [];
+  MediaItem? _selectedSeason;
+  List<MediaItem> _episodes = const [];
   bool _episodesLoading = true;
 
   // Set once, from the initial load only — landing on the next unwatched
@@ -131,7 +132,7 @@ class _ShowDetailScreenState extends State<ShowDetailScreen> {
   @override
   void didUpdateWidget(covariant ShowDetailScreen oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.show.ratingKey != widget.show.ratingKey) {
+    if (oldWidget.show.id != widget.show.id) {
       _initialFocusNode?.dispose();
       _initialFocusNode = null;
       setState(() {
@@ -162,13 +163,11 @@ class _ShowDetailScreenState extends State<ShowDetailScreen> {
       widget.loadSeasons(),
     ]);
     if (!mounted) return;
-    final next = results[0] as PlexOnDeckItem?;
-    final detail = results[1] as PlexMovieDetail?;
-    final seasons = results[2] as List<PlexSeason>;
+    final next = results[0] as MediaItem?;
+    final detail = results[1] as MediaDetail?;
+    final seasons = results[2] as List<MediaItem>;
     final kept = keepSeason
-        ? seasons.firstWhereOrNull(
-            (s) => s.ratingKey == _selectedSeason?.ratingKey,
-          )
+        ? seasons.firstWhereOrNull((s) => s.id == _selectedSeason?.id)
         : null;
     final target = kept ?? _pickInitialSeason(seasons, next);
 
@@ -183,10 +182,10 @@ class _ShowDetailScreenState extends State<ShowDetailScreen> {
       setState(() => _episodesLoading = false);
       return;
     }
-    final episodes = await widget.loadEpisodes(target.ratingKey);
+    final episodes = await widget.loadEpisodes(target.id);
     if (!mounted) return;
 
-    final focusKey = _nextUpIn(episodes, next)?.ratingKey;
+    final focusKey = _nextUpIn(episodes, next)?.id;
     // Landing on the next episode is for arriving, not for coming back.
     if (focusKey != null && kept == null) {
       _initialFocusNode = FocusNode(
@@ -207,13 +206,13 @@ class _ShowDetailScreenState extends State<ShowDetailScreen> {
   /// Screen 04 lands on "the next unwatched episode": one already in
   /// progress, else Plex's own on-deck pick, else the first never-watched
   /// one, else the first.
-  PlexEpisode? _nextUpIn(List<PlexEpisode> episodes, PlexOnDeckItem? onDeck) {
+  MediaItem? _nextUpIn(List<MediaItem> episodes, MediaItem? onDeck) {
     if (episodes.isEmpty) return null;
     for (final e in episodes) {
       if ((e.viewOffset ?? 0) > 0) return e;
     }
     for (final e in episodes) {
-      if (e.ratingKey == onDeck?.ratingKey) return e;
+      if (e.id == onDeck?.id) return e;
     }
     for (final e in episodes) {
       if ((e.viewCount ?? 0) == 0) return e;
@@ -221,10 +220,7 @@ class _ShowDetailScreenState extends State<ShowDetailScreen> {
     return episodes.first;
   }
 
-  PlexSeason? _pickInitialSeason(
-    List<PlexSeason> seasons,
-    PlexOnDeckItem? next,
-  ) {
+  MediaItem? _pickInitialSeason(List<MediaItem> seasons, MediaItem? next) {
     if (seasons.isEmpty) return null;
     if (next?.parentIndex != null) {
       for (final season in seasons) {
@@ -236,14 +232,14 @@ class _ShowDetailScreenState extends State<ShowDetailScreen> {
     return numbered.isNotEmpty ? numbered.first : seasons.first;
   }
 
-  Future<void> _onSelectSeason(PlexSeason season) async {
-    if (season.ratingKey == _selectedSeason?.ratingKey) return;
+  Future<void> _onSelectSeason(MediaItem season) async {
+    if (season.id == _selectedSeason?.id) return;
     setState(() {
       _selectedSeason = season;
       _episodesLoading = true;
       _episodes = const [];
     });
-    final episodes = await widget.loadEpisodes(season.ratingKey);
+    final episodes = await widget.loadEpisodes(season.id);
     if (!mounted) return;
     setState(() {
       _episodes = episodes;
@@ -268,9 +264,9 @@ class _ShowDetailScreenState extends State<ShowDetailScreen> {
     // next unwatched), falling back to Plex's on-deck pick before episodes
     // load.
     final nextUp = _episodes
-        .where((e) => e.ratingKey == _initialFocusEpisodeKey)
+        .where((e) => e.id == _initialFocusEpisodeKey)
         .firstOrNull;
-    final playTarget = nextUp?.ratingKey ?? _nextEpisode?.ratingKey;
+    final playTarget = nextUp?.id ?? _nextEpisode?.id;
     final seasonIndex =
         nextUp?.parentIndex ??
         _selectedSeason?.index ??
@@ -313,12 +309,12 @@ class _ShowDetailScreenState extends State<ShowDetailScreen> {
             for (final (i, episode) in _episodes.indexed) ...[
               if (i > 0) SizedBox(height: _episodeGap.du(context)),
               RememberFocus(
-                key: ValueKey(episode.ratingKey),
-                id: 'episode:${episode.ratingKey}',
+                key: ValueKey(episode.id),
+                id: 'episode:${episode.id}',
                 child: _EpisodeRow(
                   server: widget.server,
                   episode: episode,
-                  focusNode: episode.ratingKey == _initialFocusEpisodeKey
+                  focusNode: episode.id == _initialFocusEpisodeKey
                       ? _initialFocusNode
                       : null,
                   onClick: () => widget.onSelectEpisode(episode),
@@ -340,7 +336,7 @@ class _ShowDetailScreenState extends State<ShowDetailScreen> {
             // under scrim.edge and a bottom fade into the ground, so the
             // episode list reads on the ground rather than on the art.
             Artwork(
-              imageUrl: PlexImageUrl.of(
+              imageUrl: ArtworkUrl.of(
                 widget.server,
                 widget.show.art ?? widget.show.thumb,
               ),
@@ -389,8 +385,8 @@ class _ShowDetailScreenState extends State<ShowDetailScreen> {
 }
 
 class _ShowHero extends StatelessWidget {
-  final PlexServer server;
-  final PlexLibraryItem show;
+  final MediaServer server;
+  final MediaItem show;
   final String? summary;
   final int seasonCount;
   final String playLabel;
@@ -439,7 +435,7 @@ class _ShowHero extends StatelessWidget {
           '$seasonCount season${seasonCount == 1 ? '' : 's'}',
         if (episodes != null) '$episodes episode${episodes == 1 ? '' : 's'}',
       ].join(' · '),
-      if (show.genres.isNotEmpty) show.genres.first.tag,
+      if (show.genres.isNotEmpty) show.genres.first,
     ].where((p) => p.isNotEmpty).toList();
 
     return Row(
@@ -579,7 +575,7 @@ class _ShowHero extends StatelessWidget {
                 width: 1.du(context),
               ),
             ),
-            child: Artwork(imageUrl: PlexImageUrl.of(server, show.thumb)),
+            child: Artwork(imageUrl: ArtworkUrl.of(server, show.thumb)),
           ),
         ),
       ],
@@ -589,11 +585,11 @@ class _ShowHero extends StatelessWidget {
 
 /// What the show page keeps in its ScreenMemory besides focus and scroll.
 class _ShowLoaded {
-  final PlexOnDeckItem? nextEpisode;
-  final PlexMovieDetail? detail;
-  final List<PlexSeason> seasons;
-  final PlexSeason? selectedSeason;
-  final List<PlexEpisode> episodes;
+  final MediaItem? nextEpisode;
+  final MediaDetail? detail;
+  final List<MediaItem> seasons;
+  final MediaItem? selectedSeason;
+  final List<MediaItem> episodes;
   final String? initialFocusEpisodeKey;
 
   const _ShowLoaded({
@@ -607,9 +603,9 @@ class _ShowLoaded {
 }
 
 class _SeasonChipsRow extends StatelessWidget {
-  final List<PlexSeason> seasons;
-  final PlexSeason? selected;
-  final ValueChanged<PlexSeason> onSelect;
+  final List<MediaItem> seasons;
+  final MediaItem? selected;
+  final ValueChanged<MediaItem> onSelect;
 
   const _SeasonChipsRow({
     required this.seasons,
@@ -635,10 +631,10 @@ class _SeasonChipsRow extends StatelessWidget {
       children: [
         for (final season in sorted)
           RememberFocus(
-            key: ValueKey(season.ratingKey),
-            id: 'season:${season.ratingKey}',
+            key: ValueKey(season.id),
+            id: 'season:${season.id}',
             child: AppFilterChip(
-              selected: season.ratingKey == selected?.ratingKey,
+              selected: season.id == selected?.id,
               onClick: () => onSelect(season),
               child: AppText(
                 season.title,
@@ -653,8 +649,8 @@ class _SeasonChipsRow extends StatelessWidget {
 }
 
 class _EpisodeRow extends StatefulWidget {
-  final PlexServer server;
-  final PlexEpisode episode;
+  final MediaServer server;
+  final MediaItem episode;
   final FocusNode? focusNode;
   final VoidCallback onClick;
 
@@ -677,7 +673,7 @@ class _EpisodeRow extends StatefulWidget {
 class _EpisodeRowState extends State<_EpisodeRow> {
   late final FocusNode _focusNode =
       widget.focusNode ??
-      FocusNode(debugLabel: 'episode-row-${widget.episode.ratingKey}');
+      FocusNode(debugLabel: 'episode-row-${widget.episode.id}');
   bool _focused = false;
 
   @override
@@ -717,7 +713,7 @@ class _EpisodeRowState extends State<_EpisodeRow> {
                   fit: StackFit.expand,
                   children: [
                     Artwork(
-                      imageUrl: PlexImageUrl.of(widget.server, episode.thumb),
+                      imageUrl: ArtworkUrl.of(widget.server, episode.thumb),
                     ),
                     if (hasProgress)
                       Positioned(

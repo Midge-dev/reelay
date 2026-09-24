@@ -1,6 +1,6 @@
-import '../data/plex/plex_models.dart';
+import '../data/media/media_models.dart';
+import '../data/media/media_server_client.dart';
 
-const _subtitleStreamType = 3;
 const _burnRequiredSubtitleCodecs = {'pgs', 'vobsub', 'dvdsub'};
 // The sidecar formats video_player's caption files can parse (SubRip and
 // WebVTT). Anything else — ASS/SSA, SAMI — would be read as SubRip and show
@@ -12,17 +12,17 @@ sealed class PlaybackDecision {
 }
 
 class DirectPlay extends PlaybackDecision {
-  final PlexPart part;
+  final MediaPart part;
   final int? subtitleStreamId;
 
   const DirectPlay({required this.part, this.subtitleStreamId});
 }
 
 class Transcode extends PlaybackDecision {
-  final String ratingKey;
+  final String itemId;
   final int? subtitleStreamId;
 
-  const Transcode({required this.ratingKey, this.subtitleStreamId});
+  const Transcode({required this.itemId, this.subtitleStreamId});
 }
 
 class SubtitleOption {
@@ -35,7 +35,7 @@ class SubtitleOption {
 
 /// Where a chosen subtitle track's actual content lives. Select by this —
 /// the stream's own id, and whether it's an external/sidecar file
-/// (`PlexStream.key != null`) — never by language: with several
+/// (`MediaStream.key != null`) — never by language: with several
 /// same-language tracks, or any external subtitle, a language preference
 /// plays the wrong (or no) track while the UI shows the right one.
 sealed class SubtitleSource {
@@ -54,7 +54,7 @@ class EmbeddedSubtitle extends SubtitleSource {
   const EmbeddedSubtitle({required this.index, this.languageCode});
 }
 
-/// A sidecar file Plex serves at a separate URL — must be attached as its
+/// A sidecar file the server serves at a separate URL — must be attached as its
 /// own subtitle source, never inferred from the video container's tracks.
 class ExternalSubtitle extends SubtitleSource {
   final String key;
@@ -70,15 +70,15 @@ class ExternalSubtitle extends SubtitleSource {
 /// trading a transcode (server load, a quality/bitrate hit) for
 /// actually being able to show it. External sidecar tracks (`key != null`,
 /// fetchable at their own URL as a caption file) never need this.
-List<SubtitleOption> subtitleOptions(PlexPart part) {
+List<SubtitleOption> subtitleOptions(MediaPart part) {
   final tracks = part.streams
-      .where((s) => s.streamType == _subtitleStreamType)
+      .where((s) => s.kind == StreamKind.subtitle)
       .map((s) => SubtitleOption(streamId: s.id, label: _subtitleLabel(s), requiresBurn: _requiresBurn(s)))
       .toList();
   return [const SubtitleOption(streamId: null, label: 'Off', requiresBurn: false), ...tracks];
 }
 
-String _subtitleLabel(PlexStream stream) {
+String _subtitleLabel(MediaStream stream) {
   final base = stream.language ?? stream.codec?.toUpperCase() ?? 'Unknown';
   final suffix = stream.forced ? ' (Forced)' : (_requiresBurn(stream) ? ' (transcode)' : '');
   return '$base$suffix';
@@ -88,7 +88,7 @@ String _subtitleLabel(PlexStream stream) {
 /// (never player-selectable), an embedded track (no player-side
 /// track-selection API), or a sidecar in a format its caption parsers
 /// don't read. A sidecar with no codec reported is assumed SubRip.
-bool _requiresBurn(PlexStream stream) {
+bool _requiresBurn(MediaStream stream) {
   final codec = stream.codec?.toLowerCase();
   if (stream.key == null || _burnRequiredSubtitleCodecs.contains(codec)) return true;
   return codec != null && !_clientRenderableSidecarCodecs.contains(codec);
@@ -98,7 +98,7 @@ bool _requiresBurn(PlexStream stream) {
 /// (PlayerScreen's fallback), so later subtitle/bitrate changes don't flip
 /// back to a direct stream known not to play.
 PlaybackDecision decidePlayback(
-  PlexMovieDetail detail,
+  MediaDetail detail,
   int? subtitleStreamId, {
   bool forceBurn = false,
   bool forceTranscode = false,
@@ -112,9 +112,9 @@ PlaybackDecision decidePlayback(
   }
   final part = media.parts.first;
 
-  PlexStream? chosenStream;
+  MediaStream? chosenStream;
   for (final s in part.streams) {
-    if (s.streamType == _subtitleStreamType && s.id == subtitleStreamId) {
+    if (s.kind == StreamKind.subtitle && s.id == subtitleStreamId) {
       chosenStream = s;
       break;
     }
@@ -122,45 +122,45 @@ PlaybackDecision decidePlayback(
   final requiresBurn = subtitleStreamId != null && (forceBurn || (chosenStream != null && _requiresBurn(chosenStream)));
 
   if (requiresBurn || forceTranscode) {
-    return Transcode(ratingKey: detail.ratingKey, subtitleStreamId: subtitleStreamId);
+    return Transcode(itemId: detail.id, subtitleStreamId: subtitleStreamId);
   }
   return DirectPlay(part: part, subtitleStreamId: subtitleStreamId);
 }
 
-/// The subtitle a first press of Play starts with: Plex's remembered one,
+/// The subtitle a first press of Play starts with: the server's remembered one,
 /// but only when it doesn't force a transcode — a burn-in is something to
 /// opt into from the CC menu, not something a remembered language quietly
 /// starts. Shared by the player and the source rows (25, 03d) so "Direct
 /// play" on a row is what Play then actually does.
-int? firstSubtitleStreamId(PlexMovieDetail detail) {
+int? firstSubtitleStreamId(MediaDetail detail) {
   final id = defaultSubtitleStreamId(detail);
   if (id == null || detail.media.isEmpty || detail.media.first.parts.isEmpty) return null;
   for (final s in detail.media.first.parts.first.streams) {
-    if (s.streamType == _subtitleStreamType && s.id == id) return _requiresBurn(s) ? null : id;
+    if (s.kind == StreamKind.subtitle && s.id == id) return _requiresBurn(s) ? null : id;
   }
   return null;
 }
 
 /// What a first press of Play does with [detail]; see [firstSubtitleStreamId].
-PlaybackDecision firstPlaybackDecision(PlexMovieDetail detail, {bool forceBurn = false}) =>
+PlaybackDecision firstPlaybackDecision(MediaDetail detail, {bool forceBurn = false}) =>
     decidePlayback(detail, firstSubtitleStreamId(detail), forceBurn: forceBurn);
 
-int? defaultSubtitleStreamId(PlexMovieDetail detail) {
+int? defaultSubtitleStreamId(MediaDetail detail) {
   if (detail.media.isEmpty || detail.media.first.parts.isEmpty) return null;
   for (final s in detail.media.first.parts.first.streams) {
-    if (s.streamType == _subtitleStreamType && s.selected) return s.id;
+    if (s.kind == StreamKind.subtitle && s.selected) return s.id;
   }
   return null;
 }
 
 /// Resolves exactly which subtitle source a DirectPlay decision needs
 /// attached — by stream, never a language-only guess.
-SubtitleSource resolveSubtitleSource(PlexPart part, int? subtitleStreamId) {
+SubtitleSource resolveSubtitleSource(MediaPart part, int? subtitleStreamId) {
   if (subtitleStreamId == null) return const NoSubtitle();
 
-  PlexStream? chosen;
+  MediaStream? chosen;
   for (final s in part.streams) {
-    if (s.streamType == _subtitleStreamType && s.id == subtitleStreamId) {
+    if (s.kind == StreamKind.subtitle && s.id == subtitleStreamId) {
       chosen = s;
       break;
     }
@@ -175,3 +175,24 @@ SubtitleSource resolveSubtitleSource(PlexPart part, int? subtitleStreamId) {
   }
   return const NoSubtitle();
 }
+
+/// The URL [client] streams [decision] from — see
+/// MediaServerClient.transcodeUrl for what [offsetMs] means to a transcode.
+String mediaUrl(
+  MediaServerClient client,
+  PlaybackDecision decision,
+  int maxVideoBitrateKbps, {
+  required String sessionIdentifier,
+  String? sessionId,
+  int offsetMs = 0,
+}) => switch (decision) {
+  DirectPlay() => client.directPlayUrl(decision.part),
+  Transcode() => client.transcodeUrl(
+    decision.itemId,
+    subtitleStreamId: decision.subtitleStreamId,
+    maxVideoBitrateKbps: maxVideoBitrateKbps,
+    sessionIdentifier: sessionIdentifier,
+    sessionId: sessionId,
+    offsetMs: offsetMs,
+  ),
+};

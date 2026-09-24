@@ -1,8 +1,8 @@
 import 'package:collection/collection.dart';
 
-import '../data/plex/plex_models.dart';
-import '../data/plex/plex_resources_api.dart' show ReachableServer;
-import '../data/plex/plex_server_api.dart';
+import '../data/media/media_models.dart';
+import '../data/media/media_server.dart';
+import '../data/media/media_server_client.dart';
 import 'duplicate_fold.dart';
 
 /// What one person did on one title (screen 03c): the caption names the
@@ -32,12 +32,12 @@ class PersonCredit {
 /// Screen 03c — everything a person is in, across every connected server.
 /// A person's tag id only means something on the server it came from, so
 /// each other server is asked for the same person by name and matched on
-/// Plex's global `tagKey` (by exact name only when a server has none).
+/// [Person.globalId] (by exact name only when a server has none).
 class PersonCredits {
   final List<ReachableServer> servers;
   final String clientIdentifier;
-  final PlexServer origin;
-  final PlexPerson person;
+  final MediaServer origin;
+  final Person person;
 
   PersonCredits({
     required this.servers,
@@ -46,25 +46,25 @@ class PersonCredits {
     required this.person,
   });
 
-  String? _tagKey;
-  final _idOnServer = <String, int>{};
+  String? _globalId;
+  final _idOnServer = <String, String>{};
 
-  PlexServerApi _api(PlexServer server) =>
-      PlexServerApi(server, clientIdentifier);
+  MediaServerClient _api(MediaServer server) =>
+      MediaServerClient.forServer(server, clientIdentifier);
 
   bool _sameName(String a) =>
-      a.trim().toLowerCase() == person.tag.trim().toLowerCase();
+      a.trim().toLowerCase() == person.name.trim().toLowerCase();
 
   /// Every title, folded across servers the same way as everywhere else.
   /// A server that fails to answer just contributes nothing.
-  Future<List<FoldedWork<PlexLibraryItem>>> gather() async {
-    _tagKey = person.tagKey;
-    if (person.id != null) _idOnServer[origin.machineIdentifier] = person.id!;
-    if (_tagKey == null && person.id != null) {
+  Future<List<FoldedWork<MediaItem>>> gather() async {
+    _globalId = person.globalId;
+    if (person.id != null) _idOnServer[origin.id] = person.id!;
+    if (_globalId == null && person.id != null) {
       try {
-        _tagKey = (await _api(origin).searchPeople(person.tag))
+        _globalId = (await _api(origin).searchPeople(person.name))
             .firstWhereOrNull((p) => p.id == person.id)
-            ?.tagKey;
+            ?.globalId;
       } catch (_) {}
     }
 
@@ -72,19 +72,15 @@ class PersonCredits {
       servers.map((s) async {
         try {
           final id = await _resolveId(s.server);
-          if (id == null) return const <Sourced<PlexLibraryItem>>[];
+          if (id == null) return const <Sourced<MediaItem>>[];
           final items = await _api(s.server).fetchPersonMedia(id);
           return [for (final i in items) Sourced(i, s.server, s.reachability)];
         } catch (_) {
-          return const <Sourced<PlexLibraryItem>>[];
+          return const <Sourced<MediaItem>>[];
         }
       }),
     );
-    final works = foldByGuid(
-      perServer.expand((l) => l).toList(),
-      guidOf: (i) => i.guid,
-      alternateIdsOf: (i) => i.guids.map((g) => g.id).toList(),
-    );
+    final works = foldWorks(perServer.expand((l) => l).toList());
     // Newest first; undated titles last, then by name.
     works.sort((a, b) {
       final ya = a.primary.value.year ?? 0;
@@ -95,28 +91,28 @@ class PersonCredits {
     return works;
   }
 
-  Future<int?> _resolveId(PlexServer server) async {
-    final known = _idOnServer[server.machineIdentifier];
+  Future<String?> _resolveId(MediaServer server) async {
+    final known = _idOnServer[server.id];
     if (known != null) return known;
-    final found = await _api(server).searchPeople(person.tag);
-    final match = _tagKey != null
-        ? found.firstWhereOrNull((p) => p.tagKey == _tagKey)
-        : found.firstWhereOrNull((p) => _sameName(p.tag));
-    if (match?.id != null) _idOnServer[server.machineIdentifier] = match!.id!;
+    final found = await _api(server).searchPeople(person.name);
+    final match = _globalId != null
+        ? found.firstWhereOrNull((p) => p.globalId == _globalId)
+        : found.firstWhereOrNull((p) => _sameName(p.name));
+    if (match?.id != null) _idOnServer[server.id] = match!.id!;
     return match?.id;
   }
 
   /// What the person did on [work], from its primary copy's full detail
   /// (the list response doesn't carry characters or jobs).
-  Future<PersonCredit?> creditOn(FoldedWork<PlexLibraryItem> work) async {
+  Future<PersonCredit?> creditOn(FoldedWork<MediaItem> work) async {
     final copy = work.primary;
-    final detail = await _api(copy.server)
-        .fetchMovieDetail(copy.value.ratingKey);
-    final idHere = _idOnServer[copy.server.machineIdentifier];
-    bool isThem(PlexPerson p) {
-      if (_tagKey != null && p.tagKey != null) return p.tagKey == _tagKey;
+    final detail = await _api(copy.server).fetchDetail(copy.value.id);
+    final idHere = _idOnServer[copy.server.id];
+    bool isThem(Person p) {
+      if (_globalId != null && p.globalId != null)
+        return p.globalId == _globalId;
       if (idHere != null && p.id != null) return p.id == idHere;
-      return _sameName(p.tag);
+      return _sameName(p.name);
     }
 
     final role = detail.roles.firstWhereOrNull(isThem);

@@ -1,17 +1,17 @@
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:reelay/data/media/media_server.dart';
 import 'package:reelay/data/plex/plex_models.dart';
 import 'package:reelay/focus/back_handler.dart';
-import 'package:reelay/data/plex/plex_resources_api.dart';
 import 'package:reelay/screens/navigation/app_navigation_drawer.dart';
 import 'package:reelay/screens/navigation/server_switcher_panel.dart';
 
-const _server = PlexServer(
+const _server = MediaServer(
   name: 'Home',
   baseUrl: 'http://192.168.1.5:32400',
   accessToken: 'tok',
-  machineIdentifier: 'home-id',
+  id: 'home-id',
 );
 
 Widget _app({

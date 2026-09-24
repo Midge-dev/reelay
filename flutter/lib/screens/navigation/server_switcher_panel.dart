@@ -2,12 +2,11 @@ import 'package:collection/collection.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 
+import '../../data/media/media_server.dart';
 import '../../theme/phosphor_icons.dart';
 
 import '../../data/plex/plex_auth_api.dart' show PlexAccount;
 import '../../data/plex/plex_models.dart';
-import '../../data/plex/plex_resources_api.dart'
-    show ReachableServer, ServerReachability;
 import '../../focus/back_handler.dart';
 import '../../kit/soft_edge_shadow.dart';
 import '../../kit/card.dart';
@@ -55,7 +54,7 @@ class ServerSwitcherPanel extends StatefulWidget {
   final String? selectedSectionGroupKey;
   final Future<List<PlexResource>> Function() loadServers;
   final Future<ReachableServer?> Function(PlexResource resource) probeServer;
-  final Future<int?> Function(PlexServer server) loadLibraryCount;
+  final Future<int?> Function(MediaServer server) loadLibraryCount;
   final ValueChanged<SectionGroup> onSelectSection;
   final void Function(PlexResource resource, bool enabled) onToggleServer;
   final VoidCallback onClose;
@@ -139,9 +138,7 @@ class _ServerSwitcherPanelState extends State<ServerSwitcherPanel> {
     // whichever resources aren't already part of the hub (disabled, or
     // failed to connect last time).
     final already = widget.connectedServers
-        .where(
-          (c) => c.server.machineIdentifier == row.resource.machineIdentifier,
-        )
+        .where((c) => c.server.id == row.resource.machineIdentifier)
         .firstOrNull;
     if (already != null) {
       setState(() {

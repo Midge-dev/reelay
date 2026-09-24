@@ -4,12 +4,14 @@ import 'dart:math';
 import 'package:collection/collection.dart';
 import 'package:flutter/foundation.dart';
 
+import '../data/media/media_models.dart';
+import '../data/media/media_server.dart';
+import '../data/media/media_server_client.dart';
 import '../data/plex/plex_auth_api.dart';
 import '../data/plex/plex_http_client.dart';
 import '../data/plex/plex_identity.dart';
 import '../data/plex/plex_models.dart';
 import '../data/plex/plex_resources_api.dart';
-import '../data/plex/plex_server_api.dart';
 import '../data/plex/plex_watchlist_api.dart';
 import '../data/plex/secure_token_store.dart';
 import '../data/settings/app_settings.dart';
@@ -23,7 +25,6 @@ import '../sync/relay_protocol.dart';
 import 'app_state.dart';
 import 'duplicate_fold.dart';
 
-const _sectionTypeShow = 'show';
 const _roomPollIntervalMs = 5000;
 const _joinRoomTimeoutMs = 5000;
 
@@ -71,6 +72,10 @@ class AppRootController extends ChangeNotifier {
   String _clientIdentifier = '';
   String get clientIdentifier => _clientIdentifier;
 
+  /// The client for talking to [server], whichever backend it is.
+  MediaServerClient clientFor(MediaServer server) =>
+      MediaServerClient.forServer(server, _clientIdentifier);
+
   PlexAccount? _localAccount;
   PlexAccount? get localAccount => _localAccount;
 
@@ -89,10 +94,10 @@ class AppRootController extends ChangeNotifier {
     return _settingsStore.save(updated);
   }
 
-  List<PlexWatchlistItem>? _watchlistItems;
-  List<PlexWatchlistItem> get watchlist => _watchlistItems ?? const [];
+  List<MediaItem>? _watchlistItems;
+  List<MediaItem> get watchlist => _watchlistItems ?? const [];
 
-  // ratingKey -> the name of a connected server holding that watchlist
+  // Watchlist item id -> the name of a connected server holding that watchlist
   // title, or null when none does. A key that's absent hasn't been looked
   // up yet.
   Map<String, String?> _watchlistAvailability = {};
@@ -457,21 +462,18 @@ class AppRootController extends ChangeNotifier {
   /// per-server failure (a server that stops answering mid-fetch simply
   /// contributes no sections, same as any other per-call `.catchError` in
   /// this file — it doesn't fail the other servers' results).
-  Future<Map<String, List<PlexSection>>> _fetchAllSections(
+  Future<Map<String, List<MediaLibrary>>> _fetchAllSections(
     List<ReachableServer> servers,
   ) async {
     final results = await Future.wait(
       servers.map((cs) async {
-        List<PlexSection> sections;
+        List<MediaLibrary> sections;
         try {
-          sections = await PlexServerApi(
-            cs.server,
-            _clientIdentifier,
-          ).fetchSections();
+          sections = await clientFor(cs.server).fetchLibraries();
         } catch (_) {
           sections = const [];
         }
-        return MapEntry(cs.server.machineIdentifier, sections);
+        return MapEntry(cs.server.id, sections);
       }),
     );
     return Map.fromEntries(results);
@@ -481,24 +483,22 @@ class AppRootController extends ChangeNotifier {
   /// physical section, fanned out concurrently and merged — not yet folded
   /// into one card per work, just tagged with which server each copy came
   /// from (see [Sourced]).
-  Future<List<Sourced<PlexLibraryItem>>> _fetchGroupItems(
+  Future<List<Sourced<MediaItem>>> _fetchGroupItems(
     List<ReachableServer> servers,
     SectionGroup group,
   ) async {
     final results = await Future.wait(
       servers.map((cs) async {
-        final section = group.sectionOn(cs.server.machineIdentifier);
-        if (section == null) return const <Sourced<PlexLibraryItem>>[];
+        final section = group.sectionOn(cs.server.id);
+        if (section == null) return const <Sourced<MediaItem>>[];
         try {
-          final items = await PlexServerApi(
-            cs.server,
-            _clientIdentifier,
-          ).fetchLibraryItems(section.key);
+          final items = await clientFor(cs.server)
+              .fetchLibraryItems(section.id);
           return items
               .map((i) => Sourced(i, cs.server, cs.reachability))
               .toList();
         } catch (_) {
-          return const <Sourced<PlexLibraryItem>>[];
+          return const <Sourced<MediaItem>>[];
         }
       }),
     );
@@ -509,26 +509,20 @@ class AppRootController extends ChangeNotifier {
   /// used where a piece of content is known only by its ratingKey with no
   /// server hint at all (a Watch Together room only carries a ratingKey,
   /// not which server hosted it).
-  Future<(PlexServer, PlexMovieDetail)?> _fetchMovieDetailFromAnyServer(
+  Future<(MediaServer, MediaDetail)?> _fetchMovieDetailFromAnyServer(
     List<ReachableServer> servers,
     String ratingKey,
   ) async {
     final results = await Future.wait(
       servers.map((cs) async {
         try {
-          return (
-            cs.server,
-            await PlexServerApi(
-              cs.server,
-              _clientIdentifier,
-            ).fetchMovieDetail(ratingKey),
-          );
+          return (cs.server, await clientFor(cs.server).fetchDetail(ratingKey));
         } catch (_) {
           return null;
         }
       }),
     );
-    return results.whereType<(PlexServer, PlexMovieDetail)>().firstOrNull;
+    return results.whereType<(MediaServer, MediaDetail)>().firstOrNull;
   }
 
   // ---- Watchlist ----
@@ -551,7 +545,7 @@ class AppRootController extends ChangeNotifier {
   /// hidden or silently unplayable. Looks each entry up by guid on every
   /// connected server (the same lookup opening one uses).
   Future<void> _resolveWatchlistAvailability() async {
-    final items = _watchlistItems ?? const <PlexWatchlistItem>[];
+    final items = _watchlistItems ?? const <MediaItem>[];
     final servers = _connectedServers;
     if (items.isEmpty || servers.isEmpty) return;
     final resolved = <String, String?>{};
@@ -562,10 +556,7 @@ class AppRootController extends ChangeNotifier {
         if (guid != null) {
           for (final cs in servers) {
             try {
-              final found = await PlexServerApi(
-                cs.server,
-                _clientIdentifier,
-              ).fetchLibraryItemsByGuid(guid);
+              final found = await clientFor(cs.server).findByGuid(guid);
               if (found.isNotEmpty) {
                 holder = cs.server.name;
                 break;
@@ -575,7 +566,7 @@ class AppRootController extends ChangeNotifier {
             }
           }
         }
-        resolved[entry.ratingKey] = holder;
+        resolved[entry.id] = holder;
       }),
     );
     _watchlistAvailability = resolved;
@@ -599,10 +590,8 @@ class AppRootController extends ChangeNotifier {
     await _refreshWatchlist();
   }
 
-  void removeFromWatchlist(PlexWatchlistItem entry) {
-    _watchlistItems = _watchlistItems
-        ?.where((i) => i.ratingKey != entry.ratingKey)
-        .toList();
+  void removeFromWatchlist(MediaItem entry) {
+    _watchlistItems = _watchlistItems?.where((i) => i.id != entry.id).toList();
     notifyListeners();
     final token = _accountToken;
     final guid = entry.guid;
@@ -798,11 +787,11 @@ class AppRootController extends ChangeNotifier {
   /// hosted off one concrete file.
   void openWatchTogetherStart({
     required LibraryContext ctx,
-    required PlexServer server,
+    required MediaServer server,
     required AppState returnState,
     required String roomTitle,
     String? thumb,
-    required String targetRatingKey,
+    required String targetItemId,
     bool defaultRestart = false,
   }) {
     _setState(
@@ -812,7 +801,7 @@ class AppRootController extends ChangeNotifier {
         returnState: returnState,
         roomTitle: roomTitle,
         thumb: thumb,
-        targetRatingKey: targetRatingKey,
+        targetItemId: targetItemId,
         defaultRestart: defaultRestart,
       ),
     );
@@ -820,11 +809,11 @@ class AppRootController extends ChangeNotifier {
 
   Future<void> startWatchTogether({
     required LibraryContext ctx,
-    required PlexServer server,
+    required MediaServer server,
     required AppState returnState,
     required String roomTitle,
     required String? thumb,
-    required String targetRatingKey,
+    required String targetItemId,
     required bool restart,
   }) async {
     final hostName =
@@ -842,7 +831,7 @@ class AppRootController extends ChangeNotifier {
       return;
     }
 
-    final existing = await _findHostedRoomForMedia(targetRatingKey);
+    final existing = await _findHostedRoomForMedia(targetItemId);
     final relay = existing != null
         ? await _ensureRelayClient(
             existing.$1.url,
@@ -853,7 +842,7 @@ class AppRootController extends ChangeNotifier {
             CreateRoom(
               title: roomTitle,
               thumb: thumb,
-              ratingKey: targetRatingKey,
+              ratingKey: targetItemId,
               hostName: hostName,
               maxSeats: settings.maxHostSeats,
             ),
@@ -870,10 +859,7 @@ class AppRootController extends ChangeNotifier {
     }
 
     try {
-      final detail = await PlexServerApi(
-        server,
-        _clientIdentifier,
-      ).fetchMovieDetail(targetRatingKey);
+      final detail = await clientFor(server).fetchDetail(targetItemId);
       _setState(
         Lobby(
           server: server,
@@ -905,7 +891,7 @@ class AppRootController extends ChangeNotifier {
       CreateRoom(
         title: current.detail.title,
         thumb: current.thumb,
-        ratingKey: current.detail.ratingKey,
+        ratingKey: current.detail.id,
         hostName: hostName,
         maxSeats: settings.maxHostSeats,
       ),
@@ -943,22 +929,22 @@ class AppRootController extends ChangeNotifier {
   ) async {
     final perServer = await Future.wait(
       servers.map((cs) async {
-        final api = PlexServerApi(cs.server, _clientIdentifier);
+        final api = clientFor(cs.server);
         // All four hubs at once, not one after another.
         final (onDeck, recentlyAdded, recentActivity, suggestions) = await (
-          api.fetchOnDeck().catchError((_) => <PlexOnDeckItem>[]),
-          api.fetchRecentlyAdded().catchError((_) => <PlexLibraryItem>[]),
-          api.fetchRecentActivity().catchError((_) => <PlexOnDeckItem>[]),
-          api.fetchSuggestions().catchError((_) => <PlexOnDeckItem>[]),
+          api.fetchContinueWatching().catchError((_) => <MediaItem>[]),
+          api.fetchRecentlyAdded().catchError((_) => <MediaItem>[]),
+          api.fetchRecentActivity().catchError((_) => <MediaItem>[]),
+          api.fetchSuggestions().catchError((_) => <MediaItem>[]),
         ).wait;
         return (cs, onDeck, recentlyAdded, recentActivity, suggestions);
       }),
     );
 
-    final onDeck = <Sourced<PlexOnDeckItem>>[];
-    final recentlyAdded = <Sourced<PlexLibraryItem>>[];
-    final recentActivity = <Sourced<PlexOnDeckItem>>[];
-    final suggestions = <Sourced<PlexOnDeckItem>>[];
+    final onDeck = <Sourced<MediaItem>>[];
+    final recentlyAdded = <Sourced<MediaItem>>[];
+    final recentActivity = <Sourced<MediaItem>>[];
+    final suggestions = <Sourced<MediaItem>>[];
     for (final (cs, od, ra, rac, sug) in perServer) {
       onDeck.addAll(od.map((i) => Sourced(i, cs.server, cs.reachability)));
       recentlyAdded.addAll(
@@ -978,26 +964,10 @@ class AppRootController extends ChangeNotifier {
     return Home(
       servers: servers,
       sectionGroups: sectionGroups,
-      onDeck: foldByGuid(
-        onDeck,
-        guidOf: (i) => i.guid,
-        alternateIdsOf: (i) => i.guids.map((g) => g.id).toList(),
-      ),
-      recentlyAdded: foldByGuid(
-        recentlyAdded,
-        guidOf: (i) => i.guid,
-        alternateIdsOf: (i) => i.guids.map((g) => g.id).toList(),
-      ).take(15).toList(),
-      recentActivity: foldByGuid(
-        recentActivity,
-        guidOf: (i) => i.guid,
-        alternateIdsOf: (i) => i.guids.map((g) => g.id).toList(),
-      ),
-      suggestions: foldByGuid(
-        suggestions,
-        guidOf: (i) => i.guid,
-        alternateIdsOf: (i) => i.guids.map((g) => g.id).toList(),
-      ),
+      onDeck: foldWorks(onDeck),
+      recentlyAdded: foldWorks(recentlyAdded).take(15).toList(),
+      recentActivity: foldWorks(recentActivity),
+      suggestions: foldWorks(suggestions),
       unreachableResources: _unreachableResources,
     );
   }
@@ -1043,11 +1013,7 @@ class AppRootController extends ChangeNotifier {
     );
     _setState(loading);
     () async {
-      final items = foldByGuid(
-        await _fetchGroupItems(servers, group),
-        guidOf: (i) => i.guid,
-        alternateIdsOf: (i) => i.guids.map((g) => g.id).toList(),
-      );
+      final items = foldWorks(await _fetchGroupItems(servers, group));
       // A slow fetch (e.g. a very large library) can outlast the user's
       // patience — BackHandler on LoadingSection lets them bail out via
       // returnState before this resolves. Don't clobber wherever they've
@@ -1071,13 +1037,11 @@ class AppRootController extends ChangeNotifier {
   Future<AppState> _refreshReturnState(AppState target) async {
     if (target is Home) return _loadHome(target.servers, target.sectionGroups);
     if (target is Library) {
-      final items = foldByGuid(
+      final items = foldWorks(
         await _fetchGroupItems(
           target.ctx.servers,
           target.ctx.selectedSectionGroup,
         ),
-        guidOf: (i) => i.guid,
-        alternateIdsOf: (i) => i.guids.map((g) => g.id).toList(),
       );
       return Library(
         ctx: target.ctx.copyWith(items: items),
@@ -1096,25 +1060,23 @@ class AppRootController extends ChangeNotifier {
     }();
   }
 
-  void removeFromContinueWatching(Home home, FoldedWork<PlexOnDeckItem> work) {
+  void removeFromContinueWatching(Home home, FoldedWork<MediaItem> work) {
     final target = work.primary;
     final updated = home.copyWith(
       onDeck: home.onDeck
           .where(
             (w) =>
-                w.primary.server.machineIdentifier !=
-                    target.server.machineIdentifier ||
-                w.primary.value.ratingKey != target.value.ratingKey,
+                w.primary.server.id != target.server.id ||
+                w.primary.value.id != target.value.id,
           )
           .toList(),
     );
     ScreenMemory.carry(home, updated);
     _setState(updated);
     unawaited(
-      PlexServerApi(
-        target.server,
-        _clientIdentifier,
-      ).removeFromContinueWatching(target.value.ratingKey).catchError((_) {}),
+      clientFor(target.server)
+          .removeFromContinueWatching(target.value.id)
+          .catchError((_) {}),
     );
   }
 
@@ -1126,18 +1088,15 @@ class AppRootController extends ChangeNotifier {
   /// "the" server now that it holds every connected one).
   Future<void> playMovie(
     LibraryContext? ctx,
-    PlexServer server,
-    String targetRatingKey,
+    MediaServer server,
+    String targetItemId,
     AppState returnState, {
     bool fromStart = false,
-    String? showRatingKey,
+    String? showId,
     int? resumeAtMs,
   }) async {
     try {
-      final detail = await PlexServerApi(
-        server,
-        _clientIdentifier,
-      ).fetchMovieDetail(targetRatingKey);
+      final detail = await clientFor(server).fetchDetail(targetItemId);
       // Progress belongs to the title: another copy may have you further in
       // than this server does.
       final own = detail.viewOffset ?? 0;
@@ -1149,7 +1108,7 @@ class AppRootController extends ChangeNotifier {
           detail: at == own ? detail : detail.copyWith(viewOffset: at),
           returnState: returnState,
           relay: null,
-          showRatingKey: showRatingKey,
+          showId: showId,
         ),
       );
     } catch (_) {
@@ -1162,7 +1121,7 @@ class AppRootController extends ChangeNotifier {
         PlaybackFailed(
           ctx: ctx,
           server: server,
-          targetRatingKey: targetRatingKey,
+          targetItemId: targetItemId,
           fromStart: fromStart,
           reason: '${server.name} stopped answering partway through starting',
           resumeAtMs: resumeAtMs,
@@ -1181,7 +1140,7 @@ class AppRootController extends ChangeNotifier {
       PlaybackFailed(
         ctx: state.ctx,
         server: state.server,
-        targetRatingKey: state.detail.ratingKey,
+        targetItemId: state.detail.id,
         fromStart: false,
         reason: reason,
         returnState: state.returnState,
@@ -1258,25 +1217,25 @@ class AppRootController extends ChangeNotifier {
     }
   }
 
-  void resumeOnDeckItem(Home current, FoldedWork<PlexOnDeckItem> onDeckWork) {
+  void resumeOnDeckItem(Home current, FoldedWork<MediaItem> onDeckWork) {
     final activeOnDeck = onDeckWork.primary;
     final ctx = LibraryContext(
       servers: current.servers,
       sectionGroups: current.sectionGroups,
       selectedSectionGroup: sectionGroupFor(
         current.sectionGroups,
-        activeOnDeck.value.type == 'episode'
-            ? _sectionTypeShow
-            : activeOnDeck.value.type,
+        activeOnDeck.value.kind == MediaKind.episode
+            ? MediaKind.show
+            : activeOnDeck.value.kind,
       ),
       items: const [],
     );
-    if (activeOnDeck.value.type == 'episode') {
+    if (activeOnDeck.value.kind == MediaKind.episode) {
       final work = _libraryWorkFrom(
         onDeckWork,
         (v) => libraryItemFrom(
           v,
-          type: _sectionTypeShow,
+          kind: MediaKind.show,
           title: v.grandparentTitle ?? v.title,
         ),
       );
@@ -1302,7 +1261,7 @@ class AppRootController extends ChangeNotifier {
     }
   }
 
-  Future<void> selectWatchlistItem(Home current, PlexWatchlistItem entry) =>
+  Future<void> selectWatchlistItem(Home current, MediaItem entry) =>
       openWatchlistItem(
         servers: current.servers,
         sectionGroups: current.sectionGroups,
@@ -1319,24 +1278,21 @@ class AppRootController extends ChangeNotifier {
   Future<void> openWatchlistItem({
     required List<ReachableServer> servers,
     required List<SectionGroup> sectionGroups,
-    required PlexWatchlistItem entry,
+    required MediaItem entry,
     required AppState returnState,
   }) async {
     final guid = entry.guid;
-    final matches = <Sourced<PlexLibraryItem>>[];
+    final matches = <Sourced<MediaItem>>[];
     if (guid != null) {
       final results = await Future.wait(
         servers.map((cs) async {
           try {
-            final items = await PlexServerApi(
-              cs.server,
-              _clientIdentifier,
-            ).fetchLibraryItemsByGuid(guid);
+            final items = await clientFor(cs.server).findByGuid(guid);
             return items
                 .map((i) => Sourced(i, cs.server, cs.reachability))
                 .toList();
           } catch (_) {
-            return const <Sourced<PlexLibraryItem>>[];
+            return const <Sourced<MediaItem>>[];
           }
         }),
       );
@@ -1351,17 +1307,13 @@ class AppRootController extends ChangeNotifier {
       );
       return;
     }
-    final work = foldByGuid(
-      matches,
-      guidOf: (item) => item.guid,
-      alternateIdsOf: (item) => item.guids.map((g) => g.id).toList(),
-    ).first;
+    final work = foldWorks(matches).first;
     final ctx = LibraryContext(
       servers: servers,
       sectionGroups: sectionGroups,
       selectedSectionGroup: sectionGroupFor(
         sectionGroups,
-        work.primary.value.type ?? '',
+        work.primary.value.kind,
       ),
       items: const [],
     );
@@ -1378,24 +1330,22 @@ class AppRootController extends ChangeNotifier {
   /// A season in Recently Added promotes to its parent show, same as
   /// before — applied only to [work]'s primary copy (a season's sibling
   /// copies on other servers could in principle need a different
-  /// parentRatingKey; this is a rare enough edge case that the promoted
+  /// parentId; this is a rare enough edge case that the promoted
   /// result is a fresh singleton fold rather than trying to re-derive
   /// every copy's own parent).
-  void selectRecentlyAdded(Home current, FoldedWork<PlexLibraryItem> work) {
+  void selectRecentlyAdded(Home current, FoldedWork<MediaItem> work) {
     final primary = work.primary;
-    final parentRatingKey = primary.value.parentRatingKey;
+    final parentId = primary.value.parentId;
     final effectiveWork =
-        primary.value.type == 'season' && parentRatingKey != null
-        ? FoldedWork<PlexLibraryItem>(null, [
+        primary.value.kind == MediaKind.season && parentId != null
+        ? FoldedWork<MediaItem>(null, [
             Sourced(
-              libraryItemFrom(
-                PlexOnDeckItem(
-                  ratingKey: parentRatingKey,
-                  type: _sectionTypeShow,
-                  title: primary.value.parentTitle ?? primary.value.title,
-                  thumb: primary.value.thumb,
-                  art: primary.value.art,
-                ),
+              MediaItem(
+                id: parentId,
+                kind: MediaKind.show,
+                title: primary.value.parentTitle ?? primary.value.title,
+                thumb: primary.value.thumb,
+                art: primary.value.art,
               ),
               primary.server,
               primary.reachability,
@@ -1407,7 +1357,7 @@ class AppRootController extends ChangeNotifier {
       sectionGroups: current.sectionGroups,
       selectedSectionGroup: sectionGroupFor(
         current.sectionGroups,
-        effectiveWork.primary.value.type ?? '',
+        effectiveWork.primary.value.kind,
       ),
       items: const [],
     );
@@ -1421,14 +1371,14 @@ class AppRootController extends ChangeNotifier {
     );
   }
 
-  void selectOnDeckLike(Home current, FoldedWork<PlexOnDeckItem> onDeckWork) {
+  void selectOnDeckLike(Home current, FoldedWork<MediaItem> onDeckWork) {
     final work = _libraryWorkFrom(onDeckWork, libraryItemFrom);
     final ctx = LibraryContext(
       servers: current.servers,
       sectionGroups: current.sectionGroups,
       selectedSectionGroup: sectionGroupFor(
         current.sectionGroups,
-        work.primary.value.type ?? '',
+        work.primary.value.kind,
       ),
       items: const [],
     );
@@ -1443,13 +1393,12 @@ class AppRootController extends ChangeNotifier {
   }
 }
 
-/// Converts every copy of a [FoldedWork]&lt;PlexOnDeckItem&gt; through [convert]
-/// into a library-item-shaped [FoldedWork], preserving the fold's guid and
-/// copy set — used wherever a Home row's on-deck-shaped selection needs to
-/// become a MovieDetail/EpisodeDetail work.
-FoldedWork<PlexLibraryItem> _libraryWorkFrom(
-  FoldedWork<PlexOnDeckItem> work,
-  PlexLibraryItem Function(PlexOnDeckItem) convert,
+/// Converts every copy of a [FoldedWork] through [convert], preserving the
+/// fold's guid and copy set — used wherever a Home row's on-deck-shaped
+/// selection needs to become a MovieDetail/EpisodeDetail work.
+FoldedWork<MediaItem> _libraryWorkFrom(
+  FoldedWork<MediaItem> work,
+  MediaItem Function(MediaItem) convert,
 ) => FoldedWork(
   work.guid,
   work.copies
@@ -1457,26 +1406,25 @@ FoldedWork<PlexLibraryItem> _libraryWorkFrom(
       .toList(),
 );
 
-/// Builds a `PlexLibraryItem`/show-typed placeholder from an on-deck-shaped
-/// item (recently-added, suggestions, recent-activity, resume) so a
-/// MovieDetail/EpisodeDetail navigation has something to
-/// render immediately while the real detail loads.
-PlexLibraryItem libraryItemFrom(
-  PlexOnDeckItem item, {
-  String? type,
-  String? title,
-}) => PlexLibraryItem(
-  ratingKey: item.ratingKey,
-  type: type ?? item.type,
-  title: title ?? item.title,
-  thumb: item.thumb,
-  art: item.art,
-  guid: item.guid,
-  guids: item.guids,
-);
+/// A title-shaped placeholder from a row item (recently-added,
+/// suggestions, recent-activity, resume) so a MovieDetail/EpisodeDetail
+/// navigation has something to render immediately while the real detail
+/// loads. Carries only what identifies and pictures the title — none of the
+/// row item's own playback state.
+MediaItem libraryItemFrom(MediaItem item, {MediaKind? kind, String? title}) =>
+    MediaItem(
+      id: item.id,
+      kind: kind ?? item.kind,
+      title: title ?? item.title,
+      thumb: item.thumb,
+      art: item.art,
+      guid: item.guid,
+      externalIds: item.externalIds,
+    );
 
-PlexEpisode episodeFrom(PlexOnDeckItem item) => PlexEpisode(
-  ratingKey: item.ratingKey,
+MediaItem episodeFrom(MediaItem item) => MediaItem(
+  id: item.id,
+  kind: MediaKind.episode,
   title: item.title,
   index: item.index,
   thumb: item.thumb,
@@ -1486,10 +1434,10 @@ PlexEpisode episodeFrom(PlexOnDeckItem item) => PlexEpisode(
   grandparentTitle: item.grandparentTitle,
 );
 
-/// Picks the section group matching an item's type, falling back to the
+/// Picks the section group matching an item's kind, falling back to the
 /// first group.
-SectionGroup sectionGroupFor(List<SectionGroup> groups, String type) =>
-    groups.firstWhereOrNull((g) => g.type == type) ?? groups.first;
+SectionGroup sectionGroupFor(List<SectionGroup> groups, MediaKind kind) =>
+    groups.firstWhereOrNull((g) => g.kind == kind) ?? groups.first;
 
 /// Mirrors settings_store.dart's `_randomRelayId` — same shape, separate
 /// copy since that one's private to its own file.

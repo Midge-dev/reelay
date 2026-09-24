@@ -1,9 +1,10 @@
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 
-import '../../data/plex/plex_image_url.dart';
+import '../../data/media/artwork_url.dart';
+import '../../data/media/media_models.dart';
+import '../../data/media/media_server.dart';
 import '../../data/plex/plex_models.dart';
-import '../../data/plex/plex_resources_api.dart' show ReachableServer;
 import '../../focus/screen_memory.dart';
 import '../../focus/row_end_stop.dart';
 import '../../kit/edge_fade_row.dart';
@@ -34,25 +35,25 @@ const _watchTogetherScrollDurationMs = 1100;
 class HomeScreen extends StatefulWidget {
   final List<ReachableServer> servers;
   final List<PlexResource> unreachableResources;
-  final List<FoldedWork<PlexOnDeckItem>> onDeck;
-  final List<FoldedWork<PlexLibraryItem>> recentlyAdded;
-  final List<FoldedWork<PlexOnDeckItem>> recentActivity;
-  final List<FoldedWork<PlexOnDeckItem>> suggestions;
-  final List<PlexWatchlistItem> watchlist;
+  final List<FoldedWork<MediaItem>> onDeck;
+  final List<FoldedWork<MediaItem>> recentlyAdded;
+  final List<FoldedWork<MediaItem>> recentActivity;
+  final List<FoldedWork<MediaItem>> suggestions;
+  final List<MediaItem> watchlist;
   final List<MergedRoom> liveRooms;
   final String? myRoomId;
   final Set<String> hostedRoomIds;
   final Future<bool> Function(MergedRoom) onEndSession;
   final ValueChanged<MergedRoom> onSelectRoom;
   final VoidCallback onOpenRooms;
-  final ValueChanged<FoldedWork<PlexOnDeckItem>> onResume;
-  final ValueChanged<FoldedWork<PlexOnDeckItem>> onRemove;
-  final ValueChanged<PlexWatchlistItem> onSelectWatchlistItem;
-  final ValueChanged<PlexWatchlistItem> onRemoveFromWatchlist;
-  final ValueChanged<FoldedWork<PlexLibraryItem>> onSelectRecentlyAdded;
-  final ValueChanged<FoldedWork<PlexOnDeckItem>> onSelectRecentActivity;
-  final ValueChanged<FoldedWork<PlexOnDeckItem>> onSelectSuggestion;
-  final ValueChanged<Sourced<PlexOnDeckItem>>? onHeroWatchTogether;
+  final ValueChanged<FoldedWork<MediaItem>> onResume;
+  final ValueChanged<FoldedWork<MediaItem>> onRemove;
+  final ValueChanged<MediaItem> onSelectWatchlistItem;
+  final ValueChanged<MediaItem> onRemoveFromWatchlist;
+  final ValueChanged<FoldedWork<MediaItem>> onSelectRecentlyAdded;
+  final ValueChanged<FoldedWork<MediaItem>> onSelectRecentActivity;
+  final ValueChanged<FoldedWork<MediaItem>> onSelectSuggestion;
+  final ValueChanged<Sourced<MediaItem>>? onHeroWatchTogether;
 
   const HomeScreen({
     super.key,
@@ -279,13 +280,13 @@ class _HomeScreenState extends State<HomeScreen> {
                 padding: EdgeInsets.only(top: AppSpacing.safeY.du(context)),
                 child: watchTogetherBar,
               ),
-            _HomeRow<PlexWatchlistItem>(
+            _HomeRow<MediaItem>(
               title: 'Watchlist',
               items: watchlistReversed,
               afterHero: firstRow == 0,
-              idOf: (entry) => entry.ratingKey,
+              idOf: (entry) => entry.id,
               itemBuilder: (entry, index) => WatchlistPoster(
-                key: ValueKey(entry.ratingKey),
+                key: ValueKey(entry.id),
                 server: widget.servers.first.server,
                 entry: entry,
                 onClick: () => widget.onSelectWatchlistItem(entry),
@@ -294,16 +295,16 @@ class _HomeScreenState extends State<HomeScreen> {
                 autofocus: index == 0 && watchlistGetsFocus,
               ),
             ),
-            _HomeRow<FoldedWork<PlexOnDeckItem>>(
+            _HomeRow<FoldedWork<MediaItem>>(
               title: 'Recently Finished Watching',
               items: widget.recentActivity,
               afterHero: firstRow == 1,
               idOf: _workId,
               itemBuilder: (item, index) => PosterCard(
                 key: ValueKey(
-                  '${item.primary.server.machineIdentifier}:${item.primary.value.ratingKey}',
+                  '${item.primary.server.id}:${item.primary.value.id}',
                 ),
-                imageUrl: PlexImageUrl.of(
+                imageUrl: ArtworkUrl.of(
                   item.primary.server,
                   item.primary.value.thumb,
                 ),
@@ -312,16 +313,16 @@ class _HomeScreenState extends State<HomeScreen> {
                 autofocus: index == 0 && recentActivityGetsFocus,
               ),
             ),
-            _HomeRow<FoldedWork<PlexLibraryItem>>(
+            _HomeRow<FoldedWork<MediaItem>>(
               title: 'Recently Added',
               items: widget.recentlyAdded,
               afterHero: firstRow == 2,
               idOf: _workId,
               itemBuilder: (item, index) => PosterCard(
                 key: ValueKey(
-                  '${item.primary.server.machineIdentifier}:${item.primary.value.ratingKey}',
+                  '${item.primary.server.id}:${item.primary.value.id}',
                 ),
-                imageUrl: PlexImageUrl.of(
+                imageUrl: ArtworkUrl.of(
                   item.primary.server,
                   item.primary.value.thumb,
                 ),
@@ -330,16 +331,16 @@ class _HomeScreenState extends State<HomeScreen> {
                 autofocus: index == 0 && recentlyAddedGetsFocus,
               ),
             ),
-            _HomeRow<FoldedWork<PlexOnDeckItem>>(
+            _HomeRow<FoldedWork<MediaItem>>(
               title: 'Suggestions',
               items: widget.suggestions,
               afterHero: firstRow == 3,
               idOf: _workId,
               itemBuilder: (item, index) => PosterCard(
                 key: ValueKey(
-                  '${item.primary.server.machineIdentifier}:${item.primary.value.ratingKey}',
+                  '${item.primary.server.id}:${item.primary.value.id}',
                 ),
-                imageUrl: PlexImageUrl.of(
+                imageUrl: ArtworkUrl.of(
                   item.primary.server,
                   item.primary.value.thumb,
                 ),
@@ -403,7 +404,7 @@ class _HomeScreenState extends State<HomeScreen> {
     final hero = widget.onDeck.first;
     final moreInProgress = widget.onDeck.length > 1
         ? widget.onDeck.sublist(1)
-        : const <FoldedWork<PlexOnDeckItem>>[];
+        : const <FoldedWork<MediaItem>>[];
 
     return HomeHero(
       item: hero,
@@ -499,11 +500,10 @@ class _HomeScreenState extends State<HomeScreen> {
 String _workId(FoldedWork<Object> work) {
   final primary = work.primary;
   final key = switch (primary.value) {
-    PlexOnDeckItem(:final ratingKey) => ratingKey,
-    PlexLibraryItem(:final ratingKey) => ratingKey,
+    MediaItem(:final id) => id,
     _ => '${primary.value.hashCode}',
   };
-  return '${primary.server.machineIdentifier}:$key';
+  return '${primary.server.id}:$key';
 }
 
 /// A titled horizontal row that

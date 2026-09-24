@@ -1,6 +1,8 @@
 import 'package:dio/dio.dart';
 
+import '../media/media_models.dart';
 import 'plex_http_client.dart';
+import 'plex_mappers.dart';
 import 'plex_models.dart';
 import 'plex_response.dart';
 
@@ -9,7 +11,7 @@ import 'plex_response.dart';
 /// server — the same reverse-engineered API python-plexapi's
 /// MyPlexAccount.watchlist()/addToWatchlist() use. A watchlist item's guid
 /// (`plex://movie/&lt;id&gt;`) is what ties it back to a local
-/// PlexLibraryItem with the same guid; the trailing id is also the
+/// library item with the same guid; the trailing id is also the
 /// Discover ratingKey these actions expect.
 class PlexWatchlistApi {
   final String clientIdentifier;
@@ -25,12 +27,14 @@ class PlexWatchlistApi {
 
   String _discoverRatingKey(String guid) => guid.substring(guid.lastIndexOf('/') + 1);
 
-  Future<List<PlexWatchlistItem>> fetchWatchlist(String accountToken) async {
+  Future<List<MediaItem>> fetchWatchlist(String accountToken) async {
     final response = await _client.get<Map<String, dynamic>>(
       'https://discover.provider.plex.tv/library/sections/watchlist/all',
       options: _headers(accountToken),
     );
-    return extractMediaContainerList(response.data!, 'Metadata', PlexWatchlistItem.fromJson);
+    return [
+      for (final i in extractMediaContainerList(response.data!, 'Metadata', PlexWatchlistItem.fromJson)) i.toMedia(),
+    ];
   }
 
   Future<void> addToWatchlist(String accountToken, String guid) async {

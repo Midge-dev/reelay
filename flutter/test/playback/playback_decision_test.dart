@@ -1,22 +1,22 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:reelay/data/plex/plex_models.dart';
+import 'package:reelay/data/media/media_models.dart';
 import 'package:reelay/playback/playback_decision.dart';
 
-PlexPart _partWith(List<PlexStream> streams) => PlexPart(id: 1, key: '/library/parts/1/file.mkv', streams: streams);
+MediaPart _partWith(List<MediaStream> streams) => MediaPart(id: '1', key: '/library/parts/1/file.mkv', streams: streams);
 
-PlexMovieDetail _detailWith(PlexPart part) => PlexMovieDetail(
-      ratingKey: '100',
+MediaDetail _detailWith(MediaPart part) => MediaDetail(
+      id: '100',
       title: 'Test Movie',
-      media: [PlexMedia(parts: [part])],
+      media: [MediaVersion(parts: [part])],
     );
 
 void main() {
   group('subtitleOptions', () {
     test('always includes an Off option first, then subtitle streams only', () {
       final part = _partWith([
-        const PlexStream(id: 1, streamType: 2), // audio, should be excluded
-        const PlexStream(id: 2, streamType: 3, key: '/library/streams/2', language: 'English'),
-        const PlexStream(id: 3, streamType: 3, codec: 'pgs'),
+        const MediaStream(id: 1, kind: StreamKind.audio), // audio, should be excluded
+        const MediaStream(id: 2, kind: StreamKind.subtitle, key: '/library/streams/2', language: 'English'),
+        const MediaStream(id: 3, kind: StreamKind.subtitle, codec: 'pgs'),
       ]);
 
       final options = subtitleOptions(part);
@@ -32,7 +32,7 @@ void main() {
 
     test('forced tracks are labeled distinctly from burn-required ones', () {
       final part = _partWith([
-        const PlexStream(id: 1, streamType: 3, key: '/library/streams/1', language: 'English', forced: true),
+        const MediaStream(id: 1, kind: StreamKind.subtitle, key: '/library/streams/1', language: 'English', forced: true),
       ]);
 
       final options = subtitleOptions(part);
@@ -42,7 +42,7 @@ void main() {
 
     test('an embedded, non-burn-codec track is still offered, but marked as requiring a transcode', () {
       final part = _partWith([
-        const PlexStream(id: 1, streamType: 3, language: 'English', index: 0), // no key, not a burn codec
+        const MediaStream(id: 1, kind: StreamKind.subtitle, language: 'English', index: 0), // no key, not a burn codec
       ]);
 
       final options = subtitleOptions(part);
@@ -54,7 +54,7 @@ void main() {
 
     test('an external sidecar track is included even without a burn-required codec', () {
       final part = _partWith([
-        const PlexStream(id: 1, streamType: 3, key: '/library/streams/1', language: 'English'),
+        const MediaStream(id: 1, kind: StreamKind.subtitle, key: '/library/streams/1', language: 'English'),
       ]);
 
       final options = subtitleOptions(part);
@@ -64,7 +64,7 @@ void main() {
     });
 
     test('a burn-required embedded track is included even without a key', () {
-      final part = _partWith([const PlexStream(id: 1, streamType: 3, codec: 'vobsub')]);
+      final part = _partWith([const MediaStream(id: 1, kind: StreamKind.subtitle, codec: 'vobsub')]);
 
       final options = subtitleOptions(part);
 
@@ -75,31 +75,31 @@ void main() {
 
   group('decidePlayback', () {
     test('no subtitle selected -> DirectPlay', () {
-      final part = _partWith([const PlexStream(id: 1, streamType: 3, codec: 'pgs')]);
+      final part = _partWith([const MediaStream(id: 1, kind: StreamKind.subtitle, codec: 'pgs')]);
       final decision = decidePlayback(_detailWith(part), null);
       expect(decision, isA<DirectPlay>());
     });
 
     test('forceTranscode (direct play already failed) -> Transcode, even with nothing to burn', () {
-      final part = _partWith([const PlexStream(id: 1, streamType: 3, key: '/library/streams/1', codec: 'srt')]);
+      final part = _partWith([const MediaStream(id: 1, kind: StreamKind.subtitle, key: '/library/streams/1', codec: 'srt')]);
       expect(decidePlayback(_detailWith(part), null, forceTranscode: true), isA<Transcode>());
       expect(decidePlayback(_detailWith(part), 1, forceTranscode: true), isA<Transcode>());
     });
 
     test('external sidecar track selected -> DirectPlay', () {
-      final part = _partWith([const PlexStream(id: 1, streamType: 3, key: '/library/streams/1', codec: 'srt', language: 'English')]);
+      final part = _partWith([const MediaStream(id: 1, kind: StreamKind.subtitle, key: '/library/streams/1', codec: 'srt', language: 'English')]);
       final decision = decidePlayback(_detailWith(part), 1);
       expect(decision, isA<DirectPlay>());
     });
 
     test('a WebVTT sidecar selected -> DirectPlay', () {
-      final part = _partWith([const PlexStream(id: 1, streamType: 3, key: '/library/streams/1', codec: 'vtt')]);
+      final part = _partWith([const MediaStream(id: 1, kind: StreamKind.subtitle, key: '/library/streams/1', codec: 'vtt')]);
       expect(decidePlayback(_detailWith(part), 1), isA<DirectPlay>());
     });
 
     test('an ASS/SSA sidecar selected -> Transcode, since video_player would misread it as SubRip', () {
       for (final codec in ['ass', 'ssa']) {
-        final part = _partWith([PlexStream(id: 1, streamType: 3, key: '/library/streams/1', codec: codec)]);
+        final part = _partWith([MediaStream(id: 1, kind: StreamKind.subtitle, key: '/library/streams/1', codec: codec)]);
         final decision = decidePlayback(_detailWith(part), 1);
         expect(decision, isA<Transcode>(), reason: codec);
         expect(subtitleOptions(part).last.requiresBurn, isTrue, reason: codec);
@@ -107,20 +107,20 @@ void main() {
     });
 
     test('embedded soft-subtitle codec (no sidecar key) selected -> Transcode', () {
-      final part = _partWith([const PlexStream(id: 1, streamType: 3, codec: 'srt', language: 'English')]);
+      final part = _partWith([const MediaStream(id: 1, kind: StreamKind.subtitle, codec: 'srt', language: 'English')]);
       final decision = decidePlayback(_detailWith(part), 1);
       expect(decision, isA<Transcode>());
     });
 
     test('burn-required codec (pgs) selected -> Transcode', () {
-      final part = _partWith([const PlexStream(id: 1, streamType: 3, codec: 'pgs')]);
+      final part = _partWith([const MediaStream(id: 1, kind: StreamKind.subtitle, codec: 'pgs')]);
       final decision = decidePlayback(_detailWith(part), 1);
       expect(decision, isA<Transcode>());
       expect((decision as Transcode).subtitleStreamId, 1);
     });
 
     test('forceBurn=true forces Transcode even for a soft-subtitle codec', () {
-      final part = _partWith([const PlexStream(id: 1, streamType: 3, codec: 'srt')]);
+      final part = _partWith([const MediaStream(id: 1, kind: StreamKind.subtitle, codec: 'srt')]);
       final decision = decidePlayback(_detailWith(part), 1, forceBurn: true);
       expect(decision, isA<Transcode>());
     });
@@ -129,28 +129,28 @@ void main() {
   group('defaultSubtitleStreamId', () {
     test('returns the id of the stream Plex marked selected', () {
       final part = _partWith([
-        const PlexStream(id: 1, streamType: 3, selected: false),
-        const PlexStream(id: 2, streamType: 3, selected: true),
+        const MediaStream(id: 1, kind: StreamKind.subtitle, selected: false),
+        const MediaStream(id: 2, kind: StreamKind.subtitle, selected: true),
       ]);
       expect(defaultSubtitleStreamId(_detailWith(part)), 2);
     });
 
     test('returns null when nothing is selected', () {
-      final part = _partWith([const PlexStream(id: 1, streamType: 3, selected: false)]);
+      final part = _partWith([const MediaStream(id: 1, kind: StreamKind.subtitle, selected: false)]);
       expect(defaultSubtitleStreamId(_detailWith(part)), isNull);
     });
   });
 
   group('resolveSubtitleSource selects by stream, never by language', () {
     test('null subtitleStreamId -> NoSubtitle', () {
-      final part = _partWith([const PlexStream(id: 1, streamType: 3)]);
+      final part = _partWith([const MediaStream(id: 1, kind: StreamKind.subtitle)]);
       expect(resolveSubtitleSource(part, null), isA<NoSubtitle>());
     });
 
     test('an embedded track (no sidecar key) resolves by index, not language', () {
       final part = _partWith([
-        const PlexStream(id: 1, streamType: 3, index: 2, languageCode: 'eng'),
-        const PlexStream(id: 2, streamType: 3, index: 3, languageCode: 'eng'), // same language, different track
+        const MediaStream(id: 1, kind: StreamKind.subtitle, index: 2, languageCode: 'eng'),
+        const MediaStream(id: 2, kind: StreamKind.subtitle, index: 3, languageCode: 'eng'), // same language, different track
       ]);
 
       final source = resolveSubtitleSource(part, 2);
@@ -161,7 +161,7 @@ void main() {
 
     test('a sidecar track (key set) resolves as an external source, not an embedded index', () {
       final part = _partWith([
-        const PlexStream(id: 5, streamType: 3, key: '/library/streams/5', languageCode: 'eng', index: 0),
+        const MediaStream(id: 5, kind: StreamKind.subtitle, key: '/library/streams/5', languageCode: 'eng', index: 0),
       ]);
 
       final source = resolveSubtitleSource(part, 5);
@@ -171,7 +171,7 @@ void main() {
     });
 
     test('unknown subtitleStreamId -> NoSubtitle', () {
-      final part = _partWith([const PlexStream(id: 1, streamType: 3, index: 0)]);
+      final part = _partWith([const MediaStream(id: 1, kind: StreamKind.subtitle, index: 0)]);
       expect(resolveSubtitleSource(part, 999), isA<NoSubtitle>());
     });
   });

@@ -1,8 +1,8 @@
-import '../data/plex/plex_models.dart';
-import '../data/plex/plex_resources_api.dart' show ServerReachability;
+import '../data/media/media_models.dart';
+import '../data/media/media_server.dart';
 
 /// One item paired with the server it came from — used only where content
-/// is fanned out across more than one [PlexServer] and needs to be told
+/// is fanned out across more than one [MediaServer] and needs to be told
 /// apart again (Home rows, library grids, search results, watchlist
 /// resolution). Single-server call sites (episodes inside one show, a
 /// movie's own detail fetch) never need this — see DESIGN.md's multi-server
@@ -10,7 +10,7 @@ import '../data/plex/plex_resources_api.dart' show ServerReachability;
 /// everywhere, is the shape this takes.
 class Sourced<T> {
   final T value;
-  final PlexServer server;
+  final MediaServer server;
   final ServerReachability reachability;
 
   const Sourced(this.value, this.server, this.reachability);
@@ -44,10 +44,10 @@ const _reachabilityRank = {
 /// Folds [items] into one [FoldedWork] per shared identity, preserving
 /// overall input order (sort before calling if display order matters).
 /// Two items fold together the moment they agree on *any* id — [guidOf]'s
-/// scalar value, or any of [alternateIdsOf]'s (Plex's real `Guid` array:
-/// imdb/tmdb/tvdb, present regardless of which agent is a given server's
-/// *primary* one — see [PlexGuid]'s own doc comment for why a shared
-/// scalar guid alone can miss a real duplicate). An item contributing no
+/// scalar value, or any of [alternateIdsOf]'s (provider ids — imdb/tmdb/
+/// tvdb — present regardless of which agent is a given server's *primary*
+/// one, and the only ids two different backends share; a shared scalar
+/// guid alone can miss a real duplicate). An item contributing no
 /// id at all — [guidOf] returns null/empty and [alternateIdsOf] returns
 /// nothing — never folds with anything else ("no id, no folding",
 /// DESIGN.md #10), becoming its own singleton.
@@ -117,3 +117,11 @@ List<FoldedWork<T>> foldByGuid<T>(
       ),
   ];
 }
+
+/// [foldByGuid] for [MediaItem]s — how every list of works is folded.
+List<FoldedWork<MediaItem>> foldWorks(List<Sourced<MediaItem>> items) =>
+    foldByGuid(
+      items,
+      guidOf: (i) => i.guid,
+      alternateIdsOf: (i) => i.externalIds,
+    );

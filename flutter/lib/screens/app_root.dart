@@ -5,9 +5,10 @@ import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../data/media/media_models.dart';
+import '../data/media/media_server.dart';
 import '../data/plex/plex_models.dart';
 import '../data/plex/plex_resources_api.dart';
-import '../data/plex/plex_server_api.dart';
 import '../focus/back_handler.dart';
 import '../focus/screen_memory.dart';
 import '../kit/text.dart';
@@ -44,7 +45,6 @@ import 'profiles/profile_picker_screen.dart';
 import 'settings/settings_screen.dart';
 import 'splash/splash_screen.dart';
 
-const _sectionTypeShow = 'show';
 const _appVersionName = '0.3.0';
 
 /// Renders whichever AppState is current, with the splash drawn over it on
@@ -211,7 +211,7 @@ class _AppContent extends StatelessWidget {
       PlaybackFailed(
         :final ctx,
         :final server,
-        :final targetRatingKey,
+        :final targetItemId,
         :final fromStart,
         :final reason,
         :final returnState,
@@ -241,8 +241,8 @@ class _AppContent extends StatelessWidget {
                         detail?.work.copies
                             .where(
                               (c) =>
-                                  c.server.machineIdentifier !=
-                                  server.machineIdentifier,
+                                  c.server.id !=
+                                  server.id,
                             )
                             .length ??
                         0,
@@ -252,7 +252,7 @@ class _AppContent extends StatelessWidget {
                     onRetry: () => controller.playMovie(
                       ctx,
                       server,
-                      targetRatingKey,
+                      targetItemId,
                       returnState,
                       fromStart: fromStart,
                       resumeAtMs: resumeAtMs,
@@ -262,7 +262,7 @@ class _AppContent extends StatelessWidget {
                         : () => controller.playMovie(
                             ctx,
                             alternate.server,
-                            alternate.value.ratingKey,
+                            alternate.value.id,
                             returnState,
                             fromStart: fromStart,
                             resumeAtMs: resumeAtMs,
@@ -402,7 +402,7 @@ class _AppContent extends StatelessWidget {
                 ctx: ctx.copyWith(
                   selectedSectionGroup: sectionGroupFor(
                     ctx.sectionGroups,
-                    work.primary.value.type ?? '',
+                    work.primary.value.kind,
                   ),
                 ),
                 work: work,
@@ -439,7 +439,7 @@ class _AppContent extends StatelessWidget {
         :final activeCopy,
         :final returnState,
       )
-          when ctx.selectedSectionGroup.type == _sectionTypeShow =>
+          when ctx.selectedSectionGroup.kind == MediaKind.show =>
         _drawer(
           state: state,
           ctx: ctx,
@@ -451,58 +451,50 @@ class _AppContent extends StatelessWidget {
             onToggleWatchlist: controller.toggleWatchlist,
             resolveNextEpisode: () async {
               try {
-                return await PlexServerApi(
-                  activeCopy.server,
-                  controller.clientIdentifier,
-                ).fetchNextEpisodeForShow(activeCopy.value.ratingKey);
+                return await controller.clientFor(activeCopy.server)
+                    .fetchNextEpisodeForShow(activeCopy.value.id);
               } catch (_) {
                 return null;
               }
             },
             loadDetail: () async {
               try {
-                return await PlexServerApi(
-                  activeCopy.server,
-                  controller.clientIdentifier,
-                ).fetchMovieDetail(activeCopy.value.ratingKey);
+                return await controller.clientFor(activeCopy.server)
+                    .fetchDetail(activeCopy.value.id);
               } catch (_) {
                 return null;
               }
             },
             loadSeasons: () async {
               try {
-                return await PlexServerApi(
-                  activeCopy.server,
-                  controller.clientIdentifier,
-                ).fetchSeasons(activeCopy.value.ratingKey);
+                return await controller.clientFor(activeCopy.server)
+                    .fetchSeasons(activeCopy.value.id);
               } catch (_) {
                 return const [];
               }
             },
-            loadEpisodes: (seasonRatingKey) async {
+            loadEpisodes: (seasonId) async {
               try {
-                return await PlexServerApi(
-                  activeCopy.server,
-                  controller.clientIdentifier,
-                ).fetchEpisodes(seasonRatingKey);
+                return await controller.clientFor(activeCopy.server)
+                    .fetchEpisodes(seasonId);
               } catch (_) {
                 return const [];
               }
             },
-            onPlay: (targetRatingKey) => controller.playMovie(
+            onPlay: (targetItemId) => controller.playMovie(
               ctx,
               activeCopy.server,
-              targetRatingKey,
+              targetItemId,
               state,
             ),
-            onWatchTogether: (targetRatingKey) =>
+            onWatchTogether: (targetItemId) =>
                 controller.openWatchTogetherStart(
                   ctx: ctx,
                   server: activeCopy.server,
                   returnState: state,
                   roomTitle: activeCopy.value.title,
                   thumb: activeCopy.value.thumb,
-                  targetRatingKey: targetRatingKey,
+                  targetItemId: targetItemId,
                 ),
             onSelectEpisode: (episode) => controller.returnTo(
               EpisodeDetail(
@@ -547,26 +539,22 @@ class _AppContent extends StatelessWidget {
             onToggleWatchlist: controller.toggleWatchlist,
             loadDetail: () async {
               try {
-                return await PlexServerApi(
-                  activeCopy.server,
-                  controller.clientIdentifier,
-                ).fetchMovieDetail(activeCopy.value.ratingKey);
+                return await controller.clientFor(activeCopy.server)
+                    .fetchDetail(activeCopy.value.id);
               } catch (_) {
                 return null;
               }
             },
             loadRelatedHubs: () async {
               try {
-                return await PlexServerApi(
-                  activeCopy.server,
-                  controller.clientIdentifier,
-                ).fetchRelatedHubs(activeCopy.value.ratingKey);
+                return await controller.clientFor(activeCopy.server)
+                    .fetchRelatedHubs(activeCopy.value.id);
               } catch (_) {
                 return const [];
               }
             },
             onSelectRelated: (item) {
-              final newWork = FoldedWork<PlexLibraryItem>(item.guid, [
+              final newWork = FoldedWork<MediaItem>(item.guid, [
                 Sourced(
                   libraryItemFrom(item),
                   activeCopy.server,
@@ -590,26 +578,26 @@ class _AppContent extends StatelessWidget {
                 returnState: state,
               ),
             ),
-            onPlay: (targetRatingKey, at) => controller.playMovie(
+            onPlay: (targetItemId, at) => controller.playMovie(
               ctx,
               activeCopy.server,
-              targetRatingKey,
+              targetItemId,
               state,
               resumeAtMs: at,
             ),
-            onWatchTogether: (targetRatingKey) =>
+            onWatchTogether: (targetItemId) =>
                 controller.openWatchTogetherStart(
                   ctx: ctx,
                   server: activeCopy.server,
                   returnState: state,
                   roomTitle: activeCopy.value.title,
                   thumb: activeCopy.value.thumb,
-                  targetRatingKey: targetRatingKey,
+                  targetItemId: targetItemId,
                 ),
-            onRestartSolo: (targetRatingKey) => controller.playMovie(
+            onRestartSolo: (targetItemId) => controller.playMovie(
               ctx,
               activeCopy.server,
-              targetRatingKey,
+              targetItemId,
               state,
               fromStart: true,
             ),
@@ -637,7 +625,7 @@ class _AppContent extends StatelessWidget {
                 ctx: ctx.copyWith(
                   selectedSectionGroup: sectionGroupFor(
                     ctx.sectionGroups,
-                    work.primary.value.type ?? '',
+                    work.primary.value.kind,
                   ),
                 ),
                 work: work,
@@ -662,7 +650,7 @@ class _AppContent extends StatelessWidget {
             collection: collection.value,
             items: items,
             onSelectItem: (item) {
-              final work = FoldedWork<PlexLibraryItem>(item.guid, [
+              final work = FoldedWork<MediaItem>(item.guid, [
                 Sourced(item, collection.server, collection.reachability),
               ]);
               controller.returnTo(
@@ -695,10 +683,8 @@ class _AppContent extends StatelessWidget {
             onToggleWatchlist: controller.toggleWatchlist,
             loadShowGuid: () async {
               try {
-                return (await PlexServerApi(
-                  activeCopy.server,
-                  controller.clientIdentifier,
-                ).fetchMovieDetail(activeCopy.value.ratingKey)).guid;
+                return (await controller.clientFor(activeCopy.server)
+                    .fetchDetail(activeCopy.value.id)).guid;
               } catch (_) {
                 return null;
               }
@@ -706,17 +692,17 @@ class _AppContent extends StatelessWidget {
             onPlay: () => controller.playMovie(
               ctx,
               activeCopy.server,
-              episode.ratingKey,
+              episode.id,
               state,
-              showRatingKey: activeCopy.value.ratingKey,
+              showId: activeCopy.value.id,
             ),
             onPlayFromStart: () => controller.playMovie(
               ctx,
               activeCopy.server,
-              episode.ratingKey,
+              episode.id,
               state,
               fromStart: true,
-              showRatingKey: activeCopy.value.ratingKey,
+              showId: activeCopy.value.id,
             ),
             onWatchTogether: () => controller.openWatchTogetherStart(
               ctx: ctx,
@@ -724,7 +710,7 @@ class _AppContent extends StatelessWidget {
               returnState: state,
               roomTitle: _episodeRoomTitle(activeCopy.value, episode),
               thumb: episode.thumb,
-              targetRatingKey: episode.ratingKey,
+              targetItemId: episode.id,
             ),
             onRestartTogether: () => controller.openWatchTogetherStart(
               ctx: ctx,
@@ -732,7 +718,7 @@ class _AppContent extends StatelessWidget {
               returnState: state,
               roomTitle: _episodeRoomTitle(activeCopy.value, episode),
               thumb: episode.thumb,
-              targetRatingKey: episode.ratingKey,
+              targetItemId: episode.id,
               defaultRestart: true,
             ),
           ),
@@ -745,7 +731,7 @@ class _AppContent extends StatelessWidget {
         :final returnState,
         :final roomTitle,
         :final thumb,
-        :final targetRatingKey,
+        :final targetItemId,
         :final defaultRestart,
       ) =>
         Stack(
@@ -778,7 +764,7 @@ class _AppContent extends StatelessWidget {
                       returnState: returnState,
                       roomTitle: roomTitle,
                       thumb: thumb,
-                      targetRatingKey: targetRatingKey,
+                      targetItemId: targetItemId,
                       restart: restart,
                     ),
                 onCancel: () => controller.returnTo(returnState),
@@ -795,7 +781,7 @@ class _AppContent extends StatelessWidget {
         :final isHost,
       ) =>
         LobbyScreen(
-          key: ValueKey('lobby-${detail.ratingKey}'),
+          key: ValueKey('lobby-${detail.id}'),
           server: state.server,
           detail: detail,
           localUsername: controller.localAccount?.username ?? 'You',
@@ -826,13 +812,12 @@ class _AppContent extends StatelessWidget {
         :final detail,
         :final returnState,
         :final relay,
-        :final showRatingKey,
+        :final showId,
       ) =>
         PlayerScreen(
-          key: ValueKey('player-${detail.ratingKey}'),
-          server: state.server,
+          key: ValueKey('player-${detail.id}'),
+          client: controller.clientFor(state.server),
           detail: detail,
-          clientIdentifier: controller.clientIdentifier,
           relay: relay,
           localName: controller.localAccount?.username ?? 'You',
           localAvatarUrl: controller.localAccount?.thumb,
@@ -848,23 +833,21 @@ class _AppContent extends StatelessWidget {
             positionMs: positionMs,
           ),
           // Screen 16 — only real when we actually know the show (see
-          // Player.showRatingKey's doc comment: null for movies, and the
+          // Player.showId's doc comment: null for movies, and the
           // "next episode" lookup needs a LibraryContext to actually play
           // it, which only exists when returnState is the EpisodeDetail we
           // came from).
-          loadNextEpisode: showRatingKey == null
+          loadNextEpisode: showId == null
               ? null
-              : () => PlexServerApi(
-                  state.server,
-                  controller.clientIdentifier,
-                ).fetchNextEpisodeForShow(showRatingKey),
+              : () => controller.clientFor(state.server)
+                  .fetchNextEpisodeForShow(showId),
           onPlayNext: returnState is EpisodeDetail
               ? (next) => controller.playMovie(
                   returnState.ctx,
                   state.server,
-                  next.ratingKey,
+                  next.id,
                   returnState,
-                  showRatingKey: showRatingKey,
+                  showId: showId,
                 )
               : null,
         ),
@@ -939,19 +922,19 @@ class _AppContent extends StatelessWidget {
               controller.selectOnDeckLike(home, item),
           onSelectSuggestion: (item) => controller.selectOnDeckLike(home, item),
           onHeroWatchTogether: (item) => controller.openWatchTogetherStart(
-            ctx: emptyCtx(sectionGroupFor(home.sectionGroups, item.value.type)),
+            ctx: emptyCtx(sectionGroupFor(home.sectionGroups, item.value.kind)),
             server: item.server,
             returnState: home,
             roomTitle: _episodeRoomTitleFromOnDeck(item.value),
             thumb: item.value.thumb,
-            targetRatingKey: item.value.ratingKey,
+            targetItemId: item.value.id,
           ),
         ),
       ),
     );
   }
 
-  String _episodeRoomTitleFromOnDeck(PlexOnDeckItem item) {
+  String _episodeRoomTitleFromOnDeck(MediaItem item) {
     final season = item.parentIndex;
     final ep = item.index;
     final show = item.grandparentTitle;
@@ -1018,50 +1001,40 @@ class _AppContent extends StatelessWidget {
   Future<ReachableServer?> _probeServer(PlexResource resource) =>
       PlexResourcesApi(controller.clientIdentifier).connectToResource(resource);
 
-  Future<int?> _loadLibraryCount(PlexServer server) async =>
-      (await PlexServerApi(
-        server,
-        controller.clientIdentifier,
-      ).fetchSections()).length;
+  Future<int?> _loadLibraryCount(MediaServer server) async =>
+      (await controller.clientFor(server).fetchLibraries()).length;
 
   /// Fans a search query out across every connected server concurrently —
   /// DESIGN.md screen 05 is explicitly "global across servers", grouped and
   /// labelled by which server each result came from — then folds duplicate
   /// works into one card, same as every other merge boundary.
-  Future<List<FoldedWork<PlexOnDeckItem>>> _fanOutSearch(
+  Future<List<FoldedWork<MediaItem>>> _fanOutSearch(
     LibraryContext ctx,
     String query,
   ) async {
     final results = await Future.wait(
       ctx.servers.map((cs) async {
         try {
-          final hits = await PlexServerApi(
-            cs.server,
-            controller.clientIdentifier,
-          ).search(query);
+          final hits = await controller.clientFor(cs.server).search(query);
           return hits
               .map((i) => Sourced(i, cs.server, cs.reachability))
               .toList();
         } catch (_) {
-          return const <Sourced<PlexOnDeckItem>>[];
+          return const <Sourced<MediaItem>>[];
         }
       }),
     );
-    return foldByGuid(
-      results.expand((l) => l).toList(),
-      guidOf: (i) => i.guid,
-      alternateIdsOf: (i) => i.guids.map((g) => g.id).toList(),
-    );
+    return foldWorks(results.expand((l) => l).toList());
   }
 
-  /// Converts every copy of a [FoldedWork]&lt;PlexOnDeckItem&gt; through
+  /// Converts every copy of a [FoldedWork]&lt;MediaItem&gt; through
   /// [convert] into a library-item-shaped [FoldedWork], preserving the
   /// fold's guid and copy set — mirrors the same-named private helper in
   /// app_root_controller.dart, duplicated here since that one is
   /// library-private.
-  FoldedWork<PlexLibraryItem> _libraryWorkFrom(
-    FoldedWork<PlexOnDeckItem> work,
-    PlexLibraryItem Function(PlexOnDeckItem) convert,
+  FoldedWork<MediaItem> _libraryWorkFrom(
+    FoldedWork<MediaItem> work,
+    MediaItem Function(MediaItem) convert,
   ) => FoldedWork(
     work.guid,
     work.copies
@@ -1072,25 +1045,23 @@ class _AppContent extends StatelessWidget {
   /// Same fan-out shape as items themselves (_fetchGroupItems in the
   /// controller) — collections aren't foldable works (no guid), so they're
   /// merged across servers but never deduplicated.
-  Future<List<Sourced<PlexCollection>>> _fetchGroupCollections(
+  Future<List<Sourced<MediaItem>>> _fetchGroupCollections(
     LibraryContext ctx,
   ) async {
     final results = await Future.wait(
       ctx.servers.map((cs) async {
         final section = ctx.selectedSectionGroup.sectionOn(
-          cs.server.machineIdentifier,
+          cs.server.id,
         );
-        if (section == null) return const <Sourced<PlexCollection>>[];
+        if (section == null) return const <Sourced<MediaItem>>[];
         try {
-          final collections = await PlexServerApi(
-            cs.server,
-            controller.clientIdentifier,
-          ).fetchCollections(section.key);
+          final collections = await controller.clientFor(cs.server)
+              .fetchCollections(section.id);
           return collections
               .map((c) => Sourced(c, cs.server, cs.reachability))
               .toList();
         } catch (_) {
-          return const <Sourced<PlexCollection>>[];
+          return const <Sourced<MediaItem>>[];
         }
       }),
     );
@@ -1099,14 +1070,12 @@ class _AppContent extends StatelessWidget {
 
   void _openCollection(
     LibraryContext ctx,
-    Sourced<PlexCollection> collection,
+    Sourced<MediaItem> collection,
     AppState returnState,
   ) async {
     try {
-      final items = await PlexServerApi(
-        collection.server,
-        controller.clientIdentifier,
-      ).fetchCollectionItems(collection.value.ratingKey);
+      final items = await controller.clientFor(collection.server)
+          .fetchCollectionItems(collection.value.id);
       controller.returnTo(
         CollectionDetail(
           ctx: ctx,
@@ -1127,7 +1096,7 @@ class _AppContent extends StatelessWidget {
     }
   }
 
-  String _episodeRoomTitle(PlexLibraryItem show, PlexEpisode episode) {
+  String _episodeRoomTitle(MediaItem show, MediaItem episode) {
     final season = episode.parentIndex;
     final ep = episode.index;
     if (season != null && ep != null) return '${show.title} · S${season}E$ep';
@@ -1142,15 +1111,15 @@ class _AppContent extends StatelessWidget {
   /// comment on why this is wired at the call site, not stored on the
   /// state, so this scope limit stays a local decision rather than a
   /// structural one).
-  Sourced<PlexLibraryItem>? _alternateSourceFor(
+  Sourced<MediaItem>? _alternateSourceFor(
     AppState returnState,
-    PlexServer failedServer,
+    MediaServer failedServer,
   ) {
     if (returnState is! MovieDetail) return null;
     return returnState.work.copies.firstWhereOrNull(
       (c) =>
           c.reachability != ServerReachability.unreachable &&
-          c.server.machineIdentifier != failedServer.machineIdentifier,
+          c.server.id != failedServer.id,
     );
   }
 
@@ -1167,12 +1136,9 @@ class _AppContent extends StatelessWidget {
       );
 
   /// Screens 03d and 25: what one copy would be to play here.
-  Future<CopyFacts> _copyFacts(Sourced<PlexLibraryItem> copy) async =>
+  Future<CopyFacts> _copyFacts(Sourced<MediaItem> copy) async =>
       CopyFacts.of(
-        await PlexServerApi(
-          copy.server,
-          controller.clientIdentifier,
-        ).fetchMovieDetail(copy.value.ratingKey),
+        await controller.clientFor(copy.server).fetchDetail(copy.value.id),
         forceBurn: controller.currentSettings.forceBurnSubtitles,
       );
 }

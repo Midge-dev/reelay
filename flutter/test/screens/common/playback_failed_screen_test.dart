@@ -1,7 +1,7 @@
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:reelay/data/plex/plex_models.dart';
-import 'package:reelay/data/plex/plex_resources_api.dart';
+import 'package:reelay/data/media/media_models.dart';
+import 'package:reelay/data/media/media_server.dart';
 import 'package:reelay/screens/common/playback_failed_screen.dart';
 import 'package:reelay/state/copy_facts.dart';
 import 'package:reelay/state/duplicate_fold.dart';
@@ -33,8 +33,8 @@ Future<void> _pump(
         alternate: alternateServerName == null
             ? null
             : Sourced(
-                const PlexLibraryItem(ratingKey: '9', title: 'The Quiet Coast'),
-                PlexServer(name: alternateServerName, baseUrl: 'http://l', accessToken: 't'),
+                const MediaItem(id: '9', title: 'The Quiet Coast'),
+                MediaServer(name: alternateServerName, baseUrl: 'http://l', accessToken: 't'),
                 ServerReachability.local,
               ),
         loadFacts: (_) async => const CopyFacts(picture: '1080p', directPlay: true),

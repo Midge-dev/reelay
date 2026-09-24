@@ -122,4 +122,11 @@ void main() {
     expect(detail.writers.single.tag, 'Jon Spaihts');
     expect(detail.reviews.single.text, 'Great film');
   });
+
+  test('home-video libraries (agent *.none) are not browsable', () {
+    expect(const PlexSection(key: '1', title: 'Home Videos', type: 'movie', agent: 'com.plexapp.agents.none').isBrowsable, isFalse);
+    expect(const PlexSection(key: '2', title: 'Other', type: 'movie', agent: 'tv.plex.agents.none').isBrowsable, isFalse);
+    expect(const PlexSection(key: '3', title: 'Movies', type: 'movie', agent: 'tv.plex.agents.movie').isBrowsable, isTrue);
+    expect(const PlexSection(key: '4', title: 'Music', type: 'artist').isBrowsable, isFalse);
+  });
 }

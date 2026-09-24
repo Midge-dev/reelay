@@ -1,10 +1,11 @@
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 
+import '../../data/media/artwork_url.dart';
+import '../../data/media/media_models.dart';
+import '../../data/media/media_server.dart';
 import '../../theme/phosphor_icons.dart';
 
-import '../../data/plex/plex_image_url.dart';
-import '../../data/plex/plex_models.dart';
 import '../../focus/back_handler.dart';
 import '../../kit/button.dart';
 import '../../kit/icon.dart';
@@ -25,9 +26,9 @@ SurfaceBorder get _restartButtonBorder => SurfaceBorder(
 
 /// One episode's page: play, resume, Watch Together.
 class EpisodeDetailScreen extends StatefulWidget {
-  final PlexServer server;
+  final MediaServer server;
   final String showTitle;
-  final PlexEpisode episode;
+  final MediaItem episode;
   final VoidCallback onBack;
   final VoidCallback onPlay;
   final VoidCallback onPlayFromStart;
@@ -72,7 +73,7 @@ class _EpisodeDetailScreenState extends State<EpisodeDetailScreen> {
   @override
   void didUpdateWidget(covariant EpisodeDetailScreen oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.episode.ratingKey != widget.episode.ratingKey) {
+    if (oldWidget.episode.id != widget.episode.id) {
       setState(() => _showGuid = null);
       WidgetsBinding.instance.addPostFrameCallback(
         (_) => _primaryFocus.requestFocus(),
@@ -134,7 +135,7 @@ class _EpisodeDetailScreenState extends State<EpisodeDetailScreen> {
           child: Stack(
             fit: StackFit.expand,
             children: [
-              Artwork(imageUrl: PlexImageUrl.of(widget.server, episode.thumb)),
+              Artwork(imageUrl: ArtworkUrl.of(widget.server, episode.thumb)),
               // scrim.edge — the ground colour holds solid under the text
               // column and fades away toward the artwork. DESIGN.md #2.
               Positioned.fill(

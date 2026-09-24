@@ -1,11 +1,12 @@
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 
+import '../../data/media/media_models.dart';
+import '../../data/media/media_server.dart';
 import '../../theme/phosphor_icons.dart';
 
 import '../../data/plex/plex_auth_api.dart';
 import '../../data/plex/plex_models.dart';
-import '../../data/plex/plex_resources_api.dart' show ReachableServer;
 import '../../data/settings/app_settings.dart' show RelayEntry;
 import '../../kit/focusable_surface.dart';
 import '../../kit/icon.dart';
@@ -22,8 +23,6 @@ import '../common/reelay_mark.dart';
 import '../home/watch_together_row.dart' show MergedRoom;
 import 'rooms_panel.dart';
 import 'server_switcher_panel.dart';
-
-const _sectionTypeShow = 'show';
 
 // Screens 01-25's rail: 80 wide, 52x52 items 6 apart, the logo mark 32 du
 // with 22 below it, 30 du top/bottom padding, a 40 du avatar at the foot.
@@ -99,7 +98,7 @@ class AppNavigationDrawer extends StatefulWidget {
   final Set<String> disabledServerIds;
   final Future<List<PlexResource>> Function() loadServers;
   final Future<ReachableServer?> Function(PlexResource resource) probeServer;
-  final Future<int?> Function(PlexServer server) loadLibraryCount;
+  final Future<int?> Function(MediaServer server) loadLibraryCount;
   final void Function(PlexResource resource, bool enabled) onToggleServer;
   final Widget child;
 
@@ -499,12 +498,12 @@ class _AppNavigationDrawerState extends State<AppNavigationDrawer> {
                                   for (final section in widget.sectionGroups)
                                     _SidebarItem(
                                       key: ValueKey(section.key),
-                                      icon: section.type == _sectionTypeShow
+                                      icon: section.kind == MediaKind.show
                                           ? PhosphorIconsRegular
                                                 .televisionSimple
                                           : PhosphorIconsRegular.filmSlate,
                                       selectedIcon:
-                                          section.type == _sectionTypeShow
+                                          section.kind == MediaKind.show
                                           ? PhosphorIconsFill.televisionSimple
                                           : PhosphorIconsFill.filmSlate,
                                       label: section.title,

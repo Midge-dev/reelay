@@ -18,8 +18,18 @@ and test, `CLAUDE.md`.
     `kit/focusable_surface.dart`.
   - `focus/` — `BackHandler` (one handler answers each Back press),
     screen memory, D-pad long-press, row-end stop.
-  - `data/plex/` — Plex API clients and models; `state/duplicate_fold.dart`
-    folds the same title across servers into one work.
+  - `data/media/` — the backend-neutral seam: `MediaServer`, the content
+    models (`MediaItem`, `MediaDetail`, …) and `MediaServerClient`, the one
+    interface every screen, state object and the player talk to. Build a
+    client with `MediaServerClient.forServer`, which picks the backend.
+  - `data/plex/` — the Plex backend: `PlexClient` implements
+    `MediaServerClient` and maps Plex's wire models (`plex_models.dart`)
+    into the neutral ones (`plex_mappers.dart`). Nothing outside `data/`
+    touches a Plex content type; the Plex *account* layer (sign-in,
+    resources, watchlist) is still used directly by `AppRootController`.
+  - `state/duplicate_fold.dart` folds the same title across servers into
+    one work, on the provider ids (`imdb://`, `tmdb://`, `tvdb://`) every
+    backend reports the same way.
   - `sync/` + `playback/` — the Watch Together client, sync model and player
     glue.
 - `relay/` — the Watch Together WebSocket relay (Node.js, `server.js`) and

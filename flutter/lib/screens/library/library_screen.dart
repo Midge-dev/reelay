@@ -2,9 +2,9 @@ import 'package:collection/collection.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 
-import '../../data/plex/plex_image_url.dart';
-import '../../data/plex/plex_models.dart';
-import '../../data/plex/plex_resources_api.dart' show ReachableServer;
+import '../../data/media/artwork_url.dart';
+import '../../data/media/media_models.dart';
+import '../../data/media/media_server.dart';
 import '../../focus/screen_memory.dart';
 import '../../kit/button.dart';
 import '../../kit/focusable_surface.dart';
@@ -40,7 +40,7 @@ class _LibraryView {
   final int? decade;
   final DateAddedBucket? dateAdded;
   final SortMode sortMode;
-  final List<Sourced<PlexCollection>>? collections;
+  final List<Sourced<MediaItem>>? collections;
   final String query;
 
   const _LibraryView({
@@ -69,10 +69,10 @@ enum _FilterKind { genre, decade, added, sort }
 class LibraryScreen extends StatefulWidget {
   final List<ReachableServer> servers;
   final SectionGroup selectedSectionGroup;
-  final List<FoldedWork<PlexLibraryItem>> items;
-  final ValueChanged<FoldedWork<PlexLibraryItem>> onSelectItem;
-  final Future<List<Sourced<PlexCollection>>> Function() loadCollections;
-  final ValueChanged<Sourced<PlexCollection>> onSelectCollection;
+  final List<FoldedWork<MediaItem>> items;
+  final ValueChanged<FoldedWork<MediaItem>> onSelectItem;
+  final Future<List<Sourced<MediaItem>>> Function() loadCollections;
+  final ValueChanged<Sourced<MediaItem>> onSelectCollection;
 
   const LibraryScreen({
     super.key,
@@ -95,7 +95,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
   DateAddedBucket? _dateAddedFilter;
   SortMode _sortMode = SortMode.title;
   _FilterKind? _openFilter;
-  List<Sourced<PlexCollection>>? _collections;
+  List<Sourced<MediaItem>>? _collections;
   String _searchQuery = '';
 
   final _gridScrollController = ScrollController();
@@ -200,7 +200,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
   }
 
   Future<void> _loadCollections() async {
-    List<Sourced<PlexCollection>> result;
+    List<Sourced<MediaItem>> result;
     try {
       result = await widget.loadCollections();
     } catch (_) {
@@ -255,7 +255,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
   /// note, it's "unchanged, this is purely how the filters are surfaced."
   /// This unwraps for filtering, then maps the (identity-preserved) results
   /// back to their [Sourced] wrapper for rendering.
-  List<FoldedWork<PlexLibraryItem>> _filteredItems() {
+  List<FoldedWork<MediaItem>> _filteredItems() {
     final byIdentity = {for (final s in widget.items) s.primary.value: s};
     final bareResults = applyLibraryFilters(
       items: widget.items.map((s) => s.primary.value).toList(),
@@ -268,31 +268,33 @@ class _LibraryScreenState extends State<LibraryScreen> {
     return bareResults.map((i) => byIdentity[i]!).toList();
   }
 
-  List<PlexLibraryItem> get _bareItems =>
+  List<MediaItem> get _bareItems =>
       widget.items.map((s) => s.primary.value).toList();
 
+  /// "Plex · Attic", "Plex · 2 servers" — the backend is left out when
+  /// the library spans more than one kind.
   String get _serverLabel {
     final ids = widget.selectedSectionGroup.sectionsByServerId.keys;
-    final names = ids
+    final servers = ids
         .map(
-          (id) => widget.servers
-              .firstWhereOrNull((s) => s.server.machineIdentifier == id)
-              ?.server
-              .name,
+          (id) =>
+              widget.servers.firstWhereOrNull((s) => s.server.id == id)?.server,
         )
-        .whereType<String>()
+        .whereType<MediaServer>()
         .toList();
-    if (names.length == 1) return 'Plex · ${names.single}';
-    return 'Plex · ${names.length} servers';
+    final backends = servers.map((s) => s.backend).toSet();
+    final where = servers.length == 1
+        ? servers.single.name
+        : '${servers.length} servers';
+    return backends.length == 1 ? '${backends.single.label} · $where' : where;
   }
 
   @override
   Widget build(BuildContext context) {
     _rememberView();
     final bareItems = widget.items.map((s) => s.primary.value).toList();
-    final availableGenres =
-        bareItems.expand((i) => i.genres.map((g) => g.tag)).toSet().toList()
-          ..sort();
+    final availableGenres = bareItems.expand((i) => i.genres).toSet().toList()
+      ..sort();
     final availableDecades =
         bareItems.map(decadeOf).whereType<int>().toSet().toList()
           ..sort((a, b) => b.compareTo(a));
@@ -515,7 +517,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
               FilterOption(
                 label: formatGenreLabel(genre),
                 countLabel:
-                    '${_bareItems.where((i) => i.genres.any((g) => g.tag == genre)).length}',
+                    '${_bareItems.where((i) => i.genres.contains(genre)).length}',
                 applied: genre == _genreFilter,
                 dimmed: applyLibraryFilters(
                   items: _bareItems,
@@ -607,7 +609,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
     }
   }
 
-  Widget _buildTitlesGrid(List<FoldedWork<PlexLibraryItem>> results) {
+  Widget _buildTitlesGrid(List<FoldedWork<MediaItem>> results) {
     if (widget.items.isEmpty) {
       return Padding(
         padding: EdgeInsets.all(32.du(context)),
@@ -624,13 +626,12 @@ class _LibraryScreenState extends State<LibraryScreen> {
       itemCount: results.length,
       itemBuilder: (context, index) {
         final item = results[index];
-        final id =
-            '${item.primary.server.machineIdentifier}:${item.primary.value.ratingKey}';
+        final id = '${item.primary.server.id}:${item.primary.value.id}';
         return RememberFocus(
           key: ValueKey(id),
           id: 'library:$id',
           child: PosterCard(
-            imageUrl: PlexImageUrl.of(
+            imageUrl: ArtworkUrl.of(
               item.primary.server,
               item.primary.value.thumb,
             ),
@@ -794,7 +795,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
     );
   }
 
-  Widget _buildCollectionsGrid(List<Sourced<PlexCollection>>? results) {
+  Widget _buildCollectionsGrid(List<Sourced<MediaItem>>? results) {
     if (results == null) {
       return const LoadingScreen();
     }
@@ -812,17 +813,13 @@ class _LibraryScreenState extends State<LibraryScreen> {
       itemBuilder: (context, index) {
         final collection = results[index];
         final childCount = collection.value.childCount;
-        final id =
-            '${collection.server.machineIdentifier}:${collection.value.ratingKey}';
+        final id = '${collection.server.id}:${collection.value.id}';
         return RememberFocus(
           key: ValueKey(id),
           id: 'collection:$id',
           child: PosterCard(
             stacked: true,
-            imageUrl: PlexImageUrl.of(
-              collection.server,
-              collection.value.thumb,
-            ),
+            imageUrl: ArtworkUrl.of(collection.server, collection.value.thumb),
             title: collection.value.title,
             subtitle: childCount != null
                 ? '$childCount title${childCount == 1 ? '' : 's'}'

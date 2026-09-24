@@ -1,27 +1,29 @@
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:reelay/data/plex/plex_models.dart';
+import 'package:reelay/data/media/media_models.dart';
+import 'package:reelay/data/media/media_server.dart';
+import 'package:reelay/data/plex/plex_client.dart';
 import 'package:reelay/data/settings/app_settings.dart';
 import 'package:reelay/screens/player/player_screen.dart';
 import 'package:video_player_platform_interface/video_player_platform_interface.dart';
 
 import '../../playback/fake_video_player_platform.dart';
 
-const _server = PlexServer(name: 'Loft', baseUrl: 'http://192.168.1.5:32400', accessToken: 'tok');
-const _detail = PlexMovieDetail(
-  ratingKey: '1',
+const _server = MediaServer(name: 'Loft', baseUrl: 'http://192.168.1.5:32400', accessToken: 'tok');
+const _detail = MediaDetail(
+  id: '1',
   title: 'Arrival',
   viewOffset: 60000,
   media: [
-    PlexMedia(parts: [PlexPart(id: 1, key: '/library/parts/1/file.mkv')]),
+    MediaVersion(parts: [MediaPart(id: '1', key: '/library/parts/1/file.mkv')]),
   ],
 );
 
 Future<List<(String, int)>> _pumpPlayer(
   WidgetTester tester,
   FakeVideoPlayerPlatform fake, {
-  PlexMovieDetail detail = _detail,
+  MediaDetail detail = _detail,
   AppSettings settings = const AppSettings(),
 }) async {
   VideoPlayerPlatform.instance = fake;
@@ -35,9 +37,8 @@ Future<List<(String, int)>> _pumpPlayer(
     Directionality(
       textDirection: TextDirection.ltr,
       child: PlayerScreen(
-        server: _server,
+        client: PlexClient(_server, 'client-1'),
         detail: detail,
-        clientIdentifier: 'client-1',
         settings: settings,
         onBitrateChanged: (_) {},
         onExit: () {},
@@ -110,18 +111,18 @@ void main() {
   });
 
   testWidgets('direct play starts on the audio track Plex remembered, not the file default', (tester) async {
-    const detail = PlexMovieDetail(
-      ratingKey: '1',
+    const detail = MediaDetail(
+      id: '1',
       title: 'Arrival',
       media: [
-        PlexMedia(
+        MediaVersion(
           parts: [
-            PlexPart(
-              id: 1,
+            MediaPart(
+              id: '1',
               key: '/library/parts/1/file.mkv',
               streams: [
-                PlexStream(id: 10, streamType: 2, languageCode: 'eng', displayTitle: 'English'),
-                PlexStream(id: 11, streamType: 2, languageCode: 'fre', displayTitle: 'Français', selected: true),
+                MediaStream(id: 10, kind: StreamKind.audio, languageCode: 'eng', displayTitle: 'English'),
+                MediaStream(id: 11, kind: StreamKind.audio, languageCode: 'fre', displayTitle: 'Français', selected: true),
               ],
             ),
           ],
@@ -150,16 +151,16 @@ void main() {
     addTearDown(
       () => tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(const MethodChannel('reelay/display'), null),
     );
-    const detail = PlexMovieDetail(
-      ratingKey: '1',
+    const detail = MediaDetail(
+      id: '1',
       title: 'Arrival',
       media: [
-        PlexMedia(
+        MediaVersion(
           parts: [
-            PlexPart(
-              id: 1,
+            MediaPart(
+              id: '1',
               key: '/library/parts/1/file.mkv',
-              streams: [PlexStream(id: 1, streamType: 1, frameRate: 23.976)],
+              streams: [MediaStream(id: 1, kind: StreamKind.video, frameRate: 23.976)],
             ),
           ],
         ),

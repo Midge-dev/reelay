@@ -1,7 +1,8 @@
 import 'package:flutter/widgets.dart';
 
-import '../../data/plex/plex_image_url.dart';
-import '../../data/plex/plex_models.dart';
+import '../../data/media/artwork_url.dart';
+import '../../data/media/media_models.dart';
+import '../../data/media/media_server.dart';
 import '../../focus/back_handler.dart';
 import '../../focus/dpad_long_press.dart';
 import '../../kit/scroll_peek.dart';
@@ -15,18 +16,16 @@ import '../common/artwork.dart';
 import '../common/remove_confirm_overlay.dart';
 import '../common/time_format.dart';
 
-const _typeEpisode = 'episode';
-
 /// A recently-added item's caption: a season shows its show's title.
-String recentlyAddedLabel(PlexLibraryItem item) {
+String recentlyAddedLabel(MediaItem item) {
   final parentTitle = item.parentTitle;
-  if (item.type == 'season' && parentTitle != null) return parentTitle;
+  if (item.kind == MediaKind.season && parentTitle != null) return parentTitle;
   return item.title;
 }
 
 /// "Fringe · S1E1" for an episode, the title otherwise.
-String continueWatchingLabel(PlexOnDeckItem item) {
-  if (item.type == _typeEpisode &&
+String continueWatchingLabel(MediaItem item) {
+  if (item.kind == MediaKind.episode &&
       item.grandparentTitle != null &&
       item.parentIndex != null &&
       item.index != null) {
@@ -38,16 +37,16 @@ String continueWatchingLabel(PlexOnDeckItem item) {
 /// The show name for an episode, otherwise the item's own title — the
 /// primary line on a hero or "More in progress" card. Nocturne two-line
 /// captions split what [continueWatchingLabel] combines into one.
-String continueWatchingTitle(PlexOnDeckItem item) {
-  if (item.type == _typeEpisode && item.grandparentTitle != null)
+String continueWatchingTitle(MediaItem item) {
+  if (item.kind == MediaKind.episode && item.grandparentTitle != null)
     return item.grandparentTitle!;
   return item.title;
 }
 
 /// "S3 E1 · 38 min left" — the secondary line under [continueWatchingTitle].
-String continueWatchingSubtitle(PlexOnDeckItem item) {
+String continueWatchingSubtitle(MediaItem item) {
   final parts = <String>[];
-  if (item.type == _typeEpisode &&
+  if (item.kind == MediaKind.episode &&
       item.parentIndex != null &&
       item.index != null) {
     parts.add('S${item.parentIndex} E${item.index}');
@@ -61,7 +60,7 @@ String continueWatchingSubtitle(PlexOnDeckItem item) {
 }
 
 /// How far through [item] you are, 0–1.
-double progressFraction(PlexOnDeckItem item) {
+double progressFraction(MediaItem item) {
   final duration = item.duration;
   if (duration == null || duration <= 0) return 0;
   final fraction = (item.viewOffset ?? 0) / duration;
@@ -73,8 +72,8 @@ double progressFraction(PlexOnDeckItem item) {
 /// the confirm overlay's own "swallow the trailing release" guard lives in
 /// RemoveConfirmOverlay itself (see that file's doc comment for why).
 class WatchlistPoster extends StatefulWidget {
-  final PlexServer server;
-  final PlexWatchlistItem entry;
+  final MediaServer server;
+  final MediaItem entry;
   final VoidCallback onClick;
   final VoidCallback onRemove;
   final FocusNode? focusNode;
@@ -181,7 +180,7 @@ class _WatchlistPosterState extends State<WatchlistPoster> {
                         fit: StackFit.expand,
                         children: [
                           Artwork(
-                            imageUrl: PlexImageUrl.of(
+                            imageUrl: ArtworkUrl.of(
                               widget.server,
                               widget.entry.thumb,
                             ),
@@ -223,7 +222,7 @@ class _WatchlistPosterState extends State<WatchlistPoster> {
 /// the same long-press-to-remove pattern as WatchlistPoster, plus a
 /// progress bar and a focus-scale animation.
 class ContinueWatchingPoster extends StatefulWidget {
-  final FoldedWork<PlexOnDeckItem> item;
+  final FoldedWork<MediaItem> item;
   final VoidCallback onResume;
   final VoidCallback onRemove;
   final FocusNode? focusNode;
@@ -348,7 +347,7 @@ class _ContinueWatchingPosterState extends State<ContinueWatchingPoster> {
                           fit: StackFit.expand,
                           children: [
                             Artwork(
-                              imageUrl: PlexImageUrl.of(
+                              imageUrl: ArtworkUrl.of(
                                 active.server,
                                 value.thumb,
                               ),

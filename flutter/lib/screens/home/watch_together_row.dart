@@ -2,8 +2,8 @@ import 'package:flutter/physics.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 
-import '../../data/plex/plex_image_url.dart';
-import '../../data/plex/plex_models.dart';
+import '../../data/media/artwork_url.dart';
+import '../../data/media/media_server.dart';
 import '../../data/settings/app_settings.dart';
 import '../../focus/row_end_stop.dart';
 import '../../kit/button.dart';
@@ -30,7 +30,7 @@ class MergedRoom {
 
 /// Home's row of live Watch Together rooms.
 class WatchTogetherRow extends StatelessWidget {
-  final PlexServer server;
+  final MediaServer server;
   final List<MergedRoom> rooms;
   final String? myRoomId;
   final Set<String> hostedRoomIds;
@@ -163,7 +163,7 @@ RoundedRectangleBorder _roomCardShape(BuildContext context) =>
 /// itself into view on focus via Scrollable.ensureVisible — Flutter's
 /// Scrollable doesn't auto-scroll on descendant focus.
 class RoomCard extends StatefulWidget {
-  final PlexServer server;
+  final MediaServer server;
   final MergedRoom merged;
   final bool isMine;
   final bool isHosted;
@@ -282,9 +282,7 @@ class _RoomCardState extends State<RoomCard>
                 child: Stack(
                   fit: StackFit.expand,
                   children: [
-                    Artwork(
-                      imageUrl: PlexImageUrl.of(widget.server, room.thumb),
-                    ),
+                    Artwork(imageUrl: ArtworkUrl.of(widget.server, room.thumb)),
                     DecoratedBox(
                       decoration: BoxDecoration(
                         gradient: AppGradients.linear(

@@ -326,6 +326,7 @@ Map<String, dynamic> _$PlexReviewToJson(PlexReview instance) =>
 PlexMovieDetail _$PlexMovieDetailFromJson(Map<String, dynamic> json) =>
     PlexMovieDetail(
       ratingKey: json['ratingKey'] as String,
+      type: json['type'] as String?,
       title: json['title'] as String,
       thumb: json['thumb'] as String?,
       art: json['art'] as String?,
@@ -368,11 +369,17 @@ PlexMovieDetail _$PlexMovieDetailFromJson(Map<String, dynamic> json) =>
               ?.map((e) => PlexReview.fromJson(e as Map<String, dynamic>))
               .toList() ??
           [],
+      guids:
+          (json['Guid'] as List<dynamic>?)
+              ?.map((e) => PlexGuid.fromJson(e as Map<String, dynamic>))
+              .toList() ??
+          [],
     );
 
 Map<String, dynamic> _$PlexMovieDetailToJson(PlexMovieDetail instance) =>
     <String, dynamic>{
       'ratingKey': instance.ratingKey,
+      'type': instance.type,
       'title': instance.title,
       'thumb': instance.thumb,
       'art': instance.art,
@@ -395,6 +402,7 @@ Map<String, dynamic> _$PlexMovieDetailToJson(PlexMovieDetail instance) =>
       'Director': instance.directors,
       'Writer': instance.writers,
       'Review': instance.reviews,
+      'Guid': instance.guids,
     };
 
 PlexOnDeckItem _$PlexOnDeckItemFromJson(Map<String, dynamic> json) =>

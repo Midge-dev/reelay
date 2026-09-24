@@ -7,17 +7,17 @@ import 'package:flutter/widgets.dart' hide ConnectionState;
 import 'package:uuid/uuid.dart';
 import 'package:video_player/video_player.dart';
 
-import '../../data/plex/media_facts.dart';
+import '../../data/media/media_facts.dart';
+import '../../data/media/media_models.dart';
+import '../../data/media/media_server.dart';
+import '../../data/media/media_server_client.dart';
 import '../../data/plex/plex_http_client.dart';
-import '../../data/plex/plex_models.dart';
-import '../../data/plex/plex_server_api.dart';
 import '../../data/settings/app_settings.dart';
 import '../../focus/back_handler.dart';
 import '../../kit/text.dart';
 import '../../playback/audio_tracks.dart';
 import '../../playback/display_mode.dart';
 import '../../playback/playback_decision.dart';
-import '../../playback/plex_player_factory.dart';
 import '../../playback/seek_timing.dart';
 import '../../playback/timeline_reporter.dart';
 import '../../playback/video_player_synced_player.dart';
@@ -56,9 +56,9 @@ const _controlsFadeDuration = Duration(milliseconds: 200);
 /// new `VideoPlayerController`), while a subtitle change only means
 /// re-attaching a `ClosedCaptionFile` on the *existing* controller.
 class PlayerScreen extends StatefulWidget {
-  final PlexServer server;
-  final PlexMovieDetail detail;
-  final String clientIdentifier;
+  /// The server [detail] plays from.
+  final MediaServerClient client;
+  final MediaDetail detail;
   final RelayClient? relay;
   final AppSettings settings;
   final ValueChanged<int> onBitrateChanged;
@@ -68,9 +68,9 @@ class PlayerScreen extends StatefulWidget {
   /// reason for screen 25, and where to pick up again.
   final void Function(String reason, int positionMs) onFailed;
   // Screen 16 — both null when playing a movie or when the show context
-  // isn't available (see Player.showRatingKey's doc comment).
-  final Future<PlexOnDeckItem?> Function()? loadNextEpisode;
-  final ValueChanged<PlexOnDeckItem>? onPlayNext;
+  // isn't available (see Player.showId's doc comment).
+  final Future<MediaItem?> Function()? loadNextEpisode;
+  final ValueChanged<MediaItem>? onPlayNext;
 
   /// Who this television is in a Watch Together room (its presence).
   final String localName;
@@ -78,9 +78,8 @@ class PlayerScreen extends StatefulWidget {
 
   const PlayerScreen({
     super.key,
-    required this.server,
+    required this.client,
     required this.detail,
-    required this.clientIdentifier,
     this.relay,
     required this.settings,
     required this.onBitrateChanged,
@@ -91,6 +90,8 @@ class PlayerScreen extends StatefulWidget {
     this.localName = 'You',
     this.localAvatarUrl,
   });
+
+  MediaServer get server => client.server;
 
   @override
   State<PlayerScreen> createState() => _PlayerScreenState();
@@ -104,7 +105,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
   final _sessionIdentifier = const Uuid().v4();
   late final Dio _captionClient;
 
-  late PlexPart? _resolvedPart;
+  late MediaPart? _resolvedPart;
   List<AudioOption> _audioOptions = const [];
   int? _audioStreamId;
   bool _failed = false;
@@ -152,7 +153,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
   // clearing _upNextItem) is what actually suppresses it, since the
   // trigger check would otherwise re-show it the very next tick.
   static const _upNextTriggerMs = 40000;
-  PlexOnDeckItem? _upNextItem;
+  MediaItem? _upNextItem;
   bool _upNextLoadAttempted = false;
   bool _upNextDismissed = false;
 
@@ -188,11 +189,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
   @override
   void initState() {
     super.initState();
-    _reporter = TimelineReporter(
-      widget.server,
-      widget.clientIdentifier,
-      _sessionIdentifier,
-    );
+    _reporter = TimelineReporter(widget.client, _sessionIdentifier);
     _captionClient = plexHttpClient();
 
     final media = widget.detail.media.isNotEmpty
@@ -287,7 +284,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
       DirectPlay() => decision.part.id,
       // Audio too: a transcode carries one audio track, so changing it
       // means a new stream. Direct play switches in the player instead.
-      Transcode() => (decision.ratingKey, maxVideoBitrateKbps, _audioStreamId),
+      Transcode() => (decision.itemId, maxVideoBitrateKbps, _audioStreamId),
     };
   }
 
@@ -307,11 +304,10 @@ class _PlayerScreenState extends State<PlayerScreen> {
     final generation = ++_playerGeneration;
     await _selectServerStreams();
     if (!mounted || generation != _playerGeneration) return;
-    final url = PlexPlayerFactory.mediaUrl(
-      widget.server,
+    final url = mediaUrl(
+      widget.client,
       _decision,
       _maxVideoBitrateKbps,
-      clientIdentifier: widget.clientIdentifier,
       sessionIdentifier: _sessionIdentifier,
       offsetMs: startPositionMs,
     );
@@ -335,7 +331,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
       return;
     }
     // Transcode already starts the stream at startPositionMs via the url's
-    // offset (see PlexPlayerFactory.transcodeUrl) — seeking again here would
+    // offset (see MediaServerClient.transcodeUrl) — seeking again here would
     // target a position the transcode session never produced. Direct play
     // serves the whole original file, so it still needs the explicit seek.
     if (startPositionMs > 0 && _decision is DirectPlay) {
@@ -376,7 +372,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
     final part = _resolvedPart;
     if (part == null || decision is! Transcode) return;
     try {
-      await PlexServerApi(widget.server, widget.clientIdentifier).selectStreams(
+      await widget.client.selectStreams(
         part.id,
         audioStreamId: _audioOptions.length > 1 ? _audioStreamId : null,
         subtitleStreamId: decision.subtitleStreamId,
@@ -386,9 +382,9 @@ class _PlayerScreenState extends State<PlayerScreen> {
     }
   }
 
-  /// Direct play: point the player at [_audioStreamId] — Plex's remembered
-  /// track on start, or the one just picked. Leaves the player's own
-  /// choice alone when the tracks can't be matched up safely.
+  /// Direct play: point the player at [_audioStreamId] — the server's
+  /// remembered track on start, or the one just picked. Leaves the player's
+  /// own choice alone when the tracks can't be matched up safely.
   Future<void> _applyPlayerAudio(VideoPlayerController controller) async {
     final streamId = _audioStreamId;
     if (_audioOptions.length < 2 || streamId == null) return;
@@ -414,10 +410,10 @@ class _PlayerScreenState extends State<PlayerScreen> {
     if (_decision is DirectPlay) {
       final controller = _controller;
       if (controller != null) unawaited(_applyPlayerAudio(controller));
-      // Remember it on the server too, as Plex Web would.
+      // Remember it on the server too, as the server's own apps would.
       if (part != null) {
         unawaited(
-          PlexServerApi(widget.server, widget.clientIdentifier)
+          widget.client
               .selectStreams(part.id, audioStreamId: streamId)
               .catchError((_) {}),
         );
@@ -453,8 +449,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
   }
 
   Future<ClosedCaptionFile> _fetchCaptionFile(ExternalSubtitle source) async {
-    final url =
-        '${widget.server.baseUrl}${source.key}?X-Plex-Token=${widget.server.accessToken}';
+    final url = widget.client.subtitleUrl(source.key);
     final response = await _captionClient.get<String>(
       url,
       options: Options(responseType: ResponseType.plain),
@@ -526,11 +521,13 @@ class _PlayerScreenState extends State<PlayerScreen> {
   Future<void> _reportProgress() async {
     final controller = _controller;
     if (controller == null) return;
-    final state = controller.value.isPlaying ? 'playing' : 'paused';
+    final state = controller.value.isPlaying
+        ? PlaybackReportState.playing
+        : PlaybackReportState.paused;
     final duration =
         widget.detail.duration ?? controller.value.duration.inMilliseconds;
     await _reporter.report(
-      widget.detail.ratingKey,
+      widget.detail.id,
       state,
       controller.value.position.inMilliseconds,
       duration,
@@ -694,7 +691,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
   );
 
   /// The file direct-played but this TV couldn't decode it (an HEVC 10-bit
-  /// or TrueHD/DTS file the Shield's player won't take, say): have Plex
+  /// or TrueHD/DTS file the Shield's player won't take, say): have the server
   /// transcode it instead, once, from the same spot. False when there's
   /// nothing left to fall back to — already transcoding, or tried.
   bool _fallBackToTranscode(int positionMs) {
@@ -712,7 +709,12 @@ class _PlayerScreenState extends State<PlayerScreen> {
     _sync?.stop();
     final duration = widget.detail.duration ?? _durationMs;
     unawaited(
-      _reporter.report(widget.detail.ratingKey, 'stopped', positionMs, duration),
+      _reporter.report(
+        widget.detail.id,
+        PlaybackReportState.stopped,
+        positionMs,
+        duration,
+      ),
     );
     widget.onFailed(reason, positionMs);
   }
@@ -726,8 +728,8 @@ class _PlayerScreenState extends State<PlayerScreen> {
     final position = controller?.value.position.inMilliseconds ?? 0;
     _sync?.stop();
     await _reporter.report(
-      widget.detail.ratingKey,
-      'stopped',
+      widget.detail.id,
+      PlaybackReportState.stopped,
       position,
       duration,
     );

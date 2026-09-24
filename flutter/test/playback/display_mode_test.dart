@@ -1,12 +1,12 @@
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:reelay/data/plex/plex_models.dart';
+import 'package:reelay/data/media/media_models.dart';
 import 'package:reelay/playback/display_mode.dart';
 
-const _film = PlexPart(
-  id: 1,
+const _film = MediaPart(
+  id: '1',
   key: '/library/parts/1/file.mkv',
-  streams: [PlexStream(id: 1, streamType: 1, frameRate: 23.976, width: 1920, height: 800)],
+  streams: [MediaStream(id: 1, kind: StreamKind.video, frameRate: 23.976, width: 1920, height: 800)],
 );
 
 void main() {
@@ -31,7 +31,7 @@ void main() {
   });
 
   test('a stream with no frame rate hands the display back instead', () async {
-    await DisplayMode.matchFrameRate(const PlexPart(id: 2, key: '/x', streams: []), owner: Object());
+    await DisplayMode.matchFrameRate(const MediaPart(id: '2', key: '/x', streams: []), owner: Object());
     expect(calls.single.method, 'clearFrameRate');
   });
 

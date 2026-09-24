@@ -3,9 +3,10 @@ import 'dart:math';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 
-import '../../data/plex/plex_image_url.dart';
-import '../../data/plex/media_facts.dart';
-import '../../data/plex/plex_models.dart';
+import '../../data/media/artwork_url.dart';
+import '../../data/media/media_facts.dart';
+import '../../data/media/media_models.dart';
+import '../../data/media/media_server.dart';
 import '../../focus/back_handler.dart';
 import '../../focus/screen_memory.dart';
 import '../../focus/row_end_stop.dart';
@@ -59,9 +60,9 @@ SurfaceBorder get _restartButtonBorder => SurfaceBorder(
 /// the hero scrolls away a compact header keeps the title and the resume
 /// point in view.
 class MovieDetailScreen extends StatefulWidget {
-  final PlexServer server;
-  final PlexLibraryItem movie;
-  final FoldedWork<PlexLibraryItem> work;
+  final MediaServer server;
+  final MediaItem movie;
+  final FoldedWork<MediaItem> work;
   final VoidCallback onBack;
 
   /// The ratingKey, and how far in to start — the title's progress,
@@ -71,13 +72,12 @@ class MovieDetailScreen extends StatefulWidget {
   final ValueChanged<String> onRestartSolo;
   final bool Function(String?) isOnWatchlist;
   final ValueChanged<String?> onToggleWatchlist;
-  final Future<PlexMovieDetail?> Function() loadDetail;
-  final Future<List<PlexHub>> Function() loadRelatedHubs;
-  final ValueChanged<PlexOnDeckItem> onSelectRelated;
-  final ValueChanged<PlexPerson> onSelectPerson;
-  final void Function(Sourced<PlexLibraryItem> copy, int resumeAtMs)
-  onSwitchSource;
-  final Future<CopyFacts> Function(Sourced<PlexLibraryItem> copy) loadCopyFacts;
+  final Future<MediaDetail?> Function() loadDetail;
+  final Future<List<MediaHub>> Function() loadRelatedHubs;
+  final ValueChanged<MediaItem> onSelectRelated;
+  final ValueChanged<Person> onSelectPerson;
+  final void Function(Sourced<MediaItem> copy, int resumeAtMs) onSwitchSource;
+  final Future<CopyFacts> Function(Sourced<MediaItem> copy) loadCopyFacts;
 
   /// Progress on the title carried from another copy; see MovieDetail.
   final int? resumeAtMs;
@@ -115,8 +115,8 @@ class _MovieDetailScreenState extends State<MovieDetailScreen> {
   final _scrollController = ScrollController();
   final _heroKey = GlobalKey();
 
-  PlexMovieDetail? _detail;
-  List<PlexOnDeckItem> _moreLikeThis = const [];
+  MediaDetail? _detail;
+  List<MediaItem> _moreLikeThis = const [];
   bool _showingSourcePicker = false;
   bool _compact = false;
 
@@ -128,7 +128,7 @@ class _MovieDetailScreenState extends State<MovieDetailScreen> {
     // page draws what it had at once, so the remembered scroll position
     // and focused item exist on the first frame; _load still refreshes
     // it (the resume point has usually moved).
-    final kept = ScreenMemory.read<(PlexMovieDetail?, List<PlexOnDeckItem>)>(
+    final kept = ScreenMemory.read<(MediaDetail?, List<MediaItem>)>(
       context,
       'movie.loaded',
     );
@@ -153,7 +153,7 @@ class _MovieDetailScreenState extends State<MovieDetailScreen> {
   @override
   void didUpdateWidget(covariant MovieDetailScreen oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.movie.ratingKey != widget.movie.ratingKey) {
+    if (oldWidget.movie.id != widget.movie.id) {
       setState(() {
         _detail = null;
         _moreLikeThis = const [];
@@ -190,31 +190,31 @@ class _MovieDetailScreenState extends State<MovieDetailScreen> {
       widget.loadRelatedHubs(),
     ]);
     if (!mounted) return;
-    final hubs = results[1] as List<PlexHub>;
+    final hubs = results[1] as List<MediaHub>;
     setState(() {
-      _detail = results[0] as PlexMovieDetail?;
+      _detail = results[0] as MediaDetail?;
       _moreLikeThis = _mergeRelated(hubs);
     });
     ScreenMemory.write(context, 'movie.loaded', (_detail, _moreLikeThis));
   }
 
-  /// One "More like this" row out of Plex's related hubs — similar titles
+  /// One "More like this" row out of the server's related hubs — similar titles
   /// first, then collections and the rest — deduplicated, without this
   /// title, drawn only from the server's own libraries.
-  List<PlexOnDeckItem> _mergeRelated(List<PlexHub> hubs) {
-    int rank(PlexHub h) {
-      final id = '${h.hubIdentifier ?? ''} ${h.title}'.toLowerCase();
+  List<MediaItem> _mergeRelated(List<MediaHub> hubs) {
+    int rank(MediaHub h) {
+      final id = '${h.id ?? ''} ${h.title}'.toLowerCase();
       if (id.contains('similar') || id.contains('like this')) return 0;
       if (id.contains('collection')) return 1;
       return 2;
     }
 
     final ordered = [...hubs]..sort((a, b) => rank(a).compareTo(rank(b)));
-    final seen = <String>{widget.movie.ratingKey};
+    final seen = <String>{widget.movie.id};
     return [
       for (final hub in ordered)
         for (final item in hub.items)
-          if (seen.add(item.ratingKey)) item,
+          if (seen.add(item.id)) item,
     ].take(_moreLikeThisMax).toList();
   }
 
@@ -262,7 +262,7 @@ class _MovieDetailScreenState extends State<MovieDetailScreen> {
                   _HeroViewport(
                     key: _heroKey,
                     minHeight: constraints.maxHeight,
-                    backdrop: PlexImageUrl.of(
+                    backdrop: ArtworkUrl.of(
                       widget.server,
                       widget.movie.art ?? widget.movie.thumb,
                     ),
@@ -277,12 +277,11 @@ class _MovieDetailScreenState extends State<MovieDetailScreen> {
                           ? (viewOffset / duration!).clamp(0.0, 1.0)
                           : 0.0,
                       playFocus: _playFocus,
-                      onPlay: () =>
-                          widget.onPlay(widget.movie.ratingKey, viewOffset),
+                      onPlay: () => widget.onPlay(widget.movie.id, viewOffset),
                       onWatchTogether: () =>
-                          widget.onWatchTogether(widget.movie.ratingKey),
+                          widget.onWatchTogether(widget.movie.id),
                       onRestartSolo: () =>
-                          widget.onRestartSolo(widget.movie.ratingKey),
+                          widget.onRestartSolo(widget.movie.id),
                       isOnWatchlist: widget.isOnWatchlist(
                         detail?.guid ?? widget.movie.guid,
                       ),
@@ -347,15 +346,13 @@ class _MovieDetailScreenState extends State<MovieDetailScreen> {
                 title: widget.movie.title,
                 work: widget.work,
                 activeCopy: widget.work.copies.firstWhere(
-                  (c) =>
-                      c.server.machineIdentifier ==
-                      widget.server.machineIdentifier,
+                  (c) => c.server.id == widget.server.id,
                   orElse: () => widget.work.primary,
                 ),
                 loadFacts: widget.loadCopyFacts,
                 resumeAtMs: viewOffset,
                 onSelect: (copy) => widget.onSwitchSource(copy, viewOffset),
-                onPlay: () => widget.onPlay(widget.movie.ratingKey, viewOffset),
+                onPlay: () => widget.onPlay(widget.movie.id, viewOffset),
                 onClose: () => setState(() => _showingSourcePicker = false),
               ),
           ],
@@ -444,9 +441,9 @@ class _HeroViewport extends StatelessWidget {
 }
 
 class _Hero extends StatelessWidget {
-  final PlexServer server;
-  final PlexLibraryItem movie;
-  final PlexMovieDetail? detail;
+  final MediaServer server;
+  final MediaItem movie;
+  final MediaDetail? detail;
   final MediaFacts? media;
   final bool hasResume;
   final int remainingMs;
@@ -503,10 +500,10 @@ class _Hero extends StatelessWidget {
     final meta = [
       if (movie.year != null) '${movie.year}',
       if (duration != null) formatRuntime(duration),
-      if (movie.genres.isNotEmpty) movie.genres.first.tag,
+      if (movie.genres.isNotEmpty) movie.genres.first,
     ];
     final chips = [?rating, ?media?.picture, ?media?.audio];
-    final directors = detail?.directors.map((p) => p.tag).take(2).join(', ');
+    final directors = detail?.directors.map((p) => p.name).take(2).join(', ');
     final facts = <(String, String)>[
       if (directors != null && directors.isNotEmpty) ('Director', directors),
       if (detail?.studio != null) ('Studio', detail!.studio!),
@@ -531,7 +528,7 @@ class _Hero extends StatelessWidget {
                 width: 1.du(context),
               ),
             ),
-            child: Artwork(imageUrl: PlexImageUrl.of(server, movie.thumb)),
+            child: Artwork(imageUrl: ArtworkUrl.of(server, movie.thumb)),
           ),
         ),
         SizedBox(width: _posterGap.du(context)),
@@ -835,10 +832,10 @@ class _SourceChip extends StatelessWidget {
 /// 03b's only other row: titles like this one, drawn from the server's
 /// own libraries — full-size posters, as everywhere else.
 class _MoreLikeThis extends StatelessWidget {
-  final List<PlexOnDeckItem> items;
+  final List<MediaItem> items;
   final String serverName;
-  final PlexServer server;
-  final ValueChanged<PlexOnDeckItem> onSelect;
+  final MediaServer server;
+  final ValueChanged<MediaItem> onSelect;
 
   const _MoreLikeThis({
     required this.items,
@@ -878,10 +875,10 @@ class _MoreLikeThis extends StatelessWidget {
                 itemBuilder: (context, index) {
                   final item = items[index];
                   return RememberFocus(
-                    key: ValueKey(item.ratingKey),
-                    id: 'related:${item.ratingKey}',
+                    key: ValueKey(item.id),
+                    id: 'related:${item.id}',
                     child: PosterCard(
-                      imageUrl: PlexImageUrl.of(server, item.thumb),
+                      imageUrl: ArtworkUrl.of(server, item.thumb),
                       title: item.title,
                       subtitle: serverName,
                       onClick: () => onSelect(item),
@@ -898,8 +895,8 @@ class _MoreLikeThis extends StatelessWidget {
 }
 
 class _CompactHeader extends StatelessWidget {
-  final PlexServer server;
-  final PlexLibraryItem movie;
+  final MediaServer server;
+  final MediaItem movie;
   final String meta;
   final String action;
 
@@ -933,7 +930,7 @@ class _CompactHeader extends StatelessWidget {
             child: SizedBox(
               width: 44.du(context),
               height: 66.du(context),
-              child: Artwork(imageUrl: PlexImageUrl.of(server, movie.thumb)),
+              child: Artwork(imageUrl: ArtworkUrl.of(server, movie.thumb)),
             ),
           ),
           SizedBox(width: AppSpacing.xl.du(context)),
