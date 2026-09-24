@@ -8,26 +8,29 @@ import '../../kit/focusable_surface.dart';
 import '../../kit/icon.dart';
 import '../../kit/surface_style.dart';
 import '../../kit/text.dart';
+import '../../playback/audio_tracks.dart';
 import '../../playback/playback_decision.dart';
 import '../../theme/phosphor_icons.dart';
 import '../../theme/scale.dart';
 import '../../theme/tokens.dart';
 import '../../theme/typography.dart';
 
-enum _MenuTab { subtitles, quality }
+enum _MenuTab { subtitles, audio, quality }
 
 /// Screen 14 — a right-hand panel, not a centered dialog, so the picture
 /// stays visible while choosing (the handoff's own reasoning: "matters
 /// when you are choosing a track by ear"). Subtitles and Quality are real,
 /// backed by the same SubtitleOption/BitratePreset data the existing
 /// cycle-buttons already used — this panel is a second way to reach the
-/// same state, not a new mechanism. No Audio tab: this app doesn't have
-/// separate audio-track switching at all yet (decidePlayback doesn't
-/// model it), so a tab with nothing behind it would be worse than no tab.
+/// same state, not a new mechanism. The Audio tab only appears when the
+/// file has more than one track to choose between.
 class PlayerMenuPanel extends StatefulWidget {
   final List<SubtitleOption> subtitleOptions;
   final int? selectedSubtitleStreamId;
   final ValueChanged<int?> onSelectSubtitle;
+  final List<AudioOption> audioOptions;
+  final int? selectedAudioStreamId;
+  final ValueChanged<int> onSelectAudio;
   final int selectedBitrateKbps;
   final ValueChanged<int> onSelectBitrate;
   final VoidCallback onClose;
@@ -37,6 +40,9 @@ class PlayerMenuPanel extends StatefulWidget {
     required this.subtitleOptions,
     required this.selectedSubtitleStreamId,
     required this.onSelectSubtitle,
+    this.audioOptions = const [],
+    this.selectedAudioStreamId,
+    this.onSelectAudio = _ignore,
     required this.selectedBitrateKbps,
     required this.onSelectBitrate,
     required this.onClose,
@@ -46,9 +52,12 @@ class PlayerMenuPanel extends StatefulWidget {
   State<PlayerMenuPanel> createState() => _PlayerMenuPanelState();
 }
 
+void _ignore(int _) {}
+
 class _PlayerMenuPanelState extends State<PlayerMenuPanel> {
   _MenuTab _tab = _MenuTab.subtitles;
   final _subtitlesTabFocus = FocusNode(debugLabel: 'player-menu-tab-subtitles');
+  final _audioTabFocus = FocusNode(debugLabel: 'player-menu-tab-audio');
   final _qualityTabFocus = FocusNode(debugLabel: 'player-menu-tab-quality');
   final _firstRowFocus = FocusNode(debugLabel: 'player-menu-first-row');
 
@@ -63,6 +72,7 @@ class _PlayerMenuPanelState extends State<PlayerMenuPanel> {
   @override
   void dispose() {
     _subtitlesTabFocus.dispose();
+    _audioTabFocus.dispose();
     _qualityTabFocus.dispose();
     _firstRowFocus.dispose();
     super.dispose();
@@ -128,6 +138,18 @@ class _PlayerMenuPanelState extends State<PlayerMenuPanel> {
                                     setState(() => _tab = _MenuTab.subtitles),
                               ),
                             ),
+                            if (widget.audioOptions.length > 1) ...[
+                              SizedBox(width: AppSpacing.md.du(context)),
+                              Expanded(
+                                child: _TabButton(
+                                  label: 'Audio',
+                                  selected: _tab == _MenuTab.audio,
+                                  focusNode: _audioTabFocus,
+                                  onClick: () =>
+                                      setState(() => _tab = _MenuTab.audio),
+                                ),
+                              ),
+                            ],
                             SizedBox(width: AppSpacing.md.du(context)),
                             Expanded(
                               child: _TabButton(
@@ -145,6 +167,7 @@ class _PlayerMenuPanelState extends State<PlayerMenuPanel> {
                       Expanded(
                         child: switch (_tab) {
                           _MenuTab.subtitles => _buildSubtitlesList(),
+                          _MenuTab.audio => _buildAudioList(),
                           _MenuTab.quality => _buildQualityList(),
                         },
                       ),
@@ -173,6 +196,21 @@ class _PlayerMenuPanelState extends State<PlayerMenuPanel> {
             selected: option.streamId == widget.selectedSubtitleStreamId,
             focusNode: index == 0 ? _firstRowFocus : null,
             onClick: () => widget.onSelectSubtitle(option.streamId),
+          ),
+          SizedBox(height: AppSpacing.sm.du(context)),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildAudioList() {
+    return ListView(
+      children: [
+        for (final option in widget.audioOptions) ...[
+          _MenuRow(
+            label: option.label,
+            selected: option.streamId == widget.selectedAudioStreamId,
+            onClick: () => widget.onSelectAudio(option.streamId),
           ),
           SizedBox(height: AppSpacing.sm.du(context)),
         ],

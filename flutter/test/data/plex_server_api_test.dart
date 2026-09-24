@@ -5,10 +5,17 @@ import 'package:reelay/data/plex/plex_server_api.dart';
 const _server = PlexServer(name: 'Home', baseUrl: 'http://192.168.1.5:32400', accessToken: 'tok123');
 
 void main() {
-  test('subtitleSelectionUrl selects the stream on the part itself, across all parts', () {
+  test('streamSelectionUrl selects the subtitle on the part itself, across all parts', () {
     expect(
-      subtitleSelectionUrl(_server, 42, 7),
+      streamSelectionUrl(_server, 42, subtitleStreamId: 7),
       'http://192.168.1.5:32400/library/parts/42?subtitleStreamID=7&allParts=1',
+    );
+  });
+
+  test('streamSelectionUrl can select audio and subtitle together', () {
+    expect(
+      streamSelectionUrl(_server, 42, audioStreamId: 3, subtitleStreamId: 7),
+      'http://192.168.1.5:32400/library/parts/42?audioStreamID=3&subtitleStreamID=7&allParts=1',
     );
   });
 }

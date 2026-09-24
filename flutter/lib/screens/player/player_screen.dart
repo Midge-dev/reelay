@@ -14,6 +14,7 @@ import '../../data/plex/plex_server_api.dart';
 import '../../data/settings/app_settings.dart';
 import '../../focus/back_handler.dart';
 import '../../kit/text.dart';
+import '../../playback/audio_tracks.dart';
 import '../../playback/playback_decision.dart';
 import '../../playback/plex_player_factory.dart';
 import '../../playback/seek_timing.dart';
@@ -103,6 +104,8 @@ class _PlayerScreenState extends State<PlayerScreen> {
   late final Dio _captionClient;
 
   late PlexPart? _resolvedPart;
+  List<AudioOption> _audioOptions = const [];
+  int? _audioStreamId;
   bool _failed = false;
 
   /// Direct play already failed once this playback; everything since is a
@@ -199,6 +202,10 @@ class _PlayerScreenState extends State<PlayerScreen> {
         : const [];
 
     _subtitleStreamId = firstSubtitleStreamId(widget.detail);
+    if (_resolvedPart != null) {
+      _audioOptions = audioOptions(_resolvedPart!);
+      _audioStreamId = initialAudioStreamId(_resolvedPart!);
+    }
 
     _maxVideoBitrateKbps = widget.settings.maxVideoBitrateKbps;
     _decision = _decide();
@@ -273,13 +280,15 @@ class _PlayerScreenState extends State<PlayerScreen> {
   Object _identityFor(PlaybackDecision decision, int maxVideoBitrateKbps) {
     return switch (decision) {
       DirectPlay() => decision.part.id,
-      Transcode() => (decision.ratingKey, maxVideoBitrateKbps),
+      // Audio too: a transcode carries one audio track, so changing it
+      // means a new stream. Direct play switches in the player instead.
+      Transcode() => (decision.ratingKey, maxVideoBitrateKbps, _audioStreamId),
     };
   }
 
   Future<void> _initPlayer({required int startPositionMs}) async {
     final generation = ++_playerGeneration;
-    await _selectBurnSubtitle();
+    await _selectServerStreams();
     if (!mounted || generation != _playerGeneration) return;
     final url = PlexPlayerFactory.mediaUrl(
       widget.server,
@@ -316,6 +325,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
       await controller.seekTo(Duration(milliseconds: startPositionMs));
     }
     await _attachCaptions(controller);
+    if (_decision is DirectPlay) await _applyPlayerAudio(controller);
     controller.addListener(_handleControllerTick);
 
     final player = VideoPlayerSyncedPlayer(controller);
@@ -339,24 +349,67 @@ class _PlayerScreenState extends State<PlayerScreen> {
     controller.play();
   }
 
-  /// A burn-in transcode paints whatever subtitle the part has selected on
-  /// the server, so select ours first (see subtitleSelectionUrl). Best
-  /// effort: if the server refuses, the transcode still starts and may burn
-  /// its stored choice — there's no direct-play fallback, since
-  /// video_player can't show an embedded track itself.
-  Future<void> _selectBurnSubtitle() async {
+  /// A transcode uses whatever audio and subtitle the part has selected on
+  /// the server, so select ours first (see streamSelectionUrl). Best
+  /// effort: if the server refuses, the transcode still starts with its
+  /// stored choices — there's no direct-play fallback, since video_player
+  /// can't show an embedded subtitle itself.
+  Future<void> _selectServerStreams() async {
     final decision = _decision;
     final part = _resolvedPart;
-    final streamId = decision is Transcode ? decision.subtitleStreamId : null;
-    if (part == null || streamId == null) return;
+    if (part == null || decision is! Transcode) return;
     try {
-      await PlexServerApi(
-        widget.server,
-        widget.clientIdentifier,
-      ).selectSubtitleStream(part.id, streamId);
+      await PlexServerApi(widget.server, widget.clientIdentifier).selectStreams(
+        part.id,
+        audioStreamId: _audioOptions.length > 1 ? _audioStreamId : null,
+        subtitleStreamId: decision.subtitleStreamId,
+      );
     } catch (_) {
       // See above: start the transcode regardless.
     }
+  }
+
+  /// Direct play: point the player at [_audioStreamId] — Plex's remembered
+  /// track on start, or the one just picked. Leaves the player's own
+  /// choice alone when the tracks can't be matched up safely.
+  Future<void> _applyPlayerAudio(VideoPlayerController controller) async {
+    final streamId = _audioStreamId;
+    if (_audioOptions.length < 2 || streamId == null) return;
+    try {
+      if (!controller.isAudioTrackSupportAvailable()) return;
+      final tracks = await controller.getAudioTracks();
+      final id = playerAudioTrackFor(_audioOptions, streamId, [
+        for (final t in tracks) (id: t.id, language: t.language),
+      ]);
+      final current = tracks.firstWhereOrNull((t) => t.isSelected);
+      if (id != null && id != current?.id) {
+        await controller.selectAudioTrack(id);
+      }
+    } catch (_) {
+      // Not worth interrupting playback over: the default track plays on.
+    }
+  }
+
+  void _selectAudio(int streamId) {
+    if (streamId == _audioStreamId) return;
+    setState(() => _audioStreamId = streamId);
+    final part = _resolvedPart;
+    if (_decision is DirectPlay) {
+      final controller = _controller;
+      if (controller != null) unawaited(_applyPlayerAudio(controller));
+      // Remember it on the server too, as Plex Web would.
+      if (part != null) {
+        unawaited(
+          PlexServerApi(widget.server, widget.clientIdentifier)
+              .selectStreams(part.id, audioStreamId: streamId)
+              .catchError((_) {}),
+        );
+      }
+      return;
+    }
+    // Transcoding: a new stream with the new track (selected on the server
+    // by _initPlayer first).
+    _applyDecisionChange(restartPositionMs: _player?.currentPosition ?? 0);
   }
 
   Future<void> _attachCaptions(VideoPlayerController controller) async {
@@ -935,6 +988,9 @@ class _PlayerScreenState extends State<PlayerScreen> {
                   subtitleOptions: _subtitleOptions,
                   selectedSubtitleStreamId: _subtitleStreamId,
                   onSelectSubtitle: _selectSubtitle,
+                  audioOptions: _audioOptions,
+                  selectedAudioStreamId: _audioStreamId,
+                  onSelectAudio: _selectAudio,
                   selectedBitrateKbps: _maxVideoBitrateKbps,
                   onSelectBitrate: _selectBitrate,
                   onClose: () {

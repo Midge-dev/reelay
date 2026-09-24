@@ -14,6 +14,7 @@ import 'package:video_player_platform_interface/video_player_platform_interface.
 /// so `VideoPlayerController.initialize()` resolves deterministically.
 class FakeVideoPlayerPlatform extends VideoPlayerPlatform {
   FakeVideoPlayerPlatform({
+    this.audioTracks = const [],
     this.initialDuration = const Duration(minutes: 100),
     this.failInit = false,
     this.failInitWhere,
@@ -27,6 +28,9 @@ class FakeVideoPlayerPlatform extends VideoPlayerPlatform {
   /// Fail `initialize()` only for sources matching this (e.g. direct play
   /// but not transcode).
   final bool Function(String uri)? failInitWhere;
+
+  /// What getAudioTracks reports; selectAudioTrack moves the selection.
+  List<VideoAudioTrack> audioTracks;
 
   /// Every source opened, in order.
   final openedUris = <String>[];
@@ -67,6 +71,21 @@ class FakeVideoPlayerPlatform extends VideoPlayerPlatform {
   /// A playback error on a running player, as the platform reports one.
   void emitError(int playerId) =>
       _eventControllers[playerId]!.addError(PlatformException(code: 'VideoError', message: 'Source error'));
+
+  @override
+  bool isAudioTrackSupportAvailable() => true;
+
+  @override
+  Future<List<VideoAudioTrack>> getAudioTracks(int playerId) async => audioTracks;
+
+  @override
+  Future<void> selectAudioTrack(int playerId, String trackId) async {
+    calls.add('selectAudioTrack:$trackId');
+    audioTracks = [
+      for (final t in audioTracks)
+        VideoAudioTrack(id: t.id, label: t.label, language: t.language, isSelected: t.id == trackId),
+    ];
+  }
 
   /// A widget test that mounts a playing [VideoPlayer] needs a view.
   @override

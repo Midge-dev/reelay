@@ -11,13 +11,18 @@ const _suggestionHubPriority = ['suggest', 'recommend', 'topunwatched', 'startwa
 /// Per-library "Recently Watched" hubs (movie.recentlyviewed.*, tv.recentlyviewed.*).
 const _recentActivityHubPriority = ['recentlyviewed', 'recentlywatched', 'history'];
 
-/// PUT this before opening a burn-in transcode: PMS's transcoder burns
-/// whichever subtitle the part has *selected* on the server and ignores the
+/// PUT this before opening a transcode: PMS's transcoder uses whichever
+/// audio and subtitle the part has *selected* on the server and ignores the
 /// transcode URL's subtitleStreamID (seen against a real PMS — see plezy's
 /// `selectSubtitleStreamForBurn`). Plex Web does the same PUT, so it also
 /// becomes the remembered choice for next time.
-String subtitleSelectionUrl(PlexServer server, int partId, int subtitleStreamId) =>
-    '${server.baseUrl}/library/parts/$partId?subtitleStreamID=$subtitleStreamId&allParts=1';
+String streamSelectionUrl(PlexServer server, int partId, {int? audioStreamId, int? subtitleStreamId}) => Uri.parse(
+  '${server.baseUrl}/library/parts/$partId',
+).replace(queryParameters: {
+  'audioStreamID': ?audioStreamId?.toString(),
+  'subtitleStreamID': ?subtitleStreamId?.toString(),
+  'allParts': '1',
+}).toString();
 
 class PlexServerApi {
   final PlexServer server;
@@ -181,9 +186,13 @@ class PlexServerApi {
     await _client.put<void>('${server.baseUrl}/actions/removeFromContinueWatching?ratingKey=$ratingKey', options: _headers);
   }
 
-  /// See [subtitleSelectionUrl].
-  Future<void> selectSubtitleStream(int partId, int subtitleStreamId) async {
-    await _client.put<void>(subtitleSelectionUrl(server, partId, subtitleStreamId), options: _headers);
+  /// See [streamSelectionUrl].
+  Future<void> selectStreams(int partId, {int? audioStreamId, int? subtitleStreamId}) async {
+    if (audioStreamId == null && subtitleStreamId == null) return;
+    await _client.put<void>(
+      streamSelectionUrl(server, partId, audioStreamId: audioStreamId, subtitleStreamId: subtitleStreamId),
+      options: _headers,
+    );
   }
 
   Future<List<PlexLibraryItem>> fetchRecentlyAdded() async {

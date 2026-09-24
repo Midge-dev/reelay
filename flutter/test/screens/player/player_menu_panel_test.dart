@@ -1,5 +1,6 @@
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:reelay/playback/audio_tracks.dart';
 import 'package:reelay/playback/playback_decision.dart';
 import 'package:reelay/screens/player/player_menu_panel.dart';
 import 'package:reelay/theme/phosphor_icons.dart';
@@ -15,6 +16,8 @@ Future<void> _pump(
   List<SubtitleOption> subtitleOptions = _subtitleOptions,
   int? selectedSubtitleStreamId,
   ValueChanged<int?>? onSelectSubtitle,
+  List<AudioOption> audioOptions = const [],
+  ValueChanged<int>? onSelectAudio,
   int selectedBitrateKbps = 8000,
   ValueChanged<int>? onSelectBitrate,
   VoidCallback? onClose,
@@ -33,6 +36,9 @@ Future<void> _pump(
             subtitleOptions: subtitleOptions,
             selectedSubtitleStreamId: selectedSubtitleStreamId,
             onSelectSubtitle: onSelectSubtitle ?? (_) {},
+            audioOptions: audioOptions,
+            selectedAudioStreamId: audioOptions.isEmpty ? null : audioOptions.first.streamId,
+            onSelectAudio: onSelectAudio ?? (_) {},
             selectedBitrateKbps: selectedBitrateKbps,
             onSelectBitrate: onSelectBitrate ?? (_) {},
             onClose: onClose ?? () {},
@@ -91,5 +97,30 @@ void main() {
     await _pump(tester, selectedSubtitleStreamId: 1);
 
     expect(find.byIcon(PhosphorIconsFill.checkCircle), findsOneWidget);
+  });
+
+  testWidgets('no Audio tab for a file with a single audio track', (tester) async {
+    await _pump(tester, audioOptions: const [AudioOption(streamId: 10, label: 'English (AC3 5.1)')]);
+    expect(find.text('Audio'), findsNothing);
+  });
+
+  testWidgets('the Audio tab lists every track and picking one invokes onSelectAudio', (tester) async {
+    int? picked;
+    await _pump(
+      tester,
+      audioOptions: const [
+        AudioOption(streamId: 10, label: 'English (TrueHD 7.1)'),
+        AudioOption(streamId: 11, label: 'Commentary (AAC Stereo)'),
+      ],
+      onSelectAudio: (id) => picked = id,
+    );
+
+    await tester.tap(find.text('Audio'));
+    await tester.pump();
+    expect(find.text('English (TrueHD 7.1)'), findsOneWidget);
+
+    await tester.tap(find.text('Commentary (AAC Stereo)'));
+    await tester.pump();
+    expect(picked, 11);
   });
 }

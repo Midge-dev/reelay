@@ -17,7 +17,11 @@ const _detail = PlexMovieDetail(
   ],
 );
 
-Future<List<(String, int)>> _pumpPlayer(WidgetTester tester, FakeVideoPlayerPlatform fake) async {
+Future<List<(String, int)>> _pumpPlayer(
+  WidgetTester tester,
+  FakeVideoPlayerPlatform fake, {
+  PlexMovieDetail detail = _detail,
+}) async {
   VideoPlayerPlatform.instance = fake;
   tester.view.physicalSize = const Size(1920, 1080);
   tester.view.devicePixelRatio = 1.0;
@@ -30,7 +34,7 @@ Future<List<(String, int)>> _pumpPlayer(WidgetTester tester, FakeVideoPlayerPlat
       textDirection: TextDirection.ltr,
       child: PlayerScreen(
         server: _server,
-        detail: _detail,
+        detail: detail,
         clientIdentifier: 'client-1',
         settings: const AppSettings(),
         onBitrateChanged: (_) {},
@@ -100,6 +104,38 @@ void main() {
 
     expect(failures, hasLength(1));
     expect(failures.single.$1, 'The stream from Loft stopped partway through');
+    await _unmount(tester);
+  });
+
+  testWidgets('direct play starts on the audio track Plex remembered, not the file default', (tester) async {
+    const detail = PlexMovieDetail(
+      ratingKey: '1',
+      title: 'Arrival',
+      media: [
+        PlexMedia(
+          parts: [
+            PlexPart(
+              id: 1,
+              key: '/library/parts/1/file.mkv',
+              streams: [
+                PlexStream(id: 10, streamType: 2, languageCode: 'eng', displayTitle: 'English'),
+                PlexStream(id: 11, streamType: 2, languageCode: 'fre', displayTitle: 'Français', selected: true),
+              ],
+            ),
+          ],
+        ),
+      ],
+    );
+    final fake = FakeVideoPlayerPlatform(
+      audioTracks: const [
+        VideoAudioTrack(id: '0_0', label: null, language: 'en', isSelected: true),
+        VideoAudioTrack(id: '1_0', label: null, language: 'fr', isSelected: false),
+      ],
+    );
+    await _pumpPlayer(tester, fake, detail: detail);
+    await tester.pump();
+
+    expect(fake.calls, contains('selectAudioTrack:1_0'));
     await _unmount(tester);
   });
 }
