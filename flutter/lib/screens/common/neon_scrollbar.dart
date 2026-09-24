@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'package:flutter/widgets.dart';
 
 import '../../theme/scale.dart';
@@ -45,11 +47,14 @@ class _NeonScrollbarPainter extends CustomPainter {
     if (!controller.hasClients || !controller.position.hasContentDimensions)
       return;
     final maxExtent = controller.position.maxScrollExtent;
-    if (maxExtent <= 0) return;
+    // A track shorter than the minimum thumb (or laid out 0 tall) would
+    // make the clamp below throw mid-paint — which in a release build
+    // leaves the frame's layers half-built and garbles the whole screen.
+    if (maxExtent <= 0 || size.height <= 0) return;
 
     final totalExtent = size.height + maxExtent;
     final thumbHeight = (size.height * size.height / totalExtent).clamp(
-      minThumbHeight,
+      min(minThumbHeight, size.height).toDouble(),
       size.height,
     );
     final offset = controller.offset.clamp(0.0, maxExtent);

@@ -278,41 +278,56 @@ class _FilterDropdownState extends State<FilterDropdown> {
             ),
             SizedBox(height: 10.du(context)),
             Flexible(
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Flexible(
-                    child: SingleChildScrollView(
-                      controller: _scrollController,
-                      clipBehavior: Clip.none,
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          for (final (index, option)
-                              in widget.options.indexed) ...[
-                            MenuOptionRow(
-                              label: option.label,
-                              countLabel: option.countLabel,
-                              applied: option.applied,
-                              dimmed: option.dimmed,
-                              onClick: () => widget.onSelect(index),
-                              focusNode: _rowFocusNodes[index],
-                              onFocusChange: (focused) {
-                                if (focused)
-                                  setState(() => _highlightedIndex = index);
-                              },
-                            ),
-                            SizedBox(height: 2.du(context)),
-                          ],
-                        ],
+              // IntrinsicHeight + stretch: the row is as tall as the list
+              // (up to the panel's max), and the scrollbar gets that same
+              // height. Top-aligned, it was laid out 0 tall and never drawn.
+              child: IntrinsicHeight(
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Flexible(
+                      // Clipped top and bottom so rows scrolled out of view
+                      // don't paint over the header and filter bar; open at
+                      // the sides for the focused row's 1.03 scale. The
+                      // padding gives the first/last row room to grow.
+                      child: ClipRect(
+                        clipper: const _VerticalClipper(),
+                        child: SingleChildScrollView(
+                          controller: _scrollController,
+                          clipBehavior: Clip.none,
+                          padding: EdgeInsets.symmetric(
+                            vertical: 4.du(context),
+                          ),
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              for (final (index, option)
+                                  in widget.options.indexed) ...[
+                                MenuOptionRow(
+                                  label: option.label,
+                                  countLabel: option.countLabel,
+                                  applied: option.applied,
+                                  dimmed: option.dimmed,
+                                  onClick: () => widget.onSelect(index),
+                                  focusNode: _rowFocusNodes[index],
+                                  onFocusChange: (focused) {
+                                    if (focused)
+                                      setState(() => _highlightedIndex = index);
+                                  },
+                                ),
+                                SizedBox(height: 2.du(context)),
+                              ],
+                            ],
+                          ),
+                        ),
                       ),
                     ),
-                  ),
-                  SizedBox(width: 8.du(context)),
-                  NeonScrollbar(controller: _scrollController),
-                ],
+                    SizedBox(width: 8.du(context)),
+                    NeonScrollbar(controller: _scrollController),
+                  ],
+                ),
               ),
             ),
             SizedBox(height: 16.du(context)),
@@ -330,4 +345,16 @@ class _FilterDropdownState extends State<FilterDropdown> {
       ),
     );
   }
+}
+
+/// Clips above and below only; the sides stay open.
+class _VerticalClipper extends CustomClipper<Rect> {
+  const _VerticalClipper();
+
+  @override
+  Rect getClip(Size size) =>
+      Rect.fromLTRB(-size.width, 0, size.width * 2, size.height);
+
+  @override
+  bool shouldReclip(_VerticalClipper oldClipper) => false;
 }
