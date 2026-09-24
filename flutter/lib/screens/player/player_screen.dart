@@ -267,6 +267,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
       widget.server,
       _decision,
       _maxVideoBitrateKbps,
+      clientIdentifier: widget.clientIdentifier,
       offsetMs: startPositionMs,
     );
     final controller = VideoPlayerController.networkUrl(Uri.parse(url));
