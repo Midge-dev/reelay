@@ -80,17 +80,25 @@ class ServerSwitcherPanel extends StatefulWidget {
 }
 
 class _ServerSwitcherPanelState extends State<ServerSwitcherPanel> {
+  final _scope = FocusScopeNode(debugLabel: 'server-switcher');
   final _firstFocus = FocusNode(debugLabel: 'server-switcher-first');
   List<_ServerRow> _rows = const [];
 
   @override
   void initState() {
     super.initState();
+    // Take focus off the rail's avatar the moment the panel opens, before
+    // the server list has loaded — Back answers whoever holds focus, and
+    // the avatar sits outside this panel's BackHandler.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _scope.requestFocus();
+    });
     _load();
   }
 
   @override
   void dispose() {
+    _scope.dispose();
     _firstFocus.dispose();
     super.dispose();
   }
@@ -108,11 +116,18 @@ class _ServerSwitcherPanelState extends State<ServerSwitcherPanel> {
     // _firstFocus is only actually attached to a row once _rows is
     // non-empty — requesting focus any earlier (e.g. from initState) would
     // target a FocusNode not yet mounted to anything on screen.
-    if (rows.isNotEmpty) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) _firstFocus.requestFocus();
-      });
-    }
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      if (rows.isNotEmpty) {
+        _firstFocus.requestFocus();
+        return;
+      }
+      // No servers listed: the library chips are all there is.
+      _scope.traversalDescendants
+          .where((n) => n.canRequestFocus)
+          .firstOrNull
+          ?.requestFocus();
+    });
     for (final row in rows) {
       _probeRow(row);
     }
@@ -176,20 +191,25 @@ class _ServerSwitcherPanelState extends State<ServerSwitcherPanel> {
     widget.onClose();
   }
 
-  // The panel is an overlay, not a new page — D-pad navigation should stay
-  // inside it while it's open rather than leaking UP into the nav rail
-  // behind it (same class of hazard as MaxSeatsMenu/the hero's action row).
-  // Back (not UP) is how you leave; see BackHandler above. Only trapped
-  // when the *first* row actually has focus — this Focus wraps every row,
-  // not just the first, so an unconditional trap here would also swallow
-  // ordinary up-navigation between rows further down the list.
-  KeyEventResult _trapUp(FocusNode node, KeyEvent event) {
-    if (event is KeyDownEvent &&
-        event.logicalKey == LogicalKeyboardKey.arrowUp &&
-        _firstFocus.hasFocus) {
-      return KeyEventResult.handled;
+  // The panel is an overlay, not a new page — D-pad navigation stays
+  // inside it while it's open. Left used to reach the rail and Right/Down
+  // the dimmed screen behind, and Back then answered *that* (the page's
+  // BackHandler, or none) so the panel stayed up. Every arrow moves within
+  // this scope or nowhere; Back is how you leave.
+  static final _arrows = {
+    LogicalKeyboardKey.arrowUp: TraversalDirection.up,
+    LogicalKeyboardKey.arrowDown: TraversalDirection.down,
+    LogicalKeyboardKey.arrowLeft: TraversalDirection.left,
+    LogicalKeyboardKey.arrowRight: TraversalDirection.right,
+  };
+
+  KeyEventResult _trapArrows(FocusNode node, KeyEvent event) {
+    final direction = _arrows[event.logicalKey];
+    if (direction == null) return KeyEventResult.ignored;
+    if (event is KeyDownEvent || event is KeyRepeatEvent) {
+      FocusManager.instance.primaryFocus?.focusInDirection(direction);
     }
-    return KeyEventResult.ignored;
+    return KeyEventResult.handled;
   }
 
   @override
@@ -219,38 +239,38 @@ class _ServerSwitcherPanelState extends State<ServerSwitcherPanel> {
           width: _panelWidth.du(context),
           child: BackHandler(
             onBack: widget.onClose,
-            child: DecoratedBox(
-              decoration: BoxDecoration(
-                color: AppColors.background,
-                border: Border(right: BorderSide(color: AppColors.line)),
-              ),
-              child: Padding(
-                padding: EdgeInsets.all(AppSpacing.xxxl.du(context)),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Container(
-                          width: 20.du(context),
-                          height: 2.du(context),
-                          color: AppColors.accent,
-                        ),
-                        SizedBox(width: AppSpacing.md.du(context)),
-                        AppText('SERVERS', style: AppTypography.micro),
-                      ],
-                    ),
-                    SizedBox(height: AppSpacing.sm.du(context)),
-                    AppText(
-                      username != null ? "$username's servers" : 'Servers',
-                      style: AppTypography.title2,
-                    ),
-                    SizedBox(height: AppSpacing.xl.du(context)),
-                    Expanded(
-                      child: Focus(
-                        canRequestFocus: false,
-                        onKeyEvent: _trapUp,
+            child: FocusScope(
+              node: _scope,
+              onKeyEvent: _trapArrows,
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  color: AppColors.background,
+                  border: Border(right: BorderSide(color: AppColors.line)),
+                ),
+                child: Padding(
+                  padding: EdgeInsets.all(AppSpacing.xxxl.du(context)),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Container(
+                            width: 20.du(context),
+                            height: 2.du(context),
+                            color: AppColors.accent,
+                          ),
+                          SizedBox(width: AppSpacing.md.du(context)),
+                          AppText('SERVERS', style: AppTypography.micro),
+                        ],
+                      ),
+                      SizedBox(height: AppSpacing.sm.du(context)),
+                      AppText(
+                        username != null ? "$username's servers" : 'Servers',
+                        style: AppTypography.title2,
+                      ),
+                      SizedBox(height: AppSpacing.xl.du(context)),
+                      Expanded(
                         child: SingleChildScrollView(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
@@ -310,8 +330,8 @@ class _ServerSwitcherPanelState extends State<ServerSwitcherPanel> {
                           ),
                         ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
             ),
