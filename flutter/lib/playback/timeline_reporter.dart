@@ -16,13 +16,25 @@ String timelineReportUrl(PlexServer server, String ratingKey, String state, int 
       '&duration=$durationMs';
 }
 
+/// [sessionIdentifier] is the same `X-Plex-Session-Identifier` the stream
+/// request carried (PlexPlayerFactory.transcodeUrl) — it's how PMS ties a
+/// report to the live session, so its dashboard shows the real decision
+/// (Transcode) instead of a generic Direct Play row.
+Map<String, String> timelineReportHeaders(PlexServer server, String clientIdentifier, String sessionIdentifier) => {
+  'X-Plex-Token': server.accessToken,
+  'X-Plex-Client-Identifier': clientIdentifier,
+  'X-Plex-Product': 'Reelay',
+  'X-Plex-Session-Identifier': sessionIdentifier,
+};
+
 /// Fire-and-forget scrobble reporting to Plex,
 /// on the same 5s-interval + on-exit cadence PlayerScreen drives it with.
 class TimelineReporter {
   final PlexServer server;
   final String clientIdentifier;
+  final String sessionIdentifier;
 
-  TimelineReporter(this.server, this.clientIdentifier) : _client = plexHttpClient();
+  TimelineReporter(this.server, this.clientIdentifier, this.sessionIdentifier) : _client = plexHttpClient();
 
   final Dio _client;
 
@@ -31,7 +43,7 @@ class TimelineReporter {
     try {
       await _client.get<void>(
         url,
-        options: Options(headers: {'X-Plex-Token': server.accessToken, 'X-Plex-Client-Identifier': clientIdentifier}),
+        options: Options(headers: timelineReportHeaders(server, clientIdentifier, sessionIdentifier)),
       );
     } catch (_) {
       // Fire-and-forget: a missed progress report isn't worth surfacing.

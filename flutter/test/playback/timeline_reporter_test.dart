@@ -20,10 +20,17 @@ void main() {
     );
   });
 
+  test('reports carry the playback\'s session identifier, so PMS ties them to the stream', () {
+    final headers = timelineReportHeaders(_server, 'client-id', 'play-1');
+    expect(headers['X-Plex-Session-Identifier'], 'play-1');
+    expect(headers['X-Plex-Client-Identifier'], 'client-id');
+    expect(headers['X-Plex-Token'], 'tok123');
+  });
+
   test('report() never throws even if the request fails (fire-and-forget)', () async {
     // No real server at this address — the request will fail; report()
     // must swallow it.
-    final reporter = TimelineReporter(const PlexServer(name: 'x', baseUrl: 'http://127.0.0.1:1', accessToken: 't'), 'client-id');
+    final reporter = TimelineReporter(const PlexServer(name: 'x', baseUrl: 'http://127.0.0.1:1', accessToken: 't'), 'client-id', 'play-1');
     await expectLater(reporter.report('1', 'playing', 0, 1000), completes);
   });
 }

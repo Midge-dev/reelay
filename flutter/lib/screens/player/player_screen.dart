@@ -4,6 +4,7 @@ import 'package:collection/collection.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart' hide ConnectionState;
+import 'package:uuid/uuid.dart';
 import 'package:video_player/video_player.dart';
 
 import '../../data/plex/media_facts.dart';
@@ -95,6 +96,10 @@ class PlayerScreen extends StatefulWidget {
 
 class _PlayerScreenState extends State<PlayerScreen> {
   late final TimelineReporter _reporter;
+
+  /// One per playback, kept across subtitle/bitrate restarts: the stream
+  /// request and every timeline report carry it (see TimelineReporter).
+  final _sessionIdentifier = const Uuid().v4();
   late final Dio _captionClient;
 
   late PlexPart? _resolvedPart;
@@ -172,7 +177,11 @@ class _PlayerScreenState extends State<PlayerScreen> {
   @override
   void initState() {
     super.initState();
-    _reporter = TimelineReporter(widget.server, widget.clientIdentifier);
+    _reporter = TimelineReporter(
+      widget.server,
+      widget.clientIdentifier,
+      _sessionIdentifier,
+    );
     _captionClient = plexHttpClient();
 
     final media = widget.detail.media.isNotEmpty
@@ -277,6 +286,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
       _decision,
       _maxVideoBitrateKbps,
       clientIdentifier: widget.clientIdentifier,
+      sessionIdentifier: _sessionIdentifier,
       offsetMs: startPositionMs,
     );
     final controller = VideoPlayerController.networkUrl(Uri.parse(url));

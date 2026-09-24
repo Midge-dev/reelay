@@ -38,6 +38,7 @@ class PlexPlayerFactory {
     Transcode decision,
     int maxVideoBitrateKbps, {
     required String clientIdentifier,
+    required String sessionIdentifier,
     String? sessionId,
     int offsetMs = 0,
   }) {
@@ -60,6 +61,7 @@ class PlexPlayerFactory {
         '&X-Plex-Platform=$_plexPlatform'
         '&X-Plex-Client-Profile-Name=Generic'
         '&X-Plex-Client-Identifier=${Uri.encodeQueryComponent(clientIdentifier)}'
+        '&X-Plex-Session-Identifier=${Uri.encodeQueryComponent(sessionIdentifier)}'
         '&X-Plex-Token=${server.accessToken}';
   }
 
@@ -68,6 +70,7 @@ class PlexPlayerFactory {
     PlaybackDecision decision,
     int maxVideoBitrateKbps, {
     required String clientIdentifier,
+    required String sessionIdentifier,
     String? sessionId,
     int offsetMs = 0,
   }) {
@@ -78,6 +81,7 @@ class PlexPlayerFactory {
         decision,
         maxVideoBitrateKbps,
         clientIdentifier: clientIdentifier,
+        sessionIdentifier: sessionIdentifier,
         sessionId: sessionId,
         offsetMs: offsetMs,
       ),

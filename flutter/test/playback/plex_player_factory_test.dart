@@ -20,7 +20,7 @@ void main() {
     test('builds the fixed HLS transcode query exactly, with the given session id', () {
       const decision = Transcode(ratingKey: '100', subtitleStreamId: 5);
 
-      final url = PlexPlayerFactory.transcodeUrl(_server, decision, 8000, clientIdentifier: 'client-1', sessionId: 'fixed-session');
+      final url = PlexPlayerFactory.transcodeUrl(_server, decision, 8000, clientIdentifier: 'client-1', sessionIdentifier: 'play-1', sessionId: 'fixed-session');
 
       expect(
         url,
@@ -38,6 +38,7 @@ void main() {
         '&X-Plex-Platform=Android'
         '&X-Plex-Client-Profile-Name=Generic'
         '&X-Plex-Client-Identifier=client-1'
+        '&X-Plex-Session-Identifier=play-1'
         '&X-Plex-Token=tok123',
       );
     });
@@ -47,36 +48,37 @@ void main() {
       // platform=, platformVersion=, device=" and 400s the request.
       const decision = Transcode(ratingKey: '100');
       final params = Uri.parse(
-        PlexPlayerFactory.transcodeUrl(_server, decision, 8000, clientIdentifier: 'client-1'),
+        PlexPlayerFactory.transcodeUrl(_server, decision, 8000, clientIdentifier: 'client-1', sessionIdentifier: 'play-1'),
       ).queryParameters;
       expect(params['X-Plex-Platform'], isNotEmpty);
       expect(params['X-Plex-Client-Profile-Name'], 'Generic');
       expect(params['X-Plex-Product'], 'Reelay');
       expect(params['X-Plex-Client-Identifier'], 'client-1');
+      expect(params['X-Plex-Session-Identifier'], 'play-1');
     });
 
     test('defaults subtitleStreamID to 0 and burns nothing when no subtitle is selected', () {
       const decision = Transcode(ratingKey: '100');
-      final url = PlexPlayerFactory.transcodeUrl(_server, decision, 8000, clientIdentifier: 'client-1', sessionId: 'fixed-session');
+      final url = PlexPlayerFactory.transcodeUrl(_server, decision, 8000, clientIdentifier: 'client-1', sessionIdentifier: 'play-1', sessionId: 'fixed-session');
       expect(url, contains('&subtitles=none&subtitleStreamID=0&'));
     });
 
     test('generates a fresh session id per call when none is given', () {
       const decision = Transcode(ratingKey: '100');
-      final a = PlexPlayerFactory.transcodeUrl(_server, decision, 8000, clientIdentifier: 'client-1');
-      final b = PlexPlayerFactory.transcodeUrl(_server, decision, 8000, clientIdentifier: 'client-1');
+      final a = PlexPlayerFactory.transcodeUrl(_server, decision, 8000, clientIdentifier: 'client-1', sessionIdentifier: 'play-1');
+      final b = PlexPlayerFactory.transcodeUrl(_server, decision, 8000, clientIdentifier: 'client-1', sessionIdentifier: 'play-1');
       expect(a, isNot(b));
     });
 
     test('offsetMs tells Plex where to start encoding, converted to whole seconds', () {
       const decision = Transcode(ratingKey: '100');
-      final url = PlexPlayerFactory.transcodeUrl(_server, decision, 8000, clientIdentifier: 'client-1', sessionId: 'fixed-session', offsetMs: 725400);
+      final url = PlexPlayerFactory.transcodeUrl(_server, decision, 8000, clientIdentifier: 'client-1', sessionIdentifier: 'play-1', sessionId: 'fixed-session', offsetMs: 725400);
       expect(url, contains('&offset=725&'));
     });
 
     test('offsetMs defaults to 0 when resuming from the start', () {
       const decision = Transcode(ratingKey: '100');
-      final url = PlexPlayerFactory.transcodeUrl(_server, decision, 8000, clientIdentifier: 'client-1', sessionId: 'fixed-session');
+      final url = PlexPlayerFactory.transcodeUrl(_server, decision, 8000, clientIdentifier: 'client-1', sessionIdentifier: 'play-1', sessionId: 'fixed-session');
       expect(url, contains('&offset=0&'));
     });
   });
@@ -85,18 +87,18 @@ void main() {
     test('DirectPlay dispatches to directPlayUrl', () {
       const part = PlexPart(id: 1, key: '/library/parts/1/file.mkv');
       const decision = DirectPlay(part: part);
-      expect(PlexPlayerFactory.mediaUrl(_server, decision, 8000, clientIdentifier: 'client-1'), PlexPlayerFactory.directPlayUrl(_server, part));
+      expect(PlexPlayerFactory.mediaUrl(_server, decision, 8000, clientIdentifier: 'client-1', sessionIdentifier: 'play-1'), PlexPlayerFactory.directPlayUrl(_server, part));
     });
 
     test('Transcode dispatches to transcodeUrl', () {
       const decision = Transcode(ratingKey: '100');
-      final url = PlexPlayerFactory.mediaUrl(_server, decision, 8000, clientIdentifier: 'client-1', sessionId: 'fixed-session');
+      final url = PlexPlayerFactory.mediaUrl(_server, decision, 8000, clientIdentifier: 'client-1', sessionIdentifier: 'play-1', sessionId: 'fixed-session');
       expect(url, contains('/video/:/transcode/universal/start.m3u8'));
     });
 
     test('Transcode forwards offsetMs through to transcodeUrl', () {
       const decision = Transcode(ratingKey: '100');
-      final url = PlexPlayerFactory.mediaUrl(_server, decision, 8000, clientIdentifier: 'client-1', sessionId: 'fixed-session', offsetMs: 5000);
+      final url = PlexPlayerFactory.mediaUrl(_server, decision, 8000, clientIdentifier: 'client-1', sessionIdentifier: 'play-1', sessionId: 'fixed-session', offsetMs: 5000);
       expect(url, contains('&offset=5&'));
     });
   });
