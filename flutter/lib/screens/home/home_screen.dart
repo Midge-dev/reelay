@@ -601,7 +601,8 @@ class _ScrollSectionIntoView extends StatelessWidget {
         if (hasFocus)
           Scrollable.ensureVisible(
             context,
-            duration: const Duration(milliseconds: 200),
+            duration: AppMotion.pageScroll,
+            curve: AppMotion.enter,
           );
       },
       child: child,

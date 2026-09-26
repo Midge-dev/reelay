@@ -613,6 +613,10 @@ class AppMotion {
   /// Row eases the focused card to 80% across the viewport.
   static const rowScroll = Duration(milliseconds: 280);
 
+  /// The page easing a row into view as focus moves up or down between
+  /// rows — a little longer than [rowScroll], since it travels further.
+  static const pageScroll = Duration(milliseconds: 300);
+
   /// Per-card delay on first paint of a row.
   static const rowEntranceStagger = Duration(milliseconds: 40);
 

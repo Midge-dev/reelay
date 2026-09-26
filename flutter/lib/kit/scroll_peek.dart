@@ -1,6 +1,8 @@
 import 'package:flutter/rendering.dart';
 import 'package:flutter/widgets.dart';
 
+import '../theme/tokens.dart';
+
 const _forwardAlignment = 0.8;
 const _backwardAlignment = 0.0;
 
@@ -18,7 +20,7 @@ const _backwardAlignment = 0.0;
 /// Comparing the target's reveal-at-leading-edge offset against the
 /// Scrollable's current position tells us which way we're actually
 /// headed, without needing every caller to track and pass its own index.
-void ensureCardVisible(BuildContext context, {Duration duration = const Duration(milliseconds: 200)}) {
+void ensureCardVisible(BuildContext context, {Duration duration = AppMotion.rowScroll}) {
   final movingForward = _isMovingForward(context);
   if (movingForward == null) return;
 
@@ -26,6 +28,7 @@ void ensureCardVisible(BuildContext context, {Duration duration = const Duration
     context,
     alignment: movingForward ? _forwardAlignment : _backwardAlignment,
     duration: duration,
+    curve: AppMotion.enter,
   );
 }
 
@@ -36,7 +39,7 @@ void ensureCardVisible(BuildContext context, {Duration duration = const Duration
 /// fifth of the viewport width. [peekExtent] instead pins the peek to a
 /// fixed pixel amount (matching the caller's fade-affordance width),
 /// computing whatever alignment fraction currently produces that.
-void ensureRowVisible(BuildContext context, {required double peekExtent, Duration duration = const Duration(milliseconds: 200)}) {
+void ensureRowVisible(BuildContext context, {required double peekExtent, Duration duration = AppMotion.pageScroll}) {
   final movingForward = _isMovingForward(context);
   if (movingForward == null) return;
   final scrollableState = Scrollable.maybeOf(context);
@@ -49,6 +52,7 @@ void ensureRowVisible(BuildContext context, {required double peekExtent, Duratio
     context,
     alignment: movingForward ? peekAlignment : _backwardAlignment,
     duration: duration,
+    curve: AppMotion.enter,
   );
 }
 

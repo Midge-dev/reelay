@@ -255,8 +255,8 @@ class _ShowDetailScreenState extends State<ShowDetailScreen> {
     if (!_scrollController.hasClients) return;
     _scrollController.animateTo(
       0,
-      duration: const Duration(milliseconds: 300),
-      curve: Curves.easeOut,
+      duration: AppMotion.pageScroll,
+      curve: AppMotion.enter,
     );
   }
 
