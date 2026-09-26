@@ -27,6 +27,10 @@ const _sectionTypeShow = 'show';
 const _roomPollIntervalMs = 5000;
 const _joinRoomTimeoutMs = 5000;
 
+/// How long a host's room stays open after they leave the lobby or player
+/// for the rest of the app, unless they end it first.
+const _parkedRoomTimeout = Duration(minutes: 3);
+
 class _FriendlyError implements Exception {
   final String message;
   const _FriendlyError(this.message);
@@ -57,6 +61,7 @@ class AppRootController extends ChangeNotifier {
   AppState get state => _state;
 
   void _setState(AppState next) {
+    _settleParkedRoom(next);
     final wasPolling = pollsLiveRooms(_state);
     final polls = pollsLiveRooms(next);
     _state = next;
@@ -148,6 +153,7 @@ class AppRootController extends ChangeNotifier {
 
   @override
   void dispose() {
+    _parkedRoomTimer?.cancel();
     _roomPollTimer?.cancel();
     _myRoomIdSub?.cancel();
     _relayClient?.dispose();
@@ -649,7 +655,67 @@ class AppRootController extends ChangeNotifier {
     return client;
   }
 
+  // ---- A host's room while they browse ----
+
+  /// Set while the host has left their room's lobby or player but the room
+  /// is being kept open for them — see [leaveRoom].
+  Timer? _parkedRoomTimer;
+
+  /// The room kept open for its host while they're elsewhere in the app.
+  String? get parkedRoomId =>
+      _parkedRoomTimer != null ? _relayClient?.roomIdValue : null;
+
+  /// Leaving a lobby or player that belongs to a room. A guest leaves the
+  /// room. The host keeps it open — still listed, still joinable — for up
+  /// to [_parkedRoomTimeout] while they look around the app, so a friend
+  /// can find it and they can come back to it; it ends when that runs out,
+  /// when the host ends it (End session), or when they go off and watch
+  /// or host something else (see [_settleParkedRoom]).
+  void leaveRoom() {
+    final client = _relayClient;
+    if (client == null) return;
+    if (client.seatIndexValue != 0 || client.roomIdValue == null) {
+      releaseRelayClient();
+      return;
+    }
+    _parkedRoomTimer?.cancel();
+    _parkedRoomTimer = Timer(_parkedRoomTimeout, () {
+      _parkedRoomTimer = null;
+      unawaited(endParkedRoom());
+    });
+  }
+
+  /// Ends the room kept open by [leaveRoom], for everyone in it.
+  Future<void> endParkedRoom() async {
+    _parkedRoomTimer?.cancel();
+    _parkedRoomTimer = null;
+    final client = _relayClient;
+    final roomId = client?.roomIdValue;
+    if (client == null) return;
+    releaseRelayClient();
+    if (roomId != null) await _closeRoom(client.relayUrl, roomId);
+  }
+
+  /// A kept-open room lasts while its host browses: going back into it
+  /// (its own lobby or player) takes it up again, and anything else — a
+  /// solo film, signing out — ends it.
+  void _settleParkedRoom(AppState next) {
+    final client = _relayClient;
+    if (_parkedRoomTimer == null || client == null) return;
+    switch (parkedRoomOnEntering(next, client)) {
+      case ParkedRoom.keep:
+        break;
+      case ParkedRoom.resume:
+        _parkedRoomTimer?.cancel();
+        _parkedRoomTimer = null;
+      case ParkedRoom.end:
+        unawaited(endParkedRoom());
+    }
+  }
+
   void releaseRelayClient() {
+    _parkedRoomTimer?.cancel();
+    _parkedRoomTimer = null;
     _myRoomIdSub?.cancel();
     _myRoomIdSub = null;
     _myRoomId = null;
@@ -732,23 +798,31 @@ class AppRootController extends ChangeNotifier {
   }
 
   Future<bool> closeHostedRoom(MergedRoom merged) async {
+    if (merged.room.roomId == parkedRoomId) {
+      await endParkedRoom();
+      return true;
+    }
+    return _closeRoom(merged.relay.url, merged.room.roomId);
+  }
+
+  Future<bool> _closeRoom(String relayUrl, String roomId) async {
     final identity = await _relayIdentityStore.load();
     final hosted = identity.hostedRooms.firstWhereOrNull(
-      (r) => r.roomId == merged.room.roomId,
+      (r) => r.roomId == roomId,
     );
     if (hosted == null) return false;
     final ok = await _relayDirectoryApi.closeRoom(
-      merged.relay.url,
-      merged.room.roomId,
+      relayUrl,
+      roomId,
       identity.peerId,
       hosted.reconnectToken,
     );
     if (ok) {
-      await _relayIdentityStore.removeHostedRoom(merged.room.roomId);
-      _hostedRoomIds = {..._hostedRoomIds}..remove(merged.room.roomId);
+      await _relayIdentityStore.removeHostedRoom(roomId);
+      _hostedRoomIds = {..._hostedRoomIds}..remove(roomId);
       _liveRoomsByRelay = {
         for (final e in _liveRoomsByRelay.entries)
-          e.key: e.value.where((r) => r.roomId != merged.room.roomId).toList(),
+          e.key: e.value.where((r) => r.roomId != roomId).toList(),
       };
       notifyListeners();
     }
@@ -843,6 +917,11 @@ class AppRootController extends ChangeNotifier {
     }
 
     final existing = await _findHostedRoomForMedia(targetRatingKey);
+    // A room kept open for a different title ends before this one starts;
+    // the same title's room is simply taken up again.
+    if (parkedRoomId != null && existing?.$2.roomId != parkedRoomId) {
+      await endParkedRoom();
+    }
     final relay = existing != null
         ? await _ensureRelayClient(
             existing.$1.url,
@@ -1222,6 +1301,8 @@ class AppRootController extends ChangeNotifier {
       return;
     }
     final (server, detail) = found;
+    final ownParkedRoom = merged.room.roomId == parkedRoomId;
+    if (parkedRoomId != null && !ownParkedRoom) await endParkedRoom();
     final relay = await _ensureRelayClient(
       merged.relay.url,
       JoinRoom(merged.room.roomId),
@@ -1253,6 +1334,7 @@ class AppRootController extends ChangeNotifier {
           relay: relay,
           hostName: merged.room.hostName,
           relayNickname: merged.relay.nickname,
+          isHost: ownParkedRoom,
         ),
       );
     }
@@ -1506,6 +1588,22 @@ bool pollsLiveRooms(AppState state) => switch (state) {
   Player() => false,
   _ => true,
 };
+
+/// What becomes of a host's kept-open room ([AppRootController.leaveRoom])
+/// as the app moves to [next].
+enum ParkedRoom { keep, resume, end }
+
+/// Browsing keeps it; its own lobby or player ([relay] is the room's
+/// connection) takes it up again; anything else — a solo film, signing
+/// out — ends it.
+ParkedRoom parkedRoomOnEntering(AppState next, RelayClient relay) {
+  final backInIt = switch (next) {
+    Lobby(relay: final r) || Player(relay: final r?) => r == relay,
+    _ => false,
+  };
+  if (backInIt) return ParkedRoom.resume;
+  return pollsLiveRooms(next) ? ParkedRoom.keep : ParkedRoom.end;
+}
 
 /// Mirrors settings_store.dart's `_randomRelayId` — same shape, separate
 /// copy since that one's private to its own file.

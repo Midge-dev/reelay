@@ -821,7 +821,7 @@ class _AppContent extends StatelessWidget {
             ),
           ),
           onBack: () {
-            controller.releaseRelayClient();
+            controller.leaveRoom();
             controller.returnTo(returnState);
           },
         ),
@@ -842,7 +842,7 @@ class _AppContent extends StatelessWidget {
           settings: controller.currentSettings,
           onBitrateChanged: controller.saveBitratePreference,
           onExit: () {
-            controller.releaseRelayClient();
+            controller.leaveRoom();
             controller.returnTo(returnState);
           },
           onFailed: (reason, positionMs) => controller.playbackFailed(

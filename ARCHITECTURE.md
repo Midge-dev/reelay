@@ -56,6 +56,15 @@ partial storage clear, a regenerated peer id) falls through to a fresh seat
 rather than failing — otherwise a device that only lost its token was told
 the room was full with seats open.
 
+The directory (`GET /rooms`) only lists a room while its host is
+connected. So a host leaving the lobby or player doesn't disconnect: the
+app keeps the connection for up to three minutes while they browse
+(`AppRootController.leaveRoom`), which keeps the room listed and joinable.
+It ends — closed for everyone — when that runs out, on End session, or
+when the host plays or hosts something else; going back into the same
+title's room takes it up again. This is client-side on purpose, so it
+works against any relay, including one a friend runs.
+
 Deliberately ending a room (`POST /rooms/:roomId/close`) is a different path
 from a disconnect, which still gets the reconnect grace — losing power or
 wifi never silently ends a room. On a deliberate close *every* occupied seat
