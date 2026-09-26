@@ -18,6 +18,7 @@ Future<void> _pump(
   bool Function(String?)? isOnWatchlist,
   FoldedWork<PlexLibraryItem>? work,
   void Function(Sourced<PlexLibraryItem>, int)? onSwitchSource,
+  PlexLibraryItem movie = _movie,
 }) async {
   tester.view.physicalSize = const Size(1920, 1080);
   tester.view.devicePixelRatio = 1.0;
@@ -29,8 +30,8 @@ Future<void> _pump(
       textDirection: TextDirection.ltr,
       child: MovieDetailScreen(
         server: _server,
-        movie: _movie,
-        work: work ?? FoldedWork(_movie.guid, [Sourced(_movie, _server, ServerReachability.local)]),
+        movie: movie,
+        work: work ?? FoldedWork(movie.guid, [Sourced(movie, _server, ServerReachability.local)]),
         onSwitchSource: onSwitchSource ?? (_, _) {},
         loadCopyFacts: (copy) async => CopyFacts(
           picture: copy.server.name == 'Home' ? '4K HDR' : '1080p',
@@ -66,6 +67,22 @@ void main() {
     expect(find.text('2016'), findsOneWidget);
     expect(find.text('A linguist deciphers alien contact.'), findsOneWidget);
     expect(find.text('Play'), findsOneWidget);
+  });
+
+  testWidgets('the year is the last chip on the meta line, after the rating', (tester) async {
+    await _pump(
+      tester,
+      movie: const PlexLibraryItem(ratingKey: '1', title: 'Arrival', year: 2016, contentRating: 'PG-13', genres: [PlexTag(tag: 'Drama')]),
+    );
+    await tester.pump();
+
+    final year = tester.getCenter(find.text('2016'));
+    final rating = tester.getCenter(find.text('PG-13'));
+    final genre = tester.getCenter(find.text('Drama'));
+    expect(year.dy, closeTo(rating.dy, 1), reason: 'same line');
+    expect(year.dx, greaterThan(rating.dx));
+    expect(rating.dx, greaterThan(genre.dx), reason: 'chips follow the text parts');
+    expect(find.text('2016'), findsOneWidget, reason: 'no longer repeated in the text');
   });
 
   testWidgets('shows a Watchlist button', (tester) async {

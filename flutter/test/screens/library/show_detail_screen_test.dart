@@ -61,8 +61,13 @@ void main() {
     await _pump(tester);
 
     expect(find.text('The Long Field'), findsOneWidget);
-    expect(find.textContaining('2022'), findsOneWidget);
+    expect(find.text('2022'), findsOneWidget, reason: 'the year is its own chip');
     expect(find.textContaining('2 seasons'), findsOneWidget);
+    expect(
+      tester.getCenter(find.text('2022')).dx,
+      greaterThan(tester.getCenter(find.textContaining('2 seasons')).dx),
+      reason: 'at the very end of the meta line',
+    );
     expect(find.text('Three generations work the same stretch of borderland.'), findsOneWidget);
   });
 

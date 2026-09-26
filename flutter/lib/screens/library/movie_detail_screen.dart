@@ -500,12 +500,14 @@ class _Hero extends StatelessWidget {
     final duration = detail?.duration;
     final summary = detail?.summary ?? movie.summary;
     final rating = detail?.contentRating ?? movie.contentRating;
+    // A row item opened from Home can arrive without a year; the detail
+    // fills it in.
+    final year = movie.year ?? detail?.year;
     final meta = [
-      if (movie.year != null) '${movie.year}',
       if (duration != null) formatRuntime(duration),
       if (movie.genres.isNotEmpty) movie.genres.first.tag,
     ];
-    final chips = [?rating, ?media?.picture, ?media?.audio];
+    final chips = [?rating, ?media?.picture, ?media?.audio, ?year?.toString()];
     final directors = detail?.directors.map((p) => p.tag).take(2).join(', ');
     final facts = <(String, String)>[
       if (directors != null && directors.isNotEmpty) ('Director', directors),

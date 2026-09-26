@@ -288,6 +288,7 @@ class _ShowDetailScreenState extends State<ShowDetailScreen> {
       _ShowHero(
         server: widget.server,
         show: widget.show,
+        year: widget.show.year ?? detail?.year,
         summary: detail?.summary ?? widget.show.summary,
         seasonCount: _seasons.length,
         playLabel: playLabel,
@@ -392,6 +393,9 @@ class _ShowHero extends StatelessWidget {
   final PlexServer server;
   final PlexLibraryItem show;
   final String? summary;
+
+  /// First aired — the last chip on the meta line.
+  final int? year;
   final int seasonCount;
   final String playLabel;
   final FocusNode playFocus;
@@ -404,6 +408,7 @@ class _ShowHero extends StatelessWidget {
   const _ShowHero({
     required this.server,
     required this.show,
+    this.year,
     this.summary,
     required this.seasonCount,
     required this.playLabel,
@@ -433,7 +438,6 @@ class _ShowHero extends StatelessWidget {
     final gap = SizedBox(height: _heroBlockGap.du(context));
     final episodes = show.leafCount;
     final meta = <String>[
-      if (show.year != null) '${show.year}',
       [
         if (seasonCount > 0)
           '$seasonCount season${seasonCount == 1 ? '' : 's'}',
@@ -478,7 +482,10 @@ class _ShowHero extends StatelessWidget {
                     overflow: TextOverflow.ellipsis,
                   ),
                   gap,
-                  MetaRow(parts: meta, chips: [?show.contentRating]),
+                  MetaRow(
+                    parts: meta,
+                    chips: [?show.contentRating, ?year?.toString()],
+                  ),
                   if (summary != null && summary!.trim().isNotEmpty) ...[
                     gap,
                     ConstrainedBox(
