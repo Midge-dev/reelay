@@ -184,13 +184,81 @@ class _SearchScreenState extends State<SearchScreen> {
   }
 }
 
-class _QueryField extends StatelessWidget {
+const _placeholder = 'Type a title';
+
+/// The query line. Empty, its prompt types itself out behind a blinking
+/// caret, and starts over from the first letter whenever the query is
+/// cleared again.
+class _QueryField extends StatefulWidget {
   final String query;
 
   const _QueryField({required this.query});
 
   @override
+  State<_QueryField> createState() => _QueryFieldState();
+}
+
+class _QueryFieldState extends State<_QueryField> {
+  Timer? _blink;
+  Timer? _typing;
+  bool _caretOn = true;
+
+  /// How much of [_placeholder] has typed out so far.
+  int _typed = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _restartBlink();
+    if (widget.query.isEmpty) _startTyping();
+  }
+
+  @override
+  void didUpdateWidget(_QueryField old) {
+    super.didUpdateWidget(old);
+    if (widget.query == old.query) return;
+    // A keypress shows the caret at once, as any text field does.
+    _restartBlink();
+    if (widget.query.isEmpty) {
+      _startTyping();
+    } else {
+      _typing?.cancel();
+    }
+  }
+
+  @override
+  void dispose() {
+    _blink?.cancel();
+    _typing?.cancel();
+    super.dispose();
+  }
+
+  void _restartBlink() {
+    _blink?.cancel();
+    _caretOn = true;
+    _blink = Timer.periodic(AppMotion.caretBlink, (_) {
+      if (mounted) setState(() => _caretOn = !_caretOn);
+    });
+  }
+
+  void _startTyping() {
+    _typing?.cancel();
+    // With motion cut to the bottom rung the prompt is simply there.
+    if (AppMotion.level == MotionLevel.minimal) {
+      _typed = _placeholder.length;
+      return;
+    }
+    _typed = 0;
+    _typing = Timer.periodic(AppMotion.placeholderTypeStep, (timer) {
+      if (!mounted) return;
+      setState(() => _typed++);
+      if (_typed >= _placeholder.length) timer.cancel();
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final query = widget.query;
     return Container(
       height: _queryFieldHeight.du(context),
       padding: EdgeInsets.symmetric(horizontal: AppSpacing.xl.du(context)),
@@ -212,7 +280,7 @@ class _QueryField extends StatelessWidget {
           SizedBox(width: 14.du(context)),
           Flexible(
             child: AppText(
-              query.isEmpty ? 'Type a title' : query,
+              query.isEmpty ? _placeholder.substring(0, _typed) : query,
               style: AppTypography.rowLabel.copyWith(
                 fontWeight: FontWeight.w400,
               ),
@@ -223,10 +291,13 @@ class _QueryField extends StatelessWidget {
           ),
           // The caret sits right after the text, where the next letter goes.
           SizedBox(width: AppSpacing.xs.du(context)),
-          Container(
-            width: 2.du(context),
-            height: 30.du(context),
-            color: AppColors.accent,
+          Opacity(
+            opacity: _caretOn ? 1 : 0,
+            child: Container(
+              width: 2.du(context),
+              height: 30.du(context),
+              color: AppColors.accent,
+            ),
           ),
         ],
       ),

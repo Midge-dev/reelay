@@ -649,6 +649,14 @@ class AppMotion {
   /// Skeleton pulse — a whole-row opacity breath, not a gradient sweep.
   static const skeletonPulse = Duration(milliseconds: 2400);
 
+  // ---- Text entry --------------------------------------------------------
+  /// A text field's caret: on for this long, then off for as long.
+  static const caretBlink = Duration(milliseconds: 530);
+
+  /// An empty field's prompt ("Type a title") types itself out, one letter
+  /// per step.
+  static const placeholderTypeStep = Duration(milliseconds: 70);
+
   // ---- Degradation -------------------------------------------------------
   static MotionLevel level = MotionLevel.full;
 

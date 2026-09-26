@@ -12,6 +12,9 @@ const _server = PlexServer(name: 'Attic', baseUrl: 'http://192.168.1.5:32400', a
 const _connectedServers = [ReachableServer(_server, ServerReachability.local)];
 const _debounceSettle = Duration(milliseconds: 400);
 
+/// Long enough for "Type a title" to finish typing itself out.
+const _placeholderTyped = Duration(seconds: 2);
+
 Future<void> _pump(
   WidgetTester tester, {
   required Future<List<PlexOnDeckItem>> Function(String query) search,
@@ -47,9 +50,31 @@ Future<void> _pump(
 void main() {
   testWidgets('shows the placeholder and no results panel with an empty query', (tester) async {
     await _pump(tester, search: (_) async => const []);
+    await tester.pump(_placeholderTyped);
 
     expect(find.text('Type a title'), findsOneWidget);
     expect(find.text('Nothing on your servers matches that.'), findsNothing);
+  });
+
+  testWidgets('the prompt types itself out, and starts over once the query is cleared', (tester) async {
+    await _pump(tester, search: (_) async => const []);
+    expect(find.text('Type a title'), findsNothing);
+
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(find.text('Type'), findsOneWidget);
+
+    await tester.pump(_placeholderTyped);
+    expect(find.text('Type a title'), findsOneWidget);
+
+    await tester.tap(find.text('B'));
+    await tester.pump();
+    expect(find.text('Type a title'), findsNothing);
+
+    await tester.tap(find.text('clear'));
+    await tester.pump();
+    expect(find.text('Type a title'), findsNothing, reason: 'starts again from the first letter');
+    await tester.pump(_placeholderTyped);
+    expect(find.text('Type a title'), findsOneWidget);
   });
 
   testWidgets('typing a letter queries and shows grouped results', (tester) async {
@@ -122,6 +147,7 @@ void main() {
 
     await tester.tap(find.text('clear'));
     await tester.pump();
+    await tester.pump(_placeholderTyped);
 
     expect(find.text('Type a title'), findsOneWidget);
     expect(find.text('Bordeaux'), findsNothing);
