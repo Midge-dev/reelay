@@ -20,10 +20,10 @@ import '../../theme/typography.dart';
 import '../common/digital_clock.dart';
 import '../common/reelay_mark.dart';
 import '../home/watch_together_row.dart' show MergedRoom;
+import 'rail_order.dart';
 import 'rooms_panel.dart';
 import 'server_switcher_panel.dart';
 
-const _sectionTypeShow = 'show';
 
 // Screens 01-25's rail: 80 wide, 52x52 items 6 apart, the logo mark 32 du
 // with 22 below it, 30 du top/bottom padding, a 40 du avatar at the foot.
@@ -89,6 +89,9 @@ class AppNavigationDrawer extends StatefulWidget {
   final VoidCallback? onOpenWatchlist;
   final RoomsPanelData? rooms;
 
+  /// The saved rail order (`AppSettings.railOrder`) — see rail_order.dart.
+  final List<String> railOrder;
+
   /// Lets a screen inside the drawer (Home's "N more rooms ›") open the
   /// rooms panel without owning it. Owned by AppRoot so it survives the
   /// screen underneath changing.
@@ -114,6 +117,7 @@ class AppNavigationDrawer extends StatefulWidget {
     required this.onOpenSearch,
     this.onOpenWatchlist,
     this.rooms,
+    this.railOrder = const [],
     this.roomsPanelOpen,
     this.account,
     this.versionName,
@@ -199,12 +203,22 @@ class _AppNavigationDrawerState extends State<AppNavigationDrawer> {
     }
   }
 
+  List<String> get _railOrder =>
+      resolveRailOrder(widget.railOrder, widget.sectionGroups);
+
+  FocusNode? _railItemNode(String id) => switch (id) {
+    railHome => _homeItemFocusNode,
+    railSearch => _searchItemFocusNode,
+    railWatchlist => _watchlistItemFocusNode,
+    railRooms => _roomsItemFocusNode,
+    _ => widget.sectionGroups
+        .where((s) => railSectionId(s) == id)
+        .map(_sectionNode)
+        .firstOrNull,
+  };
+
   List<FocusNode> get _orderedRailFocusNodes => [
-    _homeItemFocusNode,
-    _searchItemFocusNode,
-    _watchlistItemFocusNode,
-    for (final section in widget.sectionGroups) _sectionNode(section),
-    _roomsItemFocusNode,
+    for (final id in _railOrder) ?_railItemNode(id),
     _settingsItemFocusNode,
     _avatarFocusNode,
   ];
@@ -371,6 +385,57 @@ class _AppNavigationDrawerState extends State<AppNavigationDrawer> {
     super.dispose();
   }
 
+  /// One movable rail item by its rail_order.dart id, or null for an id
+  /// that names no item (a library that's gone).
+  Widget? _railItem(String id, RoomsPanelData? rooms, bool expanded) {
+    final look = railItemLook(id, widget.sectionGroups);
+    final node = _railItemNode(id);
+    if (look == null || node == null) return null;
+    final (selected, enabled, onClick) = switch (id) {
+      railHome => (
+        _isSelected(RailDestination.home),
+        true,
+        () => _handleSelect(widget.onOpenHome),
+      ),
+      railSearch => (
+        _isSelected(RailDestination.search),
+        true,
+        () => _handleSelect(widget.onOpenSearch),
+      ),
+      railWatchlist => (
+        _isSelected(RailDestination.watchlist),
+        true,
+        () {
+          final open = widget.onOpenWatchlist;
+          if (open != null) _handleSelect(open);
+        },
+      ),
+      railRooms => (_roomsOpen, rooms != null, _openRooms),
+      _ => () {
+        final section = widget.sectionGroups.firstWhere(
+          (s) => railSectionId(s) == id,
+        );
+        return (
+          _isSelected(RailDestination.section) &&
+              section.key == widget.selectedSectionGroupKey,
+          true,
+          () => _handleSelect(() => widget.onSelectSection(section)),
+        );
+      }(),
+    };
+    return _SidebarItem(
+      key: ValueKey(id),
+      icon: look.icon,
+      selectedIcon: look.selectedIcon,
+      label: look.label,
+      selected: selected,
+      expanded: expanded,
+      enabled: enabled,
+      onClick: onClick,
+      focusNode: node,
+    );
+  }
+
   bool _isSelected(RailDestination d) =>
       !_roomsOpen && !_showServerSwitcher && widget.destination == d;
 
@@ -457,83 +522,12 @@ class _AppNavigationDrawerState extends State<AppNavigationDrawer> {
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.stretch,
                               children: [
-                                for (final item in [
-                                  _SidebarItem(
-                                    icon: PhosphorIconsRegular.house,
-                                    selectedIcon: PhosphorIconsFill.house,
-                                    label: 'Home',
-                                    selected: _isSelected(RailDestination.home),
-                                    expanded: expanded,
-                                    onClick: () =>
-                                        _handleSelect(widget.onOpenHome),
-                                    focusNode: _homeItemFocusNode,
-                                  ),
-                                  _SidebarItem(
-                                    icon: PhosphorIconsRegular.magnifyingGlass,
-                                    selectedIcon:
-                                        PhosphorIconsFill.magnifyingGlass,
-                                    label: 'Search',
-                                    selected: _isSelected(
-                                      RailDestination.search,
-                                    ),
-                                    expanded: expanded,
-                                    onClick: () =>
-                                        _handleSelect(widget.onOpenSearch),
-                                    focusNode: _searchItemFocusNode,
-                                  ),
-                                  _SidebarItem(
-                                    icon: PhosphorIconsRegular.bookmarkSimple,
-                                    selectedIcon:
-                                        PhosphorIconsFill.bookmarkSimple,
-                                    label: 'Watchlist',
-                                    selected: _isSelected(
-                                      RailDestination.watchlist,
-                                    ),
-                                    expanded: expanded,
-                                    onClick: () {
-                                      final open = widget.onOpenWatchlist;
-                                      if (open != null) _handleSelect(open);
-                                    },
-                                    focusNode: _watchlistItemFocusNode,
-                                  ),
-                                  for (final section in widget.sectionGroups)
-                                    _SidebarItem(
-                                      key: ValueKey(section.key),
-                                      icon: section.type == _sectionTypeShow
-                                          ? PhosphorIconsRegular
-                                                .televisionSimple
-                                          : PhosphorIconsRegular.filmSlate,
-                                      selectedIcon:
-                                          section.type == _sectionTypeShow
-                                          ? PhosphorIconsFill.televisionSimple
-                                          : PhosphorIconsFill.filmSlate,
-                                      label: section.title,
-                                      selected:
-                                          _isSelected(
-                                            RailDestination.section,
-                                          ) &&
-                                          section.key ==
-                                              widget.selectedSectionGroupKey,
-                                      expanded: expanded,
-                                      onClick: () => _handleSelect(
-                                        () => widget.onSelectSection(section),
-                                      ),
-                                      focusNode: _sectionNode(section),
-                                    ),
-                                  _SidebarItem(
-                                    icon: PhosphorIconsRegular.usersThree,
-                                    selectedIcon: PhosphorIconsFill.usersThree,
-                                    label: 'Watch Together',
-                                    selected: _roomsOpen,
-                                    expanded: expanded,
-                                    enabled: rooms != null,
-                                    onClick: _openRooms,
-                                    focusNode: _roomsItemFocusNode,
-                                  ),
-                                ]) ...[
-                                  item,
-                                  SizedBox(height: _railItemGap.du(context)),
-                                ],
+                                for (final id in _railOrder)
+                                  if (_railItem(id, rooms, expanded)
+                                      case final item?) ...[
+                                    item,
+                                    SizedBox(height: _railItemGap.du(context)),
+                                  ],
                               ],
                             ),
                           ),

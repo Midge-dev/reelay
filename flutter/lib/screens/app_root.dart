@@ -334,6 +334,7 @@ class _AppContent extends StatelessWidget {
         BackHandler(
           onBack: () => controller.returnTo(returnState),
           child: AppNavigationDrawer(
+            railOrder: controller.currentSettings.railOrder,
             sectionGroups: sectionGroups,
             selectedSectionGroupKey: selectedSectionGroupKey,
             destination: RailDestination.section,
@@ -353,6 +354,7 @@ class _AppContent extends StatelessWidget {
           ),
         ),
       LoadingHome(:final sectionGroups) => AppNavigationDrawer(
+        railOrder: controller.currentSettings.railOrder,
         sectionGroups: sectionGroups,
         selectedSectionGroupKey: null,
         destination: RailDestination.home,
@@ -378,6 +380,7 @@ class _AppContent extends StatelessWidget {
           clientIdentifier: controller.clientIdentifier,
           hint: relayHint,
           versionName: _appVersionName,
+          sectionGroups: ctx.sectionGroups,
           onBack: () => controller.returnTo(returnState),
           onServersChanged: () {
             final token = controller.accountToken;
@@ -879,72 +882,77 @@ class _AppContent extends StatelessWidget {
       items: const [],
     );
 
-    return AppNavigationDrawer(
-      sectionGroups: home.sectionGroups,
-      destination: RailDestination.home,
-      rooms: _roomsData(home, home.servers),
-      roomsPanelOpen: roomsPanelOpen,
-      onSelectSection: (group) =>
-          controller.openSection(home.servers, home.sectionGroups, group),
-      onOpenSettings: () => controller.returnTo(
-        Settings(ctx: emptyCtx(home.sectionGroups.first), returnState: home),
-      ),
-      onOpenSearch: () => controller.returnTo(
-        Search(ctx: emptyCtx(home.sectionGroups.first), returnState: home),
-      ),
-      onOpenWatchlist: () => controller.returnTo(
-        Watchlist(ctx: emptyCtx(home.sectionGroups.first), returnState: home),
-      ),
-      // Clicking Home while already on Home used to be a pure no-op —
-      // no state change at all means nothing ever reclaims focus from the
-      // nav rail, so the drawer never collapses back down (it only
-      // collapses on focus loss). Reloading Home, same as every other
-      // sidebar item does even when re-selecting its own current screen,
-      // gives HomeScreen a real remount and its existing autofocus does
-      // the rest.
-      onOpenHome: () => controller.goHome(home.servers, home.sectionGroups),
-      account: controller.localAccount,
-      versionName: _appVersionName,
-      connectedServers: controller.connectedServers,
-      disabledServerIds: controller.currentSettings.disabledServerIds,
-      loadServers: _loadServers,
-      probeServer: _probeServer,
-      loadLibraryCount: _loadLibraryCount,
-      onToggleServer: _toggleServer,
-      child: _remembering(
-        home,
-        HomeScreen(
-          servers: home.servers,
-          unreachableResources: home.unreachableResources,
-          onDeck: home.onDeck,
-          recentlyAdded: home.recentlyAdded,
-          recentActivity: home.recentActivity,
-          suggestions: home.suggestions,
-          watchlist: controller.watchlist,
-          liveRooms: controller.liveRooms,
-          myRoomId: controller.myRoomId,
-          hostedRoomIds: controller.hostedRoomIds,
-          onEndSession: controller.closeHostedRoom,
-          onSelectRoom: (merged) =>
-              controller.joinRoom(home, home.servers, merged),
-          onOpenRooms: () => roomsPanelOpen.value = true,
-          onResume: (item) => controller.resumeOnDeckItem(home, item),
-          onRemove: (item) => controller.removeFromContinueWatching(home, item),
-          onSelectWatchlistItem: (entry) =>
-              controller.selectWatchlistItem(home, entry),
-          onRemoveFromWatchlist: controller.removeFromWatchlist,
-          onSelectRecentlyAdded: (item) =>
-              controller.selectRecentlyAdded(home, item),
-          onSelectRecentActivity: (item) =>
-              controller.selectOnDeckLike(home, item),
-          onSelectSuggestion: (item) => controller.selectOnDeckLike(home, item),
-          onHeroWatchTogether: (item) => controller.openWatchTogetherStart(
-            ctx: emptyCtx(sectionGroupFor(home.sectionGroups, item.value.type)),
-            server: item.server,
-            returnState: home,
-            roomTitle: _episodeRoomTitleFromOnDeck(item.value),
-            thumb: item.value.thumb,
-            targetRatingKey: item.value.ratingKey,
+    // The rail's order is a setting, so it follows the settings stream:
+    // reordering it in Settings shows on the rail beside it at once.
+    return Consumer(
+      builder: (context, ref, _) => AppNavigationDrawer(
+        railOrder: _railOrder(ref),
+        sectionGroups: home.sectionGroups,
+        destination: RailDestination.home,
+        rooms: _roomsData(home, home.servers),
+        roomsPanelOpen: roomsPanelOpen,
+        onSelectSection: (group) =>
+            controller.openSection(home.servers, home.sectionGroups, group),
+        onOpenSettings: () => controller.returnTo(
+          Settings(ctx: emptyCtx(home.sectionGroups.first), returnState: home),
+        ),
+        onOpenSearch: () => controller.returnTo(
+          Search(ctx: emptyCtx(home.sectionGroups.first), returnState: home),
+        ),
+        onOpenWatchlist: () => controller.returnTo(
+          Watchlist(ctx: emptyCtx(home.sectionGroups.first), returnState: home),
+        ),
+        // Clicking Home while already on Home used to be a pure no-op —
+        // no state change at all means nothing ever reclaims focus from the
+        // nav rail, so the drawer never collapses back down (it only
+        // collapses on focus loss). Reloading Home, same as every other
+        // sidebar item does even when re-selecting its own current screen,
+        // gives HomeScreen a real remount and its existing autofocus does
+        // the rest.
+        onOpenHome: () => controller.goHome(home.servers, home.sectionGroups),
+        account: controller.localAccount,
+        versionName: _appVersionName,
+        connectedServers: controller.connectedServers,
+        disabledServerIds: controller.currentSettings.disabledServerIds,
+        loadServers: _loadServers,
+        probeServer: _probeServer,
+        loadLibraryCount: _loadLibraryCount,
+        onToggleServer: _toggleServer,
+        child: _remembering(
+          home,
+          HomeScreen(
+            servers: home.servers,
+            unreachableResources: home.unreachableResources,
+            onDeck: home.onDeck,
+            recentlyAdded: home.recentlyAdded,
+            recentActivity: home.recentActivity,
+            suggestions: home.suggestions,
+            watchlist: controller.watchlist,
+            liveRooms: controller.liveRooms,
+            myRoomId: controller.myRoomId,
+            hostedRoomIds: controller.hostedRoomIds,
+            onEndSession: controller.closeHostedRoom,
+            onSelectRoom: (merged) =>
+                controller.joinRoom(home, home.servers, merged),
+            onOpenRooms: () => roomsPanelOpen.value = true,
+            onResume: (item) => controller.resumeOnDeckItem(home, item),
+            onRemove: (item) => controller.removeFromContinueWatching(home, item),
+            onSelectWatchlistItem: (entry) =>
+                controller.selectWatchlistItem(home, entry),
+            onRemoveFromWatchlist: controller.removeFromWatchlist,
+            onSelectRecentlyAdded: (item) =>
+                controller.selectRecentlyAdded(home, item),
+            onSelectRecentActivity: (item) =>
+                controller.selectOnDeckLike(home, item),
+            onSelectSuggestion: (item) => controller.selectOnDeckLike(home, item),
+            onHeroWatchTogether: (item) => controller.openWatchTogetherStart(
+              ctx: emptyCtx(sectionGroupFor(home.sectionGroups, item.value.type)),
+              server: item.server,
+              returnState: home,
+              roomTitle: _episodeRoomTitleFromOnDeck(item.value),
+              thumb: item.value.thumb,
+              targetRatingKey: item.value.ratingKey,
+            ),
           ),
         ),
       ),
@@ -968,34 +976,42 @@ class _AppContent extends StatelessWidget {
     required LibraryContext ctx,
     required Widget child,
   }) {
-    return AppNavigationDrawer(
-      sectionGroups: ctx.sectionGroups,
-      selectedSectionGroupKey: ctx.selectedSectionGroup.key,
-      destination: _destinationFor(state),
-      rooms: _roomsData(state, ctx.servers),
-      roomsPanelOpen: roomsPanelOpen,
-      onSelectSection: (group) => controller.selectSection(ctx, group),
-      // Back from a rail destination returns to the screen it was opened
-      // from — not a made-up Library, which is what these used to return
-      // to even from a detail page or Search.
-      onOpenSettings: () =>
-          controller.returnTo(Settings(ctx: ctx, returnState: state)),
-      onOpenHome: () => controller.goHome(ctx.servers, ctx.sectionGroups),
-      onOpenSearch: () =>
-          controller.returnTo(Search(ctx: ctx, returnState: state)),
-      onOpenWatchlist: () =>
-          controller.returnTo(Watchlist(ctx: ctx, returnState: state)),
-      account: controller.localAccount,
-      versionName: _appVersionName,
-      connectedServers: controller.connectedServers,
-      disabledServerIds: controller.currentSettings.disabledServerIds,
-      loadServers: _loadServers,
-      probeServer: _probeServer,
-      loadLibraryCount: _loadLibraryCount,
-      onToggleServer: _toggleServer,
-      child: _remembering(state, child),
+    // The rail's order is a setting, so it follows the settings stream:
+    // reordering it in Settings shows on the rail beside it at once.
+    return Consumer(
+      builder: (context, ref, _) => AppNavigationDrawer(
+        railOrder: _railOrder(ref),
+        sectionGroups: ctx.sectionGroups,
+        selectedSectionGroupKey: ctx.selectedSectionGroup.key,
+        destination: _destinationFor(state),
+        rooms: _roomsData(state, ctx.servers),
+        roomsPanelOpen: roomsPanelOpen,
+        onSelectSection: (group) => controller.selectSection(ctx, group),
+        // Back from a rail destination returns to the screen it was opened
+        // from — not a made-up Library, which is what these used to return
+        // to even from a detail page or Search.
+        onOpenSettings: () =>
+            controller.returnTo(Settings(ctx: ctx, returnState: state)),
+        onOpenHome: () => controller.goHome(ctx.servers, ctx.sectionGroups),
+        onOpenSearch: () =>
+            controller.returnTo(Search(ctx: ctx, returnState: state)),
+        onOpenWatchlist: () =>
+            controller.returnTo(Watchlist(ctx: ctx, returnState: state)),
+        account: controller.localAccount,
+        versionName: _appVersionName,
+        connectedServers: controller.connectedServers,
+        disabledServerIds: controller.currentSettings.disabledServerIds,
+        loadServers: _loadServers,
+        probeServer: _probeServer,
+        loadLibraryCount: _loadLibraryCount,
+        onToggleServer: _toggleServer,
+        child: _remembering(state, child),
+      ),
     );
   }
+
+  static List<String> _railOrder(WidgetRef ref) =>
+      ref.watch(settingsStreamProvider).value?.railOrder ?? const [];
 
   /// Back hands a screen its own AppState object again; this gives the
   /// screen that object's [ScreenMemory], so it comes back as it was left.

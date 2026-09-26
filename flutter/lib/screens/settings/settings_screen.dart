@@ -14,6 +14,7 @@ import '../../kit/icon.dart';
 import '../../kit/surface_style.dart';
 import '../../kit/text.dart';
 import '../../pairing/pairing_server.dart';
+import '../../state/app_state.dart' show SectionGroup;
 import '../../state/data_providers.dart';
 import '../../sync/relay_directory_api.dart';
 import '../../theme/phosphor_icons.dart';
@@ -22,9 +23,11 @@ import '../../theme/tokens.dart';
 import '../../theme/typography.dart';
 import '../common/loading_screen.dart';
 import '../common/relay_status.dart';
+import '../navigation/rail_order.dart';
 import '../profiles/add_profile_dialog.dart';
 import 'appearance_screen.dart';
 import 'max_seats_menu.dart';
+import 'rail_order_list.dart';
 import 'relay_settings_pane.dart';
 
 const _uuid = Uuid();
@@ -44,6 +47,9 @@ class SettingsScreen extends ConsumerStatefulWidget {
   final String? versionName;
   final VoidCallback onBack;
 
+  /// The rail's libraries, for Display's "Menu order" list.
+  final List<SectionGroup> sectionGroups;
+
   /// Leaving Settings after turning a server on or off — the hub has to
   /// reconnect to pick the change up (see AppRootController.connect).
   final VoidCallback onServersChanged;
@@ -55,6 +61,7 @@ class SettingsScreen extends ConsumerStatefulWidget {
     this.hint,
     this.versionName,
     required this.onBack,
+    this.sectionGroups = const [],
     required this.onServersChanged,
   });
 
@@ -308,6 +315,14 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     final store = ref.read(settingsStoreProvider);
     final persisted = await store.observe().first;
     await store.save(persisted.copyWith(uiScale: scale));
+  }
+
+  Future<void> _saveRailOrder(List<String> order) async {
+    final saved = railOrderToSave(order, widget.sectionGroups);
+    setState(() => _settings = _settings.copyWith(railOrder: saved));
+    final store = ref.read(settingsStoreProvider);
+    final persisted = await store.observe().first;
+    await store.save(persisted.copyWith(railOrder: saved));
   }
 
   void _cancelPairing() {
@@ -815,6 +830,30 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         onChanged: _selectUiScale,
       ),
     ),
+    Padding(
+      padding: EdgeInsets.only(top: AppSpacing.lg.du(context)),
+      child: AppText(
+        'MENU ORDER',
+        style: AppTypography.micro,
+        color: AppColors.ink3,
+      ),
+    ),
+    AppText(
+      'The order of the menu on the left. Select one to pick it up, move it with up and down, and select again to put it down. Settings and your profile stay at the bottom.',
+      style: AppTypography.caption,
+    ),
+    RailOrderList(
+      order: resolveRailOrder(_settings.railOrder, widget.sectionGroups),
+      sections: widget.sectionGroups,
+      onChanged: _saveRailOrder,
+    ),
+    if (_settings.railOrder.isNotEmpty)
+      _SettingRow(
+        label: 'Reset menu order',
+        description:
+            'Home, Search, Watchlist, your libraries, then Watch Together.',
+        onClick: () => _saveRailOrder(defaultRailOrder(widget.sectionGroups)),
+      ),
   ];
 
   List<Widget> _profileRows() => [
