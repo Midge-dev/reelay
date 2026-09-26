@@ -481,6 +481,28 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     return KeyEventResult.ignored;
   }
 
+  void _showGroup(_Group g) {
+    setState(() => _group = g);
+    if (g == _Group.appearance) {
+      WidgetsBinding.instance.addPostFrameCallback(
+        (_) => _revealCurrentTheme(),
+      );
+    }
+  }
+
+  /// The theme list is longer than the pane at larger UI sizes: bring the
+  /// selected theme into view as soon as the pane shows it, not only once
+  /// focus crosses in — otherwise the list opens at the top with the theme
+  /// you're on scrolled out of sight.
+  void _revealCurrentTheme() {
+    final row = _appearanceEntryFocus.context;
+    if (!mounted || row == null) return;
+    Scrollable.ensureVisible(
+      row,
+      alignmentPolicy: ScrollPositionAlignmentPolicy.keepVisibleAtEnd,
+    );
+  }
+
   /// Crossing into the pane lands somewhere deliberate — the current theme
   /// on Appearance, the pane's first row everywhere else — rather than on
   /// whichever row happens to sit level with the group you were on.
@@ -531,7 +553,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     group: g,
                     selected: g == _group,
                     focusNode: _groupFocus[g]!,
-                    onFocused: () => setState(() => _group = g),
+                    onFocused: () => _showGroup(g),
                     onClick: _enterPane,
                   ),
                 ],
