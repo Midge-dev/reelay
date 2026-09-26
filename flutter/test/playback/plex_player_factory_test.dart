@@ -37,6 +37,8 @@ void main() {
         '&X-Plex-Product=Reelay'
         '&X-Plex-Platform=Android'
         '&X-Plex-Client-Profile-Name=Generic'
+        '&X-Plex-Client-Profile-Extra=add-transcode-target(type%3DvideoProfile%26context%3Dstreaming'
+        '%26protocol%3Dhls%26container%3Dmpegts%26videoCodec%3Dh264%26audioCodec%3Daac%252Cac3%252Ceac3)'
         '&X-Plex-Client-Identifier=client-1'
         '&X-Plex-Session-Identifier=play-1'
         '&X-Plex-Token=tok123',
@@ -52,6 +54,20 @@ void main() {
       ).queryParameters;
       expect(params['X-Plex-Platform'], isNotEmpty);
       expect(params['X-Plex-Client-Profile-Name'], 'Generic');
+      // Generic names no transcode targets; without one PMS 400s the start
+      // request (decision code 4005). What we can play must ride along.
+      expect(params['X-Plex-Client-Profile-Extra'], plexTranscodeProfileExtra);
+      final target = Uri.splitQueryString(
+        RegExp(r'add-transcode-target\((.*)\)').firstMatch(plexTranscodeProfileExtra)!.group(1)!,
+      );
+      expect(target, {
+        'type': 'videoProfile',
+        'context': 'streaming',
+        'protocol': 'hls',
+        'container': 'mpegts',
+        'videoCodec': 'h264',
+        'audioCodec': 'aac,ac3,eac3',
+      });
       expect(params['X-Plex-Product'], 'Reelay');
       expect(params['X-Plex-Client-Identifier'], 'client-1');
       expect(params['X-Plex-Session-Identifier'], 'play-1');
