@@ -847,6 +847,17 @@ class _PlayerScreenState extends State<PlayerScreen> {
   @override
   Widget build(BuildContext context) {
     final controller = _controller;
+    // Screen 15: who's here and whether the room is together. The QR
+    // overlay takes the top-right while it's open.
+    final roomStrip = widget.relay != null && !_chatQrOpen
+        ? _RoomStrip(
+            people: [
+              for (final p in _people) (p.name, p.avatarUrl),
+              (widget.localName, widget.localAvatarUrl),
+            ],
+            status: _roomStatus(),
+          )
+        : null;
     final subtitlesAvailable =
         _subtitleOptions.length > 1; // more than just "Off"
 
@@ -921,6 +932,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
                               chips: widget.relay != null
                                   ? const []
                                   : _infoChips,
+                              trailing: roomStrip,
                             ),
                           ),
                           Positioned(
@@ -963,19 +975,15 @@ class _PlayerScreenState extends State<PlayerScreen> {
                   ),
                 ),
               ),
-              // Screen 15: who's here and whether the room is together —
-              // permanent while in a room, not part of the fading controls.
-              if (widget.relay != null && !_chatQrOpen)
+              // Screen 15's room strip rides in the title bar and fades with
+              // it — "In sync" on screen for a whole film is noise. A room
+              // that isn't together keeps it up, in the same spot, since
+              // that is when it's worth reading.
+              if (roomStrip != null && !_controlsVisible && !_roomInSync)
                 Positioned(
                   right: 64.du(context),
                   top: 56.du(context),
-                  child: _RoomStrip(
-                    people: [
-                      for (final p in _people) (p.name, p.avatarUrl),
-                      (widget.localName, widget.localAvatarUrl),
-                    ],
-                    status: _roomStatus(),
-                  ),
+                  child: roomStrip,
                 ),
               if (_chatQrOpen && _chatUrl != null)
                 Positioned(
@@ -1037,11 +1045,15 @@ class _PlayerScreenState extends State<PlayerScreen> {
     ChatOverlayCorner.bottomEnd => Alignment.bottomRight,
   };
 
+  bool get _roomInSync =>
+      _connectionState == ConnectionState.connected &&
+      !(_phase == PlaybackPhase.waitingForPeers && _waitingOn.isNotEmpty);
+
   (String, Color) _roomStatus() {
     if (_connectionState != ConnectionState.connected) {
       return (_syncStatusLabel(), AppColors.warning);
     }
-    if (_phase == PlaybackPhase.waitingForPeers && _waitingOn.isNotEmpty) {
+    if (!_roomInSync) {
       return (
         'Holding for ${waitingOnPhrase(_waitingOn, (id) => _roster?.nameOf(id))}',
         AppColors.warning,
@@ -1090,7 +1102,15 @@ class _TitleBar extends StatelessWidget {
   final String title;
   final List<String> chips;
 
-  const _TitleBar({this.kicker, required this.title, required this.chips});
+  /// Drawn at the right end, after [chips] — the room strip in a room.
+  final Widget? trailing;
+
+  const _TitleBar({
+    this.kicker,
+    required this.title,
+    required this.chips,
+    this.trailing,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -1148,6 +1168,7 @@ class _TitleBar extends StatelessWidget {
               ),
             ),
           ],
+          ?trailing,
         ],
       ),
     );

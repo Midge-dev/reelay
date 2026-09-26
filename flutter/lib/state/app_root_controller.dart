@@ -57,12 +57,12 @@ class AppRootController extends ChangeNotifier {
   AppState get state => _state;
 
   void _setState(AppState next) {
-    final wasHome = _state is Home;
-    final isHome = next is Home;
+    final wasPolling = pollsLiveRooms(_state);
+    final polls = pollsLiveRooms(next);
     _state = next;
-    if (isHome && !wasHome) {
+    if (polls && !wasPolling) {
       _startRoomPolling();
-    } else if (!isHome && wasHome) {
+    } else if (!polls && wasPolling) {
       _stopRoomPolling();
     }
     notifyListeners();
@@ -676,7 +676,7 @@ class AppRootController extends ChangeNotifier {
 
   /// One directory round trip to [relayUrl], in ms — null if it didn't
   /// answer. The lobby (screen 10) shows it beside the relay's name; the
-  /// Home poll's own health is cleared once Home is left.
+  /// room poll's own health is cleared whenever polling stops.
   Future<int?> measureRelayLatency(String relayUrl) async {
     final stopwatch = Stopwatch()..start();
     final rooms = await _relayDirectoryApi.tryListRooms(relayUrl);
@@ -1490,6 +1490,22 @@ PlexEpisode episodeFrom(PlexOnDeckItem item) => PlexEpisode(
 /// first group.
 SectionGroup sectionGroupFor(List<SectionGroup> groups, String type) =>
     groups.firstWhereOrNull((g) => g.type == type) ?? groups.first;
+
+/// Live rooms are polled on every screen the rooms panel (screen 12) can
+/// open over — it used to be Home only, so a room opened while you were on
+/// a detail page never showed in the panel until you went Home. Not while
+/// signing in, nor in a lobby or the player, which hold a room of their
+/// own and have no panel.
+bool pollsLiveRooms(AppState state) => switch (state) {
+  Checking() ||
+  LoggedOut() ||
+  ProfilePicker() ||
+  ConnectingToServer() ||
+  RelaySetup() ||
+  Lobby() ||
+  Player() => false,
+  _ => true,
+};
 
 /// Mirrors settings_store.dart's `_randomRelayId` — same shape, separate
 /// copy since that one's private to its own file.

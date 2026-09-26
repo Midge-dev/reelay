@@ -1,9 +1,12 @@
 import 'package:flutter/services.dart';
-import 'package:flutter/widgets.dart';
+import 'package:flutter/widgets.dart' hide ConnectionState;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:reelay/data/plex/plex_models.dart';
 import 'package:reelay/data/settings/app_settings.dart';
+import 'package:reelay/data/settings/relay_identity_store.dart';
 import 'package:reelay/screens/player/player_screen.dart';
+import 'package:reelay/sync/relay_client.dart';
+import 'package:reelay/sync/relay_protocol.dart';
 import 'package:video_player_platform_interface/video_player_platform_interface.dart';
 
 import '../../playback/fake_video_player_platform.dart';
@@ -23,6 +26,7 @@ Future<List<(String, int)>> _pumpPlayer(
   FakeVideoPlayerPlatform fake, {
   PlexMovieDetail detail = _detail,
   AppSettings settings = const AppSettings(),
+  RelayClient? relay,
 }) async {
   VideoPlayerPlatform.instance = fake;
   tester.view.physicalSize = const Size(1920, 1080);
@@ -38,6 +42,7 @@ Future<List<(String, int)>> _pumpPlayer(
         server: _server,
         detail: detail,
         clientIdentifier: 'client-1',
+        relay: relay,
         settings: settings,
         onBitrateChanged: (_) {},
         onExit: () {},
@@ -56,6 +61,28 @@ Future<void> _unmount(WidgetTester tester) async {
   await tester.pumpWidget(const SizedBox());
   await tester.pump(const Duration(seconds: 30));
 }
+
+/// A room seat that never opens a socket but reports [state].
+class _FakeRelay extends RelayClient {
+  final ConnectionState state;
+
+  _FakeRelay(this.state) : super('wss://relay.example.com', const RelayIdentity(peerId: 'me'));
+
+  @override
+  Stream<ConnectionState> get connectionState => Stream.value(state);
+
+  @override
+  ConnectionState get connectionStateValue => state;
+}
+
+/// Whether [text] can be seen: some copy of it isn't inside a faded-out
+/// AnimatedOpacity.
+bool _visible(WidgetTester tester, String text) => find.text(text).evaluate().any(
+  (e) => !find
+      .ancestor(of: find.byWidget(e.widget), matching: find.byType(AnimatedOpacity))
+      .evaluate()
+      .any((a) => (a.widget as AnimatedOpacity).opacity == 0),
+);
 
 void main() {
   testWidgets('a stream the TV cannot open reports a failure, with where to resume', (tester) async {
@@ -188,5 +215,24 @@ void main() {
     await _pumpPlayer(tester, FakeVideoPlayerPlatform());
     await _unmount(tester);
     expect(events, isEmpty);
+  });
+
+  testWidgets('in a room, "In sync" rides in the top bar and fades out with it', (tester) async {
+    await _pumpPlayer(tester, FakeVideoPlayerPlatform(), relay: _FakeRelay(ConnectionState.connected));
+    await tester.pump();
+    expect(_visible(tester, 'In sync'), isTrue);
+
+    await tester.pump(const Duration(seconds: 4));
+    await tester.pump(const Duration(seconds: 1));
+    expect(_visible(tester, 'In sync'), isFalse);
+    await _unmount(tester);
+  });
+
+  testWidgets('a room that is not together keeps its status up after the bar fades', (tester) async {
+    await _pumpPlayer(tester, FakeVideoPlayerPlatform(), relay: _FakeRelay(ConnectionState.reconnecting));
+    await tester.pump(const Duration(seconds: 4));
+    await tester.pump(const Duration(seconds: 1));
+    expect(_visible(tester, 'Sync: reconnecting…'), isTrue);
+    await _unmount(tester);
   });
 }
