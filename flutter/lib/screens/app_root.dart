@@ -41,11 +41,12 @@ import 'lobby/lobby_screen.dart';
 import 'lobby/watch_together_start_screen.dart';
 import 'navigation/app_navigation_drawer.dart';
 import 'player/player_screen.dart';
+import '../app_version.dart';
 import 'profiles/profile_picker_screen.dart';
 import 'settings/settings_screen.dart';
 import 'splash/splash_screen.dart';
 
-const _appVersionName = '0.3.0';
+const _appVersionName = appVersionName;
 
 /// Renders whichever AppState is current, with the splash drawn over it on
 /// cold start until the app underneath is ready (see [SplashScreen]).

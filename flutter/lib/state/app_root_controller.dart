@@ -4,6 +4,8 @@ import 'dart:math';
 import 'package:collection/collection.dart';
 import 'package:flutter/foundation.dart';
 
+import '../app_version.dart';
+import '../data/jellyfin/jellyfin_auth_api.dart';
 import '../data/media/media_models.dart';
 import '../data/media/media_server.dart';
 import '../data/media/media_server_client.dart';
@@ -440,6 +442,90 @@ class AppRootController extends ChangeNotifier {
     await _tokenStore.saveTokenForProfile(profile.id, token);
     _activeProfile = profile;
     await connect(token);
+  }
+
+  /// Signing a TV in to a Jellyfin server, as this install.
+  Future<JellyfinAuthApi> jellyfinAuthApi() async => JellyfinAuthApi(
+    deviceId: await _plexIdentity.getOrCreateClientIdentifier(),
+    deviceName: jellyfinDeviceName,
+    appVersion: appVersionName,
+  );
+
+  /// Binds [session] on [server] to [profile] as its one Jellyfin account,
+  /// replacing any it had. Returns the profile as saved.
+  Future<Profile> linkJellyfin(
+    Profile profile,
+    JellyfinServerInfo server,
+    JellyfinSession session,
+  ) async {
+    final previous = profile.jellyfin;
+    final previousToken = previous == null
+        ? null
+        : await _tokenStore.loadJellyfinToken(profile.id);
+    final linked = profile.withJellyfin(
+      JellyfinLink(
+        serverId: server.id,
+        serverName: server.name,
+        baseUrl: server.baseUrl,
+        userId: session.userId,
+        username: session.userName,
+      ),
+    );
+    await _tokenStore.saveJellyfinToken(profile.id, session.accessToken);
+    await _saveProfile(linked);
+    if (previous != null &&
+        previousToken != null &&
+        previousToken != session.accessToken) {
+      unawaited(
+        (await jellyfinAuthApi()).signOut(previous.baseUrl, previousToken),
+      );
+    }
+    return linked;
+  }
+
+  /// Drops [profile]'s Jellyfin account: signs the session out on the
+  /// server (best effort) and forgets the token and link here.
+  Future<Profile> unlinkJellyfin(Profile profile) async {
+    final link = profile.jellyfin;
+    final token = await _tokenStore.loadJellyfinToken(profile.id);
+    await _tokenStore.clearJellyfinToken(profile.id);
+    final unlinked = profile.withJellyfin(null);
+    await _saveProfile(unlinked);
+    if (link != null && token != null) {
+      unawaited((await jellyfinAuthApi()).signOut(link.baseUrl, token));
+    }
+    return unlinked;
+  }
+
+  /// [profile]'s Jellyfin server as a [MediaServer], or null when it has no
+  /// Jellyfin account or its token is gone.
+  Future<MediaServer?> jellyfinServerFor(Profile profile) async {
+    final link = profile.jellyfin;
+    if (link == null) return null;
+    final token = await _tokenStore.loadJellyfinToken(profile.id);
+    if (token == null) return null;
+    return MediaServer(
+      backend: MediaBackend.jellyfin,
+      name: link.serverName,
+      baseUrl: link.baseUrl,
+      accessToken: token,
+      id: link.serverId,
+      userId: link.userId,
+    );
+  }
+
+  /// Replaces [profile]'s saved record (matched by id), and the active
+  /// profile when it's the one.
+  Future<void> _saveProfile(Profile profile) async {
+    final settings = await _settingsStore.observe().first;
+    await _settingsStore.save(
+      settings.copyWith(
+        profiles: [
+          for (final p in settings.profiles) p.id == profile.id ? profile : p,
+        ],
+      ),
+    );
+    if (_activeProfile?.id == profile.id) _activeProfile = profile;
   }
 
   /// Toggles one server in or out of the hub (screen 06's switcher panel —
