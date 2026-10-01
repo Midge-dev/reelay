@@ -295,11 +295,17 @@ class _StepRow extends StatelessWidget {
                 : (isDone ? AppColors.ink2 : AppColors.ink4),
           ),
         ),
+        // Gives way to the step's own label — "Plex, Jellyfin" is longer
+        // than the rail has room for at large UI sizes.
         if (summary != null && (isDone || isCurrent))
-          AppText(
-            summary!,
-            style: AppTypography.caption,
-            color: isCurrent ? AppColors.ink2 : AppColors.ink3,
+          Flexible(
+            child: AppText(
+              summary!,
+              style: AppTypography.caption,
+              color: isCurrent ? AppColors.ink2 : AppColors.ink3,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
           ),
       ],
     );

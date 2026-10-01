@@ -7,6 +7,7 @@ import 'package:reelay/data/settings/app_settings.dart';
 import 'package:reelay/data/settings/relay_identity_store.dart';
 import 'package:reelay/data/settings/settings_store.dart';
 import 'package:reelay/state/app_root_controller.dart';
+import 'package:reelay/state/app_state.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:shared_preferences_platform_interface/in_memory_shared_preferences_async.dart';
 import 'package:shared_preferences_platform_interface/shared_preferences_async_platform_interface.dart';
@@ -148,6 +149,59 @@ void main() {
       expect(tokens.values.containsKey('jellyfin:p1'), isFalse);
       final saved = (await settings.observe().first).profiles.firstWhere((p) => p.id == 'p1');
       expect(saved.jellyfin, isNull);
+    });
+  });
+
+  group('a Jellyfin-only setup', () {
+    late _MemoryTokenStore tokens;
+    late SettingsStore settings;
+    late AppRootController controller;
+
+    setUp(() async {
+      SharedPreferencesAsyncPlatform.instance = InMemorySharedPreferencesAsync.empty();
+      final prefs = SharedPreferencesAsync();
+      tokens = _MemoryTokenStore();
+      settings = SettingsStore(prefs);
+      await settings.observe().first;
+      controller = AppRootController(
+        tokenStore: tokens,
+        settingsStore: settings,
+        relayIdentityStore: RelayIdentityStore(prefs),
+        plexIdentity: PlexIdentity(prefs),
+      );
+    });
+
+    tearDown(() {
+      controller.dispose();
+      settings.dispose();
+    });
+
+    test('makes a profile named for the Jellyfin user, with no Plex account', () async {
+      await controller.completeSetup(jellyfin: (_server, _session));
+
+      final profile = (await settings.observe().first).profiles.single;
+      expect(profile.name, 'sam');
+      expect(profile.plexUsername, isNull);
+      expect(profile.jellyfin?.serverName, 'Loft');
+      expect(profile.accountsLabel, 'Jellyfin · sam');
+      expect(tokens.values['jellyfin:${profile.id}'], 'token-1');
+      expect(tokens.values.keys.where((k) => k.startsWith('plex')), isEmpty);
+      expect(controller.activeProfile?.id, profile.id);
+    });
+
+    test('lands on the linked screen, not an empty home', () async {
+      await controller.completeSetup(jellyfin: (_server, _session));
+      final state = controller.state;
+      expect(state, isA<JellyfinLinked>());
+      expect((state as JellyfinLinked).serverName, 'Loft');
+      expect(state.username, 'sam');
+    });
+
+    test('opens there again at the next launch', () async {
+      await controller.completeSetup(jellyfin: (_server, _session));
+      final profile = (await settings.observe().first).profiles.single;
+      await controller.selectProfile(profile);
+      expect(controller.state, isA<JellyfinLinked>());
     });
   });
 }

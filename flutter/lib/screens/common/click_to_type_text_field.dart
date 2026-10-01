@@ -38,6 +38,9 @@ class ClickToTypeTextField extends StatefulWidget {
   final bool showBorder;
   final ValueChanged<bool>? onFocusChange;
 
+  /// A password: dots, both while shown and while typing.
+  final bool obscureText;
+
   const ClickToTypeTextField({
     super.key,
     required this.value,
@@ -48,6 +51,7 @@ class ClickToTypeTextField extends StatefulWidget {
     this.hintText,
     this.showBorder = true,
     this.onFocusChange,
+    this.obscureText = false,
   });
 
   @override
@@ -168,6 +172,7 @@ class _ClickToTypeTextFieldState extends State<ClickToTypeTextField> {
                 cursorColor: AppColors.accent,
                 backgroundCursorColor: AppColors.surface,
                 autofocus: true,
+                obscureText: widget.obscureText,
                 onChanged: widget.onValueChange,
                 onEditingComplete: _stopEditing,
                 onSubmitted: (_) => _stopEditing(),
@@ -184,7 +189,9 @@ class _ClickToTypeTextFieldState extends State<ClickToTypeTextField> {
                       overflow: TextOverflow.ellipsis,
                     )
                   : Text(
-                      widget.value,
+                      widget.obscureText
+                          ? '•' * widget.value.length
+                          : widget.value,
                       style: style,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,

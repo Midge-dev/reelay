@@ -29,7 +29,14 @@ const _uuid = Uuid();
 class WatchTogetherStep extends ConsumerStatefulWidget {
   final VoidCallback onDone;
 
-  const WatchTogetherStep({super.key, required this.onDone});
+  /// What O1 settled on — "Plex", "Plex, Jellyfin" — for the rail.
+  final String serversSummary;
+
+  const WatchTogetherStep({
+    super.key,
+    required this.onDone,
+    this.serversSummary = 'Plex',
+  });
 
   @override
   ConsumerState<WatchTogetherStep> createState() => _WatchTogetherStepState();
@@ -128,9 +135,9 @@ class _WatchTogetherStepState extends ConsumerState<WatchTogetherStep> {
     return OnboardingFrame(
       step: SetupStep.watchTogether,
       contentTop: 110,
-      summaries: const {
-        SetupStep.servers: 'Plex',
-        SetupStep.link: 'Plex',
+      summaries: {
+        SetupStep.servers: widget.serversSummary,
+        SetupStep.link: widget.serversSummary,
         SetupStep.watchTogether: 'Optional',
       },
       footnote: 'A relay only passes play, pause, seek and chat messages between you. No video goes through it — that still comes straight from your own server.',

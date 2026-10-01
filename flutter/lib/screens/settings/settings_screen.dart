@@ -861,7 +861,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       _SettingRow(
         label: profile.name,
         description:
-            'Plex · ${profile.plexUsername} · “${profile.watchTogetherName}” in rooms',
+            '${profile.accountsLabel} · “${profile.watchTogetherName}” in rooms',
       ),
     _SettingRow(
       label: 'Add a profile',

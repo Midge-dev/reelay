@@ -199,30 +199,35 @@ class AppRootController extends ChangeNotifier {
   /// its own keyed token — but does not activate it. Callers decide
   /// whether creating a profile also means becoming it (the picker/first
   /// login do; provisioning one for someone else from Settings doesn't).
+  /// With no Plex [token] (a Jellyfin-only setup) the profile is named
+  /// after [fallbackName], the Jellyfin user.
   Future<Profile> _createProfile({
-    required String token,
+    required String? token,
     required String? name,
     required String? watchTogetherName,
+    String? fallbackName,
   }) async {
-    final clientId = await _plexIdentity.getOrCreateClientIdentifier();
     PlexAccount? account;
-    try {
-      account = await PlexAuthApi(clientId).fetchAccount(token);
-    } catch (_) {
-      account = null;
+    if (token != null) {
+      final clientId = await _plexIdentity.getOrCreateClientIdentifier();
+      try {
+        account = await PlexAuthApi(clientId).fetchAccount(token);
+      } catch (_) {
+        account = null;
+      }
     }
-    final resolvedName = name ?? account?.username ?? 'You';
+    final resolvedName = name ?? account?.username ?? fallbackName ?? 'You';
     final profile = Profile(
       id: _randomProfileId(),
       name: resolvedName,
       watchTogetherName: (watchTogetherName?.isNotEmpty ?? false)
           ? watchTogetherName!
           : resolvedName,
-      plexUsername: account?.username ?? resolvedName,
+      plexUsername: token == null ? null : account?.username ?? resolvedName,
       thumb: account?.thumb,
     );
 
-    await _tokenStore.saveTokenForProfile(profile.id, token);
+    if (token != null) await _tokenStore.saveTokenForProfile(profile.id, token);
     final settings = await _settingsStore.observe().first;
     await _settingsStore.save(
       settings.copyWith(profiles: [...settings.profiles, profile]),
@@ -258,18 +263,46 @@ class AppRootController extends ChangeNotifier {
     await connect(token);
   }
 
-  /// OnboardingScreen's onComplete, for the case start() found no profiles and
-  /// no legacy token — creates profile #1 from whatever account just
-  /// signed in and activates it (there's no one else to fall back to),
-  /// same as the migration path in start() does for a pre-profiles install.
-  Future<void> completeFirstLogin(String token) async {
-    final profile = await _createProfile(
-      token: token,
+  /// A pre-profiles install's one signed-in account becomes profile #1 —
+  /// see [completeSetup].
+  Future<void> completeFirstLogin(String token) =>
+      completeSetup(plexToken: token);
+
+  /// OnboardingScreen's onComplete, for the case start() found no profiles:
+  /// creates profile #1 from whichever accounts setup just linked and
+  /// activates it (there's no one else to fall back to).
+  Future<void> completeSetup({
+    String? plexToken,
+    (JellyfinServerInfo, JellyfinSession)? jellyfin,
+  }) async {
+    var profile = await _createProfile(
+      token: plexToken,
       name: null,
       watchTogetherName: null,
+      fallbackName: jellyfin?.$2.userName,
     );
+    if (jellyfin case (final server, final session)) {
+      profile = await linkJellyfin(profile, server, session);
+    }
     _activeProfile = profile;
-    await connect(token, firstRun: true);
+    if (plexToken != null) {
+      await connect(plexToken, firstRun: true);
+    } else {
+      _showJellyfinOnly(profile);
+    }
+  }
+
+  /// A Jellyfin-only profile: linked, but its libraries can't be browsed
+  /// yet, so say that rather than load an empty home.
+  void _showJellyfinOnly(Profile profile) {
+    final link = profile.jellyfin;
+    if (link == null) {
+      _setState(const LoggedOut());
+      return;
+    }
+    _setState(
+      JellyfinLinked(serverName: link.serverName, username: link.username),
+    );
   }
 
   static const _numberWords = [
@@ -294,6 +327,11 @@ class AppRootController extends ChangeNotifier {
 
   Future<void> selectProfile(Profile profile) async {
     final token = await _tokenStore.loadTokenForProfile(profile.id);
+    if (token == null && profile.plexUsername == null) {
+      _activeProfile = profile;
+      _showJellyfinOnly(profile);
+      return;
+    }
     if (token == null) {
       // The keyed token is gone (cleared externally, etc.) — nothing to
       // recover automatically; back to sign-in is the only honest option.
@@ -1617,6 +1655,7 @@ bool pollsLiveRooms(AppState state) => switch (state) {
   LoggedOut() ||
   ProfilePicker() ||
   ConnectingToServer() ||
+  JellyfinLinked() ||
   RelaySetup() ||
   Lobby() ||
   Player() => false,

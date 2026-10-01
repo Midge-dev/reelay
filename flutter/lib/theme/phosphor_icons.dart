@@ -25,6 +25,11 @@ class PhosphorIconsRegular {
     fontFamily: 'PhosphorRegular',
     fontPackage: 'phosphor_flutter',
   );
+  static const keyboard = IconData(
+    0xe2d8,
+    fontFamily: 'PhosphorRegular',
+    fontPackage: 'phosphor_flutter',
+  );
   static const arrowRight = IconData(
     0xe06c,
     fontFamily: 'PhosphorRegular',

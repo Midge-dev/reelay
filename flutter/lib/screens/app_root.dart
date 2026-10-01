@@ -42,6 +42,7 @@ import 'lobby/watch_together_start_screen.dart';
 import 'navigation/app_navigation_drawer.dart';
 import 'player/player_screen.dart';
 import '../app_version.dart';
+import 'common/jellyfin_linked_screen.dart';
 import 'profiles/profile_picker_screen.dart';
 import 'settings/settings_screen.dart';
 import 'splash/splash_screen.dart';
@@ -195,10 +196,19 @@ class _AppContent extends StatelessWidget {
       ),
       LoggedOut(:final relinkProfile) => OnboardingScreen(
         relinking: relinkProfile != null,
-        onComplete: relinkProfile == null
-            ? controller.completeFirstLogin
-            : (token) => controller.relink(relinkProfile, token),
+        onComplete: (result) => relinkProfile == null
+            ? controller.completeSetup(
+                plexToken: result.plexToken,
+                jellyfin: result.jellyfin,
+              )
+            : controller.relink(relinkProfile, result.plexToken!),
       ),
+      JellyfinLinked(:final serverName, :final username) =>
+        JellyfinLinkedScreen(
+          serverName: serverName,
+          username: username,
+          onStartOver: () => controller.returnTo(const LoggedOut()),
+        ),
       ProfilePicker(:final profiles) => ProfilePickerScreen(
         profiles: profiles,
         onSelectProfile: controller.selectProfile,
@@ -240,11 +250,7 @@ class _AppContent extends StatelessWidget {
                     title: detail?.activeCopy.value.title,
                     otherCopies:
                         detail?.work.copies
-                            .where(
-                              (c) =>
-                                  c.server.id !=
-                                  server.id,
-                            )
+                            .where((c) => c.server.id != server.id)
                             .length ??
                         0,
                     alternate: alternate,
@@ -455,7 +461,8 @@ class _AppContent extends StatelessWidget {
             onToggleWatchlist: controller.toggleWatchlist,
             resolveNextEpisode: () async {
               try {
-                return await controller.clientFor(activeCopy.server)
+                return await controller
+                    .clientFor(activeCopy.server)
                     .fetchNextEpisodeForShow(activeCopy.value.id);
               } catch (_) {
                 return null;
@@ -463,7 +470,8 @@ class _AppContent extends StatelessWidget {
             },
             loadDetail: () async {
               try {
-                return await controller.clientFor(activeCopy.server)
+                return await controller
+                    .clientFor(activeCopy.server)
                     .fetchDetail(activeCopy.value.id);
               } catch (_) {
                 return null;
@@ -471,7 +479,8 @@ class _AppContent extends StatelessWidget {
             },
             loadSeasons: () async {
               try {
-                return await controller.clientFor(activeCopy.server)
+                return await controller
+                    .clientFor(activeCopy.server)
                     .fetchSeasons(activeCopy.value.id);
               } catch (_) {
                 return const [];
@@ -479,7 +488,8 @@ class _AppContent extends StatelessWidget {
             },
             loadEpisodes: (seasonId) async {
               try {
-                return await controller.clientFor(activeCopy.server)
+                return await controller
+                    .clientFor(activeCopy.server)
                     .fetchEpisodes(seasonId);
               } catch (_) {
                 return const [];
@@ -543,7 +553,8 @@ class _AppContent extends StatelessWidget {
             onToggleWatchlist: controller.toggleWatchlist,
             loadDetail: () async {
               try {
-                return await controller.clientFor(activeCopy.server)
+                return await controller
+                    .clientFor(activeCopy.server)
                     .fetchDetail(activeCopy.value.id);
               } catch (_) {
                 return null;
@@ -551,7 +562,8 @@ class _AppContent extends StatelessWidget {
             },
             loadRelatedHubs: () async {
               try {
-                return await controller.clientFor(activeCopy.server)
+                return await controller
+                    .clientFor(activeCopy.server)
                     .fetchRelatedHubs(activeCopy.value.id);
               } catch (_) {
                 return const [];
@@ -687,8 +699,10 @@ class _AppContent extends StatelessWidget {
             onToggleWatchlist: controller.toggleWatchlist,
             loadShowGuid: () async {
               try {
-                return (await controller.clientFor(activeCopy.server)
-                    .fetchDetail(activeCopy.value.id)).guid;
+                return (await controller
+                        .clientFor(activeCopy.server)
+                        .fetchDetail(activeCopy.value.id))
+                    .guid;
               } catch (_) {
                 return null;
               }
@@ -812,12 +826,7 @@ class _AppContent extends StatelessWidget {
             controller.returnTo(returnState);
           },
         ),
-      Player(
-        :final detail,
-        :final returnState,
-        :final relay,
-        :final showId,
-      ) =>
+      Player(:final detail, :final returnState, :final relay, :final showId) =>
         PlayerScreen(
           key: ValueKey('player-${detail.id}'),
           client: controller.clientFor(state.server),
@@ -831,11 +840,8 @@ class _AppContent extends StatelessWidget {
             controller.leaveRoom();
             controller.returnTo(returnState);
           },
-          onFailed: (reason, positionMs) => controller.playbackFailed(
-            state,
-            reason,
-            positionMs: positionMs,
-          ),
+          onFailed: (reason, positionMs) =>
+              controller.playbackFailed(state, reason, positionMs: positionMs),
           // Screen 16 — only real when we actually know the show (see
           // Player.showId's doc comment: null for movies, and the
           // "next episode" lookup needs a LibraryContext to actually play
@@ -843,8 +849,9 @@ class _AppContent extends StatelessWidget {
           // came from).
           loadNextEpisode: showId == null
               ? null
-              : () => controller.clientFor(state.server)
-                  .fetchNextEpisodeForShow(showId),
+              : () => controller
+                    .clientFor(state.server)
+                    .fetchNextEpisodeForShow(showId),
           onPlayNext: returnState is EpisodeDetail
               ? (next) => controller.playMovie(
                   returnState.ctx,
@@ -920,7 +927,8 @@ class _AppContent extends StatelessWidget {
                 controller.joinRoom(home, home.servers, merged),
             onOpenRooms: () => roomsPanelOpen.value = true,
             onResume: (item) => controller.resumeOnDeckItem(home, item),
-            onRemove: (item) => controller.removeFromContinueWatching(home, item),
+            onRemove: (item) =>
+                controller.removeFromContinueWatching(home, item),
             onSelectWatchlistItem: (entry) =>
                 controller.selectWatchlistItem(home, entry),
             onRemoveFromWatchlist: controller.removeFromWatchlist,
@@ -928,9 +936,12 @@ class _AppContent extends StatelessWidget {
                 controller.selectRecentlyAdded(home, item),
             onSelectRecentActivity: (item) =>
                 controller.selectOnDeckLike(home, item),
-            onSelectSuggestion: (item) => controller.selectOnDeckLike(home, item),
+            onSelectSuggestion: (item) =>
+                controller.selectOnDeckLike(home, item),
             onHeroWatchTogether: (item) => controller.openWatchTogetherStart(
-              ctx: emptyCtx(sectionGroupFor(home.sectionGroups, item.value.kind)),
+              ctx: emptyCtx(
+                sectionGroupFor(home.sectionGroups, item.value.kind),
+              ),
               server: item.server,
               returnState: home,
               roomTitle: _episodeRoomTitleFromOnDeck(item.value),
@@ -1067,12 +1078,11 @@ class _AppContent extends StatelessWidget {
   ) async {
     final results = await Future.wait(
       ctx.servers.map((cs) async {
-        final section = ctx.selectedSectionGroup.sectionOn(
-          cs.server.id,
-        );
+        final section = ctx.selectedSectionGroup.sectionOn(cs.server.id);
         if (section == null) return const <Sourced<MediaItem>>[];
         try {
-          final collections = await controller.clientFor(cs.server)
+          final collections = await controller
+              .clientFor(cs.server)
               .fetchCollections(section.id);
           return collections
               .map((c) => Sourced(c, cs.server, cs.reachability))
@@ -1091,7 +1101,8 @@ class _AppContent extends StatelessWidget {
     AppState returnState,
   ) async {
     try {
-      final items = await controller.clientFor(collection.server)
+      final items = await controller
+          .clientFor(collection.server)
           .fetchCollectionItems(collection.value.id);
       controller.returnTo(
         CollectionDetail(
@@ -1153,9 +1164,8 @@ class _AppContent extends StatelessWidget {
       );
 
   /// Screens 03d and 25: what one copy would be to play here.
-  Future<CopyFacts> _copyFacts(Sourced<MediaItem> copy) async =>
-      CopyFacts.of(
-        await controller.clientFor(copy.server).fetchDetail(copy.value.id),
-        forceBurn: controller.currentSettings.forceBurnSubtitles,
-      );
+  Future<CopyFacts> _copyFacts(Sourced<MediaItem> copy) async => CopyFacts.of(
+    await controller.clientFor(copy.server).fetchDetail(copy.value.id),
+    forceBurn: controller.currentSettings.forceBurnSubtitles,
+  );
 }

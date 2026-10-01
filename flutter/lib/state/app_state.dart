@@ -172,6 +172,16 @@ class ConnectingToServer extends AppState {
   });
 }
 
+/// A profile whose only account is Jellyfin, which can be linked but not
+/// yet browsed: says so plainly instead of an empty home. Goes when
+/// Jellyfin libraries can be browsed.
+class JellyfinLinked extends AppState {
+  final String serverName;
+  final String username;
+
+  const JellyfinLinked({required this.serverName, required this.username});
+}
+
 /// An error screen with a way back: [retryState] is where Back (or retry)
 /// goes, since every other screen supports Back and a dead end would be
 /// jarring.

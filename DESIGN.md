@@ -71,15 +71,17 @@ One account per platform per profile. Not synced across devices. **Not a
 security boundary** — never write copy implying the picker keeps anyone out.
 The picker stays hidden until a second profile exists.
 
-## Jellyfin: designed, not shipped
+## Jellyfin: linkable, not yet browsable
 
-The system is server-neutral and the screens show Plex and Jellyfin as peers, but
-**Jellyfin is not connectable yet.** Keep the Jellyfin card on the O1 onboarding
-screen **disabled** — 45% opacity, out of the focus order, "Coming soon" — until
-Jellyfin support is researched and implemented. The Link Jellyfin screen (O3) is
-the target design for that work and stays unreachable until then. Do not make
-the card selectable to make the layout feel finished: a dead end behind a live
-card is worse than a stated one.
+The system is server-neutral and the screens show Plex and Jellyfin as peers.
+**Setup links Jellyfin**: the O1 card is live, and O3 (from the phone) and O3b
+(typed on the TV) sign in by password or Quick Connect. Its libraries can't be
+browsed yet, so a Jellyfin-only profile lands on a screen that says exactly
+that — never an empty home. The server switcher (06) and the add-profile
+dialog's Jellyfin slot (07b) keep the disabled treatment — 45% opacity, out of
+the focus order, "Coming soon" — until browsing lands. Do not make them
+selectable to make a layout feel finished: a dead end behind a live control is
+worse than a stated one.
 
 ## Focus rules
 

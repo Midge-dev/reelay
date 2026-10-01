@@ -82,7 +82,8 @@ class Profile {
   final String id;
   final String name;
   final String watchTogetherName;
-  final String plexUsername;
+  /// Null for a profile with only a Jellyfin account.
+  final String? plexUsername;
   final String? thumb;
   final JellyfinLink? jellyfin;
 
@@ -90,10 +91,16 @@ class Profile {
     required this.id,
     required this.name,
     required this.watchTogetherName,
-    required this.plexUsername,
+    this.plexUsername,
     this.thumb,
     this.jellyfin,
   });
+
+  /// Its accounts as copy names them — "Plex · sam · Jellyfin · sam".
+  String get accountsLabel => [
+    if (plexUsername case final plex?) 'Plex · $plex',
+    if (jellyfin case final link?) 'Jellyfin · ${link.username}',
+  ].join(' · ');
 
   /// This profile with [link] as its Jellyfin account — or, given null,
   /// with none.
@@ -110,7 +117,7 @@ class Profile {
     id: json['id'] as String,
     name: json['name'] as String,
     watchTogetherName: json['watchTogetherName'] as String,
-    plexUsername: json['plexUsername'] as String,
+    plexUsername: json['plexUsername'] as String?,
     thumb: json['thumb'] as String?,
     jellyfin: switch (json['jellyfin']) {
       final Map<String, dynamic> link => JellyfinLink.fromJson(link),

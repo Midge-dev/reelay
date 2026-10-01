@@ -20,22 +20,22 @@ String pairingFormPage({
 }) {
   final errorHtml = error == null
       ? ''
-      : '<p class="error" role="alert">${_escape(error)}</p>';
-  return _page(
+      : '<p class="error" role="alert">${escapeHtml(error)}</p>';
+  return pairingPageShell(
     theme: theme,
     title: editing ? 'Update this relay' : 'Add a relay',
     body:
         '''
     <p class="lede">Name it and paste its address — both appear on your TV.</p>
     $errorHtml
-    <form method="POST" action="${_escape(action)}">
+    <form method="POST" action="${escapeHtml(action)}">
       <label class="field">
         <span>Nickname</span>
-        <input type="text" name="nickname" placeholder="Sam's relay" value="${_escape(nickname)}" maxlength="40" autocomplete="off" autocapitalize="words" enterkeyhint="next"${nickname.isEmpty ? ' autofocus' : ''}>
+        <input type="text" name="nickname" placeholder="Sam's relay" value="${escapeHtml(nickname)}" maxlength="40" autocomplete="off" autocapitalize="words" enterkeyhint="next"${nickname.isEmpty ? ' autofocus' : ''}>
       </label>
       <label class="field">
         <span>Relay address</span>
-        <input type="text" name="url" placeholder="wss://your-relay?token=…" value="${_escape(url)}" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" inputmode="url" enterkeyhint="send">
+        <input type="text" name="url" placeholder="wss://your-relay?token=…" value="${escapeHtml(url)}" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" inputmode="url" enterkeyhint="send">
       </label>
       <button type="submit">
         <svg width="20" height="20" viewBox="0 0 256 256" fill="none" stroke="currentColor" stroke-width="18" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="40" y="48" width="176" height="120" rx="12"/><line x1="96" y1="208" x2="160" y2="208"/><line x1="128" y1="168" x2="128" y2="208"/></svg>
@@ -45,7 +45,7 @@ String pairingFormPage({
   );
 }
 
-String pairingSentPage({required ThemeId theme}) => _page(
+String pairingSentPage({required ThemeId theme}) => pairingPageShell(
   theme: theme,
   title: 'Sent to your TV',
   body: '''
@@ -53,10 +53,13 @@ String pairingSentPage({required ThemeId theme}) => _page(
     <p class="lede">The relay is filled in on the TV. You can close this page.</p>''',
 );
 
-String _page({
+/// The page every phone form here shares: the mark, a [kicker] and a
+/// title, then [body] — which the caller has already escaped.
+String pairingPageShell({
   required ThemeId theme,
   required String title,
   required String body,
+  String kicker = 'WATCH TOGETHER',
 }) {
   final p = nocturnePalette(theme);
   return '''<!doctype html>
@@ -65,7 +68,7 @@ String _page({
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
 <meta name="theme-color" content="${_hex(p.background)}">
-<title>Reelay — ${_escape(title)}</title>
+<title>Reelay — ${escapeHtml(title)}</title>
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500&display=swap">
 <style>
@@ -115,6 +118,15 @@ String _page({
   }
   button:hover { background:var(--a900); }
   button:active { background:var(--a700); color:var(--ink); }
+  a.button {
+    height:48px; border-radius:8px; background:var(--accent); color:var(--bg); text-decoration:none;
+    font:500 15px Inter, system-ui, sans-serif; display:flex; align-items:center; justify-content:center;
+  }
+  a.button:active { background:var(--a300); }
+  .or { display:flex; align-items:center; gap:12px; color:var(--ink4); font-size:12px; }
+  .or::before, .or::after { content:""; flex:1; height:1px; background:var(--line); }
+  a.quiet { color:var(--ink3); font-size:13px; text-align:center; }
+  .code { font:500 28px/1 Inter, system-ui, sans-serif; letter-spacing:.12em; color:var(--ink); }
   .error { margin:0; color:var(--bad); font-size:13px; }
   .status { display:flex; align-items:center; gap:7px; font-size:13px; color:var(--ink3); }
   .dot { width:7px; height:7px; border-radius:50%; background:var(--ok); flex:none; }
@@ -125,8 +137,8 @@ String _page({
   <header>
     <svg width="26" height="26" viewBox="0 0 46 46" aria-hidden="true"><rect x="5" y="9" width="36" height="12" rx="4" fill="var(--accent)"/><rect x="5" y="25" width="22" height="12" rx="4" fill="var(--ink)"/></svg>
     <div class="titles">
-      <div class="kicker">WATCH TOGETHER</div>
-      <h1>${_escape(title)}</h1>
+      <div class="kicker">${escapeHtml(kicker)}</div>
+      <h1>${escapeHtml(title)}</h1>
     </div>
   </header>
 $body
@@ -139,7 +151,7 @@ $body
 String _hex(Color c) =>
     '#${(c.toARGB32() & 0xFFFFFF).toRadixString(16).padLeft(6, '0').toUpperCase()}';
 
-String _escape(String s) => s
+String escapeHtml(String s) => s
     .replaceAll('&', '&amp;')
     .replaceAll('"', '&quot;')
     .replaceAll('<', '&lt;')

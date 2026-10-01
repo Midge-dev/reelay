@@ -196,7 +196,7 @@ class _ProfileItemState extends State<_ProfileItem> {
             color: _focused ? AppColors.ink : AppColors.ink2,
           ),
           SizedBox(height: AppSpacing.xs.du(context)),
-          AppText('Plex · ${profile.plexUsername}', color: AppColors.ink3),
+          AppText(profile.accountsLabel, color: AppColors.ink3),
         ],
       ),
     );
