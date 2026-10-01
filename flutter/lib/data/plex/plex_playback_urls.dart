@@ -14,6 +14,17 @@ String get _plexPlatform => switch (defaultTargetPlatform) {
   _ => 'Android',
 };
 
+/// What a transcode should come out as, told to PMS alongside the `Generic`
+/// client profile — which names no transcode targets of its own, so without
+/// this PMS refuses every transcode with a 400 (decision code 4005).
+/// HLS in MPEG-TS with H.264 is what the Shield's player takes most
+/// reliably. It's a query string in its own right, so its commas stay
+/// encoded inside it and the whole thing is encoded again as one value.
+const plexTranscodeProfileExtra =
+    'add-transcode-target(type=videoProfile&context=streaming'
+    '&protocol=hls&container=mpegts&videoCodec=h264'
+    '&audioCodec=aac%2Cac3%2Ceac3)';
+
 String plexDirectPlayUrl(MediaServer server, MediaPart part) =>
     '${server.baseUrl}${part.key}?X-Plex-Token=${server.accessToken}';
 
@@ -26,7 +37,8 @@ String plexDirectPlayUrl(MediaServer server, MediaPart part) =>
 //
 // The X-Plex-* identity params are required: with no platform or profile
 // name, PMS logs "Unable to find client profile for device" and 400s the
-// request. `Generic` is PMS's built-in profile for a plain HLS client.
+// request. `Generic` is PMS's built-in profile for a plain HLS client, and
+// it needs [plexTranscodeProfileExtra] to know what to transcode into.
 String plexTranscodeUrl(
   MediaServer server,
   String ratingKey, {
@@ -53,6 +65,7 @@ String plexTranscodeUrl(
       '&X-Plex-Product=Reelay'
       '&X-Plex-Platform=$_plexPlatform'
       '&X-Plex-Client-Profile-Name=Generic'
+      '&X-Plex-Client-Profile-Extra=${Uri.encodeComponent(plexTranscodeProfileExtra)}'
       '&X-Plex-Client-Identifier=${Uri.encodeQueryComponent(clientIdentifier)}'
       '&X-Plex-Session-Identifier=${Uri.encodeQueryComponent(sessionIdentifier)}'
       '&X-Plex-Token=${server.accessToken}';

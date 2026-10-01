@@ -132,6 +132,11 @@ class AppSettings {
   /// every launch; the design says skipping means no more prompts.
   final bool setupComplete;
 
+  /// The nav rail's own order, as rail item ids (see
+  /// screens/navigation/rail_order.dart) — empty until someone reorders it,
+  /// which means the default order.
+  final List<String> railOrder;
+
   const AppSettings({
     this.relays = const [],
     this.maxHostSeats = defaultMaxHostSeats,
@@ -145,6 +150,7 @@ class AppSettings {
     this.themeId = ThemeId.nocturne,
     this.uiScale = defaultUiScale,
     this.setupComplete = false,
+    this.railOrder = const [],
   });
 
   AppSettings copyWith({
@@ -160,6 +166,7 @@ class AppSettings {
     ThemeId? themeId,
     double? uiScale,
     bool? setupComplete,
+    List<String>? railOrder,
   }) {
     return AppSettings(
       relays: relays ?? this.relays,
@@ -174,6 +181,7 @@ class AppSettings {
       themeId: themeId ?? this.themeId,
       uiScale: uiScale ?? this.uiScale,
       setupComplete: setupComplete ?? this.setupComplete,
+      railOrder: railOrder ?? this.railOrder,
     );
   }
 

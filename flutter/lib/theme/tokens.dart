@@ -613,6 +613,10 @@ class AppMotion {
   /// Row eases the focused card to 80% across the viewport.
   static const rowScroll = Duration(milliseconds: 280);
 
+  /// The page easing a row into view as focus moves up or down between
+  /// rows — a little longer than [rowScroll], since it travels further.
+  static const pageScroll = Duration(milliseconds: 300);
+
   /// Per-card delay on first paint of a row.
   static const rowEntranceStagger = Duration(milliseconds: 40);
 
@@ -648,6 +652,14 @@ class AppMotion {
 
   /// Skeleton pulse — a whole-row opacity breath, not a gradient sweep.
   static const skeletonPulse = Duration(milliseconds: 2400);
+
+  // ---- Text entry --------------------------------------------------------
+  /// A text field's caret: on for this long, then off for as long.
+  static const caretBlink = Duration(milliseconds: 530);
+
+  /// An empty field's prompt ("Type a title") types itself out, one letter
+  /// per step.
+  static const placeholderTypeStep = Duration(milliseconds: 70);
 
   // ---- Degradation -------------------------------------------------------
   static MotionLevel level = MotionLevel.full;

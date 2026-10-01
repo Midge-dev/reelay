@@ -147,9 +147,11 @@ It is a standout feature and not the centre of the app. Keep it proportionate.
   watched with → most recently started.
 - Relay servers appear on the bar only when live rooms span more than one. The
   rooms panel always groups by relay, with health in the group header.
-- In-player, the permanent additions are a participant strip and a sync state,
-  both top-right on `scrim.chip`. The only moment Watch Together is allowed to
-  be loud is when the room pauses for someone.
+- In-player, the additions are a participant strip and a sync state, both
+  top-right on `scrim.chip` in the top bar, fading with it — "In sync" is not
+  worth a whole film on screen. A room that isn't in sync keeps them up. The
+  only moment Watch Together is allowed to be loud is when the room pauses for
+  someone.
 
 ## Porting to another platform
 
