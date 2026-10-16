@@ -311,6 +311,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
         _decision,
         _maxVideoBitrateKbps,
         sessionIdentifier: _sessionIdentifier,
+        audioStreamId: _audioOptions.length > 1 ? _audioStreamId : null,
         offsetMs: startPositionMs,
       );
     } on UnsupportedError catch (e) {
@@ -337,11 +338,12 @@ class _PlayerScreenState extends State<PlayerScreen> {
       unawaited(controller.dispose());
       return;
     }
-    // Transcode already starts the stream at startPositionMs via the url's
-    // offset (see MediaServerClient.transcodeUrl) — seeking again here would
-    // target a position the transcode session never produced. Direct play
-    // serves the whole original file, so it still needs the explicit seek.
-    if (startPositionMs > 0 && _decision is DirectPlay) {
+    // A Plex transcode already starts the stream at startPositionMs via the
+    // url's offset (see MediaServerClient.transcodeStartsAtOffset) — seeking
+    // again would target a position the session never produced. Direct
+    // play, and a Jellyfin transcode, serve the whole film, so they seek.
+    if (startPositionMs > 0 &&
+        (_decision is DirectPlay || !widget.client.transcodeStartsAtOffset)) {
       await controller.seekTo(Duration(milliseconds: startPositionMs));
     }
     await _attachCaptions(controller);
@@ -889,6 +891,8 @@ class _PlayerScreenState extends State<PlayerScreen> {
                     child: VideoPlayer(controller),
                   ),
                 ),
+              if (controller != null && controller.value.isInitialized)
+                _CaptionLayer(controller: controller, lifted: _controlsVisible),
               if (_isBuffering) const Center(child: AppLoadingIndicator()),
               if (_phase == PlaybackPhase.waitingForPeers &&
                   _waitingOn.isNotEmpty)
@@ -1328,6 +1332,59 @@ class _Face extends StatelessWidget {
                 ),
               ),
       ),
+    );
+  }
+}
+
+/// Sidecar subtitles. `video_player` only times them
+/// (`value.caption`) — drawing them is the app's job, and until this they
+/// were attached and never seen. Sits clear of the controls while they're
+/// up.
+class _CaptionLayer extends StatelessWidget {
+  final VideoPlayerController controller;
+  final bool lifted;
+
+  const _CaptionLayer({required this.controller, required this.lifted});
+
+  @override
+  Widget build(BuildContext context) {
+    return ValueListenableBuilder<VideoPlayerValue>(
+      valueListenable: controller,
+      builder: (context, value, _) {
+        final text = value.caption.text.trim();
+        if (text.isEmpty) return const SizedBox.shrink();
+        return Align(
+          alignment: Alignment.bottomCenter,
+          child: Padding(
+            padding: EdgeInsets.fromLTRB(
+              160.du(context),
+              0,
+              160.du(context),
+              (lifted ? 240 : 72).du(context),
+            ),
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                color: AppScrims.chip,
+                borderRadius: BorderRadius.circular(
+                  AppShape.radiusSm.du(context),
+                ),
+              ),
+              child: Padding(
+                padding: EdgeInsets.symmetric(
+                  horizontal: AppSpacing.lg.du(context),
+                  vertical: AppSpacing.sm.du(context),
+                ),
+                child: AppText(
+                  text,
+                  style: AppTypography.title2,
+                  color: AppColors.inkOnArt,
+                  textAlign: TextAlign.center,
+                ),
+              ),
+            ),
+          ),
+        );
+      },
     );
   }
 }

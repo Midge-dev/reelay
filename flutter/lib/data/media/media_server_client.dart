@@ -70,18 +70,28 @@ abstract class MediaServerClient {
 
   String directPlayUrl(MediaPart part);
 
-  /// A server-side transcode of [itemId], starting [offsetMs] in (the
-  /// stream's own position 0 is that offset), burning [subtitleStreamId]
-  /// in when set. [sessionIdentifier] ties it to this playback's progress
-  /// reports.
+  /// A server-side transcode of [itemId]'s [partId] file, burning
+  /// [subtitleStreamId] in when set, with [audioStreamId] as its one audio
+  /// track (Plex reads both from [selectStreams] instead). [sessionIdentifier]
+  /// ties it to this playback's progress reports.
+  ///
+  /// Where it starts depends on the backend — see [transcodeStartsAtOffset].
   String transcodeUrl(
     String itemId, {
+    String? partId,
     int? subtitleStreamId,
+    int? audioStreamId,
     required int maxVideoBitrateKbps,
     required String sessionIdentifier,
     String? sessionId,
     int offsetMs = 0,
   });
+
+  /// True when a transcode begins [offsetMs] into the file and must not be
+  /// seeked to it again (Plex: the stream only exists from there). False
+  /// when it's the whole film and the player seeks, as for direct play
+  /// (Jellyfin publishes a playlist for the full runtime).
+  bool get transcodeStartsAtOffset;
 
   /// The caption file for a sidecar [MediaStream.key].
   String subtitleUrl(String key);

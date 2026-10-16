@@ -20,9 +20,13 @@ class DirectPlay extends PlaybackDecision {
 
 class Transcode extends PlaybackDecision {
   final String itemId;
+
+  /// The file to transcode, for backends that need telling (Jellyfin's
+  /// media source); Plex transcodes the item's first.
+  final String? partId;
   final int? subtitleStreamId;
 
-  const Transcode({required this.itemId, this.subtitleStreamId});
+  const Transcode({required this.itemId, this.partId, this.subtitleStreamId});
 }
 
 class SubtitleOption {
@@ -122,7 +126,11 @@ PlaybackDecision decidePlayback(
   final requiresBurn = subtitleStreamId != null && (forceBurn || (chosenStream != null && _requiresBurn(chosenStream)));
 
   if (requiresBurn || forceTranscode) {
-    return Transcode(itemId: detail.id, subtitleStreamId: subtitleStreamId);
+    return Transcode(
+      itemId: detail.id,
+      partId: part.id,
+      subtitleStreamId: subtitleStreamId,
+    );
   }
   return DirectPlay(part: part, subtitleStreamId: subtitleStreamId);
 }
@@ -184,12 +192,15 @@ String mediaUrl(
   int maxVideoBitrateKbps, {
   required String sessionIdentifier,
   String? sessionId,
+  int? audioStreamId,
   int offsetMs = 0,
 }) => switch (decision) {
   DirectPlay() => client.directPlayUrl(decision.part),
   Transcode() => client.transcodeUrl(
     decision.itemId,
+    partId: decision.partId,
     subtitleStreamId: decision.subtitleStreamId,
+    audioStreamId: audioStreamId,
     maxVideoBitrateKbps: maxVideoBitrateKbps,
     sessionIdentifier: sessionIdentifier,
     sessionId: sessionId,

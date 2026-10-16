@@ -9,6 +9,7 @@ import 'package:reelay/data/jellyfin/jellyfin_mappers.dart';
 import 'package:reelay/data/media/artwork_url.dart';
 import 'package:reelay/data/media/media_models.dart';
 import 'package:reelay/data/media/media_server.dart';
+import 'package:reelay/data/media/media_server_client.dart';
 
 /// Answers each request from [routes], keyed "METHOD path" (no query);
 /// anything unrouted fails as if nothing were listening.
@@ -208,9 +209,119 @@ void main() {
       expect(client.fetchDetail('gone'), throwsA(isA<StateError>()));
     });
 
-    test('playing is a later phase, and says so', () {
+  });
+
+  group('playback', () {
+    final detail = detailFromJson({
+      ..._movie,
+      'MediaSources': [
+        {
+          'Id': 'src1',
+          'Container': 'mkv',
+          'DefaultAudioStreamIndex': 2,
+          'MediaStreams': [
+            {'Type': 'Video', 'Index': 0, 'Codec': 'h264', 'Width': 1920},
+            {'Type': 'Audio', 'Index': 1, 'Codec': 'ac3', 'IsDefault': true, 'Language': 'eng'},
+            {'Type': 'Audio', 'Index': 2, 'Codec': 'aac', 'Language': 'jpn', 'LocalizedLanguage': 'Japanese'},
+            {
+              'Type': 'Subtitle',
+              'Index': 3,
+              'Codec': 'ass',
+              'Language': 'deu',
+              'LocalizedLanguage': 'German',
+              'IsTextSubtitleStream': true,
+            },
+            {'Type': 'Subtitle', 'Index': 4, 'Codec': 'PGSSUB', 'IsTextSubtitleStream': false},
+          ],
+        },
+      ],
+    });
+    final part = detail.media.single.parts.single;
+    MediaStream stream(int index) => part.streams.firstWhere((s) => s.index == index);
+
+    test('the source picks the default audio, not each track\'s own flag', () {
+      expect(stream(1).selected, isFalse);
+      expect(stream(2).selected, isTrue);
+      expect(stream(2).language, 'Japanese');
+    });
+
+    test('a text subtitle, even ASS, arrives as a WebVTT sidecar; a bitmap one has none', () {
+      expect(stream(3).key, '/Videos/bbb/src1/Subtitles/3/0/Stream.vtt');
+      expect(stream(3).codec, 'vtt');
+      expect(stream(4).key, isNull, reason: 'PGS can only be burned in');
+    });
+
+    test('direct play streams the source as it is, with the token in the url', () {
       final (client, _) = _client({});
-      expect(() => client.directPlayUrl(const MediaPart(id: 'x')), throwsUnsupportedError);
+      final url = Uri.parse(client.directPlayUrl(part));
+      expect(url.path, '/Videos/bbb/stream');
+      expect(url.queryParameters['static'], 'true');
+      expect(url.queryParameters['mediaSourceId'], 'src1');
+      expect(url.queryParameters['ApiKey'], 'tok');
+      expect(url.queryParameters['api_key'], 'tok', reason: 'servers before 10.9');
+      expect(url.queryParameters['DeviceId'], 'device-1');
+    });
+
+    test('a transcode carries its tracks, burn-in and session; never a start offset', () {
+      final (client, _) = _client({});
+      final url = Uri.parse(
+        client.transcodeUrl(
+          'bbb',
+          partId: 'src1',
+          audioStreamId: 2,
+          subtitleStreamId: 4,
+          maxVideoBitrateKbps: 8000,
+          sessionIdentifier: 'play-1',
+          offsetMs: 300000,
+        ),
+      );
+      expect(url.path, '/Videos/bbb/master.m3u8');
+      final q = url.queryParameters;
+      expect(q['MediaSourceId'], 'src1');
+      expect(q['AudioStreamIndex'], '2');
+      expect((q['SubtitleStreamIndex'], q['SubtitleMethod']), ('4', 'Encode'));
+      expect(q['PlaySessionId'], 'play-1');
+      expect(q['MaxStreamingBitrate'], '8000000');
+      expect(q.containsKey('StartTimeTicks'), isFalse, reason: 'the player seeks; the playlist is the whole film');
+      expect(client.transcodeStartsAtOffset, isFalse);
+    });
+
+    test('without a subtitle there is no burn-in', () {
+      final (client, _) = _client({});
+      final q = Uri.parse(
+        client.transcodeUrl('bbb', maxVideoBitrateKbps: 4000, sessionIdentifier: 's'),
+      ).queryParameters;
+      expect(q.containsKey('SubtitleStreamIndex'), isFalse);
+      expect(q.containsKey('SubtitleMethod'), isFalse);
+    });
+
+    test('progress: started once, then progress, then stopped, in ticks', () async {
+      final (client, fake) = _client({
+        'POST /Sessions/Playing': null,
+        'POST /Sessions/Playing/Progress': null,
+        'POST /Sessions/Playing/Stopped': null,
+      });
+      Future<void> report(PlaybackReportState state, int ms) =>
+          client.reportProgress('bbb', state, timeMs: ms, durationMs: 596000, sessionIdentifier: 'play-1');
+      await report(PlaybackReportState.playing, 1000);
+      await report(PlaybackReportState.playing, 6000);
+      await report(PlaybackReportState.paused, 7000);
+      await report(PlaybackReportState.stopped, 8000);
+      expect(fake.requests.map((r) => r.uri.path), [
+        '/Sessions/Playing',
+        '/Sessions/Playing/Progress',
+        '/Sessions/Playing/Progress',
+        '/Sessions/Playing/Stopped',
+      ]);
+      final paused = fake.requests[2].data as Map;
+      expect(paused['IsPaused'], isTrue);
+      expect(paused['PositionTicks'], 70000000);
+      expect(paused['PlaySessionId'], 'play-1');
+    });
+
+    test('a progress report that fails never throws', () async {
+      final (client, _) = _client({});
+      await client.reportProgress('bbb', PlaybackReportState.playing, timeMs: 0, durationMs: 1, sessionIdentifier: 's');
     });
   });
 

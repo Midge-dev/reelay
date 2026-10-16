@@ -131,22 +131,49 @@ StreamKind _streamKind(String? type) => switch (type) {
   _ => StreamKind.other,
 };
 
-MediaStream streamFromJson(Json s) => MediaStream(
-  // Jellyfin selects tracks by their index in the container.
-  id: s['Index'] as int? ?? 0,
-  kind: _streamKind(s['Type'] as String?),
-  codec: s['Codec'] as String?,
-  language: s['DisplayLanguage'] as String? ?? s['Language'] as String?,
-  languageCode: s['Language'] as String?,
-  index: s['Index'] as int?,
-  selected: s['IsDefault'] == true,
-  forced: s['IsForced'] == true,
-  displayTitle: s['DisplayTitle'] as String?,
-  channels: s['Channels'] as int?,
-  frameRate: (s['RealFrameRate'] as num?)?.toDouble(),
-  width: s['Width'] as int?,
-  height: s['Height'] as int?,
-);
+/// Jellyfin serves any text subtitle — a sidecar file or a track muxed in,
+/// SubRip or ASS — converted to WebVTT at this path, so the player can show
+/// it without burning it in. Bitmap subtitles (PGS, VobSub) have none.
+String subtitleVttPath(String itemId, String sourceId, int index) =>
+    '/Videos/$itemId/$sourceId/Subtitles/$index/0/Stream.vtt';
+
+/// [itemId] and [sourceId] place a text subtitle's WebVTT copy;
+/// [selected] is whether it's the source's default track of its kind.
+MediaStream streamFromJson(
+  Json s, {
+  String? itemId,
+  String? sourceId,
+  bool? selected,
+}) {
+  final kind = _streamKind(s['Type'] as String?);
+  final index = s['Index'] as int?;
+  final vtt =
+      kind == StreamKind.subtitle &&
+          s['IsTextSubtitleStream'] == true &&
+          itemId != null &&
+          sourceId != null &&
+          index != null
+      ? subtitleVttPath(itemId, sourceId, index)
+      : null;
+  return MediaStream(
+    // Jellyfin selects tracks by their index in the container.
+    id: index ?? 0,
+    kind: kind,
+    // What's delivered: a text subtitle arrives as WebVTT, whatever it was.
+    codec: vtt != null ? 'vtt' : s['Codec'] as String?,
+    key: vtt,
+    language: s['LocalizedLanguage'] as String? ?? s['Language'] as String?,
+    languageCode: s['Language'] as String?,
+    index: index,
+    selected: selected ?? s['IsDefault'] == true,
+    forced: s['IsForced'] == true,
+    displayTitle: s['DisplayTitle'] as String?,
+    channels: s['Channels'] as int?,
+    frameRate: (s['RealFrameRate'] as num?)?.toDouble(),
+    width: s['Width'] as int?,
+    height: s['Height'] as int?,
+  );
+}
 
 /// Plex's resolution buckets, from the video's coded width.
 String? _resolution(int? width) => switch (width) {
@@ -157,11 +184,27 @@ String? _resolution(int? width) => switch (width) {
   _ => 'sd',
 };
 
-MediaVersion versionFromJson(Json source) {
+/// One of [itemId]'s files. Its part's [MediaPart.key] is the direct-play
+/// path (the client adds the token).
+MediaVersion versionFromJson(Json source, {required String itemId}) {
+  final sourceId = source['Id'] as String? ?? itemId;
+  // The source's own picks; -1 means none.
+  final defaultAudio = source['DefaultAudioStreamIndex'] as int?;
+  final defaultSubtitle = source['DefaultSubtitleStreamIndex'] as int?;
   final streams = [
     for (final s
         in ((source['MediaStreams'] as List?) ?? const []).cast<Json>())
-      streamFromJson(s),
+      streamFromJson(
+        s,
+        itemId: itemId,
+        sourceId: sourceId,
+        selected: switch (s['Type']) {
+          'Audio' when defaultAudio != null => s['Index'] == defaultAudio,
+          'Subtitle' when defaultSubtitle != null =>
+            s['Index'] == defaultSubtitle,
+          _ => null,
+        },
+      ),
   ];
   final video = streams.where((s) => s.kind == StreamKind.video).firstOrNull;
   final audio =
@@ -177,7 +220,8 @@ MediaVersion versionFromJson(Json source) {
     audioChannels: audio?.channels,
     parts: [
       MediaPart(
-        id: source['Id'] as String? ?? '',
+        id: sourceId,
+        key: '/Videos/$itemId/stream?static=true&mediaSourceId=$sourceId',
         container: source['Container'] as String?,
         duration: ticksToMs(source['RunTimeTicks']),
         size: source['Size'] as int?,
@@ -226,7 +270,7 @@ MediaDetail detailFromJson(Json item) {
     media: [
       for (final s
           in ((item['MediaSources'] as List?) ?? const []).cast<Json>())
-        versionFromJson(s),
+        versionFromJson(s, itemId: base.id),
     ],
     // Critics out of 100, the community out of 10 — Plex's scales.
     rating: critic == null ? null : critic / 10,

@@ -250,27 +250,69 @@ class JellyfinClient implements MediaServerClient {
   @override
   String? imageUrl(String? path) => JellyfinImageUrl.of(server, path);
 
-  // ---- Playback (a later phase) ----
+  // ---- Playback ----
 
-  static UnsupportedError get _noPlayback =>
-      UnsupportedError('Playing from Jellyfin arrives in a later update.');
+  /// The token as a query parameter, for URLs the player opens itself
+  /// (no headers): `ApiKey` from 10.9 on — 12.x refuses the older
+  /// `api_key` on its own — and `api_key` for servers before that.
+  String get _tokenQuery {
+    final token = Uri.encodeQueryComponent(server.accessToken);
+    return 'ApiKey=$token&api_key=$token';
+  }
 
+  /// The file as it is ([MediaPart.key] is its `/Videos/…/stream` path).
   @override
-  String directPlayUrl(MediaPart part) => throw _noPlayback;
+  String directPlayUrl(MediaPart part) =>
+      '${server.baseUrl}${part.key}'
+      '&DeviceId=${Uri.encodeQueryComponent(clientIdentifier)}&$_tokenQuery';
 
+  /// HLS in MPEG-TS with H.264 — what the Shield's player takes most
+  /// reliably, as for Plex. Jellyfin copies whichever stream already fits.
+  /// [offsetMs] isn't sent: the playlist covers the whole film either way
+  /// and the player seeks (see [transcodeStartsAtOffset]).
   @override
   String transcodeUrl(
     String itemId, {
+    String? partId,
     int? subtitleStreamId,
+    int? audioStreamId,
     required int maxVideoBitrateKbps,
     required String sessionIdentifier,
     String? sessionId,
     int offsetMs = 0,
-  }) => throw _noPlayback;
+  }) {
+    final bitrate = '${maxVideoBitrateKbps * 1000}';
+    final query = {
+      'MediaSourceId': partId ?? itemId,
+      'DeviceId': clientIdentifier,
+      'PlaySessionId': sessionIdentifier,
+      'VideoCodec': 'h264',
+      'AudioCodec': 'aac,ac3,eac3',
+      'TranscodingMaxAudioChannels': '6',
+      'MaxStreamingBitrate': bitrate,
+      'VideoBitrate': bitrate,
+      'MaxWidth': '1920',
+      'MaxHeight': '1080',
+      'SegmentContainer': 'ts',
+      'AudioStreamIndex': ?audioStreamId?.toString(),
+      'SubtitleStreamIndex': ?subtitleStreamId?.toString(),
+      if (subtitleStreamId != null) 'SubtitleMethod': 'Encode',
+    };
+    final encoded = [
+      for (final MapEntry(:key, :value) in query.entries)
+        '$key=${Uri.encodeQueryComponent(value)}',
+    ].join('&');
+    return '${server.baseUrl}/Videos/$itemId/master.m3u8?$encoded&$_tokenQuery';
+  }
 
   @override
-  String subtitleUrl(String key) => throw _noPlayback;
+  bool get transcodeStartsAtOffset => false;
 
+  /// [key] is a subtitle's WebVTT path (see subtitleVttPath).
+  @override
+  String subtitleUrl(String key) => '${server.baseUrl}$key?$_tokenQuery';
+
+  /// Jellyfin takes the tracks on the transcode URL instead.
   @override
   Future<void> selectStreams(
     String partId, {
@@ -278,6 +320,12 @@ class JellyfinClient implements MediaServerClient {
     int? subtitleStreamId,
   }) async {}
 
+  /// Sessions this client has told Jellyfin have started.
+  final _started = <String>{};
+
+  /// Start, then progress, then stopped — the third also ends the
+  /// server's transcode for [sessionIdentifier] (the stream's
+  /// PlaySessionId), and marks the title watched near its end.
   @override
   Future<void> reportProgress(
     String itemId,
@@ -285,5 +333,26 @@ class JellyfinClient implements MediaServerClient {
     required int timeMs,
     required int durationMs,
     required String sessionIdentifier,
-  }) async {}
+  }) async {
+    final path = switch (state) {
+      PlaybackReportState.stopped => '/Sessions/Playing/Stopped',
+      _ when _started.add(sessionIdentifier) => '/Sessions/Playing',
+      _ => '/Sessions/Playing/Progress',
+    };
+    try {
+      await _client.post<void>(
+        '${server.baseUrl}$path',
+        data: {
+          'ItemId': itemId,
+          'PlaySessionId': sessionIdentifier,
+          'PositionTicks': timeMs * 10000,
+          'IsPaused': state == PlaybackReportState.paused,
+          'CanSeek': true,
+        },
+        options: _headers,
+      );
+    } catch (_) {
+      // Fire-and-forget: a missed progress report isn't worth surfacing.
+    }
+  }
 }

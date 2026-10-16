@@ -222,7 +222,9 @@ class PlexClient implements MediaServerClient {
   @override
   String transcodeUrl(
     String itemId, {
+    String? partId,
     int? subtitleStreamId,
+    int? audioStreamId,
     required int maxVideoBitrateKbps,
     required String sessionIdentifier,
     String? sessionId,
@@ -237,6 +239,9 @@ class PlexClient implements MediaServerClient {
     sessionId: sessionId,
     offsetMs: offsetMs,
   );
+
+  @override
+  bool get transcodeStartsAtOffset => true;
 
   @override
   String subtitleUrl(String key) => '${server.baseUrl}$key?X-Plex-Token=${server.accessToken}';

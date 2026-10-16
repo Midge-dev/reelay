@@ -71,7 +71,7 @@ One account per platform per profile. Not synced across devices. **Not a
 security boundary** — never write copy implying the picker keeps anyone out.
 The picker stays hidden until a second profile exists.
 
-## Jellyfin: browsable, not yet playable
+## Jellyfin: a peer of Plex
 
 The system is server-neutral and the screens show Plex and Jellyfin as peers.
 **Setup links Jellyfin**: the O1 card is live, and O3 (from the phone) and O3b
@@ -83,15 +83,16 @@ that account. A linked Jellyfin server is listed there with Unlink.
 **A linked Jellyfin server joins the hub** beside the Plex servers: its
 libraries are on the rail, in Home's rows, in search and in the server
 switcher (06) as a peer row — labelled "Jellyfin", never a logo — that turns
-on and off like any other. **It can't play yet**: Play says so on screen 25,
-which offers another copy when there is one. A **Jellyfin-only profile** is a
+on and off like any other. **It plays** — direct, or as an HLS transcode when
+the file won't — and every text subtitle (SRT, ASS, embedded or sidecar)
+arrives as WebVTT drawn over the picture, so only bitmap subtitles need a
+burn-in. Watch Together rooms are still Plex-only. A **Jellyfin-only profile** is a
 full hub of its one server — no Plex sign-in, no plex.tv round trip; if that
 server doesn't answer it gets screen 24 naming it, like any other. The
 add-profile dialog (07b) signs a new profile in to Plex, Jellyfin or both;
 Jellyfin's Sign in opens O3/O3b over the whole screen and returns to the
-dialog. Until playback lands, never present a Jellyfin control as able to do
-something it can't: a dead end behind a live control is worse than a stated
-one.
+dialog. Never present a Jellyfin control as able to do something it can't: a dead
+end behind a live control is worse than a stated one.
 
 ## Focus rules
 

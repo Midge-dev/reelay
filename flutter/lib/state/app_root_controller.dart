@@ -1376,21 +1376,6 @@ class AppRootController extends ChangeNotifier {
     String? showId,
     int? resumeAtMs,
   }) async {
-    if (server.backend == MediaBackend.jellyfin) {
-      // Browsing only for now; screen 25 offers another copy if there is one.
-      _setState(
-        PlaybackFailed(
-          ctx: ctx,
-          server: server,
-          targetItemId: targetItemId,
-          fromStart: fromStart,
-          reason: 'Playing from Jellyfin arrives in a later update',
-          resumeAtMs: resumeAtMs,
-          returnState: returnState,
-        ),
-      );
-      return;
-    }
     try {
       final detail = await clientFor(server).fetchDetail(targetItemId);
       // Progress belongs to the title: another copy may have you further in
