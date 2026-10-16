@@ -1,3 +1,4 @@
+import '../jellyfin/jellyfin_client.dart';
 import '../plex/plex_client.dart';
 import 'media_models.dart';
 import 'media_server.dart';
@@ -16,7 +17,7 @@ abstract class MediaServerClient {
   /// [clientIdentifier] is this install's stable device id.
   factory MediaServerClient.forServer(MediaServer server, String clientIdentifier) => switch (server.backend) {
     MediaBackend.plex => PlexClient(server, clientIdentifier),
-    MediaBackend.jellyfin => throw UnimplementedError('Jellyfin is not connectable yet'),
+    MediaBackend.jellyfin => JellyfinClient(server, clientIdentifier),
   };
 
   // ---- Browsing ----

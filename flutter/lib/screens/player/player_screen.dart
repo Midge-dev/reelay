@@ -304,13 +304,20 @@ class _PlayerScreenState extends State<PlayerScreen> {
     final generation = ++_playerGeneration;
     await _selectServerStreams();
     if (!mounted || generation != _playerGeneration) return;
-    final url = mediaUrl(
-      widget.client,
-      _decision,
-      _maxVideoBitrateKbps,
-      sessionIdentifier: _sessionIdentifier,
-      offsetMs: startPositionMs,
-    );
+    final String url;
+    try {
+      url = mediaUrl(
+        widget.client,
+        _decision,
+        _maxVideoBitrateKbps,
+        sessionIdentifier: _sessionIdentifier,
+        offsetMs: startPositionMs,
+      );
+    } on UnsupportedError catch (e) {
+      // A backend that can't stream yet (Jellyfin) says why.
+      _fail(e.message ?? 'This server can’t play here yet', startPositionMs);
+      return;
+    }
     final controller = VideoPlayerController.networkUrl(Uri.parse(url));
     try {
       await controller.initialize();

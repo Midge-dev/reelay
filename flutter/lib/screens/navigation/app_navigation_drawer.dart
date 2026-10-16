@@ -6,7 +6,7 @@ import '../../theme/phosphor_icons.dart';
 
 import '../../data/plex/plex_auth_api.dart';
 import '../../data/plex/plex_models.dart';
-import '../../data/settings/app_settings.dart' show RelayEntry;
+import '../../data/settings/app_settings.dart' show JellyfinLink, RelayEntry;
 import '../../kit/focusable_surface.dart';
 import '../../kit/icon.dart';
 import '../../kit/soft_edge_shadow.dart';
@@ -102,8 +102,13 @@ class AppNavigationDrawer extends StatefulWidget {
   final Set<String> disabledServerIds;
   final Future<List<PlexResource>> Function() loadServers;
   final Future<ReachableServer?> Function(PlexResource resource) probeServer;
+
+  /// The active profile's Jellyfin account, listed in screen 06 beside the
+  /// Plex servers; [probeJellyfin] checks it when it isn't in the hub.
+  final JellyfinLink? jellyfin;
+  final Future<ReachableServer?> Function()? probeJellyfin;
   final Future<int?> Function(MediaServer server) loadLibraryCount;
-  final void Function(PlexResource resource, bool enabled) onToggleServer;
+  final void Function(String serverId, bool enabled) onToggleServer;
   final Widget child;
 
   const AppNavigationDrawer({
@@ -125,6 +130,8 @@ class AppNavigationDrawer extends StatefulWidget {
     required this.disabledServerIds,
     required this.loadServers,
     required this.probeServer,
+    this.jellyfin,
+    this.probeJellyfin,
     required this.loadLibraryCount,
     required this.onToggleServer,
     required this.child,
@@ -577,6 +584,8 @@ class _AppNavigationDrawerState extends State<AppNavigationDrawer> {
             selectedSectionGroupKey: widget.selectedSectionGroupKey,
             loadServers: widget.loadServers,
             probeServer: widget.probeServer,
+            jellyfin: widget.jellyfin,
+            probeJellyfin: widget.probeJellyfin,
             loadLibraryCount: widget.loadLibraryCount,
             onSelectSection: (section) =>
                 _handleSelect(() => widget.onSelectSection(section)),

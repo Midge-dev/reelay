@@ -4,6 +4,7 @@ import 'package:reelay/data/media/media_models.dart';
 import 'package:reelay/data/media/media_server.dart';
 import 'package:reelay/data/plex/plex_auth_api.dart';
 import 'package:reelay/data/plex/plex_models.dart';
+import 'package:reelay/data/settings/app_settings.dart';
 import 'package:reelay/kit/card.dart';
 import 'package:reelay/kit/filter_chip.dart';
 import 'package:reelay/screens/navigation/server_switcher_panel.dart';
@@ -27,7 +28,9 @@ Future<void> _pump(
   List<PlexResource>? resources,
   Future<ReachableServer?> Function(PlexResource)? probeServer,
   ValueChanged<SectionGroup>? onSelectSection,
-  void Function(PlexResource, bool)? onToggleServer,
+  JellyfinLink? jellyfin,
+  Future<ReachableServer?> Function()? probeJellyfin,
+  void Function(String, bool)? onToggleServer,
   VoidCallback? onClose,
 }) async {
   tester.view.physicalSize = const Size(1920, 1080);
@@ -48,6 +51,8 @@ Future<void> _pump(
             selectedSectionGroupKey: 'movie::movies',
             loadServers: () async => resources ?? _resources,
             probeServer: probeServer ?? (_) async => null,
+            jellyfin: jellyfin,
+            probeJellyfin: probeJellyfin,
             loadLibraryCount: (_) async => 2,
             onSelectSection: onSelectSection ?? (_) {},
             onToggleServer: onToggleServer ?? (_, _) {},
@@ -90,7 +95,7 @@ void main() {
   });
 
   testWidgets('an unreachable server shows Unreachable and cannot be toggled', (tester) async {
-    (PlexResource, bool)? toggled;
+    (String, bool)? toggled;
     await _pump(
       tester,
       probeServer: (_) async => null,
@@ -105,15 +110,67 @@ void main() {
     expect(toggled, isNull);
   });
 
-  testWidgets('always shows a disabled Jellyfin row', (tester) async {
+  const loftJellyfin = JellyfinLink(
+    serverId: 'j1',
+    serverName: 'GRIM-TEST',
+    baseUrl: 'http://10.0.0.9:8096',
+    userId: 'u1',
+    username: 'sam',
+  );
+  const jellyfinServer = MediaServer(
+    backend: MediaBackend.jellyfin,
+    name: 'GRIM-TEST',
+    baseUrl: 'http://10.0.0.9:8096',
+    accessToken: 'jtok',
+    id: 'j1',
+    userId: 'u1',
+  );
+
+  testWidgets('no Jellyfin account, no Jellyfin row', (tester) async {
     await _pump(tester);
 
-    expect(find.text('Jellyfin'), findsOneWidget);
-    expect(find.text('COMING SOON'), findsOneWidget);
+    expect(find.textContaining('Jellyfin'), findsNothing);
+    expect(find.text('COMING SOON'), findsNothing);
+  });
+
+  testWidgets('a connected Jellyfin server is listed after the Plex ones, as a peer', (tester) async {
+    await _pump(
+      tester,
+      jellyfin: loftJellyfin,
+      connectedServers: const [
+        ReachableServer(_atticServer, ServerReachability.local),
+        ReachableServer(jellyfinServer, ServerReachability.local),
+      ],
+    );
+    await tester.pump();
+
+    expect(find.text('GRIM-TEST'), findsOneWidget);
+    expect(find.text('Jellyfin · 2 libraries'), findsOneWidget);
+  });
+
+  testWidgets('a Jellyfin server that is turned off is probed, and selecting it turns it on', (tester) async {
+    (String, bool)? toggled;
+    var probed = false;
+    await _pump(
+      tester,
+      jellyfin: loftJellyfin,
+      disabledServerIds: const {'j1'},
+      probeJellyfin: () async {
+        probed = true;
+        return const ReachableServer(jellyfinServer, ServerReachability.local);
+      },
+      onToggleServer: (id, enabled) => toggled = (id, enabled),
+    );
+    await tester.pump();
+    expect(probed, isTrue);
+
+    await tester.tap(find.text('GRIM-TEST'));
+    await tester.pump();
+    expect(toggled, ('j1', true));
   });
 
   testWidgets('tapping a reachable, enabled server turns it off', (tester) async {
-    (PlexResource, bool)? toggled;
+    (String, bool)? toggled;
     await _pump(
       tester,
       probeServer: (resource) async => ReachableServer(
@@ -127,12 +184,12 @@ void main() {
     await tester.tap(find.byType(AppCard).at(1));
     await tester.pump();
 
-    expect(toggled?.$1.machineIdentifier, 'm2');
+    expect(toggled?.$1, 'm2');
     expect(toggled?.$2, isFalse);
   });
 
   testWidgets('tapping a reachable, disabled server turns it on', (tester) async {
-    (PlexResource, bool)? toggled;
+    (String, bool)? toggled;
     await _pump(
       tester,
       disabledServerIds: const {'m2'},
@@ -147,7 +204,7 @@ void main() {
     await tester.tap(find.byType(AppCard).at(1));
     await tester.pump();
 
-    expect(toggled?.$1.machineIdentifier, 'm2');
+    expect(toggled?.$1, 'm2');
     expect(toggled?.$2, isTrue);
   });
 

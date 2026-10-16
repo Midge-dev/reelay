@@ -13,6 +13,20 @@ String get jellyfinDeviceName => switch (defaultTargetPlatform) {
   _ => 'Android TV',
 };
 
+/// Jellyfin's client identity header. [token] makes it an authenticated
+/// one; the same header carries both.
+String jellyfinAuthorization({
+  required String deviceId,
+  required String deviceName,
+  required String appVersion,
+  String? token,
+}) {
+  String quoted(String value) => '"${Uri.encodeComponent(value)}"';
+  return 'MediaBrowser Client=${quoted('Reelay')}, Device=${quoted(deviceName)}, '
+      'DeviceId=${quoted(deviceId)}, Version=${quoted(appVersion)}'
+      '${token == null ? '' : ', Token=${quoted(token)}'}';
+}
+
 /// Why linking a Jellyfin server failed — each one is a different thing for
 /// the person at the TV to fix, so screens name it rather than "error".
 enum JellyfinAuthFailure {
@@ -155,14 +169,13 @@ class JellyfinAuthApi {
              ),
            );
 
-  /// Jellyfin's client identity header. [token] makes it an authenticated
-  /// one; the same header carries both.
-  String authorization({String? token}) {
-    String quoted(String value) => '"${Uri.encodeComponent(value)}"';
-    return 'MediaBrowser Client=${quoted('Reelay')}, Device=${quoted(deviceName)}, '
-        'DeviceId=${quoted(deviceId)}, Version=${quoted(appVersion)}'
-        '${token == null ? '' : ', Token=${quoted(token)}'}';
-  }
+  /// See [jellyfinAuthorization].
+  String authorization({String? token}) => jellyfinAuthorization(
+    deviceId: deviceId,
+    deviceName: deviceName,
+    appVersion: appVersion,
+    token: token,
+  );
 
   Options _options({String? token}) =>
       Options(headers: {'Authorization': authorization(token: token)});

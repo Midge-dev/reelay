@@ -6,6 +6,7 @@ import 'package:flutter/foundation.dart';
 
 import '../app_version.dart';
 import '../data/jellyfin/jellyfin_auth_api.dart';
+import '../data/jellyfin/jellyfin_client.dart';
 import '../data/media/media_models.dart';
 import '../data/media/media_server.dart';
 import '../data/media/media_server_client.dart';
@@ -360,6 +361,7 @@ class AppRootController extends ChangeNotifier {
           (v) => (v, null),
           onError: (Object e) => (null, e),
         );
+    final reachingJellyfin = _reachJellyfin(settings);
     final authApi = PlexAuthApi(_clientIdentifier);
     try {
       _localAccount = await authApi.fetchAccount(token);
@@ -388,14 +390,15 @@ class AppRootController extends ChangeNotifier {
       final (probedOrNull, probeError) = await probing;
       if (probeError != null) throw probeError;
       final probed = probedOrNull!;
-      final reached = probed.connected.length;
+      final connected = [...probed.connected, ?await reachingJellyfin];
+      final reached = connected.length;
       done.add(
         'Reached $reached server${reached == 1 ? '' : 's'}${probed.unreachable.isEmpty ? '' : ' · ${probed.unreachable.length} not answering'}',
       );
       progress('Reading libraries');
-      _connectedServers = probed.connected;
+      _connectedServers = connected;
       _unreachableResources = probed.unreachable;
-      if (probed.connected.isEmpty) {
+      if (connected.isEmpty) {
         // Screen 24 — this is the one failure that earns the whole screen,
         // so it gets a real state (with the account's resource list, for a
         // named-per-server display) rather than falling into the generic
@@ -413,7 +416,7 @@ class AppRootController extends ChangeNotifier {
         unawaited(_refreshWatchlist());
         return;
       }
-      final sectionsByServerId = await _fetchAllSections(probed.connected);
+      final sectionsByServerId = await _fetchAllSections(connected);
       final sectionGroups = groupSections(sectionsByServerId);
       final firstGroup = sectionGroups.firstOrNull;
       if (firstGroup == null) {
@@ -434,7 +437,7 @@ class AppRootController extends ChangeNotifier {
       // library's full title list is fetched when that library is opened,
       // never at startup (it held the splash for seconds on a large one).
       final ctx = LibraryContext(
-        servers: probed.connected,
+        servers: connected,
         sectionGroups: sectionGroups,
         selectedSectionGroup: firstGroup,
         items: const [],
@@ -445,7 +448,7 @@ class AppRootController extends ChangeNotifier {
       _setState(
         offerRelayStep
             ? RelaySetup(ctx: ctx)
-            : await _loadHome(probed.connected, sectionGroups),
+            : await _loadHome(connected, sectionGroups),
       );
     } catch (e) {
       if (isPlexSignInRevoked(e)) {
@@ -462,6 +465,29 @@ class AppRootController extends ChangeNotifier {
       return;
     }
     unawaited(_refreshWatchlist());
+  }
+
+  /// The active profile's Jellyfin server for the hub — when it has one,
+  /// it isn't turned off, and it answers with the token still good. Never
+  /// throws: a Jellyfin server that's down leaves the Plex ones unaffected.
+  Future<ReachableServer?> _reachJellyfin(AppSettings settings) =>
+      probeJellyfin(skipping: settings.disabledServerIds);
+
+  /// The active profile's Jellyfin server if it answers — screen 06 asks
+  /// this for one that's turned off; connecting skips ids in [skipping].
+  Future<ReachableServer?> probeJellyfin({
+    Set<String> skipping = const {},
+  }) async {
+    final profile = _activeProfile;
+    if (profile == null) return null;
+    final server = await jellyfinServerFor(profile);
+    if (server == null || skipping.contains(server.id)) return null;
+    try {
+      await JellyfinClient(server, _clientIdentifier).checkSignedIn();
+    } catch (_) {
+      return null;
+    }
+    return ReachableServer(server, ServerReachability.local);
   }
 
   /// Plex refused the saved token (this TV was removed from the account's
@@ -1320,6 +1346,21 @@ class AppRootController extends ChangeNotifier {
     String? showId,
     int? resumeAtMs,
   }) async {
+    if (server.backend == MediaBackend.jellyfin) {
+      // Browsing only for now; screen 25 offers another copy if there is one.
+      _setState(
+        PlaybackFailed(
+          ctx: ctx,
+          server: server,
+          targetItemId: targetItemId,
+          fromStart: fromStart,
+          reason: 'Playing from Jellyfin arrives in a later update',
+          resumeAtMs: resumeAtMs,
+          returnState: returnState,
+        ),
+      );
+      return;
+    }
     try {
       final detail = await clientFor(server).fetchDetail(targetItemId);
       // Progress belongs to the title: another copy may have you further in

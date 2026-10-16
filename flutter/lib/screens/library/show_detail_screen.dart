@@ -464,7 +464,7 @@ class _ShowHero extends StatelessWidget {
                       ),
                       SizedBox(width: AppSpacing.md.du(context)),
                       AppText(
-                        'SERIES · PLEX · ${server.name.toUpperCase()}',
+                        'SERIES · ${server.backend.label.toUpperCase()} · ${server.name.toUpperCase()}',
                         style: AppTypography.micro,
                       ),
                     ],

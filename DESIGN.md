@@ -71,20 +71,25 @@ One account per platform per profile. Not synced across devices. **Not a
 security boundary** — never write copy implying the picker keeps anyone out.
 The picker stays hidden until a second profile exists.
 
-## Jellyfin: linkable, not yet browsable
+## Jellyfin: browsable, not yet playable
 
 The system is server-neutral and the screens show Plex and Jellyfin as peers.
 **Setup links Jellyfin**: the O1 card is live, and O3 (from the phone) and O3b
 (typed on the TV) sign in by password or Quick Connect. Settings → Servers
 has an **Add more servers** row that reruns O1 → O2/O3 for the active profile
 (no step column, no O4); choosing a platform the profile already has switches
-that account. A linked Jellyfin server is listed there with Unlink. Its libraries can't be
-browsed yet, so a Jellyfin-only profile lands on a screen that says exactly
-that — never an empty home. The server switcher (06) and the add-profile
-dialog's Jellyfin slot (07b) keep the disabled treatment — 45% opacity, out of
-the focus order, "Coming soon" — until browsing lands. Do not make them
-selectable to make a layout feel finished: a dead end behind a live control is
-worse than a stated one.
+that account. A linked Jellyfin server is listed there with Unlink.
+
+**A linked Jellyfin server joins the hub** beside the Plex servers: its
+libraries are on the rail, in Home's rows, in search and in the server
+switcher (06) as a peer row — labelled "Jellyfin", never a logo — that turns
+on and off like any other. **It can't play yet**: Play says so on screen 25,
+which offers another copy when there is one. A Jellyfin-only profile still
+lands on a screen that says what's missing — never an empty home. The
+add-profile dialog's Jellyfin slot (07b) keeps the disabled treatment — 45%
+opacity, out of the focus order, "Coming soon". Do not make it selectable to
+make a layout feel finished: a dead end behind a live control is worse than a
+stated one.
 
 ## Focus rules
 

@@ -355,6 +355,8 @@ class _AppContent extends StatelessWidget {
             disabledServerIds: controller.currentSettings.disabledServerIds,
             loadServers: _loadServers,
             probeServer: _probeServer,
+            jellyfin: controller.activeProfile?.jellyfin,
+            probeJellyfin: controller.probeJellyfin,
             loadLibraryCount: _loadLibraryCount,
             onToggleServer: _toggleServer,
             child: const LoadingScreen(),
@@ -375,6 +377,8 @@ class _AppContent extends StatelessWidget {
         disabledServerIds: controller.currentSettings.disabledServerIds,
         loadServers: _loadServers,
         probeServer: _probeServer,
+        jellyfin: controller.activeProfile?.jellyfin,
+        probeJellyfin: controller.probeJellyfin,
         loadLibraryCount: _loadLibraryCount,
         onToggleServer: _toggleServer,
         child: const HomeLoadingSkeleton(),
@@ -907,6 +911,8 @@ class _AppContent extends StatelessWidget {
         disabledServerIds: controller.currentSettings.disabledServerIds,
         loadServers: _loadServers,
         probeServer: _probeServer,
+        jellyfin: controller.activeProfile?.jellyfin,
+        probeJellyfin: controller.probeJellyfin,
         loadLibraryCount: _loadLibraryCount,
         onToggleServer: _toggleServer,
         child: _remembering(
@@ -998,6 +1004,8 @@ class _AppContent extends StatelessWidget {
         disabledServerIds: controller.currentSettings.disabledServerIds,
         loadServers: _loadServers,
         probeServer: _probeServer,
+        jellyfin: controller.activeProfile?.jellyfin,
+        probeJellyfin: controller.probeJellyfin,
         loadLibraryCount: _loadLibraryCount,
         onToggleServer: _toggleServer,
         child: _remembering(state, child),
@@ -1019,8 +1027,8 @@ class _AppContent extends StatelessWidget {
     );
   }
 
-  void _toggleServer(PlexResource resource, bool enabled) =>
-      controller.setServerEnabled(resource.machineIdentifier, enabled);
+  void _toggleServer(String serverId, bool enabled) =>
+      controller.setServerEnabled(serverId, enabled);
 
   Future<List<PlexResource>> _loadServers() =>
       PlexResourcesApi(controller.clientIdentifier)
