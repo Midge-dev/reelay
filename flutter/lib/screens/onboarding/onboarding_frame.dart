@@ -44,6 +44,10 @@ class OnboardingFrame extends StatelessWidget {
   /// Top inset of the content column; O4 and O5 sit a little higher.
   final double contentTop;
 
+  /// False outside setup (Settings linking Jellyfin): no step column — the
+  /// footnote follows the content instead.
+  final bool showSteps;
+
   const OnboardingFrame({
     super.key,
     required this.step,
@@ -52,6 +56,7 @@ class OnboardingFrame extends StatelessWidget {
     required this.child,
     this.footer,
     this.contentTop = 120,
+    this.showSteps = true,
   });
 
   @override
@@ -61,80 +66,84 @@ class OnboardingFrame extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Container(
-            // At most about a third of the screen, so a large UI size
-            // doesn't leave the step content too narrow to hold its cards.
-            width: min(
-              _columnWidth.du(context),
-              MediaQuery.sizeOf(context).width * 0.34,
-            ),
-            decoration: BoxDecoration(
-              color: AppColors.canvas,
-              border: Border(
-                right: BorderSide(color: AppColors.line, width: 1.du(context)),
+          if (showSteps)
+            Container(
+              // At most about a third of the screen, so a large UI size
+              // doesn't leave the step content too narrow to hold its cards.
+              width: min(
+                _columnWidth.du(context),
+                MediaQuery.sizeOf(context).width * 0.34,
               ),
-            ),
-            child: LayoutBuilder(
-              builder: (context, constraints) => SingleChildScrollView(
-                padding: EdgeInsets.symmetric(
-                  horizontal: AppSpacing.safeX.du(context),
-                  vertical: 56.du(context),
-                ),
-                child: ConstrainedBox(
-                  constraints: BoxConstraints(
-                    minHeight: constraints.maxHeight - (2 * 56).du(context),
+              decoration: BoxDecoration(
+                color: AppColors.canvas,
+                border: Border(
+                  right: BorderSide(
+                    color: AppColors.line,
+                    width: 1.du(context),
                   ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          Row(
-                            children: [
-                              const ReelayMark(),
-                              SizedBox(width: 14.du(context)),
-                              AppText(
-                                'Reelay',
-                                style: AppTypography.rowLabel,
-                                color: AppColors.ink,
-                              ),
-                            ],
-                          ),
-                          SizedBox(height: 44.du(context)),
-                          AppText(
-                            'SETUP',
-                            style: AppTypography.micro,
-                            color: AppColors.ink3,
-                          ),
-                          SizedBox(height: 44.du(context)),
-                          for (final s in SetupStep.values) ...[
-                            _StepRow(
-                              step: s,
-                              current: step,
-                              summary: summaries[s],
+                ),
+              ),
+              child: LayoutBuilder(
+                builder: (context, constraints) => SingleChildScrollView(
+                  padding: EdgeInsets.symmetric(
+                    horizontal: AppSpacing.safeX.du(context),
+                    vertical: 56.du(context),
+                  ),
+                  child: ConstrainedBox(
+                    constraints: BoxConstraints(
+                      minHeight: constraints.maxHeight - (2 * 56).du(context),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            Row(
+                              children: [
+                                const ReelayMark(),
+                                SizedBox(width: 14.du(context)),
+                                AppText(
+                                  'Reelay',
+                                  style: AppTypography.rowLabel,
+                                  color: AppColors.ink,
+                                ),
+                              ],
                             ),
-                            SizedBox(height: 6.du(context)),
+                            SizedBox(height: 44.du(context)),
+                            AppText(
+                              'SETUP',
+                              style: AppTypography.micro,
+                              color: AppColors.ink3,
+                            ),
+                            SizedBox(height: 44.du(context)),
+                            for (final s in SetupStep.values) ...[
+                              _StepRow(
+                                step: s,
+                                current: step,
+                                summary: summaries[s],
+                              ),
+                              SizedBox(height: 6.du(context)),
+                            ],
                           ],
-                        ],
-                      ),
-                      Padding(
-                        padding: EdgeInsets.only(
-                          top: AppSpacing.xxl.du(context),
                         ),
-                        child: AppText(
-                          footnote,
-                          style: AppTypography.caption.copyWith(height: 1.6),
-                          color: AppColors.ink4,
+                        Padding(
+                          padding: EdgeInsets.only(
+                            top: AppSpacing.xxl.du(context),
+                          ),
+                          child: AppText(
+                            footnote,
+                            style: AppTypography.caption.copyWith(height: 1.6),
+                            color: AppColors.ink4,
+                          ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                 ),
               ),
             ),
-          ),
           Expanded(
             child: LayoutBuilder(
               builder: (context, constraints) => SingleChildScrollView(
@@ -171,7 +180,27 @@ class OnboardingFrame extends StatelessWidget {
                               (_) => _revealTop(context),
                             );
                           },
-                          child: child,
+                          child: showSteps
+                              ? child
+                              : Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    child,
+                                    SizedBox(height: AppSpacing.xl.du(context)),
+                                    ConstrainedBox(
+                                      constraints: BoxConstraints(
+                                        maxWidth: 900.du(context),
+                                      ),
+                                      child: AppText(
+                                        footnote,
+                                        style: AppTypography.caption.copyWith(
+                                          height: 1.6,
+                                        ),
+                                        color: AppColors.ink4,
+                                      ),
+                                    ),
+                                  ],
+                                ),
                         ),
                       ),
                       if (footer != null)

@@ -41,13 +41,17 @@ class JellyfinLinkStep extends ConsumerStatefulWidget {
   /// The left rail's summaries — "Plex, Jellyfin", "2 of 2".
   final Map<SetupStep, String> summaries;
 
+  /// False when linking from Settings, outside setup — no step column.
+  final bool showSteps;
+
   const JellyfinLinkStep({
     super.key,
     required this.onLinked,
     required this.onBack,
     this.onSkip,
     required this.kicker,
-    required this.summaries,
+    this.summaries = const {},
+    this.showSteps = true,
   });
 
   @override
@@ -178,6 +182,7 @@ class _JellyfinLinkStepState extends ConsumerState<JellyfinLinkStep> {
         step: SetupStep.link,
         contentTop: 80,
         summaries: widget.summaries,
+        showSteps: widget.showSteps,
         footnote: 'Reelay never keeps your password. Jellyfin hands back a token for this TV only, and it stays on the device.',
         footer: _footer(context),
         child: Column(

@@ -75,7 +75,9 @@ The picker stays hidden until a second profile exists.
 
 The system is server-neutral and the screens show Plex and Jellyfin as peers.
 **Setup links Jellyfin**: the O1 card is live, and O3 (from the phone) and O3b
-(typed on the TV) sign in by password or Quick Connect. Its libraries can't be
+(typed on the TV) sign in by password or Quick Connect. Settings → Servers
+links, changes or unlinks the active profile's account later, through the same
+O3/O3b screen without the setup step column. Its libraries can't be
 browsed yet, so a Jellyfin-only profile lands on a screen that says exactly
 that — never an empty home. The server switcher (06) and the add-profile
 dialog's Jellyfin slot (07b) keep the disabled treatment — 45% opacity, out of

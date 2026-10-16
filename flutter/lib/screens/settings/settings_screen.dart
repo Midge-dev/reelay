@@ -24,6 +24,7 @@ import '../../theme/typography.dart';
 import '../common/loading_screen.dart';
 import '../common/relay_status.dart';
 import '../navigation/rail_order.dart';
+import '../onboarding/jellyfin_link_step.dart';
 import '../profiles/add_profile_dialog.dart';
 import 'appearance_screen.dart';
 import 'max_seats_menu.dart';
@@ -88,6 +89,15 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       g: FocusNode(debugLabel: 'settings-group-${g.name}'),
   };
   bool _serversChanged = false;
+
+  /// The active profile, kept here so linking or unlinking Jellyfin shows
+  /// at once. Null on an install that predates profiles.
+  late Profile? _profile = ref.read(appRootControllerProvider).activeProfile;
+  bool _linkingJellyfin = false;
+
+  /// Unlinking takes a second press — the first only asks.
+  bool _confirmingUnlink = false;
+  final _jellyfinRowFocus = FocusNode(debugLabel: 'settings-jellyfin');
 
   PairingServer? _pairingServer;
   String? _pairingUrl;
@@ -176,6 +186,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     _pairingServer?.stop();
     _silentTimer?.cancel();
     _firstSourceFocus.dispose();
+    _jellyfinRowFocus.dispose();
     _relaySettingsEntryFocus.dispose();
     _relaySettingsBackFocus.dispose();
     _appearanceEntryFocus.dispose();
@@ -341,6 +352,24 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   Widget build(BuildContext context) {
     if (!_loaded) {
       return const LoadingScreen();
+    }
+
+    if (_linkingJellyfin) {
+      return JellyfinLinkStep(
+        kicker: 'SETTINGS · JELLYFIN',
+        showSteps: false,
+        onBack: _closeJellyfinLink,
+        onLinked: (server, session) async {
+          final profile = _profile;
+          if (profile == null) return;
+          final linked = await ref
+              .read(appRootControllerProvider)
+              .linkJellyfin(profile, server, session);
+          if (!mounted) return;
+          setState(() => _profile = linked);
+          _closeJellyfinLink();
+        },
+      );
     }
 
     if (_showingRelaySettings) {
@@ -757,7 +786,85 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     ),
   ];
 
-  List<Widget> _serverRows() {
+  void _closeJellyfinLink() {
+    setState(() => _linkingJellyfin = false);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _jellyfinRowFocus.requestFocus();
+    });
+  }
+
+  Future<void> _unlinkJellyfin() async {
+    final profile = _profile;
+    if (profile == null) return;
+    if (!_confirmingUnlink) {
+      setState(() => _confirmingUnlink = true);
+      return;
+    }
+    final unlinked = await ref
+        .read(appRootControllerProvider)
+        .unlinkJellyfin(profile);
+    if (!mounted) return;
+    setState(() {
+      _profile = unlinked;
+      _confirmingUnlink = false;
+    });
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _jellyfinRowFocus.requestFocus();
+    });
+  }
+
+  List<Widget> _serverRows() => [..._plexServerRows(), ..._jellyfinRows()];
+
+  /// This profile's one Jellyfin account (DESIGN.md: one per platform per
+  /// profile) — link one, change it, or drop it.
+  List<Widget> _jellyfinRows() {
+    final profile = _profile;
+    if (profile == null) return const [];
+    final link = profile.jellyfin;
+    if (link == null) {
+      return [
+        _SettingRow(
+          label: 'Link Jellyfin',
+          description: 'Sign this profile in to a Jellyfin server. Its libraries arrive in a later update',
+          focusNode: _jellyfinRowFocus,
+          onClick: () => setState(() => _linkingJellyfin = true),
+        ),
+      ];
+    }
+    return [
+      _SettingRow(
+        label: link.serverName,
+        description:
+            'Jellyfin · Signed in as ${link.username} · Libraries arrive in a later update',
+        value: 'Change',
+        focusNode: _jellyfinRowFocus,
+        onClick: () => setState(() {
+          _confirmingUnlink = false;
+          _linkingJellyfin = true;
+        }),
+      ),
+      Focus(
+        canRequestFocus: false,
+        skipTraversal: true,
+        onFocusChange: (focused) {
+          if (!focused && _confirmingUnlink) {
+            setState(() => _confirmingUnlink = false);
+          }
+        },
+        child: _SettingRow(
+          label: _confirmingUnlink
+              ? 'Select again to unlink'
+              : 'Unlink Jellyfin',
+          description: _confirmingUnlink
+              ? 'Signs this TV out of ${link.serverName}'
+              : 'This profile keeps its Plex account',
+          onClick: _unlinkJellyfin,
+        ),
+      ),
+    ];
+  }
+
+  List<Widget> _plexServerRows() {
     if (!_sourcesLoaded)
       return [AppText('Looking for servers…', style: AppTypography.body)];
     if (_sourcesError != null) {
