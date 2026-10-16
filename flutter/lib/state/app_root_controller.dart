@@ -26,6 +26,7 @@ import '../sync/relay_client.dart';
 import '../sync/relay_directory_api.dart';
 import '../sync/relay_protocol.dart';
 import 'app_state.dart';
+import 'room_title.dart';
 import 'duplicate_fold.dart';
 
 const _roomPollIntervalMs = 5000;
@@ -711,26 +712,6 @@ class AppRootController extends ChangeNotifier {
     return results.expand((l) => l).toList();
   }
 
-  /// Looks a ratingKey up on every connected server until one answers —
-  /// used where a piece of content is known only by its ratingKey with no
-  /// server hint at all (a Watch Together room only carries a ratingKey,
-  /// not which server hosted it).
-  Future<(MediaServer, MediaDetail)?> _fetchMovieDetailFromAnyServer(
-    List<ReachableServer> servers,
-    String ratingKey,
-  ) async {
-    final results = await Future.wait(
-      servers.map((cs) async {
-        try {
-          return (cs.server, await clientFor(cs.server).fetchDetail(ratingKey));
-        } catch (_) {
-          return null;
-        }
-      }),
-    );
-    return results.whereType<(MediaServer, MediaDetail)>().firstOrNull;
-  }
-
   // ---- Watchlist ----
 
   Future<void> _refreshWatchlist() async {
@@ -1107,6 +1088,16 @@ class AppRootController extends ChangeNotifier {
       return;
     }
 
+    // The title first: the room advertises its provider ids, so a guest
+    // on another server (or backend) can find their own copy.
+    final MediaDetail detail;
+    try {
+      detail = await clientFor(server).fetchDetail(targetItemId);
+    } catch (e) {
+      _setState(AppError(message: '$e', retryState: returnState));
+      return;
+    }
+
     final existing = await _findHostedRoomForMedia(targetItemId);
     // A room kept open for a different title ends before this one starts;
     // the same title's room is simply taken up again.
@@ -1126,6 +1117,10 @@ class AppRootController extends ChangeNotifier {
               ratingKey: targetItemId,
               hostName: hostName,
               maxSeats: settings.maxHostSeats,
+              serverId: server.id,
+              ids: roomIdsFor(detail),
+              mediaTitle: detail.title,
+              year: detail.year,
             ),
           );
     if (relay == null) {
@@ -1139,23 +1134,18 @@ class AppRootController extends ChangeNotifier {
       return;
     }
 
-    try {
-      final detail = await clientFor(server).fetchDetail(targetItemId);
-      _setState(
-        Lobby(
-          server: server,
-          detail: restart ? detail.copyWith(viewOffset: 0) : detail,
-          returnState: returnState,
-          relay: relay,
-          hostName: existing?.$2.hostName ?? hostName,
-          relayNickname: existing?.$1.nickname ?? defaultRelay.nickname,
-          thumb: thumb,
-          isHost: true,
-        ),
-      );
-    } catch (e) {
-      _setState(AppError(message: '$e', retryState: returnState));
-    }
+    _setState(
+      Lobby(
+        server: server,
+        detail: restart ? detail.copyWith(viewOffset: 0) : detail,
+        returnState: returnState,
+        relay: relay,
+        hostName: existing?.$2.hostName ?? hostName,
+        relayNickname: existing?.$1.nickname ?? defaultRelay.nickname,
+        thumb: thumb,
+        isHost: true,
+      ),
+    );
   }
 
   Future<void> hostOnAnotherRelay(Lobby current) async {
@@ -1175,6 +1165,10 @@ class AppRootController extends ChangeNotifier {
         ratingKey: current.detail.id,
         hostName: hostName,
         maxSeats: settings.maxHostSeats,
+        serverId: current.server.id,
+        ids: roomIdsFor(current.detail),
+        mediaTitle: current.detail.title,
+        year: current.detail.year,
       ),
     );
     if (newClient != null) {
@@ -1432,10 +1426,9 @@ class AppRootController extends ChangeNotifier {
 
   // ---- Home row navigation ----
 
-  /// A Watch Together room only carries a ratingKey, never which server
-  /// hosted it, so this is the one place content still has to be looked
-  /// up across every connected server rather than already knowing its
-  /// source — see _fetchMovieDetailFromAnyServer.
+  /// A Watch Together room names the host's server and the title's
+  /// provider ids, so a guest finds its own copy on whichever of its
+  /// servers has one, Plex or Jellyfin — see resolveRoomTitle.
   /// Screen 12 opens over any screen, so [current] is whatever was showing
   /// (it becomes the error retry target and the lobby's return state) and
   /// [servers] is the hub the room's title is looked up across.
@@ -1444,14 +1437,7 @@ class AppRootController extends ChangeNotifier {
     List<ReachableServer> servers,
     MergedRoom merged,
   ) async {
-    final ratingKey = merged.room.ratingKey;
-    if (ratingKey == null) {
-      _setState(
-        AppError(message: 'Room has no movie reference', retryState: current),
-      );
-      return;
-    }
-    final found = await _fetchMovieDetailFromAnyServer(servers, ratingKey);
+    final found = await resolveRoomTitle(servers, merged.room, clientFor);
     if (found == null) {
       _setState(
         AppError(

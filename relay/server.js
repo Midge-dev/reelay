@@ -46,13 +46,27 @@ function clampMaxSeats(requested) {
   return Math.min(Math.floor(n), MAX_DEVICE_SEATS);
 }
 
-function createRoomState({ title, thumb, ratingKey, hostName, maxSeats }) {
+// Provider ids a guest finds its own copy by ("imdb://tt…") — a few short
+// strings, never more.
+function cleanIds(ids) {
+  if (!Array.isArray(ids)) return [];
+  return ids.filter((id) => typeof id === 'string' && id).slice(0, 8).map((id) => truncate(id, 120));
+}
+
+function createRoomState({ title, thumb, ratingKey, hostName, maxSeats, serverId, ids, mediaTitle, year }) {
   const cappedSeats = clampMaxSeats(maxSeats);
   return {
     roomId: mintRoomId(),
     title: truncate(String(title || 'Untitled')),
     thumb: typeof thumb === 'string' ? truncate(thumb, 2_000) : null,
     ratingKey: typeof ratingKey === 'string' ? truncate(ratingKey) : null,
+    // Which server ratingKey belongs to, and how a guest on another server
+    // (Plex or Jellyfin) finds the same title: its provider ids, plain
+    // title and year.
+    serverId: typeof serverId === 'string' ? truncate(serverId) : null,
+    ids: cleanIds(ids),
+    mediaTitle: typeof mediaTitle === 'string' ? truncate(mediaTitle) : null,
+    year: Number.isInteger(year) ? year : null,
     hostName: typeof hostName === 'string' && hostName ? truncate(hostName) : 'Host',
     maxSeats: cappedSeats,
     seats: new Array(cappedSeats).fill(null),
@@ -118,6 +132,10 @@ function handleCreateRoom(ws, msg) {
     ratingKey: msg.ratingKey,
     hostName: msg.hostName,
     maxSeats: msg.maxSeats,
+    serverId: msg.serverId,
+    ids: msg.ids,
+    mediaTitle: msg.mediaTitle,
+    year: msg.year,
   });
   rooms.set(room.roomId, room);
   const result = assignSeat(ws, room, peerId);
@@ -247,6 +265,10 @@ const server = http.createServer((req, res) => {
         title: room.title,
         thumb: room.thumb,
         ratingKey: room.ratingKey,
+        serverId: room.serverId,
+        ids: room.ids,
+        mediaTitle: room.mediaTitle,
+        year: room.year,
         hostName: room.hostName,
         occupants,
         maxSeats: room.maxSeats,

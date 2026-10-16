@@ -98,7 +98,8 @@ class PlexClient implements MediaServerClient {
   /// regroups by kind to control its own section order and labels.
   @override
   Future<List<MediaItem>> search(String query) async => [
-    for (final hub in await _hubs('/hubs/search?query=${Uri.encodeQueryComponent(query)}&limit=12'))
+    // includeGuids: a Watch Together guest matches results on provider ids.
+    for (final hub in await _hubs('/hubs/search?query=${Uri.encodeQueryComponent(query)}&limit=12&includeGuids=1'))
       for (final item in hub.items) item.toMedia(),
   ];
 

@@ -86,7 +86,9 @@ switcher (06) as a peer row — labelled "Jellyfin", never a logo — that turns
 on and off like any other. **It plays** — direct, or as an HLS transcode when
 the file won't — and every text subtitle (SRT, ASS, embedded or sidecar)
 arrives as WebVTT drawn over the picture, so only bitmap subtitles need a
-burn-in. Watch Together rooms are still Plex-only. A **Jellyfin-only profile** is a
+burn-in. A Watch Together room names the host's server and the
+title's provider ids, so a guest on any server — Plex or Jellyfin — joins
+with their own copy. A **Jellyfin-only profile** is a
 full hub of its one server — no Plex sign-in, no plex.tv round trip; if that
 server doesn't answer it gets screen 24 naming it, like any other. The
 add-profile dialog (07b) signs a new profile in to Plex, Jellyfin or both;
