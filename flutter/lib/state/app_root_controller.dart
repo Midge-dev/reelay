@@ -482,6 +482,28 @@ class AppRootController extends ChangeNotifier {
     await connect(token);
   }
 
+  /// Settings' Add more servers with Plex chosen: [token]'s account becomes
+  /// [profile]'s one Plex account, replacing any it had, and the hub
+  /// reconnects to pick up its servers.
+  Future<void> linkPlex(Profile profile, String token) async {
+    PlexAccount? account;
+    try {
+      account = await PlexAuthApi(
+        await _plexIdentity.getOrCreateClientIdentifier(),
+      ).fetchAccount(token);
+    } catch (_) {
+      account = null;
+    }
+    final linked = profile.withPlex(
+      username: account?.username ?? profile.plexUsername ?? profile.name,
+      thumb: account?.thumb,
+    );
+    await _tokenStore.saveTokenForProfile(profile.id, token);
+    await _saveProfile(linked);
+    _activeProfile = linked;
+    await connect(token);
+  }
+
   /// Signing a TV in to a Jellyfin server, as this install.
   Future<JellyfinAuthApi> jellyfinAuthApi() async => JellyfinAuthApi(
     deviceId: await _plexIdentity.getOrCreateClientIdentifier(),

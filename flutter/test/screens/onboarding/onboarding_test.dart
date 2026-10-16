@@ -1,6 +1,7 @@
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:reelay/data/settings/app_settings.dart';
 import 'package:reelay/kit/focusable_surface.dart';
 import 'package:reelay/screens/onboarding/jellyfin_link_step.dart';
 import 'package:reelay/screens/onboarding/onboarding_frame.dart';
@@ -33,7 +34,8 @@ Future<void> _pumpAt(WidgetTester tester, double uiScale, Widget child) async {
 /// test, so the Plex link step's own behaviour isn't changed under it.
 void _useInMemoryPrefs() {
   final original = SharedPreferencesAsyncPlatform.instance;
-  SharedPreferencesAsyncPlatform.instance = InMemorySharedPreferencesAsync.empty();
+  SharedPreferencesAsyncPlatform.instance =
+      InMemorySharedPreferencesAsync.empty();
   addTearDown(() => SharedPreferencesAsyncPlatform.instance = original);
 }
 
@@ -165,4 +167,72 @@ void main() {
       },
     );
   }
+
+  // Settings → Servers → Add more servers: the same O1 → O2/O3, for a
+  // profile that already has accounts.
+  const sam = Profile(
+    id: 'p1',
+    name: 'Sam',
+    watchTogetherName: 'Sam',
+    plexUsername: 'sam',
+    jellyfin: JellyfinLink(
+      serverId: 's1',
+      serverName: 'Loft',
+      baseUrl: 'http://loft:8096',
+      userId: 'u1',
+      username: 'samj',
+    ),
+  );
+
+  for (final uiScale in [1.0, 1.5]) {
+    testWidgets(
+      'adding servers: O1 opens with nothing chosen, names the accounts it has, and Back cancels at ${(uiScale * 100).round()}%',
+      (tester) async {
+        var cancelled = false;
+        await _pumpAt(
+          tester,
+          uiScale,
+          OnboardingScreen(
+            addingTo: sam,
+            onCancel: () => cancelled = true,
+            onComplete: (_) {},
+          ),
+        );
+        expect(find.text('What would you like to add?'), findsOneWidget);
+        expect(find.text('SETUP'), findsNothing, reason: 'no step column');
+        expect(find.textContaining('Signed in as sam'), findsOneWidget);
+        expect(
+          find.textContaining('Signed in to Loft as samj'),
+          findsOneWidget,
+        );
+        expect(find.text('Select at least one to continue'), findsOneWidget);
+        expect(tester.takeException(), isNull);
+
+        await tester.ensureVisible(find.text('Back'));
+        await tester.tap(find.text('Back'));
+        await tester.pump();
+        expect(cancelled, isTrue);
+      },
+    );
+  }
+
+  testWidgets('adding servers: Jellyfin goes to O3 without the step column', (
+    tester,
+  ) async {
+    _useInMemoryPrefs();
+    await _pumpAt(
+      tester,
+      1.0,
+      OnboardingScreen(addingTo: sam, onCancel: () {}, onComplete: (_) {}),
+    );
+    await tester.tap(find.text('Jellyfin'));
+    await tester.pump();
+    await tester.tap(find.text('Continue'));
+    await tester.pump();
+
+    expect(find.text('ADD SERVERS · JELLYFIN'), findsOneWidget);
+    expect(find.text('Fill this in from your phone'), findsOneWidget);
+    expect(find.text('SETUP'), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
 }

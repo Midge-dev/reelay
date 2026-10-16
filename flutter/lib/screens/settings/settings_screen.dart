@@ -24,7 +24,7 @@ import '../../theme/typography.dart';
 import '../common/loading_screen.dart';
 import '../common/relay_status.dart';
 import '../navigation/rail_order.dart';
-import '../onboarding/jellyfin_link_step.dart';
+import '../onboarding/onboarding_screen.dart';
 import '../profiles/add_profile_dialog.dart';
 import 'appearance_screen.dart';
 import 'max_seats_menu.dart';
@@ -93,11 +93,13 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   /// The active profile, kept here so linking or unlinking Jellyfin shows
   /// at once. Null on an install that predates profiles.
   late Profile? _profile = ref.read(appRootControllerProvider).activeProfile;
-  bool _linkingJellyfin = false;
+
+  /// Add more servers: setup's O1 → O2/O3, over the whole screen.
+  bool _addingServers = false;
 
   /// Unlinking takes a second press — the first only asks.
   bool _confirmingUnlink = false;
-  final _jellyfinRowFocus = FocusNode(debugLabel: 'settings-jellyfin');
+  final _addServersFocus = FocusNode(debugLabel: 'settings-add-servers');
 
   PairingServer? _pairingServer;
   String? _pairingUrl;
@@ -186,7 +188,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     _pairingServer?.stop();
     _silentTimer?.cancel();
     _firstSourceFocus.dispose();
-    _jellyfinRowFocus.dispose();
+    _addServersFocus.dispose();
     _relaySettingsEntryFocus.dispose();
     _relaySettingsBackFocus.dispose();
     _appearanceEntryFocus.dispose();
@@ -354,21 +356,11 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       return const LoadingScreen();
     }
 
-    if (_linkingJellyfin) {
-      return JellyfinLinkStep(
-        kicker: 'SETTINGS · JELLYFIN',
-        showSteps: false,
-        onBack: _closeJellyfinLink,
-        onLinked: (server, session) async {
-          final profile = _profile;
-          if (profile == null) return;
-          final linked = await ref
-              .read(appRootControllerProvider)
-              .linkJellyfin(profile, server, session);
-          if (!mounted) return;
-          setState(() => _profile = linked);
-          _closeJellyfinLink();
-        },
+    if (_addingServers && _profile != null) {
+      return OnboardingScreen(
+        addingTo: _profile,
+        onCancel: _closeAddServers,
+        onComplete: _finishAddServers,
       );
     }
 
@@ -786,11 +778,29 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     ),
   ];
 
-  void _closeJellyfinLink() {
-    setState(() => _linkingJellyfin = false);
+  void _closeAddServers() {
+    setState(() => _addingServers = false);
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) _jellyfinRowFocus.requestFocus();
+      if (mounted) _addServersFocus.requestFocus();
     });
+  }
+
+  /// Jellyfin links here and Settings stays open; a Plex account changes
+  /// which servers feed the hub, so that reconnects and leaves Settings.
+  Future<void> _finishAddServers(SetupResult result) async {
+    var profile = _profile;
+    if (profile == null) return;
+    final controller = ref.read(appRootControllerProvider);
+    if (result.jellyfin case (final server, final session)) {
+      profile = await controller.linkJellyfin(profile, server, session);
+    }
+    if (result.plexToken case final token?) {
+      await controller.linkPlex(profile, token);
+      return;
+    }
+    if (!mounted) return;
+    setState(() => _profile = profile);
+    _closeAddServers();
   }
 
   Future<void> _unlinkJellyfin() async {
@@ -808,41 +818,24 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       _profile = unlinked;
       _confirmingUnlink = false;
     });
+    // The row is gone; the nearest thing left is Add more servers.
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) _jellyfinRowFocus.requestFocus();
+      if (mounted) _addServersFocus.requestFocus();
     });
   }
 
-  List<Widget> _serverRows() => [..._plexServerRows(), ..._jellyfinRows()];
+  List<Widget> _serverRows() => [
+    ..._plexServerRows(),
+    ..._jellyfinRows(),
+    ..._addServersRows(),
+  ];
 
   /// This profile's one Jellyfin account (DESIGN.md: one per platform per
-  /// profile) — link one, change it, or drop it.
+  /// profile), and dropping it.
   List<Widget> _jellyfinRows() {
-    final profile = _profile;
-    if (profile == null) return const [];
-    final link = profile.jellyfin;
-    if (link == null) {
-      return [
-        _SettingRow(
-          label: 'Link Jellyfin',
-          description: 'Sign this profile in to a Jellyfin server. Its libraries arrive in a later update',
-          focusNode: _jellyfinRowFocus,
-          onClick: () => setState(() => _linkingJellyfin = true),
-        ),
-      ];
-    }
+    final link = _profile?.jellyfin;
+    if (link == null) return const [];
     return [
-      _SettingRow(
-        label: link.serverName,
-        description:
-            'Jellyfin · Signed in as ${link.username} · Libraries arrive in a later update',
-        value: 'Change',
-        focusNode: _jellyfinRowFocus,
-        onClick: () => setState(() {
-          _confirmingUnlink = false;
-          _linkingJellyfin = true;
-        }),
-      ),
       Focus(
         canRequestFocus: false,
         skipTraversal: true,
@@ -852,14 +845,41 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           }
         },
         child: _SettingRow(
-          label: _confirmingUnlink
-              ? 'Select again to unlink'
-              : 'Unlink Jellyfin',
+          label: link.serverName,
           description: _confirmingUnlink
-              ? 'Signs this TV out of ${link.serverName}'
-              : 'This profile keeps its Plex account',
+              ? 'Select again to sign this TV out of ${link.serverName}'
+              : 'Jellyfin · Signed in as ${link.username} · Libraries arrive in a later update',
+          value: _confirmingUnlink ? 'Unlink?' : 'Unlink',
           onClick: _unlinkJellyfin,
         ),
+      ),
+    ];
+  }
+
+  List<Widget> _addServersRows() {
+    if (_profile == null) return const [];
+    return [
+      Padding(
+        padding: EdgeInsets.only(top: AppSpacing.lg.du(context)),
+        child: Container(height: 1.du(context), color: AppColors.line),
+      ),
+      Padding(
+        padding: EdgeInsets.only(top: AppSpacing.md.du(context)),
+        child: AppText(
+          'ADD MORE SERVERS',
+          style: AppTypography.micro,
+          color: AppColors.ink3,
+        ),
+      ),
+      _SettingRow(
+        label: 'Add Plex or Jellyfin',
+        description:
+            'The same steps as setup — sign this profile in to either, or both',
+        focusNode: _addServersFocus,
+        onClick: () => setState(() {
+          _confirmingUnlink = false;
+          _addingServers = true;
+        }),
       ),
     ];
   }

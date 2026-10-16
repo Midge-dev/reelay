@@ -113,6 +113,17 @@ class Profile {
     jellyfin: link,
   );
 
+  /// This profile signed in to Plex as [username], replacing any account
+  /// it had.
+  Profile withPlex({required String username, String? thumb}) => Profile(
+    id: id,
+    name: name,
+    watchTogetherName: watchTogetherName,
+    plexUsername: username,
+    thumb: thumb ?? this.thumb,
+    jellyfin: jellyfin,
+  );
+
   factory Profile.fromJson(Map<String, dynamic> json) => Profile(
     id: json['id'] as String,
     name: json['name'] as String,
