@@ -325,6 +325,48 @@ void main() {
     });
   });
 
+  group('watchlist and continue watching', () {
+    test('every item names itself on its server, which is how the watchlist finds it again', () {
+      final item = itemFromJson({..._movie, 'ServerId': 'server-1'});
+      expect(item.guid, 'jellyfin://server-1/bbb');
+    });
+
+    test('findByGuid answers for its own server only', () async {
+      final (client, fake) = _client({
+        'GET /Items': {
+          'Items': [_movie],
+        },
+      });
+      expect(await client.findByGuid('plex://movie/5d77'), isEmpty);
+      expect(await client.findByGuid('jellyfin://other-server/bbb'), isEmpty);
+      expect((await client.findByGuid('jellyfin://server-1/bbb')).single.id, 'bbb');
+      expect(fake.requests.single.queryParameters['ids'], 'bbb');
+    });
+
+    test('favorites are the watchlist: listed, added and removed', () async {
+      final (client, fake) = _client({
+        'GET /Items': {
+          'Items': [_movie],
+        },
+        'POST /UserFavoriteItems/bbb': null,
+        'DELETE /UserFavoriteItems/bbb': null,
+      });
+      expect((await client.fetchFavorites()).single.id, 'bbb');
+      expect(fake.requests.single.queryParameters['isFavorite'], true);
+      await client.setFavorite('bbb', favorite: true);
+      await client.setFavorite('bbb', favorite: false);
+      expect(fake.requests.skip(1).map((r) => r.method), ['POST', 'DELETE']);
+    });
+
+    test('removing from Continue Watching clears the saved position', () async {
+      final (client, fake) = _client({'POST /UserItems/bbb/UserData': null});
+      await client.removeFromContinueWatching('bbb');
+      final request = fake.requests.single;
+      expect(request.data, {'PlaybackPositionTicks': 0});
+      expect(request.queryParameters['userId'], 'user-1');
+    });
+  });
+
   group('artwork', () {
     test('paths join the server address; sizing asks Jellyfin to fill the box', () {
       final url = ArtworkUrl.of(_server, '/Items/bbb/Images/Primary?tag=p1')!;

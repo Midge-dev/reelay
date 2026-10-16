@@ -86,7 +86,10 @@ switcher (06) as a peer row — labelled "Jellyfin", never a logo — that turns
 on and off like any other. **It plays** — direct, or as an HLS transcode when
 the file won't — and every text subtitle (SRT, ASS, embedded or sidecar)
 arrives as WebVTT drawn over the picture, so only bitmap subtitles need a
-burn-in. A Watch Together room names the host's server and the
+burn-in. Jellyfin has no
+watchlist; its **Favorites** stand in (the + on a Jellyfin title, and the
+Watchlist screen — one list with the Plex watchlist until the two-row
+design lands). A Watch Together room names the host's server and the
 title's provider ids, so a guest on any server — Plex or Jellyfin — joins
 with their own copy. A **Jellyfin-only profile** is a
 full hub of its one server — no Plex sign-in, no plex.tv round trip; if that

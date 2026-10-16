@@ -80,6 +80,16 @@ int? _epochSeconds(Object? iso) {
 String? _date(Object? iso) =>
     iso is String && iso.length >= 10 ? iso.substring(0, 10) : null;
 
+/// Jellyfin has no guid of its own; this names the item on its server, so
+/// the watchlist (backed by Jellyfin's Favorites) can find it again — see
+/// JellyfinClient.findByGuid. Never shared with another server's items, so
+/// it never folds two works together.
+String? jellyfinGuid(Json item) {
+  final server = item['ServerId'];
+  final id = item['Id'];
+  return server is String && id is String ? 'jellyfin://$server/$id' : null;
+}
+
 MediaLibrary libraryFromJson(Json view) => MediaLibrary(
   id: view['Id'] as String,
   title: view['Name'] as String? ?? '',
@@ -112,6 +122,7 @@ MediaItem itemFromJson(Json item) {
     addedAt: _epochSeconds(item['DateCreated']),
     originallyAvailableAt: _date(item['PremiereDate']),
     contentRating: item['OfficialRating'] as String?,
+    guid: jellyfinGuid(item),
     externalIds: externalIds(item),
     leafCount: kind == MediaKind.show
         ? item['RecursiveItemCount'] as int?
@@ -257,6 +268,7 @@ MediaDetail detailFromJson(Json item) {
     title: base.title,
     thumb: base.thumb,
     art: base.art,
+    guid: base.guid,
     externalIds: base.externalIds,
     summary: base.summary,
     duration: base.duration,

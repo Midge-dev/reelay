@@ -7,6 +7,7 @@ import 'package:flutter/foundation.dart';
 import '../app_version.dart';
 import '../data/jellyfin/jellyfin_auth_api.dart';
 import '../data/jellyfin/jellyfin_client.dart';
+import '../data/media/artwork_url.dart';
 import '../data/media/media_models.dart';
 import '../data/media/media_server.dart';
 import '../data/media/media_server_client.dart';
@@ -115,8 +116,48 @@ class AppRootController extends ChangeNotifier {
     return _settingsStore.save(updated);
   }
 
+  /// The Plex account's watchlist.
   List<MediaItem>? _watchlistItems;
-  List<MediaItem> get watchlist => _watchlistItems ?? const [];
+
+  /// The Jellyfin account's Favorites, which stand in for its watchlist.
+  /// One list with the Plex one for now; two labelled rows once designed.
+  List<MediaItem> _jellyfinFavorites = const [];
+  List<MediaItem> get watchlist => [...?_watchlistItems, ..._jellyfinFavorites];
+
+  static bool _isJellyfinGuid(String guid) => guid.startsWith('jellyfin://');
+
+  /// Screen 20's "whose list": the Plex account, Jellyfin's Favorites, or
+  /// both.
+  String get watchlistSourceLabel {
+    final jellyfin = _connectedServers
+        .where((s) => s.server.backend == MediaBackend.jellyfin)
+        .firstOrNull;
+    return [
+      if (_accountToken != null)
+        if (_localAccount?.username case final name?)
+          'Plex account · $name'
+        else
+          'Plex account',
+      if (jellyfin != null) 'Jellyfin favorites · ${jellyfin.server.name}',
+    ].join(' · ');
+  }
+
+  /// A Jellyfin favorite's poster, from its server; Plex watchlist entries
+  /// carry absolute artwork of their own.
+  String? watchlistArtwork(MediaItem item) {
+    final guid = item.guid;
+    if (guid == null || !_isJellyfinGuid(guid)) return null;
+    final server = _jellyfinClient?.server;
+    return server == null ? null : ArtworkUrl.of(server, item.thumb);
+  }
+
+  /// The hub's Jellyfin server, whose Favorites are the watchlist.
+  JellyfinClient? get _jellyfinClient => switch (_connectedServers
+      .where((s) => s.server.backend == MediaBackend.jellyfin)
+      .firstOrNull) {
+    final cs? => JellyfinClient(cs.server, _clientIdentifier),
+    null => null,
+  };
 
   // Watchlist item id -> the name of a connected server holding that watchlist
   // title, or null when none does. A key that's absent hasn't been looked
@@ -716,14 +757,24 @@ class AppRootController extends ChangeNotifier {
 
   Future<void> _refreshWatchlist() async {
     final token = _accountToken;
-    if (token == null) return;
-    try {
-      _watchlistItems = await PlexWatchlistApi(_clientIdentifier)
-          .fetchWatchlist(token);
-      notifyListeners();
-    } catch (_) {
-      // keep the last-known list
-    }
+    final jellyfin = _jellyfinClient;
+    if (token == null && jellyfin == null) return;
+    // Each keeps its last-known list if it doesn't answer.
+    await (
+      token == null
+          ? Future<void>.value()
+          : PlexWatchlistApi(_clientIdentifier)
+                .fetchWatchlist(token)
+                .then((items) => _watchlistItems = items)
+                .catchError((_) => _watchlistItems ?? const <MediaItem>[]),
+      jellyfin == null
+          ? Future<void>.value()
+          : jellyfin
+                .fetchFavorites()
+                .then((items) => _jellyfinFavorites = items)
+                .catchError((_) => _jellyfinFavorites),
+    ).wait;
+    notifyListeners();
     unawaited(_resolveWatchlistAvailability());
   }
 
@@ -732,7 +783,7 @@ class AppRootController extends ChangeNotifier {
   /// hidden or silently unplayable. Looks each entry up by guid on every
   /// connected server (the same lookup opening one uses).
   Future<void> _resolveWatchlistAvailability() async {
-    final items = _watchlistItems ?? const <MediaItem>[];
+    final items = watchlist;
     final servers = _connectedServers;
     if (items.isEmpty || servers.isEmpty) return;
     final resolved = <String, String?>{};
@@ -761,11 +812,25 @@ class AppRootController extends ChangeNotifier {
   }
 
   bool isOnWatchlist(String? guid) =>
-      guid != null && (_watchlistItems?.any((i) => i.guid == guid) ?? false);
+      guid != null && watchlist.any((i) => i.guid == guid);
+
+  /// A Jellyfin title's guid names its item (see jellyfinGuid).
+  String _jellyfinItemId(String guid) => guid.split('/').last;
 
   Future<void> toggleWatchlist(String? guid) async {
+    if (guid == null) return;
+    if (_isJellyfinGuid(guid)) {
+      try {
+        await _jellyfinClient?.setFavorite(
+          _jellyfinItemId(guid),
+          favorite: !isOnWatchlist(guid),
+        );
+      } catch (_) {}
+      await _refreshWatchlist();
+      return;
+    }
     final token = _accountToken;
-    if (guid == null || token == null) return;
+    if (token == null) return;
     final api = PlexWatchlistApi(_clientIdentifier);
     try {
       if (isOnWatchlist(guid)) {
@@ -778,10 +843,22 @@ class AppRootController extends ChangeNotifier {
   }
 
   void removeFromWatchlist(MediaItem entry) {
+    final guid = entry.guid;
+    if (guid != null && _isJellyfinGuid(guid)) {
+      _jellyfinFavorites = _jellyfinFavorites
+          .where((i) => i.id != entry.id)
+          .toList();
+      notifyListeners();
+      unawaited(
+        (_jellyfinClient?.setFavorite(entry.id, favorite: false) ??
+                Future<void>.value())
+            .catchError((_) {}),
+      );
+      return;
+    }
     _watchlistItems = _watchlistItems?.where((i) => i.id != entry.id).toList();
     notifyListeners();
     final token = _accountToken;
-    final guid = entry.guid;
     if (token != null && guid != null) {
       unawaited(
         PlexWatchlistApi(_clientIdentifier)
@@ -1571,7 +1648,7 @@ class AppRootController extends ChangeNotifier {
     if (matches.isEmpty) {
       _setState(
         AppError(
-          message: '"${entry.title}" isn\'t in your Plex library yet.',
+          message: '"${entry.title}" isn\'t on any of your servers yet.',
           retryState: returnState,
         ),
       );

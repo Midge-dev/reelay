@@ -178,10 +178,37 @@ class JellyfinClient implements MediaServerClient {
     ];
   }
 
-  /// Watchlist guids are Plex's own (`plex://…`), which Jellyfin can't
-  /// resolve.
+  /// Only this server's own guids (see jellyfinGuid) — a Plex watchlist
+  /// guid (`plex://…`) means nothing here.
   @override
-  Future<List<MediaItem>> findByGuid(String guid) async => const [];
+  Future<List<MediaItem>> findByGuid(String guid) async {
+    final prefix = 'jellyfin://${server.id}/';
+    if (!guid.startsWith(prefix)) return const [];
+    return _items('/Items', {'ids': guid.substring(prefix.length)});
+  }
+
+  // ---- Favorites: Jellyfin's stand-in for a watchlist ----
+
+  Future<List<MediaItem>> fetchFavorites() => _items('/Items', {
+    'recursive': true,
+    'includeItemTypes': _browsable,
+    'isFavorite': true,
+    'sortBy': 'SortName',
+  });
+
+  Future<void> setFavorite(String id, {required bool favorite}) async {
+    final url = '${server.baseUrl}/UserFavoriteItems/$id';
+    final query = {'userId': _userId};
+    if (favorite) {
+      await _client.post<void>(url, queryParameters: query, options: _headers);
+    } else {
+      await _client.delete<void>(
+        url,
+        queryParameters: query,
+        options: _headers,
+      );
+    }
+  }
 
   // ---- Home ----
 
@@ -238,11 +265,15 @@ class JellyfinClient implements MediaServerClient {
     return first.firstOrNull;
   }
 
-  /// Jellyfin has no "hide from Continue Watching" — only clearing the
-  /// progress, which is a different thing.
+  /// Jellyfin has no "hide": clearing the saved position is what takes a
+  /// part-watched title off Resume (Jellyfin's own apps do the same). A
+  /// Next Up episode has no position to clear, so it comes back.
   @override
-  Future<void> removeFromContinueWatching(String id) => throw UnsupportedError(
-    'Jellyfin can’t hide a title from Continue Watching yet.',
+  Future<void> removeFromContinueWatching(String id) => _client.post<void>(
+    '${server.baseUrl}/UserItems/$id/UserData',
+    queryParameters: {'userId': _userId},
+    data: {'PlaybackPositionTicks': 0},
+    options: _headers,
   );
 
   // ---- Artwork ----

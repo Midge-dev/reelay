@@ -192,6 +192,20 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  /// Where a watchlist entry's artwork lives: a Jellyfin favorite's on its
+  /// own server, which its guid names (`jellyfin://<server>/<item>`); a Plex
+  /// watchlist entry's artwork is absolute, so any server does.
+  MediaServer _watchlistServer(MediaItem entry) {
+    final guid = entry.guid;
+    if (guid != null && guid.startsWith('jellyfin://')) {
+      final serverId = guid.split('/')[2];
+      for (final cs in widget.servers) {
+        if (cs.server.id == serverId) return cs.server;
+      }
+    }
+    return widget.servers.first.server;
+  }
+
   @override
   Widget build(BuildContext context) {
     // Screen 01: Home opens on the resume hero's Resume — "real data, the
@@ -287,7 +301,7 @@ class _HomeScreenState extends State<HomeScreen> {
               idOf: (entry) => entry.id,
               itemBuilder: (entry, index) => WatchlistPoster(
                 key: ValueKey(entry.id),
-                server: widget.servers.first.server,
+                server: _watchlistServer(entry),
                 entry: entry,
                 onClick: () => widget.onSelectWatchlistItem(entry),
                 onRemove: () => widget.onRemoveFromWatchlist(entry),

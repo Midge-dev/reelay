@@ -49,8 +49,13 @@ class WatchlistScreen extends StatefulWidget {
   final ValueChanged<MediaItem> onSelectItem;
   final ValueChanged<MediaItem> onRemove;
 
-  /// The Plex account the list belongs to — "Plex account · name".
-  final String? accountName;
+  /// Whose list it is, beside the title — "Plex account · sam",
+  /// "Jellyfin favorites · Loft".
+  final String sourceLabel;
+
+  /// A poster for an entry from a server (a Jellyfin favorite); null leaves
+  /// only absolute artwork, which a Plex watchlist entry carries.
+  final String? Function(MediaItem item)? artworkFor;
 
   /// ratingKey -> the connected server holding it, or null when none does
   /// (absent while still being looked up).
@@ -61,7 +66,8 @@ class WatchlistScreen extends StatefulWidget {
     required this.items,
     required this.onSelectItem,
     required this.onRemove,
-    this.accountName,
+    this.sourceLabel = 'Plex account',
+    this.artworkFor,
     this.availability = const {},
   });
 
@@ -175,12 +181,7 @@ class _WatchlistScreenState extends State<WatchlistScreen> {
               children: [
                 AppText('Watchlist', style: AppTypography.title1),
                 SizedBox(width: 18.du(context)),
-                AppText(
-                  widget.accountName != null
-                      ? 'Plex account · ${widget.accountName}'
-                      : 'Plex account',
-                  style: AppTypography.caption,
-                ),
+                AppText(widget.sourceLabel, style: AppTypography.caption),
                 const Spacer(),
                 AppText(count, style: AppTypography.caption),
               ],
@@ -274,9 +275,9 @@ class _WatchlistScreenState extends State<WatchlistScreen> {
           key: ValueKey(item.id),
           id: 'item:${item.id}',
           child: PosterCard(
-            imageUrl: (item.thumb?.startsWith('http') ?? false)
-                ? item.thumb
-                : null,
+            imageUrl:
+                widget.artworkFor?.call(item) ??
+                ((item.thumb?.startsWith('http') ?? false) ? item.thumb : null),
             title: item.title,
             subtitle: [
               if (known) holder ?? 'Plex Discover',
