@@ -42,7 +42,6 @@ import 'lobby/watch_together_start_screen.dart';
 import 'navigation/app_navigation_drawer.dart';
 import 'player/player_screen.dart';
 import '../app_version.dart';
-import 'common/jellyfin_linked_screen.dart';
 import 'profiles/profile_picker_screen.dart';
 import 'settings/settings_screen.dart';
 import 'splash/splash_screen.dart';
@@ -203,22 +202,18 @@ class _AppContent extends StatelessWidget {
               )
             : controller.relink(relinkProfile, result.plexToken!),
       ),
-      JellyfinLinked(:final serverName, :final username) =>
-        JellyfinLinkedScreen(
-          serverName: serverName,
-          username: username,
-          onStartOver: () => controller.returnTo(const LoggedOut()),
-        ),
       ProfilePicker(:final profiles) => ProfilePickerScreen(
         profiles: profiles,
         onSelectProfile: controller.selectProfile,
         onAddProfile: controller.addProfileAndActivate,
       ),
-      NoServersReachable(:final token, :final resources) => NoServersScreen(
-        resources: resources,
-        onRetry: () => controller.connect(token),
-        onStartOver: () => controller.returnTo(const LoggedOut()),
-      ),
+      NoServersReachable(:final token, :final resources, :final jellyfin) =>
+        NoServersScreen(
+          resources: resources,
+          jellyfin: jellyfin,
+          onRetry: () => controller.connect(token),
+          onStartOver: () => controller.returnTo(const LoggedOut()),
+        ),
       PlaybackFailed(
         :final ctx,
         :final server,
@@ -349,7 +344,7 @@ class _AppContent extends StatelessWidget {
             onOpenSettings: () {},
             onOpenHome: () {},
             onOpenSearch: () {},
-            account: controller.localAccount,
+            account: controller.railAccount,
             versionName: _appVersionName,
             connectedServers: controller.connectedServers,
             disabledServerIds: controller.currentSettings.disabledServerIds,
@@ -371,7 +366,7 @@ class _AppContent extends StatelessWidget {
         onOpenSettings: () {},
         onOpenHome: () {},
         onOpenSearch: () {},
-        account: controller.localAccount,
+        account: controller.railAccount,
         versionName: _appVersionName,
         connectedServers: controller.connectedServers,
         disabledServerIds: controller.currentSettings.disabledServerIds,
@@ -393,14 +388,7 @@ class _AppContent extends StatelessWidget {
           versionName: _appVersionName,
           sectionGroups: ctx.sectionGroups,
           onBack: () => controller.returnTo(returnState),
-          onServersChanged: () {
-            final token = controller.accountToken;
-            if (token != null) {
-              controller.connect(token);
-            } else {
-              controller.returnTo(returnState);
-            }
-          },
+          onServersChanged: () => controller.connect(controller.accountToken),
         ),
       ),
       Search(:final ctx, :final returnState) => _drawer(
@@ -905,7 +893,7 @@ class _AppContent extends StatelessWidget {
         // gives HomeScreen a real remount and its existing autofocus does
         // the rest.
         onOpenHome: () => controller.goHome(home.servers, home.sectionGroups),
-        account: controller.localAccount,
+        account: controller.railAccount,
         versionName: _appVersionName,
         connectedServers: controller.connectedServers,
         disabledServerIds: controller.currentSettings.disabledServerIds,
@@ -998,7 +986,7 @@ class _AppContent extends StatelessWidget {
             controller.returnTo(Search(ctx: ctx, returnState: state)),
         onOpenWatchlist: () =>
             controller.returnTo(Watchlist(ctx: ctx, returnState: state)),
-        account: controller.localAccount,
+        account: controller.railAccount,
         versionName: _appVersionName,
         connectedServers: controller.connectedServers,
         disabledServerIds: controller.currentSettings.disabledServerIds,

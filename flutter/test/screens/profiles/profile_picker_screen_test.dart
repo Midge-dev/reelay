@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:reelay/data/settings/app_settings.dart';
 import 'package:reelay/kit/card.dart';
 import 'package:reelay/screens/common/click_to_type_text_field.dart';
+import 'package:reelay/screens/profiles/add_profile_dialog.dart';
 import 'package:reelay/screens/profiles/profile_picker_screen.dart';
 
 const _profiles = [
@@ -15,7 +16,7 @@ Future<void> _pump(
   WidgetTester tester, {
   List<Profile> profiles = _profiles,
   ValueChanged<Profile>? onSelectProfile,
-  Future<void> Function({required String name, required String watchTogetherName, required String token})? onAddProfile,
+  CreateProfile? onAddProfile,
   Widget Function(ValueChanged<String> onLinked)? linkPanelBuilder,
 }) async {
   tester.view.physicalSize = const Size(1920, 1080);
@@ -29,7 +30,7 @@ Future<void> _pump(
       child: ProfilePickerScreen(
         profiles: profiles,
         onSelectProfile: onSelectProfile ?? (_) {},
-        onAddProfile: onAddProfile ?? ({required name, required watchTogetherName, required token}) async {},
+        onAddProfile: onAddProfile ?? ({required name, required watchTogetherName, token, jellyfin}) async {},
         linkPanelBuilder: linkPanelBuilder,
       ),
     ),
@@ -85,7 +86,7 @@ void main() {
     String? addedToken;
     await _pump(
       tester,
-      onAddProfile: ({required name, required watchTogetherName, required token}) async {
+      onAddProfile: ({required name, required watchTogetherName, token, jellyfin}) async {
         addedName = name;
         addedToken = token;
       },
@@ -96,7 +97,7 @@ void main() {
     await tester.pump();
 
     await _typeName(tester, 'Kids');
-    await tester.tap(find.text('Sign in'));
+    await tester.tap(find.text('Sign in').first);
     await tester.pump();
     await tester.tap(find.text('link now'));
     await tester.pump();
@@ -109,7 +110,7 @@ void main() {
 
   testWidgets('cancelling the add-profile dialog closes it without calling onAddProfile', (tester) async {
     var added = false;
-    await _pump(tester, onAddProfile: ({required name, required watchTogetherName, required token}) async => added = true);
+    await _pump(tester, onAddProfile: ({required name, required watchTogetherName, token, jellyfin}) async => added = true);
 
     await tester.tap(find.byType(AppCard).last);
     await tester.pump();

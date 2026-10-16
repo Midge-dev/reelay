@@ -189,19 +189,24 @@ void main() {
       expect(controller.activeProfile?.id, profile.id);
     });
 
-    test('lands on the linked screen, not an empty home', () async {
+    // _server's address has nothing listening, so these reach screen 24.
+    test('connects to its Jellyfin server alone — no Plex sign-in needed', () async {
       await controller.completeSetup(jellyfin: (_server, _session));
       final state = controller.state;
-      expect(state, isA<JellyfinLinked>());
-      expect((state as JellyfinLinked).serverName, 'Loft');
-      expect(state.username, 'sam');
+      expect(state, isA<NoServersReachable>());
+      state as NoServersReachable;
+      expect(state.token, isNull);
+      expect(state.resources, isEmpty);
+      expect(state.jellyfin?.serverName, 'Loft');
+      expect(controller.accountToken, isNull);
     });
 
-    test('opens there again at the next launch', () async {
+    test('does the same at the next launch', () async {
       await controller.completeSetup(jellyfin: (_server, _session));
       final profile = (await settings.observe().first).profiles.single;
       await controller.selectProfile(profile);
-      expect(controller.state, isA<JellyfinLinked>());
+      expect(controller.state, isA<NoServersReachable>());
+      expect((controller.state as NoServersReachable).jellyfin?.serverName, 'Loft');
     });
   });
 }

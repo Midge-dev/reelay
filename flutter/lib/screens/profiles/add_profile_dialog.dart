@@ -1,9 +1,13 @@
+import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 
+import '../../data/jellyfin/jellyfin_auth_api.dart';
 import '../../theme/phosphor_icons.dart';
 
 import '../../focus/back_handler.dart';
 import '../../kit/button.dart';
+import '../../kit/surface_style.dart';
+import '../../kit/card.dart';
 import '../../kit/icon.dart';
 import '../../kit/text.dart';
 import '../../theme/scale.dart';
@@ -11,22 +15,26 @@ import '../../theme/tokens.dart';
 import '../../theme/typography.dart';
 import '../auth/plex_pin_link_panel.dart';
 import '../common/click_to_type_text_field.dart';
-import '../common/jellyfin_coming_soon_row.dart';
+import '../onboarding/jellyfin_link_step.dart';
 
 const _dialogWidth = 800.0;
 
+/// Making a profile from 07b: its names and whichever accounts it signed
+/// in with — Plex, Jellyfin or both, never neither.
+typedef CreateProfile = Future<void> Function({
+  required String name,
+  required String watchTogetherName,
+  String? token,
+  (JellyfinServerInfo, JellyfinSession)? jellyfin,
+});
+
 /// Ports screen 07b — a dialog over the picker, not a new destination.
-/// Two names (display, Watch Together) and one Plex sign-in, reusing the
-/// same PIN-link panel first-run login uses rather than a second copy of
-/// that flow. Jellyfin's slot uses the same disabled treatment it gets
-/// everywhere else in this app (see JellyfinComingSoonRow).
+/// Two names (display, Watch Together) and one sign-in per platform,
+/// reusing setup's own flows rather than second copies: Plex's PIN-link
+/// panel inline, and Jellyfin's O3/O3b over the whole screen, since it
+/// doesn't fit in the dialog.
 class AddProfileDialog extends StatefulWidget {
-  final Future<void> Function({
-    required String name,
-    required String watchTogetherName,
-    required String token,
-  })
-  onCreate;
+  final CreateProfile onCreate;
   final VoidCallback onCancel;
   // Defaults to the real Plex sign-in flow; overridable so tests can drive
   // the "signed in" state without a real PIN-link network round trip.
@@ -51,6 +59,10 @@ class _AddProfileDialogState extends State<AddProfileDialog> {
   String _watchTogetherName = '';
   bool _linking = false;
   String? _token;
+  bool _linkingJellyfin = false;
+  (JellyfinServerInfo, JellyfinSession)? _jellyfin;
+  final _jellyfinSignInFocus = FocusNode(debugLabel: 'add-profile-jellyfin');
+  final _createFocus = FocusNode(debugLabel: 'add-profile-create');
   bool _creating = false;
 
   @override
@@ -64,19 +76,30 @@ class _AddProfileDialogState extends State<AddProfileDialog> {
   @override
   void dispose() {
     _nameFocus.dispose();
+    _jellyfinSignInFocus.dispose();
+    _createFocus.dispose();
     super.dispose();
   }
 
+  bool get _hasAccount => _token != null || _jellyfin != null;
+
+  void _closeJellyfin() {
+    setState(() => _linkingJellyfin = false);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _jellyfinSignInFocus.requestFocus();
+    });
+  }
+
   Future<void> _create() async {
-    final token = _token;
-    if (_name.trim().isEmpty || token == null || _creating) return;
+    if (_name.trim().isEmpty || !_hasAccount || _creating) return;
     setState(() => _creating = true);
     await widget.onCreate(
       name: _name.trim(),
       watchTogetherName: _watchTogetherName.trim().isEmpty
           ? _name.trim()
           : _watchTogetherName.trim(),
-      token: token,
+      token: _token,
+      jellyfin: _jellyfin,
     );
   }
 
@@ -85,7 +108,23 @@ class _AddProfileDialogState extends State<AddProfileDialog> {
     final accountsKicker = _name.trim().isEmpty
         ? 'ACCOUNTS'
         : "${_name.trim().toUpperCase()}'S ACCOUNTS";
-    final canCreate = _name.trim().isNotEmpty && _token != null && !_creating;
+    final canCreate = _name.trim().isNotEmpty && _hasAccount && !_creating;
+
+    if (_linkingJellyfin) {
+      return Positioned.fill(
+        child: JellyfinLinkStep(
+          kicker: _name.trim().isEmpty
+              ? 'NEW PROFILE · JELLYFIN'
+              : 'NEW PROFILE · ${_name.trim().toUpperCase()} · JELLYFIN',
+          showSteps: false,
+          onBack: _closeJellyfin,
+          onLinked: (server, session) {
+            _jellyfin = (server, session);
+            _closeJellyfin();
+          },
+        ),
+      );
+    }
 
     return Positioned.fill(
       child: ColoredBox(
@@ -170,11 +209,15 @@ class _AddProfileDialogState extends State<AddProfileDialog> {
                       ),
                       AppText(accountsKicker, style: AppTypography.micro),
                       SizedBox(height: AppSpacing.lg.du(context)),
-                      _PlexAccountRow(
+                      _AccountRow(
+                        platform: 'Plex',
                         name: _name,
                         linking: _linking,
-                        linked: _token != null,
-                        onSignIn: () => setState(() => _linking = true),
+                        signedIn: _token != null ? 'Signed in' : null,
+                        onSignIn: () => setState(() {
+                          _token = null;
+                          _linking = true;
+                        }),
                       ),
                       if (_linking && _token == null)
                         Padding(
@@ -189,7 +232,34 @@ class _AddProfileDialogState extends State<AddProfileDialog> {
                           ),
                         ),
                       SizedBox(height: AppSpacing.md.du(context)),
-                      const JellyfinComingSoonRow(),
+                      // Down from the last account is Create profile once
+                      // it's ready — Cancel sat nearer and took the press.
+                      Focus(
+                        canRequestFocus: false,
+                        skipTraversal: true,
+                        onKeyEvent: (_, event) {
+                          if (event is! KeyDownEvent ||
+                              event.logicalKey !=
+                                  LogicalKeyboardKey.arrowDown ||
+                              !canCreate) {
+                            return KeyEventResult.ignored;
+                          }
+                          _createFocus.requestFocus();
+                          return KeyEventResult.handled;
+                        },
+                        child: _AccountRow(
+                          platform: 'Jellyfin',
+                          name: _name,
+                          signedIn: switch (_jellyfin) {
+                            (final server, final session) =>
+                              'Signed in to ${server.name} as ${session.userName}',
+                            null => null,
+                          },
+                          focusNode: _jellyfinSignInFocus,
+                          onSignIn: () =>
+                              setState(() => _linkingJellyfin = true),
+                        ),
+                      ),
                       SizedBox(height: AppSpacing.xl.du(context)),
                       Container(
                         padding: EdgeInsets.symmetric(
@@ -220,6 +290,7 @@ class _AddProfileDialogState extends State<AddProfileDialog> {
                         children: [
                           AppButton(
                             onClick: canCreate ? _create : () {},
+                            focusNode: _createFocus,
                             enabled: canCreate,
                             child: const AppText('Create profile'),
                           ),
@@ -273,68 +344,89 @@ class _LabeledField extends StatelessWidget {
   }
 }
 
-class _PlexAccountRow extends StatelessWidget {
+SurfaceBorder get _accountBorder => SurfaceBorder(
+  idle: SurfaceBorderSide.solid(AppColors.line),
+  focused: SurfaceBorderSide.solid(AppColors.accent),
+);
+
+/// One platform's sign-in in 07b. The whole row is the focus target — a
+/// small button at its far edge sat outside the column the D-pad moves
+/// down, so neither could be reached from the name fields. Signed in, it
+/// stays live as Change, so focus has somewhere to come back to.
+class _AccountRow extends StatelessWidget {
+  final String platform;
   final String name;
+
+  /// "Signed in to Loft as sam"; null until signed in.
+  final String? signedIn;
+
+  /// Plex's PIN panel is open below the row.
   final bool linking;
-  final bool linked;
+  final FocusNode? focusNode;
   final VoidCallback onSignIn;
 
-  const _PlexAccountRow({
+  const _AccountRow({
+    required this.platform,
     required this.name,
-    required this.linking,
-    required this.linked,
+    required this.signedIn,
+    this.linking = false,
+    this.focusNode,
     required this.onSignIn,
   });
 
   @override
   Widget build(BuildContext context) {
-    final who = name.trim().isEmpty ? 'They' : name.trim();
-    return Container(
-      constraints: BoxConstraints(minHeight: 96.du(context)),
-      padding: EdgeInsets.symmetric(
-        horizontal: AppSpacing.xl.du(context),
-        vertical: AppSpacing.md.du(context),
-      ),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        border: Border.all(color: linked ? AppColors.accent : AppColors.line),
-        borderRadius: BorderRadius.circular(AppShape.radiusMd.du(context)),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          AppIcon(
-            linked
-                ? PhosphorIconsFill.checkCircle
-                : PhosphorIconsRegular.hardDrives,
-            size: 26,
-            tint: linked ? AppColors.success : AppColors.ink2,
+    final who = name.trim().isEmpty
+        ? 'They sign in'
+        : '${name.trim()} signs in';
+    final linked = signedIn != null;
+    return AppCard(
+      onClick: onSignIn,
+      enabled: !linking,
+      focusNode: focusNode,
+      border: _accountBorder,
+      child: ConstrainedBox(
+        constraints: BoxConstraints(minHeight: 96.du(context)),
+        child: Padding(
+          padding: EdgeInsets.symmetric(
+            horizontal: AppSpacing.xl.du(context),
+            vertical: AppSpacing.md.du(context),
           ),
-          SizedBox(width: AppSpacing.lg.du(context)),
-          Expanded(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                AppText('Plex', style: AppTypography.label),
-                SizedBox(height: 3.du(context)),
-                AppText(
-                  linked
-                      ? 'Signed in'
-                      : '$who signs in with their own Plex account',
-                  style: AppTypography.caption,
-                  color: AppColors.ink3,
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              AppIcon(
+                linked
+                    ? PhosphorIconsFill.checkCircle
+                    : PhosphorIconsRegular.hardDrives,
+                size: 26,
+                tint: linked ? AppColors.success : AppColors.ink2,
+              ),
+              SizedBox(width: AppSpacing.lg.du(context)),
+              Expanded(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    AppText(platform, style: AppTypography.label),
+                    SizedBox(height: 3.du(context)),
+                    AppText(
+                      signedIn ?? '$who with their own $platform account',
+                      style: AppTypography.caption,
+                      color: AppColors.ink3,
+                    ),
+                  ],
                 ),
-              ],
-            ),
+              ),
+              if (!linking)
+                AppText(
+                  linked ? 'Change' : 'Sign in',
+                  style: AppTypography.label,
+                  color: AppColors.accent300,
+                ),
+            ],
           ),
-          if (!linked && !linking)
-            AppOutlinedButton(
-              compact: true,
-              onClick: onSignIn,
-              child: const AppText('Sign in'),
-            ),
-        ],
+        ),
       ),
     );
   }

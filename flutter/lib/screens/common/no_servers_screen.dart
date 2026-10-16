@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/widgets.dart';
 
 import '../../data/plex/plex_models.dart';
+import '../../data/settings/app_settings.dart' show JellyfinLink;
 import '../../kit/button.dart';
 import '../../kit/icon.dart';
 import '../../kit/text.dart';
@@ -27,12 +28,16 @@ const _retrySeconds = 12;
 /// goes nowhere.
 class NoServersScreen extends StatefulWidget {
   final List<PlexResource> resources;
+
+  /// The profile's Jellyfin server, listed after the Plex ones.
+  final JellyfinLink? jellyfin;
   final VoidCallback onRetry;
   final VoidCallback onStartOver;
 
   const NoServersScreen({
     super.key,
     required this.resources,
+    this.jellyfin,
     required this.onRetry,
     required this.onStartOver,
   });
@@ -74,7 +79,8 @@ class _NoServersScreenState extends State<NoServersScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final count = widget.resources.length;
+    final jellyfin = widget.jellyfin;
+    final count = widget.resources.length + (jellyfin == null ? 0 : 1);
     return ColoredBox(
       color: AppColors.canvas,
       child: Center(
@@ -101,12 +107,22 @@ class _NoServersScreenState extends State<NoServersScreen> {
                 textAlign: TextAlign.center,
               ),
               SizedBox(height: 40.du(context)),
-              if (widget.resources.isNotEmpty)
+              if (count > 0)
                 Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     for (final resource in widget.resources) ...[
-                      _ServerRow(resource: resource),
+                      _ServerRow(
+                        name: resource.name,
+                        detail: _detail(resource),
+                      ),
+                      SizedBox(height: 10.du(context)),
+                    ],
+                    if (jellyfin != null) ...[
+                      _ServerRow(
+                        name: jellyfin.serverName,
+                        detail: _jellyfinDetail(jellyfin),
+                      ),
                       SizedBox(height: 10.du(context)),
                     ],
                   ],
@@ -162,9 +178,10 @@ class _NoServersScreenState extends State<NoServersScreen> {
 }
 
 class _ServerRow extends StatelessWidget {
-  final PlexResource resource;
+  final String name;
+  final String detail;
 
-  const _ServerRow({required this.resource});
+  const _ServerRow({required this.name, required this.detail});
 
   @override
   Widget build(BuildContext context) {
@@ -190,10 +207,10 @@ class _ServerRow extends StatelessWidget {
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  AppText(resource.name, color: AppColors.ink2),
+                  AppText(name, color: AppColors.ink2),
                   SizedBox(height: 3.du(context)),
                   AppText(
-                    _detail(resource),
+                    detail,
                     style: AppTypography.caption,
                     color: AppColors.ink3,
                   ),
@@ -245,4 +262,11 @@ String _detail(PlexResource resource) {
       ? 'no answer on the local network'
       : 'no answer over the internet';
   return 'Plex · $host · $where';
+}
+
+/// "Jellyfin · 192.168.0.104 · no answer" — the address it was linked at.
+String _jellyfinDetail(JellyfinLink link) {
+  final host = Uri.tryParse(link.baseUrl)?.host;
+  if (host == null || host.isEmpty) return 'Jellyfin';
+  return 'Jellyfin · $host · no answer';
 }

@@ -87,6 +87,18 @@ class AppRootController extends ChangeNotifier {
   PlexAccount? _localAccount;
   PlexAccount? get localAccount => _localAccount;
 
+  /// Who the rail's avatar and screen 06 name: the Plex account, else the
+  /// active profile itself (a Jellyfin-only one has no Plex account).
+  PlexAccount? get railAccount =>
+      _localAccount ??
+      switch (_activeProfile) {
+        final profile? => PlexAccount(
+          username: profile.name,
+          thumb: profile.thumb,
+        ),
+        null => null,
+      };
+
   String? _accountToken;
   String? get accountToken => _accountToken;
   String get accountTokenOrEmpty => _accountToken ?? '';
@@ -159,8 +171,13 @@ class AppRootController extends ChangeNotifier {
           MergedRoom(_liveRelaysById[entry.key]!, room),
   ];
 
+  /// Set once [dispose] runs; a room poll still in flight then drops its
+  /// answer instead of notifying a dead controller.
+  bool _disposed = false;
+
   @override
   void dispose() {
+    _disposed = true;
     _parkedRoomTimer?.cancel();
     _roomPollTimer?.cancel();
     _myRoomIdSub?.cancel();
@@ -241,26 +258,34 @@ class AppRootController extends ChangeNotifier {
   Future<Profile> addProfile({
     required String name,
     required String watchTogetherName,
-    required String token,
-  }) => _createProfile(
-    token: token,
-    name: name,
-    watchTogetherName: watchTogetherName,
-  );
-
-  /// Screen 07b via the picker — creating a profile there means becoming
-  /// it immediately, reusing the same PIN-link flow first-run login uses.
-  Future<void> addProfileAndActivate({
-    required String name,
-    required String watchTogetherName,
-    required String token,
+    String? token,
+    (JellyfinServerInfo, JellyfinSession)? jellyfin,
   }) async {
     final profile = await _createProfile(
       token: token,
       name: name,
       watchTogetherName: watchTogetherName,
     );
-    _activeProfile = profile;
+    if (jellyfin case (final server, final session)) {
+      return linkJellyfin(profile, server, session);
+    }
+    return profile;
+  }
+
+  /// Screen 07b via the picker — creating a profile there means becoming
+  /// it immediately, reusing the same PIN-link flow first-run login uses.
+  Future<void> addProfileAndActivate({
+    required String name,
+    required String watchTogetherName,
+    String? token,
+    (JellyfinServerInfo, JellyfinSession)? jellyfin,
+  }) async {
+    _activeProfile = await addProfile(
+      name: name,
+      watchTogetherName: watchTogetherName,
+      token: token,
+      jellyfin: jellyfin,
+    );
     await connect(token);
   }
 
@@ -286,24 +311,7 @@ class AppRootController extends ChangeNotifier {
       profile = await linkJellyfin(profile, server, session);
     }
     _activeProfile = profile;
-    if (plexToken != null) {
-      await connect(plexToken, firstRun: true);
-    } else {
-      _showJellyfinOnly(profile);
-    }
-  }
-
-  /// A Jellyfin-only profile: linked, but its libraries can't be browsed
-  /// yet, so say that rather than load an empty home.
-  void _showJellyfinOnly(Profile profile) {
-    final link = profile.jellyfin;
-    if (link == null) {
-      _setState(const LoggedOut());
-      return;
-    }
-    _setState(
-      JellyfinLinked(serverName: link.serverName, username: link.username),
-    );
+    await connect(plexToken, firstRun: true);
   }
 
   static const _numberWords = [
@@ -329,8 +337,9 @@ class AppRootController extends ChangeNotifier {
   Future<void> selectProfile(Profile profile) async {
     final token = await _tokenStore.loadTokenForProfile(profile.id);
     if (token == null && profile.plexUsername == null) {
+      // Jellyfin only: the hub is its one server.
       _activeProfile = profile;
-      _showJellyfinOnly(profile);
+      await connect(null);
       return;
     }
     if (token == null) {
@@ -343,8 +352,12 @@ class AppRootController extends ChangeNotifier {
     await connect(token);
   }
 
-  Future<void> connect(String token, {bool firstRun = false}) async {
+  /// Builds the hub for the active profile: every reachable Plex server
+  /// on [token]'s account (none when it's null — a Jellyfin-only profile)
+  /// plus the profile's Jellyfin server.
+  Future<void> connect(String? token, {bool firstRun = false}) async {
     _accountToken = token;
+    final jellyfin = _activeProfile?.jellyfin;
     _clientIdentifier = await _plexIdentity.getOrCreateClientIdentifier();
     // Start probing servers now, alongside the account fetch — the probe
     // doesn't need the account, and doing them one after the other added
@@ -352,28 +365,32 @@ class AppRootController extends ChangeNotifier {
     // the await below rather than escaping unhandled meanwhile.
     final settings = await _settingsStore.observe().first;
     final resourcesApi = PlexResourcesApi(_clientIdentifier);
-    final probing = resourcesApi
-        .connectToAllServers(
-          token,
-          disabledMachineIdentifiers: settings.disabledServerIds,
-        )
-        .then<(ConnectedServers?, Object?)>(
-          (v) => (v, null),
-          onError: (Object e) => (null, e),
-        );
+    final Future<(ConnectedServers?, Object?)> probing = token == null
+        ? Future.value((const ConnectedServers([], []), null))
+        : resourcesApi
+              .connectToAllServers(
+                token,
+                disabledMachineIdentifiers: settings.disabledServerIds,
+              )
+              .then<(ConnectedServers?, Object?)>(
+                (v) => (v, null),
+                onError: (Object e) => (null, e),
+              );
     final reachingJellyfin = _reachJellyfin(settings);
     final authApi = PlexAuthApi(_clientIdentifier);
     try {
-      _localAccount = await authApi.fetchAccount(token);
+      _localAccount = token == null ? null : await authApi.fetchAccount(token);
     } catch (_) {
       _localAccount = null;
     }
-    final username = _localAccount?.username;
+    final username = _localAccount?.username ?? jellyfin?.username;
     final done = <String>[
-      if (username != null)
-        'Signed in to Plex as $username'
-      else
-        'Signed in to Plex',
+      if (token != null)
+        if (_localAccount?.username case final plex?)
+          'Signed in to Plex as $plex'
+        else
+          'Signed in to Plex',
+      if (jellyfin != null) 'Signed in to Jellyfin as ${jellyfin.username}',
     ];
     void progress(String? current, {String? headline}) => _setState(
       ConnectingToServer(
@@ -408,11 +425,19 @@ class AppRootController extends ChangeNotifier {
         // messaging for that case.
         List<PlexResource> resources;
         try {
-          resources = await resourcesApi.listServers(token);
+          resources = token == null
+              ? const []
+              : await resourcesApi.listServers(token);
         } catch (_) {
           resources = const [];
         }
-        _setState(NoServersReachable(token: token, resources: resources));
+        _setState(
+          NoServersReachable(
+            token: token,
+            resources: resources,
+            jellyfin: jellyfin,
+          ),
+        );
         unawaited(_refreshWatchlist());
         return;
       }
@@ -458,7 +483,9 @@ class AppRootController extends ChangeNotifier {
       // Name what failed, never the raw exception.
       _setState(
         AppError(
-          message: e is _FriendlyError ? e.message : "Plex didn't answer. Check this TV's connection, then try again.",
+          message: e is _FriendlyError
+              ? e.message
+              : "${token == null ? (jellyfin?.serverName ?? 'Your server') : 'Plex'} didn't answer. Check this TV's connection, then try again.",
           retryState: const LoggedOut(),
         ),
       );
@@ -630,8 +657,9 @@ class AppRootController extends ChangeNotifier {
       disabled.add(machineIdentifier);
     }
     await _settingsStore.save(settings.copyWith(disabledServerIds: disabled));
-    final token = _accountToken;
-    if (token != null) await connect(token);
+    if (_accountToken != null || _activeProfile?.jellyfin != null) {
+      await connect(_accountToken);
+    }
   }
 
   // ---- Multi-server fan-out helpers ----
@@ -926,6 +954,7 @@ class AppRootController extends ChangeNotifier {
       _liveRoomsByRelay.entries.where((e) => stillConfigured.contains(e.key)),
     );
     final identity = await _relayIdentityStore.load();
+    if (_disposed) return;
     _hostedRoomIds = identity.hostedRooms.map((r) => r.roomId).toSet();
     notifyListeners();
 
@@ -936,6 +965,7 @@ class AppRootController extends ChangeNotifier {
       unawaited(
         _relayDirectoryApi.tryListRooms(entry.url).then((rooms) {
           _pollInFlight.remove(entry.id);
+          if (_disposed) return;
           final previous = _relayHealth[entry.id];
           _relayHealth = {
             ..._relayHealth,
@@ -1718,7 +1748,6 @@ bool pollsLiveRooms(AppState state) => switch (state) {
   LoggedOut() ||
   ProfilePicker() ||
   ConnectingToServer() ||
-  JellyfinLinked() ||
   RelaySetup() ||
   Lobby() ||
   Player() => false,

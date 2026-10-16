@@ -84,12 +84,14 @@ that account. A linked Jellyfin server is listed there with Unlink.
 libraries are on the rail, in Home's rows, in search and in the server
 switcher (06) as a peer row — labelled "Jellyfin", never a logo — that turns
 on and off like any other. **It can't play yet**: Play says so on screen 25,
-which offers another copy when there is one. A Jellyfin-only profile still
-lands on a screen that says what's missing — never an empty home. The
-add-profile dialog's Jellyfin slot (07b) keeps the disabled treatment — 45%
-opacity, out of the focus order, "Coming soon". Do not make it selectable to
-make a layout feel finished: a dead end behind a live control is worse than a
-stated one.
+which offers another copy when there is one. A **Jellyfin-only profile** is a
+full hub of its one server — no Plex sign-in, no plex.tv round trip; if that
+server doesn't answer it gets screen 24 naming it, like any other. The
+add-profile dialog (07b) signs a new profile in to Plex, Jellyfin or both;
+Jellyfin's Sign in opens O3/O3b over the whole screen and returns to the
+dialog. Until playback lands, never present a Jellyfin control as able to do
+something it can't: a dead end behind a live control is worse than a stated
+one.
 
 ## Focus rules
 
