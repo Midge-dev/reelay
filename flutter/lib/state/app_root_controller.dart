@@ -651,6 +651,8 @@ class AppRootController extends ChangeNotifier {
     );
     await _tokenStore.saveJellyfinToken(profile.id, session.accessToken);
     await _saveProfile(linked);
+    // A fresh sign-in: whatever kept the old one out no longer stands.
+    if (profile.id == _activeProfile?.id) _jellyfinTrouble = null;
     if (previous != null &&
         previousToken != null &&
         previousToken != session.accessToken) {
@@ -669,6 +671,7 @@ class AppRootController extends ChangeNotifier {
     await _tokenStore.clearJellyfinToken(profile.id);
     final unlinked = profile.withJellyfin(null);
     await _saveProfile(unlinked);
+    if (profile.id == _activeProfile?.id) _jellyfinTrouble = null;
     if (link != null && token != null) {
       unawaited((await jellyfinAuthApi()).signOut(link.baseUrl, token));
     }
