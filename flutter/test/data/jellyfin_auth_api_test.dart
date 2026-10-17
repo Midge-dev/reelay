@@ -132,6 +132,7 @@ void main() {
       final (api, server) = _api({'POST http://loft:8096/Users/AuthenticateByName': (200, _authResult)});
       final session = await api.signIn('http://loft:8096', username: 'sam', password: 'pw');
       expect(session.accessToken, 'token-1');
+      expect(session.deviceId, 'device-1', reason: 'kept with the link: the token is only good for it');
       expect(session.userId, 'user-1');
       expect(session.userName, 'sam');
       expect(session.serverId, 'server-1');
@@ -170,6 +171,7 @@ void main() {
 
       final session = await api.finishQuickConnect(base, request.secret);
       expect(session.accessToken, 'token-1');
+      expect(session.deviceId, 'device-1', reason: 'kept with the link: the token is only good for it');
       expect(server.requests.last.data, {'Secret': 'sec'});
     });
 

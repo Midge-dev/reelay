@@ -50,12 +50,17 @@ class JellyfinLink {
   final String userId;
   final String username;
 
+  /// The DeviceId this link signed in as (see JellyfinSession.deviceId);
+  /// null for links made before each had its own, which use the install's.
+  final String? deviceId;
+
   const JellyfinLink({
     required this.serverId,
     required this.serverName,
     required this.baseUrl,
     required this.userId,
     required this.username,
+    this.deviceId,
   });
 
   factory JellyfinLink.fromJson(Map<String, dynamic> json) => JellyfinLink(
@@ -64,6 +69,7 @@ class JellyfinLink {
     baseUrl: json['baseUrl'] as String,
     userId: json['userId'] as String,
     username: json['username'] as String,
+    deviceId: json['deviceId'] as String?,
   );
 
   Map<String, dynamic> toJson() => {
@@ -72,6 +78,7 @@ class JellyfinLink {
     'baseUrl': baseUrl,
     'userId': userId,
     'username': username,
+    'deviceId': ?deviceId,
   };
 }
 

@@ -29,6 +29,10 @@ class MediaServer {
   /// one (Jellyfin). Null for Plex, whose token already implies the user.
   final String? userId;
 
+  /// The device id this server knows us by when it isn't the install's —
+  /// a Jellyfin link has its own (see JellyfinLink.deviceId).
+  final String? clientId;
+
   const MediaServer({
     this.backend = MediaBackend.plex,
     required this.name,
@@ -36,6 +40,7 @@ class MediaServer {
     required this.accessToken,
     this.id = '',
     this.userId,
+    this.clientId,
   });
 }
 

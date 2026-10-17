@@ -74,6 +74,18 @@ void main() {
       expect(old.jellyfin, isNull);
       expect(old.toJson().containsKey('jellyfin'), isFalse);
     });
+
+    test('a link from before device ids loads with none, and uses the install\'s', () {
+      final old = JellyfinLink.fromJson({
+        'serverId': 'server-1',
+        'serverName': 'Loft',
+        'baseUrl': 'http://loft:8096',
+        'userId': 'user-1',
+        'username': 'sam',
+      });
+      expect(old.deviceId, isNull);
+      expect(old.toJson().containsKey('deviceId'), isFalse);
+    });
   });
 
   group('linking Jellyfin to a profile', () {
@@ -122,6 +134,34 @@ void main() {
       expect(server?.accessToken, 'token-1');
       expect(server?.id, 'server-1');
       expect(server?.userId, 'user-1');
+    });
+
+    test('each link keeps the device id it signed in as, and the server presents it', () async {
+      const samSession = JellyfinSession(
+        accessToken: 'token-1',
+        userId: 'user-1',
+        userName: 'sam',
+        serverId: 'server-1',
+        deviceId: 'device-sam',
+      );
+      const mayaSession = JellyfinSession(
+        accessToken: 'token-2',
+        userId: 'user-1',
+        userName: 'sam',
+        serverId: 'server-1',
+        deviceId: 'device-maya',
+      );
+      final sam = await controller.linkJellyfin(_sam, _server, samSession);
+      final maya = await controller.linkJellyfin(_maya, _server, mayaSession);
+
+      // Saved, so it survives a restart.
+      final saved = (await settings.observe().first).profiles;
+      expect(saved.firstWhere((p) => p.id == 'p1').jellyfin?.deviceId, 'device-sam');
+      expect(Profile.fromJson(sam.toJson()).jellyfin?.deviceId, 'device-sam');
+      // Two profiles, even as the same Jellyfin user, never share one — a
+      // second sign-in from the same id would revoke the first's token.
+      expect((await controller.jellyfinServerFor(sam))?.clientId, 'device-sam');
+      expect((await controller.jellyfinServerFor(maya))?.clientId, 'device-maya');
     });
 
     test('no link, or a lost token, is no Jellyfin server', () async {

@@ -87,14 +87,23 @@ class JellyfinSession {
   final String userName;
   final String serverId;
 
+  /// The DeviceId the token was issued to. Jellyfin keeps one sign-in per
+  /// device id — signing in again from the same id revokes the last token —
+  /// so every link has its own, and requests must keep presenting it.
+  final String? deviceId;
+
   const JellyfinSession({
     required this.accessToken,
     required this.userId,
     required this.userName,
     required this.serverId,
+    this.deviceId,
   });
 
-  factory JellyfinSession.fromJson(Map<String, dynamic> json) {
+  factory JellyfinSession.fromJson(
+    Map<String, dynamic> json, {
+    String? deviceId,
+  }) {
     final user = json['User'] as Map<String, dynamic>? ?? const {};
     return JellyfinSession(
       accessToken: json['AccessToken'] as String,
@@ -102,6 +111,7 @@ class JellyfinSession {
       userName: user['Name'] as String? ?? '',
       serverId:
           json['ServerId'] as String? ?? user['ServerId'] as String? ?? '',
+      deviceId: deviceId,
     );
   }
 }
@@ -235,7 +245,7 @@ class JellyfinAuthApi {
         data: {'Username': username, 'Pw': password},
         options: _options(),
       );
-      return JellyfinSession.fromJson(response.data!);
+      return JellyfinSession.fromJson(response.data!, deviceId: deviceId);
     } on DioException catch (e) {
       throw _failure(e, onRefused: JellyfinAuthFailure.wrongCredentials);
     }
@@ -301,7 +311,7 @@ class JellyfinAuthApi {
         data: {'Secret': secret},
         options: _options(),
       );
-      return JellyfinSession.fromJson(response.data!);
+      return JellyfinSession.fromJson(response.data!, deviceId: deviceId);
     } on DioException catch (e) {
       throw _failure(e, onRefused: JellyfinAuthFailure.quickConnectExpired);
     }

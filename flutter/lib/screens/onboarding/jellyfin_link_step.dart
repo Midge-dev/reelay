@@ -1,6 +1,7 @@
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:qr_flutter/qr_flutter.dart';
+import 'package:uuid/uuid.dart';
 
 import '../../app_version.dart';
 import '../../data/jellyfin/jellyfin_auth_api.dart';
@@ -9,7 +10,6 @@ import '../../kit/button.dart';
 import '../../kit/icon.dart';
 import '../../kit/text.dart';
 import '../../pairing/jellyfin_pairing.dart';
-import '../../state/data_providers.dart';
 import '../../theme/phosphor_icons.dart';
 import '../../theme/scale.dart';
 import '../../theme/tokens.dart';
@@ -82,21 +82,12 @@ class _JellyfinLinkStepState extends ConsumerState<JellyfinLinkStep> {
   }
 
   Future<void> _start() async {
-    final String deviceId;
-    try {
-      deviceId = await ref
-          .read(plexIdentityProvider)
-          .getOrCreateClientIdentifier();
-    } catch (_) {
-      // No device id means no session at all; typing is no better off, so
-      // say what's left — Back or Skip.
-      if (mounted) setState(() => _noNetwork = true);
-      return;
-    }
-    if (!mounted) return;
     final session = JellyfinLinkSession(
       JellyfinAuthApi(
-        deviceId: deviceId,
+        // Its own device id, not the install's: Jellyfin keeps one sign-in
+        // per device id, so a second profile signing in from this TV would
+        // otherwise revoke the first's.
+        deviceId: const Uuid().v4(),
         deviceName: jellyfinDeviceName,
         appVersion: appVersionName,
       ),

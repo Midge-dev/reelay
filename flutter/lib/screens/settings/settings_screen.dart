@@ -16,6 +16,7 @@ import '../../kit/surface_style.dart';
 import '../../kit/text.dart';
 import '../../pairing/pairing_server.dart';
 import '../../state/app_state.dart' show SectionGroup;
+import '../../state/app_root_controller.dart' show JellyfinTrouble;
 import '../../state/data_providers.dart';
 import '../../sync/relay_directory_api.dart';
 import '../../theme/phosphor_icons.dart';
@@ -845,7 +846,23 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   List<Widget> _jellyfinRows() {
     final link = _profile?.jellyfin;
     if (link == null) return const [];
-    final description = 'Jellyfin · Signed in as ${link.username}';
+    final trouble = ref.read(appRootControllerProvider).jellyfinTrouble;
+    if (trouble == JellyfinTrouble.signedOut) {
+      // The token's been revoked: the way back is signing in again.
+      return [
+        _SettingRow(
+          label: link.serverName,
+          description:
+              'Jellyfin · ${link.username} was signed out on the server',
+          value: 'Sign in again',
+          onClick: () => setState(() => _addingServers = true),
+        ),
+      ];
+    }
+    final host = Uri.tryParse(link.baseUrl)?.host ?? link.baseUrl;
+    final description = trouble == JellyfinTrouble.notAnswering
+        ? 'Jellyfin · Not answering at $host'
+        : 'Jellyfin · Signed in as ${link.username}';
     if (_profile?.plexUsername == null) {
       return [_SettingRow(label: link.serverName, description: description)];
     }

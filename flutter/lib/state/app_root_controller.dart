@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:math';
 
 import 'package:collection/collection.dart';
+import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 
 import '../app_version.dart';
@@ -155,7 +156,10 @@ class AppRootController extends ChangeNotifier {
   JellyfinClient? get _jellyfinClient => switch (_connectedServers
       .where((s) => s.server.backend == MediaBackend.jellyfin)
       .firstOrNull) {
-    final cs? => JellyfinClient(cs.server, _clientIdentifier),
+    final cs? => JellyfinClient(
+      cs.server,
+      cs.server.clientId ?? _clientIdentifier,
+    ),
     null => null,
   };
 
@@ -552,12 +556,30 @@ class AppRootController extends ChangeNotifier {
     final server = await jellyfinServerFor(profile);
     if (server == null || skipping.contains(server.id)) return null;
     try {
-      await JellyfinClient(server, _clientIdentifier).checkSignedIn();
+      await JellyfinClient(
+        server,
+        server.clientId ?? _clientIdentifier,
+      ).checkSignedIn();
+    } on DioException catch (e) {
+      _jellyfinTrouble = e.response?.statusCode == 401
+          ? JellyfinTrouble.signedOut
+          : JellyfinTrouble.notAnswering;
+      notifyListeners();
+      return null;
     } catch (_) {
+      _jellyfinTrouble = JellyfinTrouble.notAnswering;
+      notifyListeners();
       return null;
     }
+    _jellyfinTrouble = null;
     return ReachableServer(server, ServerReachability.local);
   }
+
+  /// Why the profile's Jellyfin server was left out of the hub at the last
+  /// check, or null when it's in (or there isn't one). Settings says so —
+  /// a server that silently vanishes from the rail is a dead end.
+  JellyfinTrouble? get jellyfinTrouble => _jellyfinTrouble;
+  JellyfinTrouble? _jellyfinTrouble;
 
   /// Plex refused the saved token (this TV was removed from the account's
   /// devices). Drop it and go back to linking, for the same profile.
@@ -624,6 +646,7 @@ class AppRootController extends ChangeNotifier {
         baseUrl: server.baseUrl,
         userId: session.userId,
         username: session.userName,
+        deviceId: session.deviceId,
       ),
     );
     await _tokenStore.saveJellyfinToken(profile.id, session.accessToken);
@@ -666,6 +689,7 @@ class AppRootController extends ChangeNotifier {
       accessToken: token,
       id: link.serverId,
       userId: link.userId,
+      clientId: link.deviceId,
     );
   }
 
@@ -1824,4 +1848,14 @@ String _randomProfileId() {
   const chars = 'abcdefghijklmnopqrstuvwxyz';
   final random = Random.secure();
   return List.generate(16, (_) => chars[random.nextInt(chars.length)]).join();
+}
+
+/// See [AppRootController.jellyfinTrouble].
+enum JellyfinTrouble {
+  /// The server refused the token: it was revoked (signed out there, or
+  /// replaced by another sign-in from the same device id).
+  signedOut,
+
+  /// Nothing answered at the linked address.
+  notAnswering,
 }

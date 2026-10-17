@@ -17,7 +17,7 @@ abstract class MediaServerClient {
   /// [clientIdentifier] is this install's stable device id.
   factory MediaServerClient.forServer(MediaServer server, String clientIdentifier) => switch (server.backend) {
     MediaBackend.plex => PlexClient(server, clientIdentifier),
-    MediaBackend.jellyfin => JellyfinClient(server, clientIdentifier),
+    MediaBackend.jellyfin => JellyfinClient(server, server.clientId ?? clientIdentifier),
   };
 
   // ---- Browsing ----
