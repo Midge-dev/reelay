@@ -16,6 +16,7 @@ import '../../data/settings/app_settings.dart';
 import '../../focus/back_handler.dart';
 import '../../kit/text.dart';
 import '../../playback/audio_tracks.dart';
+import '../../playback/caption_file.dart';
 import '../../playback/display_mode.dart';
 import '../../playback/playback_decision.dart';
 import '../../playback/seek_timing.dart';
@@ -459,14 +460,11 @@ class _PlayerScreenState extends State<PlayerScreen> {
 
   Future<ClosedCaptionFile> _fetchCaptionFile(ExternalSubtitle source) async {
     final url = widget.client.subtitleUrl(source.key);
-    final response = await _captionClient.get<String>(
+    final response = await _captionClient.get<List<int>>(
       url,
-      options: Options(responseType: ResponseType.plain),
+      options: Options(responseType: ResponseType.bytes),
     );
-    final content = response.data ?? '';
-    return content.trimLeft().startsWith('WEBVTT')
-        ? WebVTTCaptionFile(content)
-        : SubRipCaptionFile(content);
+    return captionFileFromBytes(response.data ?? const []);
   }
 
   void _handleControllerTick() {
