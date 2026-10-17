@@ -131,6 +131,7 @@ MediaItem itemFromJson(Json item) {
     genres: [for (final g in (item['Genres'] as List?) ?? const []) '$g'],
     duration: ticksToMs(item['RunTimeTicks']),
     viewOffset: ticksToMs(userData?['PlaybackPositionTicks']),
+    lastViewedAt: _epochSeconds(userData?['LastPlayedDate']),
     viewCount: playCount ?? ((userData?['Played'] == true) ? 1 : 0),
   );
 }

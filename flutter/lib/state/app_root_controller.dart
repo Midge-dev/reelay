@@ -29,6 +29,7 @@ import '../sync/relay_directory_api.dart';
 import '../sync/relay_protocol.dart';
 import 'app_state.dart';
 import 'room_title.dart';
+import 'recency_merge.dart';
 import 'duplicate_fold.dart';
 
 const _roomPollIntervalMs = 5000;
@@ -1320,12 +1321,14 @@ class AppRootController extends ChangeNotifier {
       }),
     );
 
-    final onDeck = <Sourced<MediaItem>>[];
+    final onDeckPerServer = <List<Sourced<MediaItem>>>[];
     final recentlyAdded = <Sourced<MediaItem>>[];
     final recentActivity = <Sourced<MediaItem>>[];
     final suggestions = <Sourced<MediaItem>>[];
     for (final (cs, od, ra, rac, sug) in perServer) {
-      onDeck.addAll(od.map((i) => Sourced(i, cs.server, cs.reachability)));
+      onDeckPerServer.add([
+        for (final i in od) Sourced(i, cs.server, cs.reachability),
+      ]);
       recentlyAdded.addAll(
         ra.map((i) => Sourced(i, cs.server, cs.reachability)),
       );
@@ -1339,6 +1342,9 @@ class AppRootController extends ChangeNotifier {
     recentlyAdded.sort(
       (a, b) => (b.value.addedAt ?? 0).compareTo(a.value.addedAt ?? 0),
     );
+    // Not one server's list after another's: a film just started on
+    // Jellyfin sat behind every part-watched Plex title.
+    final onDeck = mergeByRecency(onDeckPerServer, (s) => s.value.lastViewedAt);
 
     return Home(
       servers: servers,

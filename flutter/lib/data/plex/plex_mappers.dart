@@ -59,6 +59,7 @@ extension PlexOnDeckItemToMedia on PlexOnDeckItem {
     art: art,
     duration: duration,
     viewOffset: viewOffset,
+    lastViewedAt: lastViewedAt,
     grandparentTitle: grandparentTitle,
     parentIndex: parentIndex,
     index: index,

@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:reelay/data/plex/plex_mappers.dart';
 import 'package:reelay/data/plex/plex_models.dart';
 import 'package:reelay/data/plex/plex_response.dart';
 
@@ -52,6 +53,19 @@ void main() {
 
     expect(withGuids.guids.single.id, 'imdb://tt2543164');
     expect(withoutGuids.guids, isEmpty);
+  });
+
+  test('PlexOnDeckItem carries lastViewedAt through to the neutral item', () {
+    final played = PlexOnDeckItem.fromJson({
+      'ratingKey': '1',
+      'type': 'movie',
+      'title': 'Arrival',
+      'lastViewedAt': 1760680000,
+    });
+    final nextEpisode = PlexOnDeckItem.fromJson({'ratingKey': '2', 'type': 'episode', 'title': 'Pilot'});
+
+    expect(played.toMedia().lastViewedAt, 1760680000);
+    expect(nextEpisode.toMedia().lastViewedAt, isNull);
   });
 
   test('PlexPart maps Stream JSON key to streams, defaults missing list to empty', () {
@@ -124,9 +138,18 @@ void main() {
   });
 
   test('home-video libraries (agent *.none) are not browsable', () {
-    expect(const PlexSection(key: '1', title: 'Home Videos', type: 'movie', agent: 'com.plexapp.agents.none').isBrowsable, isFalse);
-    expect(const PlexSection(key: '2', title: 'Other', type: 'movie', agent: 'tv.plex.agents.none').isBrowsable, isFalse);
-    expect(const PlexSection(key: '3', title: 'Movies', type: 'movie', agent: 'tv.plex.agents.movie').isBrowsable, isTrue);
+    expect(
+      const PlexSection(key: '1', title: 'Home Videos', type: 'movie', agent: 'com.plexapp.agents.none').isBrowsable,
+      isFalse,
+    );
+    expect(
+      const PlexSection(key: '2', title: 'Other', type: 'movie', agent: 'tv.plex.agents.none').isBrowsable,
+      isFalse,
+    );
+    expect(
+      const PlexSection(key: '3', title: 'Movies', type: 'movie', agent: 'tv.plex.agents.movie').isBrowsable,
+      isTrue,
+    );
     expect(const PlexSection(key: '4', title: 'Music', type: 'artist').isBrowsable, isFalse);
   });
 }

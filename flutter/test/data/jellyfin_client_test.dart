@@ -20,15 +20,23 @@ class _FakeServer implements HttpClientAdapter {
   _FakeServer(this.routes);
 
   @override
-  Future<ResponseBody> fetch(RequestOptions options, Stream<Uint8List>? requestStream, Future<void>? cancelFuture) async {
+  Future<ResponseBody> fetch(
+    RequestOptions options,
+    Stream<Uint8List>? requestStream,
+    Future<void>? cancelFuture,
+  ) async {
     requests.add(options);
     final key = '${options.method} ${options.uri.path}';
     if (!routes.containsKey(key)) {
       throw DioException.connectionError(requestOptions: options, reason: 'refused');
     }
-    return ResponseBody.fromString(jsonEncode(routes[key]), 200, headers: {
-      Headers.contentTypeHeader: [Headers.jsonContentType],
-    });
+    return ResponseBody.fromString(
+      jsonEncode(routes[key]),
+      200,
+      headers: {
+        Headers.contentTypeHeader: [Headers.jsonContentType],
+      },
+    );
   }
 
   @override
@@ -63,7 +71,12 @@ const _movie = {
   'RunTimeTicks': 5964616670,
   'ProductionYear': 2008,
   'ProviderIds': {'Imdb': 'tt1254207', 'Tmdb': '10378', 'TmdbCollection': ''},
-  'UserData': {'PlaybackPositionTicks': 1200000000, 'PlayCount': 0, 'Played': false},
+  'UserData': {
+    'PlaybackPositionTicks': 1200000000,
+    'PlayCount': 0,
+    'Played': false,
+    'LastPlayedDate': '2026-10-17T05:58:29.6948838Z',
+  },
   'ImageTags': {'Primary': 'p1', 'Logo': 'l1'},
   'BackdropImageTags': ['b1'],
 };
@@ -93,6 +106,7 @@ void main() {
       expect(item.externalIds, ['imdb://tt1254207', 'tmdb://10378']);
       expect(item.duration, 596461);
       expect(item.viewOffset, 120000);
+      expect(item.lastViewedAt, DateTime.utc(2026, 10, 17, 5, 58, 29).millisecondsSinceEpoch ~/ 1000);
       expect(item.viewCount, 0);
       expect(item.year, 2008);
       expect(item.originallyAvailableAt, '2008-04-10');
@@ -208,7 +222,6 @@ void main() {
       final client = JellyfinClient(_server, 'device-1', client: dio);
       expect(client.fetchDetail('gone'), throwsA(isA<StateError>()));
     });
-
   });
 
   group('playback', () {
@@ -288,9 +301,8 @@ void main() {
 
     test('without a subtitle there is no burn-in', () {
       final (client, _) = _client({});
-      final q = Uri.parse(
-        client.transcodeUrl('bbb', maxVideoBitrateKbps: 4000, sessionIdentifier: 's'),
-      ).queryParameters;
+      final q = Uri.parse(client.transcodeUrl('bbb', maxVideoBitrateKbps: 4000, sessionIdentifier: 's'))
+          .queryParameters;
       expect(q.containsKey('SubtitleStreamIndex'), isFalse);
       expect(q.containsKey('SubtitleMethod'), isFalse);
     });

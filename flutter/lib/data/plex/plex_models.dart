@@ -449,6 +449,7 @@ class PlexOnDeckItem {
   final String? art;
   final int? duration;
   final int? viewOffset;
+  final int? lastViewedAt;
   final String? grandparentTitle;
   final int? parentIndex;
   final int? index;
@@ -473,6 +474,7 @@ class PlexOnDeckItem {
     this.art,
     this.duration,
     this.viewOffset,
+    this.lastViewedAt,
     this.grandparentTitle,
     this.parentIndex,
     this.index,

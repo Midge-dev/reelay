@@ -18,7 +18,7 @@ class MediaLibrary {
 /// list/row/grid response carries it. The full picture of one title (files,
 /// people, reviews) is a [MediaDetail].
 ///
-/// Times are milliseconds; [addedAt] is epoch seconds.
+/// Times are milliseconds; [addedAt] and [lastViewedAt] are epoch seconds.
 class MediaItem {
   final String id;
   final MediaKind kind;
@@ -70,6 +70,11 @@ class MediaItem {
   final int? duration;
   final int? viewOffset;
 
+  /// When it was last played, epoch seconds — how Continue Watching
+  /// orders one server's titles against another's. Null when the server
+  /// doesn't say (a show's next episode, which hasn't been played).
+  final int? lastViewedAt;
+
   /// Times fully watched; 0/null means unwatched — how the show page finds
   /// "the next unwatched episode" to land on (screen 04).
   final int? viewCount;
@@ -98,6 +103,7 @@ class MediaItem {
     this.collections = const [],
     this.duration,
     this.viewOffset,
+    this.lastViewedAt,
     this.viewCount,
   });
 
@@ -125,6 +131,7 @@ class MediaItem {
     collections: collections,
     duration: duration,
     viewOffset: viewOffset,
+    lastViewedAt: lastViewedAt,
     viewCount: viewCount,
   );
 }
