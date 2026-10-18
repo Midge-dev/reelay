@@ -2,8 +2,9 @@ import 'dart:async';
 
 import 'package:flutter/widgets.dart';
 
-import '../../data/plex/plex_image_url.dart';
-import '../../data/plex/plex_models.dart';
+import '../../data/media/artwork_url.dart';
+import '../../data/media/media_models.dart';
+import '../../data/media/media_server.dart';
 import '../../kit/button.dart';
 import '../../kit/icon.dart';
 import '../../kit/text.dart';
@@ -21,8 +22,8 @@ const _countdownSeconds = 12;
 /// dismisses it for the rest of the episode (PlayerScreen's
 /// _upNextDismissed, not just clearing this widget).
 class UpNextCard extends StatefulWidget {
-  final PlexServer server;
-  final PlexOnDeckItem item;
+  final MediaServer server;
+  final MediaItem item;
   final VoidCallback onPlayNow;
   final VoidCallback onDismiss;
 
@@ -95,7 +96,7 @@ class _UpNextCardState extends State<UpNextCard> {
                     AppShape.radiusMd.du(context),
                   ),
                   child: Artwork(
-                    imageUrl: PlexImageUrl.of(widget.server, item.thumb),
+                    imageUrl: ArtworkUrl.of(widget.server, item.thumb),
                   ),
                 ),
               ),

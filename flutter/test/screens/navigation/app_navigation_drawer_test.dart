@@ -1,17 +1,17 @@
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:reelay/data/plex/plex_models.dart';
-import 'package:reelay/data/plex/plex_resources_api.dart';
+import 'package:reelay/data/media/media_models.dart';
+import 'package:reelay/data/media/media_server.dart';
 import 'package:reelay/screens/navigation/app_navigation_drawer.dart';
 import 'package:reelay/state/app_state.dart';
 import 'package:reelay/theme/phosphor_icons.dart';
 
-const _server = PlexServer(name: 'Home', baseUrl: 'http://192.168.1.5:32400', accessToken: 'tok', machineIdentifier: 'home-id');
+const _server = MediaServer(name: 'Home', baseUrl: 'http://192.168.1.5:32400', accessToken: 'tok', id: 'home-id');
 const _connectedServers = [ReachableServer(_server, ServerReachability.local)];
 
 const _sections = [
-  SectionGroup(type: 'movie', title: 'Movies', sectionsByServerId: {'home-id': PlexSection(key: 's1', title: 'Movies', type: 'movie')}),
-  SectionGroup(type: 'show', title: 'Shows', sectionsByServerId: {'home-id': PlexSection(key: 's2', title: 'Shows', type: 'show')}),
+  SectionGroup(kind: MediaKind.movie, title: 'Movies', sectionsByServerId: {'home-id': MediaLibrary(id: 's1', title: 'Movies', kind: MediaKind.movie)}),
+  SectionGroup(kind: MediaKind.show, title: 'Shows', sectionsByServerId: {'home-id': MediaLibrary(id: 's2', title: 'Shows', kind: MediaKind.show)}),
 ];
 
 Future<void> _pump(WidgetTester tester, Widget child) async {

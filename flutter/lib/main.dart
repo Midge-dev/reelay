@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'data/settings/settings_store.dart';
+import 'focus/smooth_traversal.dart';
 import 'screens/app_root.dart';
 import 'state/data_providers.dart';
 import 'theme/scale.dart';
@@ -56,7 +57,11 @@ class ReelayApp extends ConsumerWidget {
         themeId: themeId,
         child: AppScale(
           factor: (MediaQuery.sizeOf(context).height / 1080) * uiScale,
-          child: child!,
+          // Up/Down between rows eases the page instead of cutting it.
+          child: FocusTraversalGroup(
+            policy: smoothFocusTraversalPolicy(),
+            child: child!,
+          ),
         ),
       ),
       pageRouteBuilder: <T>(RouteSettings settings, WidgetBuilder builder) {

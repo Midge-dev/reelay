@@ -1,7 +1,7 @@
 import 'package:flutter/widgets.dart';
 
-import '../../data/plex/plex_models.dart';
-import '../../data/plex/plex_resources_api.dart' show ServerReachability;
+import '../../data/media/media_models.dart';
+import '../../data/media/media_server.dart';
 import '../../kit/card.dart';
 import '../../kit/text.dart';
 import '../../state/copy_facts.dart';
@@ -18,12 +18,12 @@ const _statusWidth = 150.0;
 /// states the two things that decide it: how far away the server is, and
 /// whether this television plays the file directly.
 class SourceRow extends StatelessWidget {
-  final Sourced<PlexLibraryItem> copy;
+  final Sourced<MediaItem> copy;
 
   /// Null while this copy's detail is still being read.
   final CopyFacts? facts;
 
-  /// The row's second line after "Plex · <distance>": the file in 03d,
+  /// The row's second line after "Plex · Local": the file in 03d,
   /// "answered just now" in 25.
   final String? detail;
   final bool showAudio;
@@ -92,7 +92,7 @@ class SourceRow extends StatelessWidget {
                       SizedBox(height: 4.du(context)),
                       AppText(
                         [
-                          'Plex',
+                          copy.server.backend.label,
                           distance(copy.reachability),
                           ?detail,
                         ].join(' · '),

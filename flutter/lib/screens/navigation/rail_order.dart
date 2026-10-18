@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 
+import '../../data/media/media_models.dart';
 import '../../state/app_state.dart';
 import '../../theme/phosphor_icons.dart';
 
@@ -102,7 +103,7 @@ RailItemLook? railItemLook(String id, List<SectionGroup> sections) {
   }
   for (final s in sections) {
     if (railSectionId(s) != id) continue;
-    final show = s.type == 'show';
+    final show = s.kind == MediaKind.show;
     return RailItemLook(
       s.title,
       show

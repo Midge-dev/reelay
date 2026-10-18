@@ -1,8 +1,11 @@
+import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 
+import '../../data/jellyfin/jellyfin_auth_api.dart';
 import '../../data/plex/plex_auth_api.dart';
+import '../../data/settings/app_settings.dart';
 import '../../focus/back_handler.dart';
 import '../../kit/button.dart';
 import '../../kit/focusable_surface.dart';
@@ -14,14 +17,23 @@ import '../../theme/phosphor_icons.dart';
 import '../../theme/scale.dart';
 import '../../theme/tokens.dart';
 import '../../theme/typography.dart';
+import 'jellyfin_link_step.dart';
 import 'onboarding_frame.dart';
 import 'watch_together_step.dart';
 
-enum _Step { servers, link, watchTogether }
+enum _Step { servers, link, jellyfin, watchTogether }
 
-/// First-run setup, screens O1 → O2 → O4 (O3, Link Jellyfin, stays
-/// unreachable until Jellyfin ships — DESIGN.md). Linking stores the
-/// token but setup only hands it on once the Watch Together step has been
+/// What first-run setup linked: a Plex token, a Jellyfin account, or both.
+class SetupResult {
+  final String? plexToken;
+  final (JellyfinServerInfo, JellyfinSession)? jellyfin;
+
+  const SetupResult({this.plexToken, this.jellyfin});
+}
+
+/// First-run setup, screens O1 → O2 (Plex) → O3 (Jellyfin) → O4, taking
+/// O2 and O3 only for the servers chosen on O1. Linking stores what it
+/// links but setup only hands it on once the Watch Together step has been
 /// answered, so the relay question comes before the library loads, in the
 /// design's order, and is never asked again. O5 is the connecting screen
 /// that follows (see setup_ready_screen.dart).
@@ -29,14 +41,22 @@ enum _Step { servers, link, watchTogether }
 /// [relinking]: Plex refused this TV's saved sign-in (it was removed from
 /// the account's devices). Setup opens on the link step and says so, and
 /// linking goes straight back in — everything else was already answered.
+///
+/// [addingTo]: Settings' Add more servers for this profile — O1 → O2/O3
+/// without the step column or O4, opening with nothing chosen, and Back
+/// from O1 is [onCancel]. Linking stores nothing itself; [onComplete] does.
 class OnboardingScreen extends ConsumerStatefulWidget {
-  final ValueChanged<String> onComplete;
+  final ValueChanged<SetupResult> onComplete;
   final bool relinking;
+  final Profile? addingTo;
+  final VoidCallback? onCancel;
 
   const OnboardingScreen({
     super.key,
     required this.onComplete,
     this.relinking = false,
+    this.addingTo,
+    this.onCancel,
   });
 
   @override
@@ -45,39 +65,107 @@ class OnboardingScreen extends ConsumerStatefulWidget {
 
 class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
   late _Step _step = widget.relinking ? _Step.link : _Step.servers;
-  bool _plexSelected = true;
+  late final bool _adding = widget.addingTo != null;
+  late bool _plexSelected = !_adding;
+  bool _jellyfinSelected = false;
   String? _token;
+  (JellyfinServerInfo, JellyfinSession)? _jellyfin;
+
+  /// "Plex, Jellyfin" — what O1 settled on, for the rail.
+  String get _serversSummary =>
+      [if (_plexSelected) 'Plex', if (_jellyfinSelected) 'Jellyfin'].join(', ');
+
+  /// How many accounts the link step covers, and which this is.
+  String _linkSummary(_Step step) {
+    final total = (_plexSelected ? 1 : 0) + (_jellyfinSelected ? 1 : 0);
+    final index = step == _Step.jellyfin && _plexSelected ? 2 : 1;
+    return '$index of $total';
+  }
+
+  void _toLinking() =>
+      setState(() => _step = _plexSelected ? _Step.link : _Step.jellyfin);
+
+  void _afterPlex() {
+    if (_jellyfinSelected) {
+      setState(() => _step = _Step.jellyfin);
+    } else {
+      _finishOrAsk();
+    }
+  }
+
+  /// O4 next in setup; from Settings the relay was answered long ago.
+  void _finishOrAsk() {
+    if (_adding) {
+      widget.onComplete(SetupResult(plexToken: _token, jellyfin: _jellyfin));
+    } else {
+      setState(() => _step = _Step.watchTogether);
+    }
+  }
+
+  /// "STEP 2 OF 4 · PLEX", or "ADD SERVERS · PLEX" from Settings.
+  String _linkKicker(String platform) =>
+      _adding ? 'ADD SERVERS · $platform' : 'STEP 2 OF 4 · $platform';
 
   @override
   Widget build(BuildContext context) {
     return switch (_step) {
       _Step.servers => _ServersStep(
+        addingTo: widget.addingTo,
+        onCancel: widget.onCancel,
         plexSelected: _plexSelected,
+        jellyfinSelected: _jellyfinSelected,
         onTogglePlex: () => setState(() => _plexSelected = !_plexSelected),
-        onContinue: () => setState(() => _step = _Step.link),
+        onToggleJellyfin: () =>
+            setState(() => _jellyfinSelected = !_jellyfinSelected),
+        onContinue: _toLinking,
       ),
       _Step.link => BackHandler(
         onBack: () => setState(() => _step = _Step.servers),
         child: _LinkStep(
           relinking: widget.relinking,
+          showSteps: !_adding,
+          kicker: _linkKicker('PLEX'),
+          summaries: {
+            SetupStep.servers: _serversSummary,
+            SetupStep.link: _linkSummary(_Step.link),
+          },
           onBack: () => setState(() => _step = _Step.servers),
           onLinked: (token) async {
-            await ref.read(secureTokenStoreProvider).saveToken(token);
+            if (!_adding) {
+              await ref.read(secureTokenStoreProvider).saveToken(token);
+            }
             if (!mounted) return;
             if (widget.relinking) {
-              widget.onComplete(token);
+              widget.onComplete(SetupResult(plexToken: token));
               return;
             }
-            setState(() {
-              _token = token;
-              _step = _Step.watchTogether;
-            });
+            _token = token;
+            _afterPlex();
           },
         ),
       ),
+      _Step.jellyfin => JellyfinLinkStep(
+        kicker: _linkKicker('JELLYFIN'),
+        showSteps: !_adding,
+        summaries: {
+          SetupStep.servers: _serversSummary,
+          SetupStep.link: _linkSummary(_Step.jellyfin),
+        },
+        onBack: () => setState(() => _step = _Step.servers),
+        onSkip: _plexSelected ? _finishOrAsk : null,
+        onLinked: (server, session) {
+          _jellyfin = (server, session);
+          _finishOrAsk();
+        },
+      ),
       _Step.watchTogether => BackHandler(
         onBack: () => setState(() => _step = _Step.servers),
-        child: WatchTogetherStep(onDone: () => widget.onComplete(_token!)),
+        child: WatchTogetherStep(
+          serversSummary: _serversSummary,
+          onDone: () => widget.onComplete(
+            SetupResult(plexToken: _token, jellyfin: _jellyfin),
+          ),
+        ),
       ),
     };
   }
@@ -86,13 +174,22 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
 // ---- O1 · Where's your library? -------------------------------------------
 
 class _ServersStep extends StatefulWidget {
+  /// Set when Settings opened this for a profile that already has accounts.
+  final Profile? addingTo;
+  final VoidCallback? onCancel;
   final bool plexSelected;
+  final bool jellyfinSelected;
   final VoidCallback onTogglePlex;
+  final VoidCallback onToggleJellyfin;
   final VoidCallback onContinue;
 
   const _ServersStep({
+    this.addingTo,
+    this.onCancel,
     required this.plexSelected,
+    required this.jellyfinSelected,
     required this.onTogglePlex,
+    required this.onToggleJellyfin,
     required this.onContinue,
   });
 
@@ -102,6 +199,7 @@ class _ServersStep extends StatefulWidget {
 
 class _ServersStepState extends State<_ServersStep> {
   final _plexFocus = FocusNode(debugLabel: 'setup-plex-card');
+  final _continueFocus = FocusNode(debugLabel: 'setup-continue');
 
   @override
   void initState() {
@@ -114,57 +212,87 @@ class _ServersStepState extends State<_ServersStep> {
   @override
   void dispose() {
     _plexFocus.dispose();
+    _continueFocus.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    return OnboardingFrame(
+    final adding = widget.addingTo;
+    final plexUser = adding?.plexUsername;
+    final jellyfin = adding?.jellyfin;
+    final frame = OnboardingFrame(
       step: SetupStep.servers,
-      footnote: 'All of this can be changed later in Settings. Nothing here is permanent.',
+      showSteps: adding == null,
+      footnote: adding == null
+          ? 'All of this can be changed later in Settings. Nothing here is permanent.'
+          : 'A profile has one account of each kind, so choosing one it already has switches it.',
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const StepHeading(
-            kicker: 'STEP 1 OF 4',
-            title: 'Where’s your library?',
-            body:
-                'Reelay is built to talk to Plex and Jellyfin equally well, and to more than one of each. '
-                'Jellyfin is not connectable yet — the card is here so the shape of the choice is right from the first release.',
-          ),
+          adding == null
+              ? const StepHeading(
+                  kicker: 'STEP 1 OF 4',
+                  title: 'Where’s your library?',
+                  body:
+                      'Reelay talks to Plex and Jellyfin equally well, and to more than one of each. '
+                      'Pick every kind you have — each gets its own sign-in next.',
+                )
+              : const StepHeading(
+                  kicker: 'SETTINGS · ADD SERVERS',
+                  title: 'What would you like to add?',
+                  body:
+                      'Pick one or both — each gets its own sign-in next. '
+                      'Servers shared with a Plex account come with it.',
+                ),
           SizedBox(height: 42.du(context)),
           // Side by side as in O1; at large UI sizes the cards narrow rather
           // than stacking, which pushed Jellyfin and Continue off-screen.
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Flexible(
-                child: _ChoiceCard(
-                  focusNode: _plexFocus,
-                  selected: widget.plexSelected,
-                  icon: PhosphorIconsFill.hardDrives,
-                  title: 'Plex',
-                  body: 'Sign in once on your phone. Shared servers come with you.',
-                  onClick: widget.onTogglePlex,
+          // Down from either card is Continue — from Settings, Back sits
+          // nearer the Jellyfin card and took the press.
+          Focus(
+            canRequestFocus: false,
+            skipTraversal: true,
+            onKeyEvent: (_, event) {
+              if (event is! KeyDownEvent ||
+                  event.logicalKey != LogicalKeyboardKey.arrowDown ||
+                  !(widget.plexSelected || widget.jellyfinSelected)) {
+                return KeyEventResult.ignored;
+              }
+              _continueFocus.requestFocus();
+              return KeyEventResult.handled;
+            },
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Flexible(
+                  child: _ChoiceCard(
+                    focusNode: _plexFocus,
+                    selected: widget.plexSelected,
+                    icon: PhosphorIconsFill.hardDrives,
+                    title: 'Plex',
+                    body: plexUser != null
+                        ? 'Signed in as $plexUser. Choose it to switch to another Plex account.'
+                        : 'Sign in once on your phone. Shared servers come with you.',
+                    onClick: widget.onTogglePlex,
+                  ),
                 ),
-              ),
-              SizedBox(width: AppSpacing.xl.du(context)),
-              // Disabled per DESIGN.md until Jellyfin support ships —
-              // FocusableSurface's disabled state is exactly the rule: 45%
-              // opacity and out of the focus order. A stated dead end, not
-              // a live card that leads nowhere.
-              Flexible(
-                child: _ChoiceCard(
-                  selected: false,
-                  enabled: false,
-                  icon: PhosphorIconsRegular.hardDrives,
-                  title: 'Jellyfin',
-                  body: 'Your own server address and account, paired from your phone. Not connectable yet.',
-                  badge: 'COMING SOON',
-                  onClick: () {},
+                SizedBox(width: AppSpacing.xl.du(context)),
+                Flexible(
+                  child: _ChoiceCard(
+                    selected: widget.jellyfinSelected,
+                    icon: widget.jellyfinSelected
+                        ? PhosphorIconsFill.hardDrives
+                        : PhosphorIconsRegular.hardDrives,
+                    title: 'Jellyfin',
+                    body: jellyfin != null
+                        ? 'Signed in to ${jellyfin.serverName} as ${jellyfin.username}. Choose it to switch.'
+                        : 'Your own server address and account, paired from your phone.',
+                    onClick: widget.onToggleJellyfin,
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ],
       ),
@@ -172,7 +300,8 @@ class _ServersStepState extends State<_ServersStep> {
         children: [
           AppOutlinedButton(
             onClick: widget.onContinue,
-            enabled: widget.plexSelected,
+            focusNode: _continueFocus,
+            enabled: widget.plexSelected || widget.jellyfinSelected,
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
@@ -182,7 +311,14 @@ class _ServersStepState extends State<_ServersStep> {
               ],
             ),
           ),
-          if (!widget.plexSelected) ...[
+          if (widget.onCancel case final cancel?) ...[
+            SizedBox(width: AppSpacing.lg.du(context)),
+            AppOutlinedButton(
+              onClick: cancel,
+              child: AppText('Back', style: AppTypography.label, color: null),
+            ),
+          ],
+          if (!widget.plexSelected && !widget.jellyfinSelected) ...[
             SizedBox(width: 20.du(context)),
             AppText(
               'Select at least one to continue',
@@ -192,6 +328,10 @@ class _ServersStepState extends State<_ServersStep> {
         ],
       ),
     );
+    return switch (widget.onCancel) {
+      final cancel? => BackHandler(onBack: cancel, child: frame),
+      null => frame,
+    };
   }
 }
 
@@ -213,21 +353,17 @@ SurfaceBorder get _cardBorder => SurfaceBorder(
 class _ChoiceCard extends StatelessWidget {
   final FocusNode? focusNode;
   final bool selected;
-  final bool enabled;
   final IconData icon;
   final String title;
   final String body;
-  final String? badge;
   final VoidCallback onClick;
 
   const _ChoiceCard({
     this.focusNode,
     required this.selected,
-    this.enabled = true,
     required this.icon,
     required this.title,
     required this.body,
-    this.badge,
     required this.onClick,
   });
 
@@ -240,7 +376,6 @@ class _ChoiceCard extends StatelessWidget {
       ),
       child: FocusableSurface(
         onClick: onClick,
-        enabled: enabled,
         selected: selected,
         focusNode: focusNode,
         shape: RoundedRectangleBorder(
@@ -264,30 +399,6 @@ class _ChoiceCard extends StatelessWidget {
                       PhosphorIconsFill.checkCircle,
                       size: 28,
                       tint: AppColors.accent300,
-                    ),
-                  if (badge != null)
-                    Flexible(
-                      child: FittedBox(
-                        fit: BoxFit.scaleDown,
-                        child: Container(
-                          height: 34.du(context),
-                          padding: EdgeInsets.symmetric(
-                            horizontal: AppSpacing.md.du(context),
-                          ),
-                          alignment: Alignment.center,
-                          decoration: BoxDecoration(
-                            color: AppColors.line,
-                            borderRadius: BorderRadius.circular(
-                              AppShape.radiusSm.du(context),
-                            ),
-                          ),
-                          child: AppText(
-                            badge!,
-                            style: AppTypography.micro,
-                            color: AppColors.ink2,
-                          ),
-                        ),
-                      ),
                     ),
                 ],
               ),
@@ -315,11 +426,20 @@ class _LinkStep extends ConsumerStatefulWidget {
   final VoidCallback onBack;
   final ValueChanged<String> onLinked;
   final bool relinking;
+  final Map<SetupStep, String> summaries;
+  final bool showSteps;
+  final String kicker;
 
   const _LinkStep({
     required this.onBack,
     required this.onLinked,
     this.relinking = false,
+    this.showSteps = true,
+    this.kicker = 'STEP 2 OF 4 · PLEX',
+    this.summaries = const {
+      SetupStep.servers: 'Plex',
+      SetupStep.link: '1 of 1',
+    },
   });
 
   @override
@@ -395,7 +515,8 @@ class _LinkStepState extends ConsumerState<_LinkStep> {
       // The title runs to two lines at large UI sizes; the tighter top keeps
       // New code / Back on screen without scrolling.
       contentTop: 80,
-      summaries: const {SetupStep.servers: 'Plex', SetupStep.link: '1 of 1'},
+      summaries: widget.summaries,
+      showSteps: widget.showSteps,
       footnote: 'Reelay never sees your password. Plex hands back a token for this TV only, and it stays on the device.',
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -408,8 +529,8 @@ class _LinkStepState extends ConsumerState<_LinkStep> {
                       'It was removed from your Plex account\'s devices. '
                       'Link it again and everything else is as you left it.',
                 )
-              : const StepHeading(
-                  kicker: 'STEP 2 OF 4 · PLEX',
+              : StepHeading(
+                  kicker: widget.kicker,
                   title: 'Link this TV to your Plex account',
                 ),
           SizedBox(height: 32.du(context)),

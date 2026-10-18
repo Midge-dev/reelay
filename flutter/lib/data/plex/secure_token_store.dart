@@ -12,10 +12,17 @@ abstract class SecureTokenStore {
   Future<void> saveTokenForProfile(String profileId, String token);
   Future<String?> loadTokenForProfile(String profileId);
   Future<void> clearTokenForProfile(String profileId);
+
+  /// The token a profile's Jellyfin server issued it — one per profile, as
+  /// a profile links at most one Jellyfin account.
+  Future<void> saveJellyfinToken(String profileId, String token);
+  Future<String?> loadJellyfinToken(String profileId);
+  Future<void> clearJellyfinToken(String profileId);
 }
 
 const _tokenKey = 'plex_token';
 String _profileTokenKey(String profileId) => 'plex_token_$profileId';
+String _jellyfinTokenKey(String profileId) => 'jellyfin_token_$profileId';
 
 // macOS's default Data Protection Keychain requires a `keychain-access-groups`
 // entitlement matched against a real development-signing certificate; ad-hoc
@@ -25,32 +32,60 @@ String _profileTokenKey(String profileId) => 'plex_token_$profileId';
 // single-app token. iOS/Android are unaffected — this option is macOS-only.
 const _macOsOptions = MacOsOptions(usesDataProtectionKeychain: false);
 
-/// Plex tokens in platform secure storage: flutter_secure_storage does the
+/// Server tokens in platform secure storage: flutter_secure_storage does the
 /// per-platform key management (Keystore on Android, Keychain on iOS/macOS),
 /// so none of that crypto needs porting.
 class FlutterSecureTokenStore implements SecureTokenStore {
   final FlutterSecureStorage _storage;
 
-  FlutterSecureTokenStore({FlutterSecureStorage? storage}) : _storage = storage ?? const FlutterSecureStorage();
+  FlutterSecureTokenStore({FlutterSecureStorage? storage})
+    : _storage = storage ?? const FlutterSecureStorage();
 
   @override
-  Future<void> saveToken(String token) => _storage.write(key: _tokenKey, value: token, mOptions: _macOsOptions);
+  Future<void> saveToken(String token) =>
+      _storage.write(key: _tokenKey, value: token, mOptions: _macOsOptions);
 
   @override
-  Future<String?> loadToken() => _storage.read(key: _tokenKey, mOptions: _macOsOptions);
+  Future<String?> loadToken() =>
+      _storage.read(key: _tokenKey, mOptions: _macOsOptions);
 
   @override
-  Future<void> clearToken() => _storage.delete(key: _tokenKey, mOptions: _macOsOptions);
+  Future<void> clearToken() =>
+      _storage.delete(key: _tokenKey, mOptions: _macOsOptions);
 
   @override
   Future<void> saveTokenForProfile(String profileId, String token) =>
-      _storage.write(key: _profileTokenKey(profileId), value: token, mOptions: _macOsOptions);
+      _storage.write(
+        key: _profileTokenKey(profileId),
+        value: token,
+        mOptions: _macOsOptions,
+      );
 
   @override
   Future<String?> loadTokenForProfile(String profileId) =>
       _storage.read(key: _profileTokenKey(profileId), mOptions: _macOsOptions);
 
   @override
-  Future<void> clearTokenForProfile(String profileId) =>
-      _storage.delete(key: _profileTokenKey(profileId), mOptions: _macOsOptions);
+  Future<void> clearTokenForProfile(String profileId) => _storage.delete(
+    key: _profileTokenKey(profileId),
+    mOptions: _macOsOptions,
+  );
+
+  @override
+  Future<void> saveJellyfinToken(String profileId, String token) =>
+      _storage.write(
+        key: _jellyfinTokenKey(profileId),
+        value: token,
+        mOptions: _macOsOptions,
+      );
+
+  @override
+  Future<String?> loadJellyfinToken(String profileId) =>
+      _storage.read(key: _jellyfinTokenKey(profileId), mOptions: _macOsOptions);
+
+  @override
+  Future<void> clearJellyfinToken(String profileId) => _storage.delete(
+    key: _jellyfinTokenKey(profileId),
+    mOptions: _macOsOptions,
+  );
 }

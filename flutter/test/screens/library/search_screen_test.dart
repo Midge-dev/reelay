@@ -1,14 +1,14 @@
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:reelay/data/plex/plex_models.dart';
-import 'package:reelay/data/plex/plex_resources_api.dart';
+import 'package:reelay/data/media/media_models.dart';
+import 'package:reelay/data/media/media_server.dart';
 import 'package:reelay/focus/screen_memory.dart';
 import 'package:reelay/kit/card.dart';
 import 'package:reelay/screens/library/search_screen.dart';
 import 'package:reelay/state/duplicate_fold.dart';
 
-const _server = PlexServer(name: 'Attic', baseUrl: 'http://192.168.1.5:32400', accessToken: 'tok', machineIdentifier: 'm1');
+const _server = MediaServer(name: 'Attic', baseUrl: 'http://192.168.1.5:32400', accessToken: 'tok', id: 'm1');
 const _connectedServers = [ReachableServer(_server, ServerReachability.local)];
 const _debounceSettle = Duration(milliseconds: 400);
 
@@ -17,8 +17,8 @@ const _placeholderTyped = Duration(seconds: 2);
 
 Future<void> _pump(
   WidgetTester tester, {
-  required Future<List<PlexOnDeckItem>> Function(String query) search,
-  ValueChanged<PlexOnDeckItem>? onSelectResult,
+  required Future<List<MediaItem>> Function(String query) search,
+  ValueChanged<MediaItem>? onSelectResult,
   ScreenMemory? memory,
 }) async {
   tester.view.physicalSize = const Size(1920, 1080);
@@ -84,8 +84,8 @@ void main() {
       search: (q) async {
         queried = q;
         return const [
-          PlexOnDeckItem(ratingKey: 's1', type: 'show', title: 'Borderland'),
-          PlexOnDeckItem(ratingKey: 'm1', type: 'movie', title: 'Bordeaux'),
+          MediaItem(id: 's1', kind: MediaKind.show, title: 'Borderland'),
+          MediaItem(id: 'm1', kind: MediaKind.movie, title: 'Bordeaux'),
         ];
       },
     );
@@ -115,10 +115,10 @@ void main() {
   });
 
   testWidgets('tapping a result invokes onSelectResult', (tester) async {
-    PlexOnDeckItem? selected;
+    MediaItem? selected;
     await _pump(
       tester,
-      search: (_) async => const [PlexOnDeckItem(ratingKey: 'm1', type: 'movie', title: 'Bordeaux')],
+      search: (_) async => const [MediaItem(id: 'm1', kind: MediaKind.movie, title: 'Bordeaux')],
       onSelectResult: (item) => selected = item,
     );
 
@@ -130,13 +130,13 @@ void main() {
     await tester.tap(find.byType(AppCard));
     await tester.pump();
 
-    expect(selected?.ratingKey, 'm1');
+    expect(selected?.id, 'm1');
   });
 
   testWidgets('CLEAR resets the query and clears results', (tester) async {
     await _pump(
       tester,
-      search: (_) async => const [PlexOnDeckItem(ratingKey: 'm1', type: 'movie', title: 'Bordeaux')],
+      search: (_) async => const [MediaItem(id: 'm1', kind: MediaKind.movie, title: 'Bordeaux')],
     );
 
     await tester.tap(find.text('B'));
@@ -157,7 +157,7 @@ void main() {
     await _pump(
       tester,
       search: (q) async => const [
-        PlexOnDeckItem(ratingKey: 'm1', type: 'movie', title: 'Bordeaux'),
+        MediaItem(id: 'm1', kind: MediaKind.movie, title: 'Bordeaux'),
       ],
     );
     await tester.tap(find.text('B'));
@@ -184,8 +184,8 @@ void main() {
   // The reported bug: Back from a result came back to an empty Search.
   testWidgets('coming back from a result keeps the query, the results and the focused result', (tester) async {
     final memory = ScreenMemory();
-    Future<List<PlexOnDeckItem>> search(String _) async => const [
-      PlexOnDeckItem(ratingKey: 'm1', type: 'movie', title: 'Bordeaux'),
+    Future<List<MediaItem>> search(String _) async => const [
+      MediaItem(id: 'm1', kind: MediaKind.movie, title: 'Bordeaux'),
     ];
     await _pump(tester, search: search, memory: memory);
     await tester.tap(find.text('B'));

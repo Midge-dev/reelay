@@ -71,15 +71,33 @@ One account per platform per profile. Not synced across devices. **Not a
 security boundary** — never write copy implying the picker keeps anyone out.
 The picker stays hidden until a second profile exists.
 
-## Jellyfin: designed, not shipped
+## Jellyfin: a peer of Plex
 
-The system is server-neutral and the screens show Plex and Jellyfin as peers, but
-**Jellyfin is not connectable yet.** Keep the Jellyfin card on the O1 onboarding
-screen **disabled** — 45% opacity, out of the focus order, "Coming soon" — until
-Jellyfin support is researched and implemented. The Link Jellyfin screen (O3) is
-the target design for that work and stays unreachable until then. Do not make
-the card selectable to make the layout feel finished: a dead end behind a live
-card is worse than a stated one.
+The system is server-neutral and the screens show Plex and Jellyfin as peers.
+**Setup links Jellyfin**: the O1 card is live, and O3 (from the phone) and O3b
+(typed on the TV) sign in by password or Quick Connect. Settings → Servers
+has an **Add more servers** row that reruns O1 → O2/O3 for the active profile
+(no step column, no O4); choosing a platform the profile already has switches
+that account. A linked Jellyfin server is listed there with Unlink.
+
+**A linked Jellyfin server joins the hub** beside the Plex servers: its
+libraries are on the rail, in Home's rows, in search and in the server
+switcher (06) as a peer row — labelled "Jellyfin", never a logo — that turns
+on and off like any other. **It plays** — direct, or as an HLS transcode when
+the file won't — and every text subtitle (SRT, ASS, embedded or sidecar)
+arrives as WebVTT drawn over the picture, so only bitmap subtitles need a
+burn-in. Jellyfin has no
+watchlist; its **Favorites** stand in (the + on a Jellyfin title, and the
+Watchlist screen — one list with the Plex watchlist until the two-row
+design lands). A Watch Together room names the host's server and the
+title's provider ids, so a guest on any server — Plex or Jellyfin — joins
+with their own copy. A **Jellyfin-only profile** is a
+full hub of its one server — no Plex sign-in, no plex.tv round trip; if that
+server doesn't answer it gets screen 24 naming it, like any other. The
+add-profile dialog (07b) signs a new profile in to Plex, Jellyfin or both;
+Jellyfin's Sign in opens O3/O3b over the whole screen and returns to the
+dialog. Never present a Jellyfin control as able to do something it can't: a dead
+end behind a live control is worse than a stated one.
 
 ## Focus rules
 

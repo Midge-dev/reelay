@@ -6,7 +6,22 @@ class RelayRoomSummary {
   final String roomId;
   final String title;
   final String? thumb;
+
+  /// The host's item id, meaningful on [serverId] only.
   final String? ratingKey;
+
+  /// The host's [MediaServer.id]; null from hosts (or relays) that predate
+  /// it, which leaves [ratingKey] to be tried everywhere.
+  final String? serverId;
+
+  /// The title's provider ids (`imdb://…`, `tmdb://…`), the same on Plex
+  /// and Jellyfin — how a guest on another server finds its own copy.
+  final List<String> ids;
+
+  /// The plain title to search for ([title] is the room's display name)
+  /// and its year.
+  final String? mediaTitle;
+  final int? year;
   final String hostName;
   final int occupants;
   final int maxSeats;
@@ -16,6 +31,10 @@ class RelayRoomSummary {
     required this.title,
     this.thumb,
     this.ratingKey,
+    this.serverId,
+    this.ids = const [],
+    this.mediaTitle,
+    this.year,
     required this.hostName,
     required this.occupants,
     required this.maxSeats,
@@ -26,6 +45,10 @@ class RelayRoomSummary {
         title: json['title'] as String,
         thumb: json['thumb'] as String?,
         ratingKey: json['ratingKey'] as String?,
+        serverId: json['serverId'] as String?,
+        ids: [for (final id in (json['ids'] as List?) ?? const []) if (id is String) id],
+        mediaTitle: json['mediaTitle'] as String?,
+        year: json['year'] as int?,
         hostName: json['hostName'] as String,
         occupants: json['occupants'] as int,
         maxSeats: json['maxSeats'] as int,

@@ -1,24 +1,24 @@
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:reelay/data/media/media_models.dart';
+import 'package:reelay/data/media/media_server.dart';
 import 'package:reelay/theme/phosphor_icons.dart';
-import 'package:reelay/data/plex/plex_models.dart';
-import 'package:reelay/data/plex/plex_resources_api.dart';
 import 'package:reelay/screens/library/movie_detail_screen.dart';
 import 'package:reelay/screens/library/source_picker_dialog.dart';
 import 'package:reelay/state/copy_facts.dart';
 import 'package:reelay/state/duplicate_fold.dart';
 
-const _server = PlexServer(name: 'Home', baseUrl: 'http://192.168.1.5:32400', accessToken: 'tok', machineIdentifier: 'home-id');
-const _movie = PlexLibraryItem(ratingKey: '1', title: 'Arrival', year: 2016, summary: 'A linguist deciphers alien contact.');
+const _server = MediaServer(name: 'Home', baseUrl: 'http://192.168.1.5:32400', accessToken: 'tok', id: 'home-id');
+const _movie = MediaItem(id: '1', title: 'Arrival', year: 2016, summary: 'A linguist deciphers alien contact.');
 
 Future<void> _pump(
   WidgetTester tester, {
   void Function(String, int)? onPlay,
   int? resumeAtMs,
   bool Function(String?)? isOnWatchlist,
-  FoldedWork<PlexLibraryItem>? work,
-  void Function(Sourced<PlexLibraryItem>, int)? onSwitchSource,
-  PlexLibraryItem movie = _movie,
+  FoldedWork<MediaItem>? work,
+  void Function(Sourced<MediaItem>, int)? onSwitchSource,
+  MediaItem movie = _movie,
 }) async {
   tester.view.physicalSize = const Size(1920, 1080);
   tester.view.devicePixelRatio = 1.0;
@@ -56,7 +56,7 @@ Future<void> _pump(
   );
 }
 
-const _otherServer = PlexServer(name: 'Loft', baseUrl: 'http://192.168.1.9:32400', accessToken: 'tok2', machineIdentifier: 'loft-id');
+const _otherServer = MediaServer(name: 'Loft', baseUrl: 'http://192.168.1.9:32400', accessToken: 'tok2', id: 'loft-id');
 
 void main() {
   testWidgets('shows the movie title, year, and summary in the hero', (tester) async {
@@ -72,7 +72,7 @@ void main() {
   testWidgets('the year is the last chip on the meta line, after the rating', (tester) async {
     await _pump(
       tester,
-      movie: const PlexLibraryItem(ratingKey: '1', title: 'Arrival', year: 2016, contentRating: 'PG-13', genres: [PlexTag(tag: 'Drama')]),
+      movie: const MediaItem(id: '1', title: 'Arrival', year: 2016, contentRating: 'PG-13', genres: ['Drama']),
     );
     await tester.pump();
 
@@ -141,7 +141,7 @@ void main() {
     });
 
     testWidgets('selecting a reachable alternate invokes onSwitchSource and closes the dialog', (tester) async {
-      Sourced<PlexLibraryItem>? switched;
+      Sourced<MediaItem>? switched;
       final work = FoldedWork(_movie.guid, [
         Sourced(_movie, _server, ServerReachability.local),
         Sourced(_movie, _otherServer, ServerReachability.relayed),

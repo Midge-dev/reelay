@@ -2,10 +2,11 @@ import 'dart:async';
 
 import 'package:flutter/widgets.dart';
 
+import '../../data/media/artwork_url.dart';
+import '../../data/media/media_models.dart';
+import '../../data/media/media_server.dart';
 import '../../theme/phosphor_icons.dart';
 
-import '../../data/plex/plex_models.dart';
-import '../../data/plex/plex_resources_api.dart' show ReachableServer;
 import '../../focus/back_handler.dart';
 import '../../focus/row_end_stop.dart';
 import '../../focus/screen_memory.dart';
@@ -15,7 +16,6 @@ import '../../state/duplicate_fold.dart';
 import '../../theme/scale.dart';
 import '../../theme/tokens.dart';
 import '../../theme/typography.dart';
-import '../../data/plex/plex_image_url.dart';
 import '../../kit/edge_fade_row.dart';
 import '../common/time_format.dart';
 import 'poster_card.dart';
@@ -32,8 +32,8 @@ const _minQueryLength = 2;
 /// each labelled with the server it lives on.
 class SearchScreen extends StatefulWidget {
   final List<ReachableServer> servers;
-  final Future<List<FoldedWork<PlexOnDeckItem>>> Function(String query) search;
-  final ValueChanged<FoldedWork<PlexOnDeckItem>> onSelectResult;
+  final Future<List<FoldedWork<MediaItem>>> Function(String query) search;
+  final ValueChanged<FoldedWork<MediaItem>> onSelectResult;
   final VoidCallback onBack;
 
   const SearchScreen({
@@ -51,7 +51,7 @@ class SearchScreen extends StatefulWidget {
 class _SearchScreenState extends State<SearchScreen> {
   final _firstKeyFocus = FocusNode(debugLabel: 'search-first-key');
   String _query = '';
-  List<FoldedWork<PlexOnDeckItem>> _results = const [];
+  List<FoldedWork<MediaItem>> _results = const [];
   bool _searching = false;
   int _requestId = 0;
   Timer? _debounce;
@@ -63,7 +63,7 @@ class _SearchScreenState extends State<SearchScreen> {
     // the result that was opened focused again (ScreenMemory).
     _query = ScreenMemory.read<String>(context, 'search.query') ?? '';
     _results =
-        ScreenMemory.read<List<FoldedWork<PlexOnDeckItem>>>(
+        ScreenMemory.read<List<FoldedWork<MediaItem>>>(
           context,
           'search.results',
         ) ??
@@ -101,7 +101,7 @@ class _SearchScreenState extends State<SearchScreen> {
   Future<void> _runSearch(String query) async {
     final requestId = ++_requestId;
     setState(() => _searching = true);
-    List<FoldedWork<PlexOnDeckItem>> results;
+    List<FoldedWork<MediaItem>> results;
     try {
       results = await widget.search(query);
     } catch (_) {
@@ -125,10 +125,10 @@ class _SearchScreenState extends State<SearchScreen> {
   Widget build(BuildContext context) {
     final trimmed = _query.trim();
     final shows = _results
-        .where((r) => r.primary.value.type == 'show')
+        .where((r) => r.primary.value.kind == MediaKind.show)
         .toList();
     final movies = _results
-        .where((r) => r.primary.value.type == 'movie')
+        .where((r) => r.primary.value.kind == MediaKind.movie)
         .toList();
 
     return BackHandler(
@@ -309,9 +309,9 @@ class _ResultsPanel extends StatefulWidget {
   final List<ReachableServer> servers;
   final String query;
   final bool searching;
-  final List<FoldedWork<PlexOnDeckItem>> shows;
-  final List<FoldedWork<PlexOnDeckItem>> movies;
-  final ValueChanged<FoldedWork<PlexOnDeckItem>> onSelect;
+  final List<FoldedWork<MediaItem>> shows;
+  final List<FoldedWork<MediaItem>> movies;
+  final ValueChanged<FoldedWork<MediaItem>> onSelect;
 
   const _ResultsPanel({
     required this.servers,
@@ -337,8 +337,8 @@ class _ResultsPanelState extends State<_ResultsPanel> {
     super.dispose();
   }
 
-  List<FoldedWork<PlexOnDeckItem>> get shows => widget.shows;
-  List<FoldedWork<PlexOnDeckItem>> get movies => widget.movies;
+  List<FoldedWork<MediaItem>> get shows => widget.shows;
+  List<FoldedWork<MediaItem>> get movies => widget.movies;
 
   /// "across Attic and Loft" / "on Attic".
   String get _serverLabel {
@@ -442,8 +442,8 @@ class _ResultsPanelState extends State<_ResultsPanel> {
 /// captioned with where each lives and a year or season count.
 class _ResultGroup extends StatefulWidget {
   final String label;
-  final List<FoldedWork<PlexOnDeckItem>> items;
-  final ValueChanged<FoldedWork<PlexOnDeckItem>> onSelect;
+  final List<FoldedWork<MediaItem>> items;
+  final ValueChanged<FoldedWork<MediaItem>> onSelect;
 
   const _ResultGroup({
     required this.label,
@@ -466,10 +466,10 @@ class _ResultGroupState extends State<_ResultGroup> {
     super.dispose();
   }
 
-  static String _caption(FoldedWork<PlexOnDeckItem> work) {
+  static String _caption(FoldedWork<MediaItem> work) {
     final v = work.primary.value;
-    final detail = switch (v.type) {
-      'show' when v.childCount != null =>
+    final detail = switch (v.kind) {
+      MediaKind.show when v.childCount != null =>
         '${v.childCount} season${v.childCount == 1 ? '' : 's'}',
       _ when v.year != null => '${v.year}',
       _ => null,
@@ -523,12 +523,12 @@ class _ResultGroupState extends State<_ResultGroup> {
                   itemBuilder: (context, index) {
                     final item = widget.items[index];
                     final id =
-                        '${item.primary.server.machineIdentifier}:${item.primary.value.ratingKey}';
+                        '${item.primary.server.id}:${item.primary.value.id}';
                     return RememberFocus(
                       key: ValueKey(id),
                       id: 'search:${widget.label}:$id',
                       child: PosterCard(
-                        imageUrl: PlexImageUrl.of(
+                        imageUrl: ArtworkUrl.of(
                           item.primary.server,
                           item.primary.value.thumb,
                         ),

@@ -2,7 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/widgets.dart';
 
-import '../../data/plex/plex_models.dart';
+import '../../data/media/media_models.dart';
 import '../../kit/button.dart';
 import '../../kit/icon.dart';
 import '../../kit/text.dart';
@@ -34,8 +34,8 @@ class PlaybackFailedScreen extends StatefulWidget {
 
   /// How many other servers hold the title (alternate included).
   final int otherCopies;
-  final Sourced<PlexLibraryItem>? alternate;
-  final Future<CopyFacts> Function(Sourced<PlexLibraryItem> copy)? loadFacts;
+  final Sourced<MediaItem>? alternate;
+  final Future<CopyFacts> Function(Sourced<MediaItem> copy)? loadFacts;
   final int? resumeAtMs;
   final VoidCallback? onPlayAlternate;
   final VoidCallback? onAllSources;

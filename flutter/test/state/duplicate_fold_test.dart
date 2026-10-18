@@ -1,15 +1,14 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:reelay/data/plex/plex_models.dart';
-import 'package:reelay/data/plex/plex_resources_api.dart' show ServerReachability;
+import 'package:reelay/data/media/media_server.dart';
 import 'package:reelay/state/duplicate_fold.dart';
 
-const _attic = PlexServer(name: 'Attic', baseUrl: 'http://attic', accessToken: 'a', machineIdentifier: 'attic-id');
-const _loft = PlexServer(name: 'Loft', baseUrl: 'http://loft', accessToken: 'l', machineIdentifier: 'loft-id');
-const _cellar = PlexServer(name: 'Cellar', baseUrl: 'http://cellar', accessToken: 'c', machineIdentifier: 'cellar-id');
+const _attic = MediaServer(name: 'Attic', baseUrl: 'http://attic', accessToken: 'a', id: 'attic-id');
+const _loft = MediaServer(name: 'Loft', baseUrl: 'http://loft', accessToken: 'l', id: 'loft-id');
+const _cellar = MediaServer(name: 'Cellar', baseUrl: 'http://cellar', accessToken: 'c', id: 'cellar-id');
 
 String? _guidOf(String value) => value;
 
-/// A minimal stand-in for PlexLibraryItem/PlexOnDeckItem's (scalar guid,
+/// A minimal stand-in for MediaItem/MediaItem's (scalar guid,
 /// alternate ids) shape, so these tests can exercise [foldByGuid]'s
 /// alternate-id matching without needing a real Plex JSON fixture.
 class _Item {

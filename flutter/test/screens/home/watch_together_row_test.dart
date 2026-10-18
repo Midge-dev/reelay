@@ -1,11 +1,11 @@
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:reelay/data/plex/plex_models.dart';
+import 'package:reelay/data/media/media_server.dart';
 import 'package:reelay/data/settings/app_settings.dart';
 import 'package:reelay/screens/home/watch_together_row.dart';
 import 'package:reelay/sync/relay_protocol.dart';
 
-const _server = PlexServer(name: 'Home', baseUrl: 'http://192.168.1.5:32400', accessToken: 'tok');
+const _server = MediaServer(name: 'Home', baseUrl: 'http://192.168.1.5:32400', accessToken: 'tok');
 const _relay = RelayEntry(id: 'r1', nickname: 'Home Relay', url: 'wss://relay.example.com');
 
 RelayRoomSummary _room({int occupants = 1, int maxSeats = 4, String roomId = 'room-1'}) => RelayRoomSummary(

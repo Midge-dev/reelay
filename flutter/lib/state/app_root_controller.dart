@@ -2,14 +2,21 @@ import 'dart:async';
 import 'dart:math';
 
 import 'package:collection/collection.dart';
+import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 
+import '../app_version.dart';
+import '../data/jellyfin/jellyfin_auth_api.dart';
+import '../data/jellyfin/jellyfin_client.dart';
+import '../data/media/artwork_url.dart';
+import '../data/media/media_models.dart';
+import '../data/media/media_server.dart';
+import '../data/media/media_server_client.dart';
 import '../data/plex/plex_auth_api.dart';
 import '../data/plex/plex_http_client.dart';
 import '../data/plex/plex_identity.dart';
 import '../data/plex/plex_models.dart';
 import '../data/plex/plex_resources_api.dart';
-import '../data/plex/plex_server_api.dart';
 import '../data/plex/plex_watchlist_api.dart';
 import '../data/plex/secure_token_store.dart';
 import '../data/settings/app_settings.dart';
@@ -21,9 +28,10 @@ import '../sync/relay_client.dart';
 import '../sync/relay_directory_api.dart';
 import '../sync/relay_protocol.dart';
 import 'app_state.dart';
+import 'room_title.dart';
+import 'recency_merge.dart';
 import 'duplicate_fold.dart';
 
-const _sectionTypeShow = 'show';
 const _roomPollIntervalMs = 5000;
 const _joinRoomTimeoutMs = 5000;
 
@@ -76,8 +84,24 @@ class AppRootController extends ChangeNotifier {
   String _clientIdentifier = '';
   String get clientIdentifier => _clientIdentifier;
 
+  /// The client for talking to [server], whichever backend it is.
+  MediaServerClient clientFor(MediaServer server) =>
+      MediaServerClient.forServer(server, _clientIdentifier);
+
   PlexAccount? _localAccount;
   PlexAccount? get localAccount => _localAccount;
+
+  /// Who the rail's avatar and screen 06 name: the Plex account, else the
+  /// active profile itself (a Jellyfin-only one has no Plex account).
+  PlexAccount? get railAccount =>
+      _localAccount ??
+      switch (_activeProfile) {
+        final profile? => PlexAccount(
+          username: profile.name,
+          thumb: profile.thumb,
+        ),
+        null => null,
+      };
 
   String? _accountToken;
   String? get accountToken => _accountToken;
@@ -94,10 +118,53 @@ class AppRootController extends ChangeNotifier {
     return _settingsStore.save(updated);
   }
 
-  List<PlexWatchlistItem>? _watchlistItems;
-  List<PlexWatchlistItem> get watchlist => _watchlistItems ?? const [];
+  /// The Plex account's watchlist.
+  List<MediaItem>? _watchlistItems;
 
-  // ratingKey -> the name of a connected server holding that watchlist
+  /// The Jellyfin account's Favorites, which stand in for its watchlist.
+  /// One list with the Plex one for now; two labelled rows once designed.
+  List<MediaItem> _jellyfinFavorites = const [];
+  List<MediaItem> get watchlist => [...?_watchlistItems, ..._jellyfinFavorites];
+
+  static bool _isJellyfinGuid(String guid) => guid.startsWith('jellyfin://');
+
+  /// Screen 20's "whose list": the Plex account, Jellyfin's Favorites, or
+  /// both.
+  String get watchlistSourceLabel {
+    final jellyfin = _connectedServers
+        .where((s) => s.server.backend == MediaBackend.jellyfin)
+        .firstOrNull;
+    return [
+      if (_accountToken != null)
+        if (_localAccount?.username case final name?)
+          'Plex account · $name'
+        else
+          'Plex account',
+      if (jellyfin != null) 'Jellyfin favorites · ${jellyfin.server.name}',
+    ].join(' · ');
+  }
+
+  /// A Jellyfin favorite's poster, from its server; Plex watchlist entries
+  /// carry absolute artwork of their own.
+  String? watchlistArtwork(MediaItem item) {
+    final guid = item.guid;
+    if (guid == null || !_isJellyfinGuid(guid)) return null;
+    final server = _jellyfinClient?.server;
+    return server == null ? null : ArtworkUrl.of(server, item.thumb);
+  }
+
+  /// The hub's Jellyfin server, whose Favorites are the watchlist.
+  JellyfinClient? get _jellyfinClient => switch (_connectedServers
+      .where((s) => s.server.backend == MediaBackend.jellyfin)
+      .firstOrNull) {
+    final cs? => JellyfinClient(
+      cs.server,
+      cs.server.clientId ?? _clientIdentifier,
+    ),
+    null => null,
+  };
+
+  // Watchlist item id -> the name of a connected server holding that watchlist
   // title, or null when none does. A key that's absent hasn't been looked
   // up yet.
   Map<String, String?> _watchlistAvailability = {};
@@ -151,8 +218,13 @@ class AppRootController extends ChangeNotifier {
           MergedRoom(_liveRelaysById[entry.key]!, room),
   ];
 
+  /// Set once [dispose] runs; a room poll still in flight then drops its
+  /// answer instead of notifying a dead controller.
+  bool _disposed = false;
+
   @override
   void dispose() {
+    _disposed = true;
     _parkedRoomTimer?.cancel();
     _roomPollTimer?.cancel();
     _myRoomIdSub?.cancel();
@@ -192,30 +264,35 @@ class AppRootController extends ChangeNotifier {
   /// its own keyed token — but does not activate it. Callers decide
   /// whether creating a profile also means becoming it (the picker/first
   /// login do; provisioning one for someone else from Settings doesn't).
+  /// With no Plex [token] (a Jellyfin-only setup) the profile is named
+  /// after [fallbackName], the Jellyfin user.
   Future<Profile> _createProfile({
-    required String token,
+    required String? token,
     required String? name,
     required String? watchTogetherName,
+    String? fallbackName,
   }) async {
-    final clientId = await _plexIdentity.getOrCreateClientIdentifier();
     PlexAccount? account;
-    try {
-      account = await PlexAuthApi(clientId).fetchAccount(token);
-    } catch (_) {
-      account = null;
+    if (token != null) {
+      final clientId = await _plexIdentity.getOrCreateClientIdentifier();
+      try {
+        account = await PlexAuthApi(clientId).fetchAccount(token);
+      } catch (_) {
+        account = null;
+      }
     }
-    final resolvedName = name ?? account?.username ?? 'You';
+    final resolvedName = name ?? account?.username ?? fallbackName ?? 'You';
     final profile = Profile(
       id: _randomProfileId(),
       name: resolvedName,
       watchTogetherName: (watchTogetherName?.isNotEmpty ?? false)
           ? watchTogetherName!
           : resolvedName,
-      plexUsername: account?.username ?? resolvedName,
+      plexUsername: token == null ? null : account?.username ?? resolvedName,
       thumb: account?.thumb,
     );
 
-    await _tokenStore.saveTokenForProfile(profile.id, token);
+    if (token != null) await _tokenStore.saveTokenForProfile(profile.id, token);
     final settings = await _settingsStore.observe().first;
     await _settingsStore.save(
       settings.copyWith(profiles: [...settings.profiles, profile]),
@@ -228,41 +305,60 @@ class AppRootController extends ChangeNotifier {
   Future<Profile> addProfile({
     required String name,
     required String watchTogetherName,
-    required String token,
-  }) => _createProfile(
-    token: token,
-    name: name,
-    watchTogetherName: watchTogetherName,
-  );
-
-  /// Screen 07b via the picker — creating a profile there means becoming
-  /// it immediately, reusing the same PIN-link flow first-run login uses.
-  Future<void> addProfileAndActivate({
-    required String name,
-    required String watchTogetherName,
-    required String token,
+    String? token,
+    (JellyfinServerInfo, JellyfinSession)? jellyfin,
   }) async {
     final profile = await _createProfile(
       token: token,
       name: name,
       watchTogetherName: watchTogetherName,
     );
-    _activeProfile = profile;
+    if (jellyfin case (final server, final session)) {
+      return linkJellyfin(profile, server, session);
+    }
+    return profile;
+  }
+
+  /// Screen 07b via the picker — creating a profile there means becoming
+  /// it immediately, reusing the same PIN-link flow first-run login uses.
+  Future<void> addProfileAndActivate({
+    required String name,
+    required String watchTogetherName,
+    String? token,
+    (JellyfinServerInfo, JellyfinSession)? jellyfin,
+  }) async {
+    _activeProfile = await addProfile(
+      name: name,
+      watchTogetherName: watchTogetherName,
+      token: token,
+      jellyfin: jellyfin,
+    );
     await connect(token);
   }
 
-  /// OnboardingScreen's onComplete, for the case start() found no profiles and
-  /// no legacy token — creates profile #1 from whatever account just
-  /// signed in and activates it (there's no one else to fall back to),
-  /// same as the migration path in start() does for a pre-profiles install.
-  Future<void> completeFirstLogin(String token) async {
-    final profile = await _createProfile(
-      token: token,
+  /// A pre-profiles install's one signed-in account becomes profile #1 —
+  /// see [completeSetup].
+  Future<void> completeFirstLogin(String token) =>
+      completeSetup(plexToken: token);
+
+  /// OnboardingScreen's onComplete, for the case start() found no profiles:
+  /// creates profile #1 from whichever accounts setup just linked and
+  /// activates it (there's no one else to fall back to).
+  Future<void> completeSetup({
+    String? plexToken,
+    (JellyfinServerInfo, JellyfinSession)? jellyfin,
+  }) async {
+    var profile = await _createProfile(
+      token: plexToken,
       name: null,
       watchTogetherName: null,
+      fallbackName: jellyfin?.$2.userName,
     );
+    if (jellyfin case (final server, final session)) {
+      profile = await linkJellyfin(profile, server, session);
+    }
     _activeProfile = profile;
-    await connect(token, firstRun: true);
+    await connect(plexToken, firstRun: true);
   }
 
   static const _numberWords = [
@@ -287,6 +383,12 @@ class AppRootController extends ChangeNotifier {
 
   Future<void> selectProfile(Profile profile) async {
     final token = await _tokenStore.loadTokenForProfile(profile.id);
+    if (token == null && profile.plexUsername == null) {
+      // Jellyfin only: the hub is its one server.
+      _activeProfile = profile;
+      await connect(null);
+      return;
+    }
     if (token == null) {
       // The keyed token is gone (cleared externally, etc.) — nothing to
       // recover automatically; back to sign-in is the only honest option.
@@ -297,8 +399,12 @@ class AppRootController extends ChangeNotifier {
     await connect(token);
   }
 
-  Future<void> connect(String token, {bool firstRun = false}) async {
+  /// Builds the hub for the active profile: every reachable Plex server
+  /// on [token]'s account (none when it's null — a Jellyfin-only profile)
+  /// plus the profile's Jellyfin server.
+  Future<void> connect(String? token, {bool firstRun = false}) async {
     _accountToken = token;
+    final jellyfin = _activeProfile?.jellyfin;
     _clientIdentifier = await _plexIdentity.getOrCreateClientIdentifier();
     // Start probing servers now, alongside the account fetch — the probe
     // doesn't need the account, and doing them one after the other added
@@ -306,27 +412,32 @@ class AppRootController extends ChangeNotifier {
     // the await below rather than escaping unhandled meanwhile.
     final settings = await _settingsStore.observe().first;
     final resourcesApi = PlexResourcesApi(_clientIdentifier);
-    final probing = resourcesApi
-        .connectToAllServers(
-          token,
-          disabledMachineIdentifiers: settings.disabledServerIds,
-        )
-        .then<(ConnectedServers?, Object?)>(
-          (v) => (v, null),
-          onError: (Object e) => (null, e),
-        );
+    final Future<(ConnectedServers?, Object?)> probing = token == null
+        ? Future.value((const ConnectedServers([], []), null))
+        : resourcesApi
+              .connectToAllServers(
+                token,
+                disabledMachineIdentifiers: settings.disabledServerIds,
+              )
+              .then<(ConnectedServers?, Object?)>(
+                (v) => (v, null),
+                onError: (Object e) => (null, e),
+              );
+    final reachingJellyfin = _reachJellyfin(settings);
     final authApi = PlexAuthApi(_clientIdentifier);
     try {
-      _localAccount = await authApi.fetchAccount(token);
+      _localAccount = token == null ? null : await authApi.fetchAccount(token);
     } catch (_) {
       _localAccount = null;
     }
-    final username = _localAccount?.username;
+    final username = _localAccount?.username ?? jellyfin?.username;
     final done = <String>[
-      if (username != null)
-        'Signed in to Plex as $username'
-      else
-        'Signed in to Plex',
+      if (token != null)
+        if (_localAccount?.username case final plex?)
+          'Signed in to Plex as $plex'
+        else
+          'Signed in to Plex',
+      if (jellyfin != null) 'Signed in to Jellyfin as ${jellyfin.username}',
     ];
     void progress(String? current, {String? headline}) => _setState(
       ConnectingToServer(
@@ -343,14 +454,15 @@ class AppRootController extends ChangeNotifier {
       final (probedOrNull, probeError) = await probing;
       if (probeError != null) throw probeError;
       final probed = probedOrNull!;
-      final reached = probed.connected.length;
+      final connected = [...probed.connected, ?await reachingJellyfin];
+      final reached = connected.length;
       done.add(
         'Reached $reached server${reached == 1 ? '' : 's'}${probed.unreachable.isEmpty ? '' : ' · ${probed.unreachable.length} not answering'}',
       );
       progress('Reading libraries');
-      _connectedServers = probed.connected;
+      _connectedServers = connected;
       _unreachableResources = probed.unreachable;
-      if (probed.connected.isEmpty) {
+      if (connected.isEmpty) {
         // Screen 24 — this is the one failure that earns the whole screen,
         // so it gets a real state (with the account's resource list, for a
         // named-per-server display) rather than falling into the generic
@@ -360,15 +472,23 @@ class AppRootController extends ChangeNotifier {
         // messaging for that case.
         List<PlexResource> resources;
         try {
-          resources = await resourcesApi.listServers(token);
+          resources = token == null
+              ? const []
+              : await resourcesApi.listServers(token);
         } catch (_) {
           resources = const [];
         }
-        _setState(NoServersReachable(token: token, resources: resources));
+        _setState(
+          NoServersReachable(
+            token: token,
+            resources: resources,
+            jellyfin: jellyfin,
+          ),
+        );
         unawaited(_refreshWatchlist());
         return;
       }
-      final sectionsByServerId = await _fetchAllSections(probed.connected);
+      final sectionsByServerId = await _fetchAllSections(connected);
       final sectionGroups = groupSections(sectionsByServerId);
       final firstGroup = sectionGroups.firstOrNull;
       if (firstGroup == null) {
@@ -389,7 +509,7 @@ class AppRootController extends ChangeNotifier {
       // library's full title list is fetched when that library is opened,
       // never at startup (it held the splash for seconds on a large one).
       final ctx = LibraryContext(
-        servers: probed.connected,
+        servers: connected,
         sectionGroups: sectionGroups,
         selectedSectionGroup: firstGroup,
         items: const [],
@@ -400,7 +520,7 @@ class AppRootController extends ChangeNotifier {
       _setState(
         offerRelayStep
             ? RelaySetup(ctx: ctx)
-            : await _loadHome(probed.connected, sectionGroups),
+            : await _loadHome(connected, sectionGroups),
       );
     } catch (e) {
       if (isPlexSignInRevoked(e)) {
@@ -410,7 +530,9 @@ class AppRootController extends ChangeNotifier {
       // Name what failed, never the raw exception.
       _setState(
         AppError(
-          message: e is _FriendlyError ? e.message : "Plex didn't answer. Check this TV's connection, then try again.",
+          message: e is _FriendlyError
+              ? e.message
+              : "${token == null ? (jellyfin?.serverName ?? 'Your server') : 'Plex'} didn't answer. Check this TV's connection, then try again.",
           retryState: const LoggedOut(),
         ),
       );
@@ -418,6 +540,47 @@ class AppRootController extends ChangeNotifier {
     }
     unawaited(_refreshWatchlist());
   }
+
+  /// The active profile's Jellyfin server for the hub — when it has one,
+  /// it isn't turned off, and it answers with the token still good. Never
+  /// throws: a Jellyfin server that's down leaves the Plex ones unaffected.
+  Future<ReachableServer?> _reachJellyfin(AppSettings settings) =>
+      probeJellyfin(skipping: settings.disabledServerIds);
+
+  /// The active profile's Jellyfin server if it answers — screen 06 asks
+  /// this for one that's turned off; connecting skips ids in [skipping].
+  Future<ReachableServer?> probeJellyfin({
+    Set<String> skipping = const {},
+  }) async {
+    final profile = _activeProfile;
+    if (profile == null) return null;
+    final server = await jellyfinServerFor(profile);
+    if (server == null || skipping.contains(server.id)) return null;
+    try {
+      await JellyfinClient(
+        server,
+        server.clientId ?? _clientIdentifier,
+      ).checkSignedIn();
+    } on DioException catch (e) {
+      _jellyfinTrouble = e.response?.statusCode == 401
+          ? JellyfinTrouble.signedOut
+          : JellyfinTrouble.notAnswering;
+      notifyListeners();
+      return null;
+    } catch (_) {
+      _jellyfinTrouble = JellyfinTrouble.notAnswering;
+      notifyListeners();
+      return null;
+    }
+    _jellyfinTrouble = null;
+    return ReachableServer(server, ServerReachability.local);
+  }
+
+  /// Why the profile's Jellyfin server was left out of the hub at the last
+  /// check, or null when it's in (or there isn't one). Settings says so —
+  /// a server that silently vanishes from the rail is a dead end.
+  JellyfinTrouble? get jellyfinTrouble => _jellyfinTrouble;
+  JellyfinTrouble? _jellyfinTrouble;
 
   /// Plex refused the saved token (this TV was removed from the account's
   /// devices). Drop it and go back to linking, for the same profile.
@@ -437,6 +600,117 @@ class AppRootController extends ChangeNotifier {
     await connect(token);
   }
 
+  /// Settings' Add more servers with Plex chosen: [token]'s account becomes
+  /// [profile]'s one Plex account, replacing any it had, and the hub
+  /// reconnects to pick up its servers.
+  Future<void> linkPlex(Profile profile, String token) async {
+    PlexAccount? account;
+    try {
+      account = await PlexAuthApi(
+        await _plexIdentity.getOrCreateClientIdentifier(),
+      ).fetchAccount(token);
+    } catch (_) {
+      account = null;
+    }
+    final linked = profile.withPlex(
+      username: account?.username ?? profile.plexUsername ?? profile.name,
+      thumb: account?.thumb,
+    );
+    await _tokenStore.saveTokenForProfile(profile.id, token);
+    await _saveProfile(linked);
+    _activeProfile = linked;
+    await connect(token);
+  }
+
+  /// Signing a TV in to a Jellyfin server, as this install.
+  Future<JellyfinAuthApi> jellyfinAuthApi() async => JellyfinAuthApi(
+    deviceId: await _plexIdentity.getOrCreateClientIdentifier(),
+    deviceName: jellyfinDeviceName,
+    appVersion: appVersionName,
+  );
+
+  /// Binds [session] on [server] to [profile] as its one Jellyfin account,
+  /// replacing any it had. Returns the profile as saved.
+  Future<Profile> linkJellyfin(
+    Profile profile,
+    JellyfinServerInfo server,
+    JellyfinSession session,
+  ) async {
+    final previous = profile.jellyfin;
+    final previousToken = previous == null
+        ? null
+        : await _tokenStore.loadJellyfinToken(profile.id);
+    final linked = profile.withJellyfin(
+      JellyfinLink(
+        serverId: server.id,
+        serverName: server.name,
+        baseUrl: server.baseUrl,
+        userId: session.userId,
+        username: session.userName,
+        deviceId: session.deviceId,
+      ),
+    );
+    await _tokenStore.saveJellyfinToken(profile.id, session.accessToken);
+    await _saveProfile(linked);
+    // A fresh sign-in: whatever kept the old one out no longer stands.
+    if (profile.id == _activeProfile?.id) _jellyfinTrouble = null;
+    if (previous != null &&
+        previousToken != null &&
+        previousToken != session.accessToken) {
+      unawaited(
+        (await jellyfinAuthApi()).signOut(previous.baseUrl, previousToken),
+      );
+    }
+    return linked;
+  }
+
+  /// Drops [profile]'s Jellyfin account: signs the session out on the
+  /// server (best effort) and forgets the token and link here.
+  Future<Profile> unlinkJellyfin(Profile profile) async {
+    final link = profile.jellyfin;
+    final token = await _tokenStore.loadJellyfinToken(profile.id);
+    await _tokenStore.clearJellyfinToken(profile.id);
+    final unlinked = profile.withJellyfin(null);
+    await _saveProfile(unlinked);
+    if (profile.id == _activeProfile?.id) _jellyfinTrouble = null;
+    if (link != null && token != null) {
+      unawaited((await jellyfinAuthApi()).signOut(link.baseUrl, token));
+    }
+    return unlinked;
+  }
+
+  /// [profile]'s Jellyfin server as a [MediaServer], or null when it has no
+  /// Jellyfin account or its token is gone.
+  Future<MediaServer?> jellyfinServerFor(Profile profile) async {
+    final link = profile.jellyfin;
+    if (link == null) return null;
+    final token = await _tokenStore.loadJellyfinToken(profile.id);
+    if (token == null) return null;
+    return MediaServer(
+      backend: MediaBackend.jellyfin,
+      name: link.serverName,
+      baseUrl: link.baseUrl,
+      accessToken: token,
+      id: link.serverId,
+      userId: link.userId,
+      clientId: link.deviceId,
+    );
+  }
+
+  /// Replaces [profile]'s saved record (matched by id), and the active
+  /// profile when it's the one.
+  Future<void> _saveProfile(Profile profile) async {
+    final settings = await _settingsStore.observe().first;
+    await _settingsStore.save(
+      settings.copyWith(
+        profiles: [
+          for (final p in settings.profiles) p.id == profile.id ? profile : p,
+        ],
+      ),
+    );
+    if (_activeProfile?.id == profile.id) _activeProfile = profile;
+  }
+
   /// Toggles one server in or out of the hub (screen 06's switcher panel —
   /// there's no more "the active server" to switch to, every non-disabled
   /// reachable server contributes at once) and runs the same reconnect
@@ -453,8 +727,9 @@ class AppRootController extends ChangeNotifier {
       disabled.add(machineIdentifier);
     }
     await _settingsStore.save(settings.copyWith(disabledServerIds: disabled));
-    final token = _accountToken;
-    if (token != null) await connect(token);
+    if (_accountToken != null || _activeProfile?.jellyfin != null) {
+      await connect(_accountToken);
+    }
   }
 
   // ---- Multi-server fan-out helpers ----
@@ -463,21 +738,18 @@ class AppRootController extends ChangeNotifier {
   /// per-server failure (a server that stops answering mid-fetch simply
   /// contributes no sections, same as any other per-call `.catchError` in
   /// this file — it doesn't fail the other servers' results).
-  Future<Map<String, List<PlexSection>>> _fetchAllSections(
+  Future<Map<String, List<MediaLibrary>>> _fetchAllSections(
     List<ReachableServer> servers,
   ) async {
     final results = await Future.wait(
       servers.map((cs) async {
-        List<PlexSection> sections;
+        List<MediaLibrary> sections;
         try {
-          sections = await PlexServerApi(
-            cs.server,
-            _clientIdentifier,
-          ).fetchSections();
+          sections = await clientFor(cs.server).fetchLibraries();
         } catch (_) {
           sections = const [];
         }
-        return MapEntry(cs.server.machineIdentifier, sections);
+        return MapEntry(cs.server.id, sections);
       }),
     );
     return Map.fromEntries(results);
@@ -487,68 +759,50 @@ class AppRootController extends ChangeNotifier {
   /// physical section, fanned out concurrently and merged — not yet folded
   /// into one card per work, just tagged with which server each copy came
   /// from (see [Sourced]).
-  Future<List<Sourced<PlexLibraryItem>>> _fetchGroupItems(
+  Future<List<Sourced<MediaItem>>> _fetchGroupItems(
     List<ReachableServer> servers,
     SectionGroup group,
   ) async {
     final results = await Future.wait(
       servers.map((cs) async {
-        final section = group.sectionOn(cs.server.machineIdentifier);
-        if (section == null) return const <Sourced<PlexLibraryItem>>[];
+        final section = group.sectionOn(cs.server.id);
+        if (section == null) return const <Sourced<MediaItem>>[];
         try {
-          final items = await PlexServerApi(
-            cs.server,
-            _clientIdentifier,
-          ).fetchLibraryItems(section.key);
+          final items = await clientFor(cs.server)
+              .fetchLibraryItems(section.id);
           return items
               .map((i) => Sourced(i, cs.server, cs.reachability))
               .toList();
         } catch (_) {
-          return const <Sourced<PlexLibraryItem>>[];
+          return const <Sourced<MediaItem>>[];
         }
       }),
     );
     return results.expand((l) => l).toList();
   }
 
-  /// Looks a ratingKey up on every connected server until one answers —
-  /// used where a piece of content is known only by its ratingKey with no
-  /// server hint at all (a Watch Together room only carries a ratingKey,
-  /// not which server hosted it).
-  Future<(PlexServer, PlexMovieDetail)?> _fetchMovieDetailFromAnyServer(
-    List<ReachableServer> servers,
-    String ratingKey,
-  ) async {
-    final results = await Future.wait(
-      servers.map((cs) async {
-        try {
-          return (
-            cs.server,
-            await PlexServerApi(
-              cs.server,
-              _clientIdentifier,
-            ).fetchMovieDetail(ratingKey),
-          );
-        } catch (_) {
-          return null;
-        }
-      }),
-    );
-    return results.whereType<(PlexServer, PlexMovieDetail)>().firstOrNull;
-  }
-
   // ---- Watchlist ----
 
   Future<void> _refreshWatchlist() async {
     final token = _accountToken;
-    if (token == null) return;
-    try {
-      _watchlistItems = await PlexWatchlistApi(_clientIdentifier)
-          .fetchWatchlist(token);
-      notifyListeners();
-    } catch (_) {
-      // keep the last-known list
-    }
+    final jellyfin = _jellyfinClient;
+    if (token == null && jellyfin == null) return;
+    // Each keeps its last-known list if it doesn't answer.
+    await (
+      token == null
+          ? Future<void>.value()
+          : PlexWatchlistApi(_clientIdentifier)
+                .fetchWatchlist(token)
+                .then((items) => _watchlistItems = items)
+                .catchError((_) => _watchlistItems ?? const <MediaItem>[]),
+      jellyfin == null
+          ? Future<void>.value()
+          : jellyfin
+                .fetchFavorites()
+                .then((items) => _jellyfinFavorites = items)
+                .catchError((_) => _jellyfinFavorites),
+    ).wait;
+    notifyListeners();
     unawaited(_resolveWatchlistAvailability());
   }
 
@@ -557,7 +811,7 @@ class AppRootController extends ChangeNotifier {
   /// hidden or silently unplayable. Looks each entry up by guid on every
   /// connected server (the same lookup opening one uses).
   Future<void> _resolveWatchlistAvailability() async {
-    final items = _watchlistItems ?? const <PlexWatchlistItem>[];
+    final items = watchlist;
     final servers = _connectedServers;
     if (items.isEmpty || servers.isEmpty) return;
     final resolved = <String, String?>{};
@@ -568,10 +822,7 @@ class AppRootController extends ChangeNotifier {
         if (guid != null) {
           for (final cs in servers) {
             try {
-              final found = await PlexServerApi(
-                cs.server,
-                _clientIdentifier,
-              ).fetchLibraryItemsByGuid(guid);
+              final found = await clientFor(cs.server).findByGuid(guid);
               if (found.isNotEmpty) {
                 holder = cs.server.name;
                 break;
@@ -581,7 +832,7 @@ class AppRootController extends ChangeNotifier {
             }
           }
         }
-        resolved[entry.ratingKey] = holder;
+        resolved[entry.id] = holder;
       }),
     );
     _watchlistAvailability = resolved;
@@ -589,11 +840,25 @@ class AppRootController extends ChangeNotifier {
   }
 
   bool isOnWatchlist(String? guid) =>
-      guid != null && (_watchlistItems?.any((i) => i.guid == guid) ?? false);
+      guid != null && watchlist.any((i) => i.guid == guid);
+
+  /// A Jellyfin title's guid names its item (see jellyfinGuid).
+  String _jellyfinItemId(String guid) => guid.split('/').last;
 
   Future<void> toggleWatchlist(String? guid) async {
+    if (guid == null) return;
+    if (_isJellyfinGuid(guid)) {
+      try {
+        await _jellyfinClient?.setFavorite(
+          _jellyfinItemId(guid),
+          favorite: !isOnWatchlist(guid),
+        );
+      } catch (_) {}
+      await _refreshWatchlist();
+      return;
+    }
     final token = _accountToken;
-    if (guid == null || token == null) return;
+    if (token == null) return;
     final api = PlexWatchlistApi(_clientIdentifier);
     try {
       if (isOnWatchlist(guid)) {
@@ -605,13 +870,23 @@ class AppRootController extends ChangeNotifier {
     await _refreshWatchlist();
   }
 
-  void removeFromWatchlist(PlexWatchlistItem entry) {
-    _watchlistItems = _watchlistItems
-        ?.where((i) => i.ratingKey != entry.ratingKey)
-        .toList();
+  void removeFromWatchlist(MediaItem entry) {
+    final guid = entry.guid;
+    if (guid != null && _isJellyfinGuid(guid)) {
+      _jellyfinFavorites = _jellyfinFavorites
+          .where((i) => i.id != entry.id)
+          .toList();
+      notifyListeners();
+      unawaited(
+        (_jellyfinClient?.setFavorite(entry.id, favorite: false) ??
+                Future<void>.value())
+            .catchError((_) {}),
+      );
+      return;
+    }
+    _watchlistItems = _watchlistItems?.where((i) => i.id != entry.id).toList();
     notifyListeners();
     final token = _accountToken;
-    final guid = entry.guid;
     if (token != null && guid != null) {
       unawaited(
         PlexWatchlistApi(_clientIdentifier)
@@ -765,6 +1040,7 @@ class AppRootController extends ChangeNotifier {
       _liveRoomsByRelay.entries.where((e) => stillConfigured.contains(e.key)),
     );
     final identity = await _relayIdentityStore.load();
+    if (_disposed) return;
     _hostedRoomIds = identity.hostedRooms.map((r) => r.roomId).toSet();
     notifyListeners();
 
@@ -775,6 +1051,7 @@ class AppRootController extends ChangeNotifier {
       unawaited(
         _relayDirectoryApi.tryListRooms(entry.url).then((rooms) {
           _pollInFlight.remove(entry.id);
+          if (_disposed) return;
           final previous = _relayHealth[entry.id];
           _relayHealth = {
             ..._relayHealth,
@@ -872,11 +1149,11 @@ class AppRootController extends ChangeNotifier {
   /// hosted off one concrete file.
   void openWatchTogetherStart({
     required LibraryContext ctx,
-    required PlexServer server,
+    required MediaServer server,
     required AppState returnState,
     required String roomTitle,
     String? thumb,
-    required String targetRatingKey,
+    required String targetItemId,
     bool defaultRestart = false,
   }) {
     _setState(
@@ -886,7 +1163,7 @@ class AppRootController extends ChangeNotifier {
         returnState: returnState,
         roomTitle: roomTitle,
         thumb: thumb,
-        targetRatingKey: targetRatingKey,
+        targetItemId: targetItemId,
         defaultRestart: defaultRestart,
       ),
     );
@@ -894,11 +1171,11 @@ class AppRootController extends ChangeNotifier {
 
   Future<void> startWatchTogether({
     required LibraryContext ctx,
-    required PlexServer server,
+    required MediaServer server,
     required AppState returnState,
     required String roomTitle,
     required String? thumb,
-    required String targetRatingKey,
+    required String targetItemId,
     required bool restart,
   }) async {
     final hostName =
@@ -916,7 +1193,17 @@ class AppRootController extends ChangeNotifier {
       return;
     }
 
-    final existing = await _findHostedRoomForMedia(targetRatingKey);
+    // The title first: the room advertises its provider ids, so a guest
+    // on another server (or backend) can find their own copy.
+    final MediaDetail detail;
+    try {
+      detail = await clientFor(server).fetchDetail(targetItemId);
+    } catch (e) {
+      _setState(AppError(message: '$e', retryState: returnState));
+      return;
+    }
+
+    final existing = await _findHostedRoomForMedia(targetItemId);
     // A room kept open for a different title ends before this one starts;
     // the same title's room is simply taken up again.
     if (parkedRoomId != null && existing?.$2.roomId != parkedRoomId) {
@@ -932,9 +1219,13 @@ class AppRootController extends ChangeNotifier {
             CreateRoom(
               title: roomTitle,
               thumb: thumb,
-              ratingKey: targetRatingKey,
+              ratingKey: targetItemId,
               hostName: hostName,
               maxSeats: settings.maxHostSeats,
+              serverId: server.id,
+              ids: roomIdsFor(detail),
+              mediaTitle: detail.title,
+              year: detail.year,
             ),
           );
     if (relay == null) {
@@ -948,26 +1239,18 @@ class AppRootController extends ChangeNotifier {
       return;
     }
 
-    try {
-      final detail = await PlexServerApi(
-        server,
-        _clientIdentifier,
-      ).fetchMovieDetail(targetRatingKey);
-      _setState(
-        Lobby(
-          server: server,
-          detail: restart ? detail.copyWith(viewOffset: 0) : detail,
-          returnState: returnState,
-          relay: relay,
-          hostName: existing?.$2.hostName ?? hostName,
-          relayNickname: existing?.$1.nickname ?? defaultRelay.nickname,
-          thumb: thumb,
-          isHost: true,
-        ),
-      );
-    } catch (e) {
-      _setState(AppError(message: '$e', retryState: returnState));
-    }
+    _setState(
+      Lobby(
+        server: server,
+        detail: restart ? detail.copyWith(viewOffset: 0) : detail,
+        returnState: returnState,
+        relay: relay,
+        hostName: existing?.$2.hostName ?? hostName,
+        relayNickname: existing?.$1.nickname ?? defaultRelay.nickname,
+        thumb: thumb,
+        isHost: true,
+      ),
+    );
   }
 
   Future<void> hostOnAnotherRelay(Lobby current) async {
@@ -984,9 +1267,13 @@ class AppRootController extends ChangeNotifier {
       CreateRoom(
         title: current.detail.title,
         thumb: current.thumb,
-        ratingKey: current.detail.ratingKey,
+        ratingKey: current.detail.id,
         hostName: hostName,
         maxSeats: settings.maxHostSeats,
+        serverId: current.server.id,
+        ids: roomIdsFor(current.detail),
+        mediaTitle: current.detail.title,
+        year: current.detail.year,
       ),
     );
     if (newClient != null) {
@@ -1022,24 +1309,26 @@ class AppRootController extends ChangeNotifier {
   ) async {
     final perServer = await Future.wait(
       servers.map((cs) async {
-        final api = PlexServerApi(cs.server, _clientIdentifier);
+        final api = clientFor(cs.server);
         // All four hubs at once, not one after another.
         final (onDeck, recentlyAdded, recentActivity, suggestions) = await (
-          api.fetchOnDeck().catchError((_) => <PlexOnDeckItem>[]),
-          api.fetchRecentlyAdded().catchError((_) => <PlexLibraryItem>[]),
-          api.fetchRecentActivity().catchError((_) => <PlexOnDeckItem>[]),
-          api.fetchSuggestions().catchError((_) => <PlexOnDeckItem>[]),
+          api.fetchContinueWatching().catchError((_) => <MediaItem>[]),
+          api.fetchRecentlyAdded().catchError((_) => <MediaItem>[]),
+          api.fetchRecentActivity().catchError((_) => <MediaItem>[]),
+          api.fetchSuggestions().catchError((_) => <MediaItem>[]),
         ).wait;
         return (cs, onDeck, recentlyAdded, recentActivity, suggestions);
       }),
     );
 
-    final onDeck = <Sourced<PlexOnDeckItem>>[];
-    final recentlyAdded = <Sourced<PlexLibraryItem>>[];
-    final recentActivity = <Sourced<PlexOnDeckItem>>[];
-    final suggestions = <Sourced<PlexOnDeckItem>>[];
+    final onDeckPerServer = <List<Sourced<MediaItem>>>[];
+    final recentlyAdded = <Sourced<MediaItem>>[];
+    final recentActivity = <Sourced<MediaItem>>[];
+    final suggestions = <Sourced<MediaItem>>[];
     for (final (cs, od, ra, rac, sug) in perServer) {
-      onDeck.addAll(od.map((i) => Sourced(i, cs.server, cs.reachability)));
+      onDeckPerServer.add([
+        for (final i in od) Sourced(i, cs.server, cs.reachability),
+      ]);
       recentlyAdded.addAll(
         ra.map((i) => Sourced(i, cs.server, cs.reachability)),
       );
@@ -1053,30 +1342,17 @@ class AppRootController extends ChangeNotifier {
     recentlyAdded.sort(
       (a, b) => (b.value.addedAt ?? 0).compareTo(a.value.addedAt ?? 0),
     );
+    // Not one server's list after another's: a film just started on
+    // Jellyfin sat behind every part-watched Plex title.
+    final onDeck = mergeByRecency(onDeckPerServer, (s) => s.value.lastViewedAt);
 
     return Home(
       servers: servers,
       sectionGroups: sectionGroups,
-      onDeck: foldByGuid(
-        onDeck,
-        guidOf: (i) => i.guid,
-        alternateIdsOf: (i) => i.guids.map((g) => g.id).toList(),
-      ),
-      recentlyAdded: foldByGuid(
-        recentlyAdded,
-        guidOf: (i) => i.guid,
-        alternateIdsOf: (i) => i.guids.map((g) => g.id).toList(),
-      ).take(15).toList(),
-      recentActivity: foldByGuid(
-        recentActivity,
-        guidOf: (i) => i.guid,
-        alternateIdsOf: (i) => i.guids.map((g) => g.id).toList(),
-      ),
-      suggestions: foldByGuid(
-        suggestions,
-        guidOf: (i) => i.guid,
-        alternateIdsOf: (i) => i.guids.map((g) => g.id).toList(),
-      ),
+      onDeck: foldWorks(onDeck),
+      recentlyAdded: foldWorks(recentlyAdded).take(15).toList(),
+      recentActivity: foldWorks(recentActivity),
+      suggestions: foldWorks(suggestions),
       unreachableResources: _unreachableResources,
     );
   }
@@ -1122,11 +1398,7 @@ class AppRootController extends ChangeNotifier {
     );
     _setState(loading);
     () async {
-      final items = foldByGuid(
-        await _fetchGroupItems(servers, group),
-        guidOf: (i) => i.guid,
-        alternateIdsOf: (i) => i.guids.map((g) => g.id).toList(),
-      );
+      final items = foldWorks(await _fetchGroupItems(servers, group));
       // A slow fetch (e.g. a very large library) can outlast the user's
       // patience — BackHandler on LoadingSection lets them bail out via
       // returnState before this resolves. Don't clobber wherever they've
@@ -1150,13 +1422,11 @@ class AppRootController extends ChangeNotifier {
   Future<AppState> _refreshReturnState(AppState target) async {
     if (target is Home) return _loadHome(target.servers, target.sectionGroups);
     if (target is Library) {
-      final items = foldByGuid(
+      final items = foldWorks(
         await _fetchGroupItems(
           target.ctx.servers,
           target.ctx.selectedSectionGroup,
         ),
-        guidOf: (i) => i.guid,
-        alternateIdsOf: (i) => i.guids.map((g) => g.id).toList(),
       );
       return Library(
         ctx: target.ctx.copyWith(items: items),
@@ -1175,25 +1445,23 @@ class AppRootController extends ChangeNotifier {
     }();
   }
 
-  void removeFromContinueWatching(Home home, FoldedWork<PlexOnDeckItem> work) {
+  void removeFromContinueWatching(Home home, FoldedWork<MediaItem> work) {
     final target = work.primary;
     final updated = home.copyWith(
       onDeck: home.onDeck
           .where(
             (w) =>
-                w.primary.server.machineIdentifier !=
-                    target.server.machineIdentifier ||
-                w.primary.value.ratingKey != target.value.ratingKey,
+                w.primary.server.id != target.server.id ||
+                w.primary.value.id != target.value.id,
           )
           .toList(),
     );
     ScreenMemory.carry(home, updated);
     _setState(updated);
     unawaited(
-      PlexServerApi(
-        target.server,
-        _clientIdentifier,
-      ).removeFromContinueWatching(target.value.ratingKey).catchError((_) {}),
+      clientFor(target.server)
+          .removeFromContinueWatching(target.value.id)
+          .catchError((_) {}),
     );
   }
 
@@ -1205,18 +1473,15 @@ class AppRootController extends ChangeNotifier {
   /// "the" server now that it holds every connected one).
   Future<void> playMovie(
     LibraryContext? ctx,
-    PlexServer server,
-    String targetRatingKey,
+    MediaServer server,
+    String targetItemId,
     AppState returnState, {
     bool fromStart = false,
-    String? showRatingKey,
+    String? showId,
     int? resumeAtMs,
   }) async {
     try {
-      final detail = await PlexServerApi(
-        server,
-        _clientIdentifier,
-      ).fetchMovieDetail(targetRatingKey);
+      final detail = await clientFor(server).fetchDetail(targetItemId);
       // Progress belongs to the title: another copy may have you further in
       // than this server does.
       final own = detail.viewOffset ?? 0;
@@ -1228,7 +1493,7 @@ class AppRootController extends ChangeNotifier {
           detail: at == own ? detail : detail.copyWith(viewOffset: at),
           returnState: returnState,
           relay: null,
-          showRatingKey: showRatingKey,
+          showId: showId,
         ),
       );
     } catch (_) {
@@ -1241,7 +1506,7 @@ class AppRootController extends ChangeNotifier {
         PlaybackFailed(
           ctx: ctx,
           server: server,
-          targetRatingKey: targetRatingKey,
+          targetItemId: targetItemId,
           fromStart: fromStart,
           reason: '${server.name} stopped answering partway through starting',
           resumeAtMs: resumeAtMs,
@@ -1260,7 +1525,7 @@ class AppRootController extends ChangeNotifier {
       PlaybackFailed(
         ctx: state.ctx,
         server: state.server,
-        targetRatingKey: state.detail.ratingKey,
+        targetItemId: state.detail.id,
         fromStart: false,
         reason: reason,
         returnState: state.returnState,
@@ -1271,10 +1536,9 @@ class AppRootController extends ChangeNotifier {
 
   // ---- Home row navigation ----
 
-  /// A Watch Together room only carries a ratingKey, never which server
-  /// hosted it, so this is the one place content still has to be looked
-  /// up across every connected server rather than already knowing its
-  /// source — see _fetchMovieDetailFromAnyServer.
+  /// A Watch Together room names the host's server and the title's
+  /// provider ids, so a guest finds its own copy on whichever of its
+  /// servers has one, Plex or Jellyfin — see resolveRoomTitle.
   /// Screen 12 opens over any screen, so [current] is whatever was showing
   /// (it becomes the error retry target and the lobby's return state) and
   /// [servers] is the hub the room's title is looked up across.
@@ -1283,14 +1547,7 @@ class AppRootController extends ChangeNotifier {
     List<ReachableServer> servers,
     MergedRoom merged,
   ) async {
-    final ratingKey = merged.room.ratingKey;
-    if (ratingKey == null) {
-      _setState(
-        AppError(message: 'Room has no movie reference', retryState: current),
-      );
-      return;
-    }
-    final found = await _fetchMovieDetailFromAnyServer(servers, ratingKey);
+    final found = await resolveRoomTitle(servers, merged.room, clientFor);
     if (found == null) {
       _setState(
         AppError(
@@ -1340,25 +1597,25 @@ class AppRootController extends ChangeNotifier {
     }
   }
 
-  void resumeOnDeckItem(Home current, FoldedWork<PlexOnDeckItem> onDeckWork) {
+  void resumeOnDeckItem(Home current, FoldedWork<MediaItem> onDeckWork) {
     final activeOnDeck = onDeckWork.primary;
     final ctx = LibraryContext(
       servers: current.servers,
       sectionGroups: current.sectionGroups,
       selectedSectionGroup: sectionGroupFor(
         current.sectionGroups,
-        activeOnDeck.value.type == 'episode'
-            ? _sectionTypeShow
-            : activeOnDeck.value.type,
+        activeOnDeck.value.kind == MediaKind.episode
+            ? MediaKind.show
+            : activeOnDeck.value.kind,
       ),
       items: const [],
     );
-    if (activeOnDeck.value.type == 'episode') {
+    if (activeOnDeck.value.kind == MediaKind.episode) {
       final work = _libraryWorkFrom(
         onDeckWork,
         (v) => libraryItemFrom(
           v,
-          type: _sectionTypeShow,
+          kind: MediaKind.show,
           title: v.grandparentTitle ?? v.title,
         ),
       );
@@ -1384,7 +1641,7 @@ class AppRootController extends ChangeNotifier {
     }
   }
 
-  Future<void> selectWatchlistItem(Home current, PlexWatchlistItem entry) =>
+  Future<void> selectWatchlistItem(Home current, MediaItem entry) =>
       openWatchlistItem(
         servers: current.servers,
         sectionGroups: current.sectionGroups,
@@ -1401,24 +1658,21 @@ class AppRootController extends ChangeNotifier {
   Future<void> openWatchlistItem({
     required List<ReachableServer> servers,
     required List<SectionGroup> sectionGroups,
-    required PlexWatchlistItem entry,
+    required MediaItem entry,
     required AppState returnState,
   }) async {
     final guid = entry.guid;
-    final matches = <Sourced<PlexLibraryItem>>[];
+    final matches = <Sourced<MediaItem>>[];
     if (guid != null) {
       final results = await Future.wait(
         servers.map((cs) async {
           try {
-            final items = await PlexServerApi(
-              cs.server,
-              _clientIdentifier,
-            ).fetchLibraryItemsByGuid(guid);
+            final items = await clientFor(cs.server).findByGuid(guid);
             return items
                 .map((i) => Sourced(i, cs.server, cs.reachability))
                 .toList();
           } catch (_) {
-            return const <Sourced<PlexLibraryItem>>[];
+            return const <Sourced<MediaItem>>[];
           }
         }),
       );
@@ -1427,23 +1681,19 @@ class AppRootController extends ChangeNotifier {
     if (matches.isEmpty) {
       _setState(
         AppError(
-          message: '"${entry.title}" isn\'t in your Plex library yet.',
+          message: '"${entry.title}" isn\'t on any of your servers yet.',
           retryState: returnState,
         ),
       );
       return;
     }
-    final work = foldByGuid(
-      matches,
-      guidOf: (item) => item.guid,
-      alternateIdsOf: (item) => item.guids.map((g) => g.id).toList(),
-    ).first;
+    final work = foldWorks(matches).first;
     final ctx = LibraryContext(
       servers: servers,
       sectionGroups: sectionGroups,
       selectedSectionGroup: sectionGroupFor(
         sectionGroups,
-        work.primary.value.type ?? '',
+        work.primary.value.kind,
       ),
       items: const [],
     );
@@ -1460,24 +1710,22 @@ class AppRootController extends ChangeNotifier {
   /// A season in Recently Added promotes to its parent show, same as
   /// before — applied only to [work]'s primary copy (a season's sibling
   /// copies on other servers could in principle need a different
-  /// parentRatingKey; this is a rare enough edge case that the promoted
+  /// parentId; this is a rare enough edge case that the promoted
   /// result is a fresh singleton fold rather than trying to re-derive
   /// every copy's own parent).
-  void selectRecentlyAdded(Home current, FoldedWork<PlexLibraryItem> work) {
+  void selectRecentlyAdded(Home current, FoldedWork<MediaItem> work) {
     final primary = work.primary;
-    final parentRatingKey = primary.value.parentRatingKey;
+    final parentId = primary.value.parentId;
     final effectiveWork =
-        primary.value.type == 'season' && parentRatingKey != null
-        ? FoldedWork<PlexLibraryItem>(null, [
+        primary.value.kind == MediaKind.season && parentId != null
+        ? FoldedWork<MediaItem>(null, [
             Sourced(
-              libraryItemFrom(
-                PlexOnDeckItem(
-                  ratingKey: parentRatingKey,
-                  type: _sectionTypeShow,
-                  title: primary.value.parentTitle ?? primary.value.title,
-                  thumb: primary.value.thumb,
-                  art: primary.value.art,
-                ),
+              MediaItem(
+                id: parentId,
+                kind: MediaKind.show,
+                title: primary.value.parentTitle ?? primary.value.title,
+                thumb: primary.value.thumb,
+                art: primary.value.art,
               ),
               primary.server,
               primary.reachability,
@@ -1489,7 +1737,7 @@ class AppRootController extends ChangeNotifier {
       sectionGroups: current.sectionGroups,
       selectedSectionGroup: sectionGroupFor(
         current.sectionGroups,
-        effectiveWork.primary.value.type ?? '',
+        effectiveWork.primary.value.kind,
       ),
       items: const [],
     );
@@ -1503,14 +1751,14 @@ class AppRootController extends ChangeNotifier {
     );
   }
 
-  void selectOnDeckLike(Home current, FoldedWork<PlexOnDeckItem> onDeckWork) {
+  void selectOnDeckLike(Home current, FoldedWork<MediaItem> onDeckWork) {
     final work = _libraryWorkFrom(onDeckWork, libraryItemFrom);
     final ctx = LibraryContext(
       servers: current.servers,
       sectionGroups: current.sectionGroups,
       selectedSectionGroup: sectionGroupFor(
         current.sectionGroups,
-        work.primary.value.type ?? '',
+        work.primary.value.kind,
       ),
       items: const [],
     );
@@ -1525,13 +1773,12 @@ class AppRootController extends ChangeNotifier {
   }
 }
 
-/// Converts every copy of a [FoldedWork]&lt;PlexOnDeckItem&gt; through [convert]
-/// into a library-item-shaped [FoldedWork], preserving the fold's guid and
-/// copy set — used wherever a Home row's on-deck-shaped selection needs to
-/// become a MovieDetail/EpisodeDetail work.
-FoldedWork<PlexLibraryItem> _libraryWorkFrom(
-  FoldedWork<PlexOnDeckItem> work,
-  PlexLibraryItem Function(PlexOnDeckItem) convert,
+/// Converts every copy of a [FoldedWork] through [convert], preserving the
+/// fold's guid and copy set — used wherever a Home row's on-deck-shaped
+/// selection needs to become a MovieDetail/EpisodeDetail work.
+FoldedWork<MediaItem> _libraryWorkFrom(
+  FoldedWork<MediaItem> work,
+  MediaItem Function(MediaItem) convert,
 ) => FoldedWork(
   work.guid,
   work.copies
@@ -1539,26 +1786,25 @@ FoldedWork<PlexLibraryItem> _libraryWorkFrom(
       .toList(),
 );
 
-/// Builds a `PlexLibraryItem`/show-typed placeholder from an on-deck-shaped
-/// item (recently-added, suggestions, recent-activity, resume) so a
-/// MovieDetail/EpisodeDetail navigation has something to
-/// render immediately while the real detail loads.
-PlexLibraryItem libraryItemFrom(
-  PlexOnDeckItem item, {
-  String? type,
-  String? title,
-}) => PlexLibraryItem(
-  ratingKey: item.ratingKey,
-  type: type ?? item.type,
-  title: title ?? item.title,
-  thumb: item.thumb,
-  art: item.art,
-  guid: item.guid,
-  guids: item.guids,
-);
+/// A title-shaped placeholder from a row item (recently-added,
+/// suggestions, recent-activity, resume) so a MovieDetail/EpisodeDetail
+/// navigation has something to render immediately while the real detail
+/// loads. Carries only what identifies and pictures the title — none of the
+/// row item's own playback state.
+MediaItem libraryItemFrom(MediaItem item, {MediaKind? kind, String? title}) =>
+    MediaItem(
+      id: item.id,
+      kind: kind ?? item.kind,
+      title: title ?? item.title,
+      thumb: item.thumb,
+      art: item.art,
+      guid: item.guid,
+      externalIds: item.externalIds,
+    );
 
-PlexEpisode episodeFrom(PlexOnDeckItem item) => PlexEpisode(
-  ratingKey: item.ratingKey,
+MediaItem episodeFrom(MediaItem item) => MediaItem(
+  id: item.id,
+  kind: MediaKind.episode,
   title: item.title,
   index: item.index,
   thumb: item.thumb,
@@ -1568,10 +1814,10 @@ PlexEpisode episodeFrom(PlexOnDeckItem item) => PlexEpisode(
   grandparentTitle: item.grandparentTitle,
 );
 
-/// Picks the section group matching an item's type, falling back to the
+/// Picks the section group matching an item's kind, falling back to the
 /// first group.
-SectionGroup sectionGroupFor(List<SectionGroup> groups, String type) =>
-    groups.firstWhereOrNull((g) => g.type == type) ?? groups.first;
+SectionGroup sectionGroupFor(List<SectionGroup> groups, MediaKind kind) =>
+    groups.firstWhereOrNull((g) => g.kind == kind) ?? groups.first;
 
 /// Live rooms are polled on every screen the rooms panel (screen 12) can
 /// open over — it used to be Home only, so a room opened while you were on
@@ -1611,4 +1857,14 @@ String _randomProfileId() {
   const chars = 'abcdefghijklmnopqrstuvwxyz';
   final random = Random.secure();
   return List.generate(16, (_) => chars[random.nextInt(chars.length)]).join();
+}
+
+/// See [AppRootController.jellyfinTrouble].
+enum JellyfinTrouble {
+  /// The server refused the token: it was revoked (signed out there, or
+  /// replaced by another sign-in from the same device id).
+  signedOut,
+
+  /// Nothing answered at the linked address.
+  notAnswering,
 }

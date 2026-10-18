@@ -3,12 +3,13 @@ import 'dart:math' as math;
 
 import 'package:flutter/widgets.dart' hide ConnectionState;
 
+import '../../data/media/artwork_url.dart';
+import '../../data/media/media_models.dart';
+import '../../data/media/media_server.dart';
 import '../../theme/phosphor_icons.dart';
 
 import 'package:qr_flutter/qr_flutter.dart';
 
-import '../../data/plex/plex_image_url.dart';
-import '../../data/plex/plex_models.dart';
 import '../../data/settings/app_settings.dart';
 import '../../focus/back_handler.dart';
 import '../../kit/button.dart';
@@ -43,8 +44,8 @@ class _RosterEntry {
 /// roster driven by presence events over [RelayClient.events], a chat QR
 /// modal, and the relay connection status line/dot.
 class LobbyScreen extends StatefulWidget {
-  final PlexServer server;
-  final PlexMovieDetail detail;
+  final MediaServer server;
+  final MediaDetail detail;
   final String localUsername;
   final String? localAvatarUrl;
   final String hostName;
@@ -275,7 +276,7 @@ class _LobbyScreenState extends State<LobbyScreen> {
         fit: StackFit.expand,
         children: [
           Artwork(
-            imageUrl: PlexImageUrl.of(
+            imageUrl: ArtworkUrl.of(
               widget.server,
               widget.detail.art ?? widget.detail.thumb,
             ),

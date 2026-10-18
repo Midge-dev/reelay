@@ -2,7 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/widgets.dart';
 
-import '../../data/plex/plex_models.dart';
+import '../../data/media/media_models.dart';
 import '../../focus/back_handler.dart';
 import '../../focus/screen_memory.dart';
 import '../../kit/focusable_surface.dart';
@@ -45,12 +45,17 @@ enum _WatchlistSort {
 /// commits the removal; pressing it restores the card as if nothing
 /// happened.
 class WatchlistScreen extends StatefulWidget {
-  final List<PlexWatchlistItem> items;
-  final ValueChanged<PlexWatchlistItem> onSelectItem;
-  final ValueChanged<PlexWatchlistItem> onRemove;
+  final List<MediaItem> items;
+  final ValueChanged<MediaItem> onSelectItem;
+  final ValueChanged<MediaItem> onRemove;
 
-  /// The Plex account the list belongs to — "Plex account · name".
-  final String? accountName;
+  /// Whose list it is, beside the title — "Plex account · sam",
+  /// "Jellyfin favorites · Loft".
+  final String sourceLabel;
+
+  /// A poster for an entry from a server (a Jellyfin favorite); null leaves
+  /// only absolute artwork, which a Plex watchlist entry carries.
+  final String? Function(MediaItem item)? artworkFor;
 
   /// ratingKey -> the connected server holding it, or null when none does
   /// (absent while still being looked up).
@@ -61,7 +66,8 @@ class WatchlistScreen extends StatefulWidget {
     required this.items,
     required this.onSelectItem,
     required this.onRemove,
-    this.accountName,
+    this.sourceLabel = 'Plex account',
+    this.artworkFor,
     this.availability = const {},
   });
 
@@ -70,15 +76,15 @@ class WatchlistScreen extends StatefulWidget {
 }
 
 class _WatchlistScreenState extends State<WatchlistScreen> {
-  late List<PlexWatchlistItem> _items = widget.items;
-  PlexWatchlistItem? _pendingRemoval;
+  late List<MediaItem> _items = widget.items;
+  MediaItem? _pendingRemoval;
   int _secondsLeft = _undoSeconds;
   Timer? _timer;
   final _scrollController = ScrollController();
   final _undoFocus = FocusNode(debugLabel: 'watchlist-undo');
   _WatchlistSort _sort = _WatchlistSort.recentlyAdded;
 
-  List<PlexWatchlistItem> get _sorted => switch (_sort) {
+  List<MediaItem> get _sorted => switch (_sort) {
     // Newest first by addedAt when every entry has one; otherwise the
     // account list's own order, which arrives oldest-first.
     _WatchlistSort.recentlyAdded =>
@@ -106,14 +112,14 @@ class _WatchlistScreenState extends State<WatchlistScreen> {
     super.dispose();
   }
 
-  void _startRemoval(PlexWatchlistItem entry) {
+  void _startRemoval(MediaItem entry) {
     _timer?.cancel();
     // A hold on a second card while one removal is already pending commits
     // the first immediately — the undo chip only ever tracks one entry at
     // a time, matching the mockup (one chip in the header, not a stack).
     if (_pendingRemoval != null) widget.onRemove(_pendingRemoval!);
     setState(() {
-      _items = _items.where((i) => i.ratingKey != entry.ratingKey).toList();
+      _items = _items.where((i) => i.id != entry.id).toList();
       _pendingRemoval = entry;
       _secondsLeft = _undoSeconds;
     });
@@ -149,8 +155,8 @@ class _WatchlistScreenState extends State<WatchlistScreen> {
     final missing = _items
         .where(
           (i) =>
-              widget.availability.containsKey(i.ratingKey) &&
-              widget.availability[i.ratingKey] == null,
+              widget.availability.containsKey(i.id) &&
+              widget.availability[i.id] == null,
         )
         .length;
     final count = [
@@ -175,12 +181,7 @@ class _WatchlistScreenState extends State<WatchlistScreen> {
               children: [
                 AppText('Watchlist', style: AppTypography.title1),
                 SizedBox(width: 18.du(context)),
-                AppText(
-                  widget.accountName != null
-                      ? 'Plex account · ${widget.accountName}'
-                      : 'Plex account',
-                  style: AppTypography.caption,
-                ),
+                AppText(widget.sourceLabel, style: AppTypography.caption),
                 const Spacer(),
                 AppText(count, style: AppTypography.caption),
               ],
@@ -259,7 +260,7 @@ class _WatchlistScreenState extends State<WatchlistScreen> {
     );
   }
 
-  Widget _buildGrid(List<PlexWatchlistItem> items) {
+  Widget _buildGrid(List<MediaItem> items) {
     final restoring = ScreenMemory.restoringOf(context);
     return PosterGrid(
       storageId: 'watchlist',
@@ -267,16 +268,16 @@ class _WatchlistScreenState extends State<WatchlistScreen> {
       itemCount: items.length,
       itemBuilder: (context, index) {
         final item = items[index];
-        final known = widget.availability.containsKey(item.ratingKey);
-        final holder = widget.availability[item.ratingKey];
+        final known = widget.availability.containsKey(item.id);
+        final holder = widget.availability[item.id];
         final unavailable = known && holder == null;
         return RememberFocus(
-          key: ValueKey(item.ratingKey),
-          id: 'item:${item.ratingKey}',
+          key: ValueKey(item.id),
+          id: 'item:${item.id}',
           child: PosterCard(
-            imageUrl: (item.thumb?.startsWith('http') ?? false)
-                ? item.thumb
-                : null,
+            imageUrl:
+                widget.artworkFor?.call(item) ??
+                ((item.thumb?.startsWith('http') ?? false) ? item.thumb : null),
             title: item.title,
             subtitle: [
               if (known) holder ?? 'Plex Discover',

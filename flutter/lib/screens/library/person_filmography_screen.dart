@@ -2,9 +2,9 @@ import 'dart:async';
 
 import 'package:flutter/widgets.dart';
 
-import '../../data/plex/plex_image_url.dart';
-import '../../data/plex/plex_models.dart';
-import '../../data/plex/plex_resources_api.dart' show ReachableServer;
+import '../../data/media/artwork_url.dart';
+import '../../data/media/media_models.dart';
+import '../../data/media/media_server.dart';
 import '../../focus/back_handler.dart';
 import '../../focus/screen_memory.dart';
 import '../../kit/filter_chip.dart';
@@ -31,11 +31,11 @@ enum _Split { everything, appearsIn, directed }
 /// servers: a search of what you own, not a biography.
 class PersonFilmographyScreen extends StatefulWidget {
   final List<ReachableServer> servers;
-  final PlexServer originServer;
-  final PlexPerson person;
-  final Future<List<FoldedWork<PlexLibraryItem>>> Function() loadWorks;
-  final Future<PersonCredit?> Function(FoldedWork<PlexLibraryItem>) loadCredit;
-  final ValueChanged<FoldedWork<PlexLibraryItem>> onSelectItem;
+  final MediaServer originServer;
+  final Person person;
+  final Future<List<FoldedWork<MediaItem>>> Function() loadWorks;
+  final Future<PersonCredit?> Function(FoldedWork<MediaItem>) loadCredit;
+  final ValueChanged<FoldedWork<MediaItem>> onSelectItem;
   final VoidCallback onBack;
 
   const PersonFilmographyScreen({
@@ -56,7 +56,7 @@ class PersonFilmographyScreen extends StatefulWidget {
 
 /// What the page keeps in its ScreenMemory besides focus and scroll.
 class _Loaded {
-  final List<FoldedWork<PlexLibraryItem>> works;
+  final List<FoldedWork<MediaItem>> works;
   final Map<String, PersonCredit?> credits;
   final _Split split;
 
@@ -64,12 +64,12 @@ class _Loaded {
 }
 
 class _PersonFilmographyScreenState extends State<PersonFilmographyScreen> {
-  List<FoldedWork<PlexLibraryItem>>? _works;
+  List<FoldedWork<MediaItem>>? _works;
   final _credits = <String, PersonCredit?>{};
   _Split _split = _Split.everything;
 
-  static String _key(FoldedWork<PlexLibraryItem> w) =>
-      '${w.primary.server.machineIdentifier}:${w.primary.value.ratingKey}';
+  static String _key(FoldedWork<MediaItem> w) =>
+      '${w.primary.server.id}:${w.primary.value.id}';
 
   @override
   void initState() {
@@ -96,7 +96,7 @@ class _PersonFilmographyScreenState extends State<PersonFilmographyScreen> {
   }
 
   Future<void> _load() async {
-    List<FoldedWork<PlexLibraryItem>> works;
+    List<FoldedWork<MediaItem>> works;
     try {
       works = await widget.loadWorks();
     } catch (_) {
@@ -109,7 +109,7 @@ class _PersonFilmographyScreenState extends State<PersonFilmographyScreen> {
 
   Future<void> _loadCredits() async {
     final pending = [
-      for (final w in _works ?? const <FoldedWork<PlexLibraryItem>>[])
+      for (final w in _works ?? const <FoldedWork<MediaItem>>[])
         if (!_credits.containsKey(_key(w))) w,
     ];
     var next = 0;
@@ -128,7 +128,7 @@ class _PersonFilmographyScreenState extends State<PersonFilmographyScreen> {
     await Future.wait(List.generate(_creditFetchesAtOnce, (_) => worker()));
   }
 
-  bool _matches(FoldedWork<PlexLibraryItem> w, _Split split) {
+  bool _matches(FoldedWork<MediaItem> w, _Split split) {
     final credit = _credits[_key(w)];
     return switch (split) {
       _Split.everything => true,
@@ -138,14 +138,14 @@ class _PersonFilmographyScreenState extends State<PersonFilmographyScreen> {
   }
 
   /// "Attic", "Attic and Loft", "Attic, Loft and Marcus's server".
-  String _serverList(List<FoldedWork<PlexLibraryItem>> works) {
+  String _serverList(List<FoldedWork<MediaItem>> works) {
     final present = {
       for (final w in works)
-        for (final c in w.copies) c.server.machineIdentifier,
+        for (final c in w.copies) c.server.id,
     };
     final names = [
       for (final s in widget.servers)
-        if (present.contains(s.server.machineIdentifier)) s.server.name,
+        if (present.contains(s.server.id)) s.server.name,
     ];
     if (names.length <= 1) return names.join();
     return '${names.sublist(0, names.length - 1).join(', ')} and ${names.last}';
@@ -153,14 +153,14 @@ class _PersonFilmographyScreenState extends State<PersonFilmographyScreen> {
 
   /// The credit follows the chip: under Directed a cameo in their own film
   /// still reads "Director"; under Appears in it's the character.
-  String _caption(FoldedWork<PlexLibraryItem> w, _Split split) {
+  String _caption(FoldedWork<MediaItem> w, _Split split) {
     final item = w.primary.value;
     final credit = _credits[_key(w)];
     final what = switch (split) {
       _Split.directed => 'Director',
       _ => credit?.label,
     };
-    final when = item.type == 'show'
+    final when = item.kind == MediaKind.show
         ? (item.childCount != null
               ? '${item.childCount} season${item.childCount == 1 ? '' : 's'}'
               : null)
@@ -190,7 +190,7 @@ class _PersonFilmographyScreenState extends State<PersonFilmographyScreen> {
         ? _split
         : _Split.everything;
     final shown = [
-      for (final w in works ?? const <FoldedWork<PlexLibraryItem>>[])
+      for (final w in works ?? const <FoldedWork<MediaItem>>[])
         if (_matches(w, split)) w,
     ];
 
@@ -229,7 +229,7 @@ class _PersonFilmographyScreenState extends State<PersonFilmographyScreen> {
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           AppText(
-                            widget.person.tag,
+                            widget.person.name,
                             style: AppTypography.title1,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
@@ -281,7 +281,7 @@ class _PersonFilmographyScreenState extends State<PersonFilmographyScreen> {
                       key: ValueKey(key),
                       id: 'item:$key',
                       child: PosterCard(
-                        imageUrl: PlexImageUrl.of(
+                        imageUrl: ArtworkUrl.of(
                           work.primary.server,
                           work.primary.value.thumb,
                         ),
@@ -304,8 +304,8 @@ class _PersonFilmographyScreenState extends State<PersonFilmographyScreen> {
 }
 
 class _PersonCircle extends StatelessWidget {
-  final PlexServer server;
-  final PlexPerson person;
+  final MediaServer server;
+  final Person person;
 
   const _PersonCircle({required this.server, required this.person});
 
@@ -316,7 +316,7 @@ class _PersonCircle extends StatelessWidget {
         ? null
         : thumb.startsWith('http')
         ? thumb
-        : PlexImageUrl.of(server, thumb);
+        : ArtworkUrl.of(server, thumb);
     return Container(
       width: _circle.du(context),
       height: _circle.du(context),
@@ -333,7 +333,7 @@ class _PersonCircle extends StatelessWidget {
             ? Artwork(imageUrl: url)
             : Center(
                 child: AppText(
-                  person.tag.isNotEmpty ? person.tag[0].toUpperCase() : '?',
+                  person.name.isNotEmpty ? person.name[0].toUpperCase() : '?',
                   style: AppTypography.title1,
                   color: AppColors.ink3,
                 ),

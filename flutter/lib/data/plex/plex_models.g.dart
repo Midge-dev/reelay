@@ -326,6 +326,7 @@ Map<String, dynamic> _$PlexReviewToJson(PlexReview instance) =>
 PlexMovieDetail _$PlexMovieDetailFromJson(Map<String, dynamic> json) =>
     PlexMovieDetail(
       ratingKey: json['ratingKey'] as String,
+      type: json['type'] as String?,
       title: json['title'] as String,
       thumb: json['thumb'] as String?,
       art: json['art'] as String?,
@@ -368,11 +369,17 @@ PlexMovieDetail _$PlexMovieDetailFromJson(Map<String, dynamic> json) =>
               ?.map((e) => PlexReview.fromJson(e as Map<String, dynamic>))
               .toList() ??
           [],
+      guids:
+          (json['Guid'] as List<dynamic>?)
+              ?.map((e) => PlexGuid.fromJson(e as Map<String, dynamic>))
+              .toList() ??
+          [],
     );
 
 Map<String, dynamic> _$PlexMovieDetailToJson(PlexMovieDetail instance) =>
     <String, dynamic>{
       'ratingKey': instance.ratingKey,
+      'type': instance.type,
       'title': instance.title,
       'thumb': instance.thumb,
       'art': instance.art,
@@ -395,6 +402,7 @@ Map<String, dynamic> _$PlexMovieDetailToJson(PlexMovieDetail instance) =>
       'Director': instance.directors,
       'Writer': instance.writers,
       'Review': instance.reviews,
+      'Guid': instance.guids,
     };
 
 PlexOnDeckItem _$PlexOnDeckItemFromJson(Map<String, dynamic> json) =>
@@ -406,6 +414,7 @@ PlexOnDeckItem _$PlexOnDeckItemFromJson(Map<String, dynamic> json) =>
       art: json['art'] as String?,
       duration: (json['duration'] as num?)?.toInt(),
       viewOffset: (json['viewOffset'] as num?)?.toInt(),
+      lastViewedAt: (json['lastViewedAt'] as num?)?.toInt(),
       grandparentTitle: json['grandparentTitle'] as String?,
       parentIndex: (json['parentIndex'] as num?)?.toInt(),
       index: (json['index'] as num?)?.toInt(),
@@ -429,6 +438,7 @@ Map<String, dynamic> _$PlexOnDeckItemToJson(PlexOnDeckItem instance) =>
       'art': instance.art,
       'duration': instance.duration,
       'viewOffset': instance.viewOffset,
+      'lastViewedAt': instance.lastViewedAt,
       'grandparentTitle': instance.grandparentTitle,
       'parentIndex': instance.parentIndex,
       'index': instance.index,

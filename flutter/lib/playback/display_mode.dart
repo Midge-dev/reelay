@@ -1,8 +1,7 @@
 import 'package:flutter/services.dart';
 
-import '../data/plex/plex_models.dart';
+import '../data/media/media_models.dart';
 
-const _videoStreamType = 1;
 const _channel = MethodChannel('reelay/display');
 
 /// The TV-side half of "Match frame rate" (MainActivity/FrameRateMatcher).
@@ -20,9 +19,9 @@ class DisplayMode {
   /// TV has settled on the new mode (or immediately, if there's nothing to
   /// switch). Capped so a platform that never answers can't hold up
   /// playback.
-  static Future<void> matchFrameRate(PlexPart part, {required Object owner}) async {
+  static Future<void> matchFrameRate(MediaPart part, {required Object owner}) async {
     _owner = owner;
-    final video = part.streams.where((s) => s.streamType == _videoStreamType).firstOrNull;
+    final video = part.streams.where((s) => s.kind == StreamKind.video).firstOrNull;
     final fps = video?.frameRate;
     if (fps == null || fps <= 0) {
       // Nothing to match, but a previous film's mode may still be held.

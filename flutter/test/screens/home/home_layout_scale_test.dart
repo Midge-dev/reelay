@@ -1,17 +1,17 @@
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:reelay/data/plex/plex_models.dart';
-import 'package:reelay/data/plex/plex_resources_api.dart';
+import 'package:reelay/data/media/media_models.dart';
+import 'package:reelay/data/media/media_server.dart';
 import 'package:reelay/screens/home/home_loading_skeleton.dart';
 import 'package:reelay/screens/home/home_screen.dart';
 import 'package:reelay/state/duplicate_fold.dart';
 import 'package:reelay/theme/scale.dart';
 
-const _server = PlexServer(name: 'Home', baseUrl: 'http://192.168.1.5:32400', accessToken: 'tok', machineIdentifier: 'home-id');
+const _server = MediaServer(name: 'Home', baseUrl: 'http://192.168.1.5:32400', accessToken: 'tok', id: 'home-id');
 
-PlexOnDeckItem _onDeck(String key) => PlexOnDeckItem(
-      ratingKey: key,
-      type: 'movie',
+MediaItem _onDeck(String key) => MediaItem(
+      id: key,
+      kind: MediaKind.movie,
       title: 'OnDeck $key',
       duration: 1000,
       viewOffset: 250,
@@ -40,7 +40,7 @@ void main() {
               child: HomeScreen(
                 servers: const [ReachableServer(_server, ServerReachability.local)],
                 onDeck: [for (final k in ['1', '2', '3']) folded(_onDeck(k))],
-                recentlyAdded: [folded(const PlexLibraryItem(ratingKey: '9', title: 'Arrival', type: 'movie', year: 2016))],
+                recentlyAdded: [folded(const MediaItem(id: '9', title: 'Arrival', kind: MediaKind.movie, year: 2016))],
                 onEndSession: (_) async => true,
                 onSelectRoom: (_) {},
                 onOpenRooms: () {},

@@ -39,25 +39,6 @@ class PlexResource {
   Map<String, dynamic> toJson() => _$PlexResourceToJson(this);
 }
 
-class PlexServer {
-  final String name;
-  final String baseUrl;
-  final String accessToken;
-
-  /// Stable per-server id (Plex's `machineIdentifier`, from [PlexResource]) —
-  /// survives IP/URL changes, unlike [baseUrl]. Empty for servers built
-  /// without one (e.g. older test fixtures); the multi-server hub uses this
-  /// to key connected/disabled servers, so real connections always set it.
-  final String machineIdentifier;
-
-  const PlexServer({
-    required this.name,
-    required this.baseUrl,
-    required this.accessToken,
-    this.machineIdentifier = '',
-  });
-}
-
 @JsonSerializable()
 class PlexSection {
   final String key;
@@ -387,6 +368,7 @@ class PlexReview {
 @JsonSerializable()
 class PlexMovieDetail {
   final String ratingKey;
+  final String? type;
   final String title;
   final String? thumb;
   final String? art;
@@ -423,8 +405,12 @@ class PlexMovieDetail {
   @JsonKey(name: 'Review', defaultValue: [])
   final List<PlexReview> reviews;
 
+  @JsonKey(name: 'Guid', defaultValue: [])
+  final List<PlexGuid> guids;
+
   const PlexMovieDetail({
     required this.ratingKey,
+    this.type,
     required this.title,
     this.thumb,
     this.art,
@@ -447,38 +433,11 @@ class PlexMovieDetail {
     this.directors = const [],
     this.writers = const [],
     this.reviews = const [],
+    this.guids = const [],
   });
 
   factory PlexMovieDetail.fromJson(Map<String, dynamic> json) => _$PlexMovieDetailFromJson(json);
   Map<String, dynamic> toJson() => _$PlexMovieDetailToJson(this);
-
-  /// json_serializable doesn't generate a `copyWith` — added by hand for
-  /// the "restart from beginning" (`viewOffset: 0`) case AppRoot needs.
-  PlexMovieDetail copyWith({int? viewOffset}) => PlexMovieDetail(
-        ratingKey: ratingKey,
-        title: title,
-        thumb: thumb,
-        art: art,
-        guid: guid,
-        summary: summary,
-        duration: duration,
-        viewOffset: viewOffset ?? this.viewOffset,
-        studio: studio,
-        contentRating: contentRating,
-        year: year,
-        grandparentTitle: grandparentTitle,
-        parentIndex: parentIndex,
-        index: index,
-        media: media,
-        rating: rating,
-        audienceRating: audienceRating,
-        ratingImage: ratingImage,
-        audienceRatingImage: audienceRatingImage,
-        roles: roles,
-        directors: directors,
-        writers: writers,
-        reviews: reviews,
-      );
 }
 
 @JsonSerializable()
@@ -490,6 +449,7 @@ class PlexOnDeckItem {
   final String? art;
   final int? duration;
   final int? viewOffset;
+  final int? lastViewedAt;
   final String? grandparentTitle;
   final int? parentIndex;
   final int? index;
@@ -514,6 +474,7 @@ class PlexOnDeckItem {
     this.art,
     this.duration,
     this.viewOffset,
+    this.lastViewedAt,
     this.grandparentTitle,
     this.parentIndex,
     this.index,

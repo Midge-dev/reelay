@@ -37,31 +37,110 @@ class RelayEntry {
   };
 }
 
-/// A device-local identity, distinct from the Plex account it's bound to —
-/// see DESIGN.md's "Profiles are Reelay's own" note. Holds at most one Plex
-/// account (Jellyfin is a real, disabled slot elsewhere in the UI, not
-/// modeled here yet — see server_switcher_panel.dart's matching note).
+/// The one Jellyfin account a [Profile] is signed in with. Jellyfin has no
+/// central account, so the link is to a user on one server; its token is in
+/// secure storage (see [SecureTokenStore.saveJellyfinToken]), never here.
+class JellyfinLink {
+  /// The server's `ServerId` — stable across address changes.
+  final String serverId;
+  final String serverName;
+
+  /// The address the server answered on when it was linked.
+  final String baseUrl;
+  final String userId;
+  final String username;
+
+  /// The DeviceId this link signed in as (see JellyfinSession.deviceId);
+  /// null for links made before each had its own, which use the install's.
+  final String? deviceId;
+
+  const JellyfinLink({
+    required this.serverId,
+    required this.serverName,
+    required this.baseUrl,
+    required this.userId,
+    required this.username,
+    this.deviceId,
+  });
+
+  factory JellyfinLink.fromJson(Map<String, dynamic> json) => JellyfinLink(
+    serverId: json['serverId'] as String,
+    serverName: json['serverName'] as String,
+    baseUrl: json['baseUrl'] as String,
+    userId: json['userId'] as String,
+    username: json['username'] as String,
+    deviceId: json['deviceId'] as String?,
+  );
+
+  Map<String, dynamic> toJson() => {
+    'serverId': serverId,
+    'serverName': serverName,
+    'baseUrl': baseUrl,
+    'userId': userId,
+    'username': username,
+    'deviceId': ?deviceId,
+  };
+}
+
+/// A device-local identity, distinct from the accounts it's bound to — see
+/// DESIGN.md's "Profiles are ours, and local". Holds at most one Plex
+/// account and at most one [JellyfinLink].
 class Profile {
   final String id;
   final String name;
   final String watchTogetherName;
-  final String plexUsername;
+  /// Null for a profile with only a Jellyfin account.
+  final String? plexUsername;
   final String? thumb;
+  final JellyfinLink? jellyfin;
 
   const Profile({
     required this.id,
     required this.name,
     required this.watchTogetherName,
-    required this.plexUsername,
+    this.plexUsername,
     this.thumb,
+    this.jellyfin,
   });
+
+  /// Its accounts as copy names them — "Plex · sam · Jellyfin · sam".
+  String get accountsLabel => [
+    if (plexUsername case final plex?) 'Plex · $plex',
+    if (jellyfin case final link?) 'Jellyfin · ${link.username}',
+  ].join(' · ');
+
+  /// This profile with [link] as its Jellyfin account — or, given null,
+  /// with none.
+  Profile withJellyfin(JellyfinLink? link) => Profile(
+    id: id,
+    name: name,
+    watchTogetherName: watchTogetherName,
+    plexUsername: plexUsername,
+    thumb: thumb,
+    jellyfin: link,
+  );
+
+  /// This profile signed in to Plex as [username], replacing any account
+  /// it had.
+  Profile withPlex({required String username, String? thumb}) => Profile(
+    id: id,
+    name: name,
+    watchTogetherName: watchTogetherName,
+    plexUsername: username,
+    thumb: thumb ?? this.thumb,
+    jellyfin: jellyfin,
+  );
 
   factory Profile.fromJson(Map<String, dynamic> json) => Profile(
     id: json['id'] as String,
     name: json['name'] as String,
     watchTogetherName: json['watchTogetherName'] as String,
-    plexUsername: json['plexUsername'] as String,
+    plexUsername: json['plexUsername'] as String?,
     thumb: json['thumb'] as String?,
+    jellyfin: switch (json['jellyfin']) {
+      final Map<String, dynamic> link => JellyfinLink.fromJson(link),
+      _ => null,
+    },
   );
 
   Map<String, dynamic> toJson() => {
@@ -70,6 +149,7 @@ class Profile {
     'watchTogetherName': watchTogetherName,
     'plexUsername': plexUsername,
     'thumb': thumb,
+    'jellyfin': ?jellyfin?.toJson(),
   };
 }
 

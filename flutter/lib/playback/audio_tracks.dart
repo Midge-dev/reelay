@@ -1,6 +1,4 @@
-import '../data/plex/plex_models.dart';
-
-const _audioStreamType = 2;
+import '../data/media/media_models.dart';
 
 class AudioOption {
   final int streamId;
@@ -10,10 +8,10 @@ class AudioOption {
   const AudioOption({required this.streamId, required this.label, this.languageCode});
 }
 
-/// The part's audio tracks in container order — Plex's own labels
+/// The part's audio tracks in container order — the server's own labels
 /// ("English (AC3 5.1)"), which say more than the player's would.
-List<AudioOption> audioOptions(PlexPart part) => [
-  for (final s in part.streams.where((s) => s.streamType == _audioStreamType))
+List<AudioOption> audioOptions(MediaPart part) => [
+  for (final s in part.streams.where((s) => s.kind == StreamKind.audio))
     AudioOption(
       streamId: s.id,
       label: s.displayTitle ?? s.language ?? s.codec?.toUpperCase() ?? 'Track ${s.id}',
@@ -21,10 +19,10 @@ List<AudioOption> audioOptions(PlexPart part) => [
     ),
 ];
 
-/// The track Plex has remembered for this part (what Plex Web last picked,
+/// The track the server has remembered for this part (what Plex Web last picked,
 /// or the file's default), else the first.
-int? initialAudioStreamId(PlexPart part) {
-  final audio = part.streams.where((s) => s.streamType == _audioStreamType).toList();
+int? initialAudioStreamId(MediaPart part) {
+  final audio = part.streams.where((s) => s.kind == StreamKind.audio).toList();
   if (audio.isEmpty) return null;
   return (audio.firstWhere((s) => s.selected, orElse: () => audio.first)).id;
 }
@@ -32,8 +30,8 @@ int? initialAudioStreamId(PlexPart part) {
 /// An audio track as the player reports it while direct-playing.
 typedef PlayerAudioTrack = ({String id, String? language});
 
-/// Which of the player's own audio tracks is Plex's [streamId]. The player
-/// and Plex both list a file's audio in container order, so with the same
+/// Which of the player's own audio tracks is the server's [streamId]. The player
+/// and the server both list a file's audio in container order, so with the same
 /// count it's positional; otherwise fall back to the first track in the
 /// same language. Null when there's no safe match — better to leave the
 /// player's choice alone than switch to the wrong track.
@@ -49,7 +47,7 @@ String? playerAudioTrackFor(List<AudioOption> options, int streamId, List<Player
   return null;
 }
 
-// Plex reports ISO 639-2 ("eng"), ExoPlayer usually 639-1 ("en") or a
+// Servers report ISO 639-2 ("eng"), ExoPlayer usually 639-1 ("en") or a
 // BCP 47 tag ("en-US"); compare on the first two letters. Imperfect for a
 // handful of languages, but only used when positional matching can't be.
 String? _base(String? code) {

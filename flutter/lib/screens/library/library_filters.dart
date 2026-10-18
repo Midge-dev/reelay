@@ -1,4 +1,4 @@
-import '../../data/plex/plex_models.dart';
+import '../../data/media/media_models.dart';
 
 enum SortMode {
   title('Title'),
@@ -21,7 +21,7 @@ enum DateAddedBucket {
 
 const _secondsPerDay = 86400;
 
-int? _releaseYear(PlexLibraryItem item) {
+int? _releaseYear(MediaItem item) {
   final fromDate =
       item.originallyAvailableAt != null &&
           item.originallyAvailableAt!.length >= 4
@@ -30,14 +30,14 @@ int? _releaseYear(PlexLibraryItem item) {
   return fromDate ?? item.year;
 }
 
-int? decadeOf(PlexLibraryItem item) {
+int? decadeOf(MediaItem item) {
   final year = _releaseYear(item);
   if (year == null) return null;
   return (year ~/ 10) * 10;
 }
 
 bool matchesDateAddedBucket(
-  PlexLibraryItem item,
+  MediaItem item,
   DateAddedBucket bucket,
   int nowEpochSeconds,
 ) {
@@ -53,8 +53,8 @@ bool matchesDateAddedBucket(
 }
 
 /// A library's titles narrowed by query, genre, decade and date added, then sorted.
-List<PlexLibraryItem> applyLibraryFilters({
-  required List<PlexLibraryItem> items,
+List<MediaItem> applyLibraryFilters({
+  required List<MediaItem> items,
   required String query,
   required SortMode sortMode,
   String? genre,
@@ -73,13 +73,11 @@ List<PlexLibraryItem> applyLibraryFilters({
         .toList();
   }
   if (genre != null) {
-    result = result
-        .where((item) => item.genres.any((g) => g.tag == genre))
-        .toList();
+    result = result.where((item) => item.genres.contains(genre)).toList();
   }
   if (collection != null) {
     result = result
-        .where((item) => item.collections.any((c) => c.tag == collection))
+        .where((item) => item.collections.contains(collection))
         .toList();
   }
   if (decade != null) {

@@ -1,4 +1,4 @@
-import 'plex_models.dart';
+import '../media/media_server.dart';
 
 class PlexImageUrl {
   PlexImageUrl._();
@@ -6,7 +6,7 @@ class PlexImageUrl {
   static const _tokenParam = 'X-Plex-Token';
   static const _transcodePath = '/photo/:/transcode';
 
-  static String? of(PlexServer server, String? path) {
+  static String? of(MediaServer server, String? path) {
     if (path == null || path.trim().isEmpty) return null;
     if (path.startsWith('http://') || path.startsWith('https://')) return path;
     return '${server.baseUrl}$path?$_tokenParam=${server.accessToken}';

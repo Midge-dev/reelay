@@ -1,7 +1,8 @@
 import 'package:flutter/widgets.dart';
 
-import '../../data/plex/plex_image_url.dart';
-import '../../data/plex/plex_models.dart';
+import '../../data/media/artwork_url.dart';
+import '../../data/media/media_models.dart';
+import '../../data/media/media_server.dart';
 import '../../focus/screen_memory.dart';
 import '../../focus/row_end_stop.dart';
 import '../../kit/card.dart';
@@ -108,11 +109,11 @@ const _personGap = 40.0;
 /// each, and the crew after a hairline divider. Selecting a name opens
 /// everything they are in on your servers (03c).
 class CastCrewRow extends StatelessWidget {
-  final PlexServer server;
-  final List<PlexPerson> cast;
-  final List<PlexPerson> directors;
-  final List<PlexPerson> writers;
-  final ValueChanged<PlexPerson> onSelectPerson;
+  final MediaServer server;
+  final List<Person> cast;
+  final List<Person> directors;
+  final List<Person> writers;
+  final ValueChanged<Person> onSelectPerson;
 
   const CastCrewRow({
     super.key,
@@ -127,18 +128,18 @@ class CastCrewRow extends StatelessWidget {
   Widget build(BuildContext context) {
     // Someone who both directed and wrote appears once, as director.
     final seenCrew = <String>{};
-    final crewEntries = <(PlexPerson, String)>[
+    final crewEntries = <(Person, String)>[
       for (final p in directors)
-        if (seenCrew.add(p.tag)) (p, 'Director'),
+        if (seenCrew.add(p.name)) (p, 'Director'),
       for (final p in writers)
-        if (seenCrew.add(p.tag)) (p, 'Writer'),
+        if (seenCrew.add(p.name)) (p, 'Writer'),
     ];
     if (cast.isEmpty && crewEntries.isEmpty) return const SizedBox.shrink();
     final entries = <Widget>[
       for (final person in cast)
         RememberFocus(
-          key: ValueKey('cast-${person.id ?? person.tag}'),
-          id: 'cast-${person.id ?? person.tag}',
+          key: ValueKey('cast-${person.id ?? person.name}'),
+          id: 'cast-${person.id ?? person.name}',
           child: _CastMemberAvatar(
             server: server,
             person: person,
@@ -160,8 +161,8 @@ class CastCrewRow extends StatelessWidget {
         ),
       for (final (person, job) in crewEntries)
         RememberFocus(
-          key: ValueKey('crew-${person.id ?? person.tag}'),
-          id: 'crew-${person.id ?? person.tag}',
+          key: ValueKey('crew-${person.id ?? person.name}'),
+          id: 'crew-${person.id ?? person.name}',
           child: _CastMemberAvatar(
             server: server,
             person: person,
@@ -223,8 +224,8 @@ SurfaceBorder get _personBorder => SurfaceBorder(
 );
 
 class _CastMemberAvatar extends StatefulWidget {
-  final PlexServer server;
-  final PlexPerson person;
+  final MediaServer server;
+  final Person person;
   final String? subtitle;
   final VoidCallback onClick;
 
@@ -260,15 +261,15 @@ class _CastMemberAvatarState extends State<_CastMemberAvatar> {
               child: person.thumb != null
                   ? SizedBox.expand(
                       child: Artwork(
-                        imageUrl: PlexImageUrl.of(widget.server, person.thumb),
+                        imageUrl: ArtworkUrl.of(widget.server, person.thumb),
                       ),
                     )
                   : ColoredBox(
                       color: AppColors.surface,
                       child: Center(
                         child: AppText(
-                          person.tag.isNotEmpty
-                              ? person.tag[0].toUpperCase()
+                          person.name.isNotEmpty
+                              ? person.name[0].toUpperCase()
                               : '?',
                           style: AppTypography.title2,
                           color: AppColors.ink2,
@@ -279,7 +280,7 @@ class _CastMemberAvatarState extends State<_CastMemberAvatar> {
           ),
           SizedBox(height: 10.du(context)),
           AppText(
-            person.tag,
+            person.name,
             style: AppTypography.label.copyWith(
               fontWeight: _focused ? FontWeight.w500 : FontWeight.w400,
             ),

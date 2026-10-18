@@ -1,13 +1,13 @@
-import 'plex_models.dart';
+import 'media_models.dart';
 
 /// Screen 03's media facts, stated plainly — "the people who run their own
-/// servers care about them". Each returns null when Plex didn't say.
+/// servers care about them". Each returns null when the server didn't say.
 class MediaFacts {
-  final PlexMedia media;
+  final MediaVersion media;
 
   const MediaFacts(this.media);
 
-  List<PlexStream> get _streams => [for (final p in media.parts) ...p.streams];
+  List<MediaStream> get _streams => [for (final p in media.parts) ...p.streams];
 
   /// "4K HDR", "1080p", "SD".
   String? get picture {
@@ -21,7 +21,7 @@ class MediaFacts {
     };
     if (base == null) return null;
     final hdr = _streams.any((s) {
-      if (s.streamType != 1) return false;
+      if (s.kind != StreamKind.video) return false;
       final t = s.displayTitle?.toLowerCase() ?? '';
       return t.contains('hdr') ||
           t.contains('dovi') ||
@@ -72,7 +72,7 @@ class MediaFacts {
 
   /// "English, Swedish, forced" — at most three languages, then "+N".
   String? get subtitles {
-    final subs = _streams.where((s) => s.streamType == 3).toList();
+    final subs = _streams.where((s) => s.kind == StreamKind.subtitle).toList();
     if (subs.isEmpty) return null;
     final languages = <String>[];
     for (final s in subs) {

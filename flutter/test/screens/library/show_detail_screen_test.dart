@@ -1,29 +1,30 @@
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:reelay/data/plex/plex_models.dart';
+import 'package:reelay/data/media/media_models.dart';
+import 'package:reelay/data/media/media_server.dart';
 import 'package:reelay/kit/card.dart';
 import 'package:reelay/screens/library/show_detail_screen.dart';
 
-const _server = PlexServer(name: 'Home', baseUrl: 'http://192.168.1.5:32400', accessToken: 'tok');
-const _show = PlexLibraryItem(ratingKey: 'show1', title: 'The Long Field', year: 2022, summary: 'Three generations work the same stretch of borderland.');
+const _server = MediaServer(name: 'Home', baseUrl: 'http://192.168.1.5:32400', accessToken: 'tok');
+const _show = MediaItem(id: 'show1', title: 'The Long Field', year: 2022, summary: 'Three generations work the same stretch of borderland.');
 
 const _seasons = [
-  PlexSeason(ratingKey: 's1', title: 'Season 1', index: 1),
-  PlexSeason(ratingKey: 's2', title: 'Season 2', index: 2),
+  MediaItem(id: 's1', title: 'Season 1', index: 1),
+  MediaItem(id: 's2', title: 'Season 2', index: 2),
 ];
 
 const _season1Episodes = [
-  PlexEpisode(ratingKey: 'e1', title: 'Fencelines', index: 1, parentIndex: 1, duration: 3000000),
-  PlexEpisode(ratingKey: 'e2', title: 'The Dry Year', index: 2, parentIndex: 1, duration: 3000000),
+  MediaItem(id: 'e1', title: 'Fencelines', index: 1, parentIndex: 1, duration: 3000000),
+  MediaItem(id: 'e2', title: 'The Dry Year', index: 2, parentIndex: 1, duration: 3000000),
 ];
 const _season2Episodes = [
-  PlexEpisode(ratingKey: 'e3', title: 'Salt in the Well', index: 1, parentIndex: 2, duration: 3000000),
+  MediaItem(id: 'e3', title: 'Salt in the Well', index: 1, parentIndex: 2, duration: 3000000),
 ];
 
 Future<void> _pump(
   WidgetTester tester, {
-  PlexOnDeckItem? nextEpisode,
-  ValueChanged<PlexEpisode>? onSelectEpisode,
+  MediaItem? nextEpisode,
+  ValueChanged<MediaItem>? onSelectEpisode,
   ValueChanged<String>? onPlay,
 }) async {
   tester.view.physicalSize = const Size(1920, 1080);
@@ -83,7 +84,7 @@ void main() {
   testWidgets('the play button targets the next unwatched episode when there is one', (tester) async {
     await _pump(
       tester,
-      nextEpisode: const PlexOnDeckItem(ratingKey: 'e3', type: 'episode', title: 'Salt in the Well', parentIndex: 2, index: 1),
+      nextEpisode: const MediaItem(id: 'e3', kind: MediaKind.episode, title: 'Salt in the Well', parentIndex: 2, index: 1),
     );
 
     expect(find.text('Play S2 E1'), findsOneWidget, reason: 'screen 04 writes "Resume S2 E4"');
@@ -105,13 +106,13 @@ void main() {
   });
 
   testWidgets('tapping an episode invokes onSelectEpisode', (tester) async {
-    PlexEpisode? selected;
+    MediaItem? selected;
     await _pump(tester, onSelectEpisode: (e) => selected = e);
 
     await tester.ensureVisible(find.byType(AppCard).first);
     await tester.tap(find.byType(AppCard).first);
     await tester.pump();
 
-    expect(selected?.ratingKey, 'e1');
+    expect(selected?.id, 'e1');
   });
 }

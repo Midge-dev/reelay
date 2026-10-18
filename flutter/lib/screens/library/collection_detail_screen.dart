@@ -1,7 +1,8 @@
 import 'package:flutter/widgets.dart';
 
-import '../../data/plex/plex_image_url.dart';
-import '../../data/plex/plex_models.dart';
+import '../../data/media/artwork_url.dart';
+import '../../data/media/media_models.dart';
+import '../../data/media/media_server.dart';
 import '../../focus/back_handler.dart';
 import '../../focus/screen_memory.dart';
 import '../../kit/text.dart';
@@ -12,10 +13,10 @@ import 'poster_card.dart';
 
 /// Screen 19 — one collection's titles.
 class CollectionDetailScreen extends StatelessWidget {
-  final PlexServer server;
-  final PlexCollection collection;
-  final List<PlexLibraryItem> items;
-  final ValueChanged<PlexLibraryItem> onSelectItem;
+  final MediaServer server;
+  final MediaItem collection;
+  final List<MediaItem> items;
+  final ValueChanged<MediaItem> onSelectItem;
   final VoidCallback onBack;
 
   const CollectionDetailScreen({
@@ -73,10 +74,10 @@ class CollectionDetailScreen extends StatelessWidget {
                         itemBuilder: (context, index) {
                           final item = items[index];
                           return RememberFocus(
-                            key: ValueKey(item.ratingKey),
-                            id: 'item:${item.ratingKey}',
+                            key: ValueKey(item.id),
+                            id: 'item:${item.id}',
                             child: PosterCard(
-                              imageUrl: PlexImageUrl.of(server, item.thumb),
+                              imageUrl: ArtworkUrl.of(server, item.thumb),
                               title: item.title,
                               autofocus:
                                   index == 0 &&

@@ -1,7 +1,7 @@
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:reelay/data/plex/plex_models.dart';
-import 'package:reelay/data/plex/plex_resources_api.dart';
+import 'package:reelay/data/media/media_models.dart';
+import 'package:reelay/data/media/media_server.dart';
 import 'package:reelay/screens/library/collection_detail_screen.dart';
 import 'package:reelay/screens/library/person_filmography_screen.dart';
 import 'package:reelay/screens/library/poster_card.dart';
@@ -13,7 +13,7 @@ import 'package:reelay/state/person_credits.dart';
 /// PosterCard ancestor rather than the label text itself.
 Finder _posterCardFor(String title) => find.ancestor(of: find.text(title), matching: find.byType(PosterCard));
 
-const _server = PlexServer(name: 'Home', baseUrl: 'http://192.168.1.5:32400', accessToken: 'tok');
+const _server = MediaServer(name: 'Home', baseUrl: 'http://192.168.1.5:32400', accessToken: 'tok');
 
 Future<void> _pump(WidgetTester tester, Widget child) async {
   await tester.pumpWidget(
@@ -27,10 +27,10 @@ Future<void> _pump(WidgetTester tester, Widget child) async {
 void main() {
   group('CollectionDetailScreen', () {
     const items = [
-      PlexLibraryItem(ratingKey: '1', title: 'Movie A'),
-      PlexLibraryItem(ratingKey: '2', title: 'Movie B'),
+      MediaItem(id: '1', title: 'Movie A'),
+      MediaItem(id: '2', title: 'Movie B'),
     ];
-    const collection = PlexCollection(ratingKey: 'c1', title: 'Action Pack');
+    const collection = MediaItem(id: 'c1', title: 'Action Pack');
 
     testWidgets('shows the collection title, item count, and every item title', (tester) async {
       await _pump(
@@ -63,7 +63,7 @@ void main() {
     });
 
     testWidgets('tapping an item invokes onSelectItem with that item', (tester) async {
-      PlexLibraryItem? selected;
+      MediaItem? selected;
       await _pump(
         tester,
         CollectionDetailScreen(server: _server, collection: collection, items: items, onSelectItem: (i) => selected = i, onBack: () {}),
@@ -72,7 +72,7 @@ void main() {
       await tester.tap(_posterCardFor('Movie B'));
       await tester.pump();
 
-      expect(selected?.ratingKey, '2');
+      expect(selected?.id, '2');
     });
   });
 
@@ -87,14 +87,14 @@ void main() {
       view.resetPhysicalSize();
       view.resetDevicePixelRatio();
     });
-    const attic = PlexServer(name: 'Attic', baseUrl: 'http://a:32400', accessToken: 't', machineIdentifier: 'attic');
-    const loft = PlexServer(name: 'Loft', baseUrl: 'http://l:32400', accessToken: 't', machineIdentifier: 'loft');
+    const attic = MediaServer(name: 'Attic', baseUrl: 'http://a:32400', accessToken: 't', id: 'attic');
+    const loft = MediaServer(name: 'Loft', baseUrl: 'http://l:32400', accessToken: 't', id: 'loft');
     const servers = [
       ReachableServer(attic, ServerReachability.local),
       ReachableServer(loft, ServerReachability.local),
     ];
-    FoldedWork<PlexLibraryItem> work(PlexServer server, String key, String title, int year) {
-      final item = PlexLibraryItem(ratingKey: key, title: title, year: year, type: 'movie', guid: 'plex://movie/$key');
+    FoldedWork<MediaItem> work(MediaServer server, String key, String title, int year) {
+      final item = MediaItem(id: key, title: title, year: year, kind: MediaKind.movie, guid: 'plex://movie/$key');
       return FoldedWork(item.guid, [Sourced(item, server, ServerReachability.local)]);
     }
 
@@ -109,15 +109,15 @@ void main() {
       '3': PersonCredit(character: 'Alejandro', acted: true),
     };
 
-    Future<void> pumpPerson(WidgetTester tester, {ValueChanged<FoldedWork<PlexLibraryItem>>? onSelect}) async {
+    Future<void> pumpPerson(WidgetTester tester, {ValueChanged<FoldedWork<MediaItem>>? onSelect}) async {
       await _pump(
         tester,
         PersonFilmographyScreen(
           servers: servers,
           originServer: attic,
-          person: const PlexPerson(id: 7, tag: 'Denis Villeneuve'),
+          person: const Person(id: '7', name: 'Denis Villeneuve'),
           loadWorks: () async => works,
-          loadCredit: (w) async => credits[w.primary.value.ratingKey],
+          loadCredit: (w) async => credits[w.primary.value.id],
           onSelectItem: onSelect ?? (_) {},
           onBack: () {},
         ),
@@ -157,9 +157,9 @@ void main() {
         PersonFilmographyScreen(
           servers: servers,
           originServer: attic,
-          person: const PlexPerson(tag: 'Actor'),
+          person: const Person(name: 'Actor'),
           loadWorks: () async => [works[0], works[2]],
-          loadCredit: (w) async => credits[w.primary.value.ratingKey],
+          loadCredit: (w) async => credits[w.primary.value.id],
           onSelectItem: (_) {},
           onBack: () {},
         ),
@@ -171,11 +171,11 @@ void main() {
     });
 
     testWidgets('selecting a title hands over the whole folded work', (tester) async {
-      FoldedWork<PlexLibraryItem>? selected;
+      FoldedWork<MediaItem>? selected;
       await pumpPerson(tester, onSelect: (w) => selected = w);
       await tester.tap(_posterCardFor('Dune'));
       await tester.pump();
-      expect(selected?.primary.value.ratingKey, '1');
+      expect(selected?.primary.value.id, '1');
     });
   });
 }

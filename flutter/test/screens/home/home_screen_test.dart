@@ -1,7 +1,7 @@
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:reelay/data/plex/plex_models.dart';
-import 'package:reelay/data/plex/plex_resources_api.dart';
+import 'package:reelay/data/media/media_models.dart';
+import 'package:reelay/data/media/media_server.dart';
 import 'package:reelay/data/settings/app_settings.dart';
 import 'package:reelay/screens/home/home_hero.dart';
 import 'package:reelay/screens/home/home_posters.dart';
@@ -11,17 +11,17 @@ import 'package:reelay/screens/home/watch_together_row.dart';
 import 'package:reelay/state/duplicate_fold.dart';
 import 'package:reelay/sync/relay_protocol.dart';
 
-const _server = PlexServer(name: 'Home', baseUrl: 'http://192.168.1.5:32400', accessToken: 'tok', machineIdentifier: 'home-id');
+const _server = MediaServer(name: 'Home', baseUrl: 'http://192.168.1.5:32400', accessToken: 'tok', id: 'home-id');
 const _connectedServers = [ReachableServer(_server, ServerReachability.local)];
 const _relay = RelayEntry(id: 'r1', nickname: 'Home Relay', url: 'wss://relay.example.com');
 
 RelayRoomSummary _room(String id) =>
     RelayRoomSummary(roomId: id, title: 'Arrival', hostName: 'Sean', occupants: 1, maxSeats: 4);
 
-PlexWatchlistItem _watchlistItem(String key) => PlexWatchlistItem(ratingKey: key, title: 'Watchlist $key');
+MediaItem _watchlistItem(String key) => MediaItem(id: key, title: 'Watchlist $key');
 
-PlexOnDeckItem _onDeckItem(String key) =>
-    PlexOnDeckItem(ratingKey: key, type: 'movie', title: 'OnDeck $key', duration: 1000, viewOffset: 250);
+MediaItem _onDeckItem(String key) =>
+    MediaItem(id: key, kind: MediaKind.movie, title: 'OnDeck $key', duration: 1000, viewOffset: 250);
 
 /// Walks up from the currently focused widget looking for an ancestor of
 /// [type] — used to assert *which row* actually claimed initial/reclaimed
@@ -42,11 +42,11 @@ bool _focusIsWithin(Type type) {
 
 Widget _buildHome({
   List<MergedRoom> liveRooms = const [],
-  List<PlexWatchlistItem> watchlist = const [],
-  List<PlexOnDeckItem> onDeck = const [],
-  List<PlexOnDeckItem> recentActivity = const [],
-  List<PlexLibraryItem> recentlyAdded = const [],
-  List<PlexOnDeckItem> suggestions = const [],
+  List<MediaItem> watchlist = const [],
+  List<MediaItem> onDeck = const [],
+  List<MediaItem> recentActivity = const [],
+  List<MediaItem> recentlyAdded = const [],
+  List<MediaItem> suggestions = const [],
 }) {
   FoldedWork<T> folded<T>(T v) => FoldedWork(null, [Sourced(v, _server, ServerReachability.local)]);
   return Directionality(
@@ -101,7 +101,7 @@ void main() {
         tester,
         _buildHome(
           watchlist: [_watchlistItem('1')],
-          recentlyAdded: const [PlexLibraryItem(ratingKey: '1', title: 'Arrival', type: 'movie')],
+          recentlyAdded: const [MediaItem(id: '1', title: 'Arrival', kind: MediaKind.movie)],
         ),
       );
 
@@ -140,7 +140,7 @@ void main() {
         tester,
         _buildHome(
           watchlist: [_watchlistItem('1')],
-          recentlyAdded: const [PlexLibraryItem(ratingKey: '1', title: 'Arrival', type: 'movie')],
+          recentlyAdded: const [MediaItem(id: '1', title: 'Arrival', kind: MediaKind.movie)],
         ),
       );
 

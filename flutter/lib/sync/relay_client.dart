@@ -21,7 +21,23 @@ class CreateRoom extends RoomIntent {
   final String hostName;
   final int? maxSeats;
 
-  const CreateRoom({required this.title, this.thumb, this.ratingKey, required this.hostName, this.maxSeats});
+  /// See RelayRoomSummary: what lets a guest on another server join.
+  final String? serverId;
+  final List<String> ids;
+  final String? mediaTitle;
+  final int? year;
+
+  const CreateRoom({
+    required this.title,
+    this.thumb,
+    this.ratingKey,
+    required this.hostName,
+    this.maxSeats,
+    this.serverId,
+    this.ids = const [],
+    this.mediaTitle,
+    this.year,
+  });
 }
 
 class JoinRoom extends RoomIntent {
@@ -123,6 +139,10 @@ class RelayClient {
             if (intent.ratingKey != null) 'ratingKey': intent.ratingKey,
             'hostName': intent.hostName,
             if (intent.maxSeats != null) 'maxSeats': intent.maxSeats,
+            'serverId': ?intent.serverId,
+            if (intent.ids.isNotEmpty) 'ids': intent.ids,
+            'mediaTitle': ?intent.mediaTitle,
+            'year': ?intent.year,
           },
         JoinRoom() => {'type': 'joinRoom', 'roomId': intent.roomId},
       },

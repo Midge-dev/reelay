@@ -1,18 +1,18 @@
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:reelay/data/plex/plex_models.dart';
-import 'package:reelay/data/plex/plex_resources_api.dart';
+import 'package:reelay/data/media/media_models.dart';
+import 'package:reelay/data/media/media_server.dart';
 import 'package:reelay/screens/navigation/app_navigation_drawer.dart';
 import 'package:reelay/screens/navigation/rail_order.dart';
 import 'package:reelay/screens/settings/rail_order_list.dart';
 import 'package:reelay/state/app_state.dart';
 import 'package:reelay/theme/phosphor_icons.dart';
 
-const _server = PlexServer(name: 'Home', baseUrl: 'http://192.168.1.5:32400', accessToken: 'tok', machineIdentifier: 'home-id');
-const _movies = SectionGroup(type: 'movie', title: 'Movies', sectionsByServerId: {});
-const _shows = SectionGroup(type: 'show', title: 'Shows', sectionsByServerId: {});
-const _anime = SectionGroup(type: 'show', title: 'Anime', sectionsByServerId: {});
+const _server = MediaServer(name: 'Home', baseUrl: 'http://192.168.1.5:32400', accessToken: 'tok', id: 'home-id');
+const _movies = SectionGroup(kind: MediaKind.movie, title: 'Movies', sectionsByServerId: {});
+const _shows = SectionGroup(kind: MediaKind.show, title: 'Shows', sectionsByServerId: {});
+const _anime = SectionGroup(kind: MediaKind.show, title: 'Anime', sectionsByServerId: {});
 final _moviesId = railSectionId(_movies);
 final _showsId = railSectionId(_shows);
 final _animeId = railSectionId(_anime);

@@ -2,12 +2,12 @@ import 'package:collection/collection.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 
+import '../../data/media/media_server.dart';
 import '../../theme/phosphor_icons.dart';
 
 import '../../data/plex/plex_auth_api.dart' show PlexAccount;
 import '../../data/plex/plex_models.dart';
-import '../../data/plex/plex_resources_api.dart'
-    show ReachableServer, ServerReachability;
+import '../../data/settings/app_settings.dart' show JellyfinLink;
 import '../../focus/back_handler.dart';
 import '../../kit/soft_edge_shadow.dart';
 import '../../kit/card.dart';
@@ -19,24 +19,41 @@ import '../../state/app_state.dart' show SectionGroup;
 import '../../theme/scale.dart';
 import '../../theme/tokens.dart';
 import '../../theme/typography.dart';
-import '../common/jellyfin_coming_soon_row.dart';
 
 const _panelWidth = 820.0;
 const _railWidth = 80.0;
 const _rowMinHeight = 96.0;
 
 class _ServerRow {
-  final PlexResource resource;
+  /// [MediaServer.id] — what turning it off or on keys by.
+  final String id;
+  final String name;
+  final MediaBackend backend;
+
+  /// "Owned" or "Shared", for a Plex server.
+  final String? ownership;
+
+  /// Checks a server that isn't in the hub (turned off, or didn't answer at
+  /// the last connect).
+  final Future<ReachableServer?> Function() probe;
+
   bool loading = true;
   ServerReachability? reachability;
   int? libraryCount;
 
-  _ServerRow(this.resource);
+  _ServerRow({
+    required this.id,
+    required this.name,
+    required this.backend,
+    this.ownership,
+    required this.probe,
+  });
 }
 
 /// Ports screen 06 of the Nocturne handoff — a panel over the current
-/// screen, not a new page, opened from the rail's avatar. Plex only for
-/// now (see the disabled Jellyfin row below); real multi-server support —
+/// screen, not a new page, opened from the rail's avatar. Plex servers
+/// come from the account; the profile's Jellyfin server, if it has one,
+/// is listed after them as a peer. Real multi-server support —
 /// listing every server the account can see, probing which path answers
 /// (direct before relay, screen 06's Local/Relayed/Unreachable) — already
 /// existed for the initial-connect flow (PlexResourcesApi.connectToResource)
@@ -55,9 +72,11 @@ class ServerSwitcherPanel extends StatefulWidget {
   final String? selectedSectionGroupKey;
   final Future<List<PlexResource>> Function() loadServers;
   final Future<ReachableServer?> Function(PlexResource resource) probeServer;
-  final Future<int?> Function(PlexServer server) loadLibraryCount;
+  final JellyfinLink? jellyfin;
+  final Future<ReachableServer?> Function()? probeJellyfin;
+  final Future<int?> Function(MediaServer server) loadLibraryCount;
   final ValueChanged<SectionGroup> onSelectSection;
-  final void Function(PlexResource resource, bool enabled) onToggleServer;
+  final void Function(String serverId, bool enabled) onToggleServer;
   final VoidCallback onClose;
 
   const ServerSwitcherPanel({
@@ -69,6 +88,8 @@ class ServerSwitcherPanel extends StatefulWidget {
     this.selectedSectionGroupKey,
     required this.loadServers,
     required this.probeServer,
+    this.jellyfin,
+    this.probeJellyfin,
     required this.loadLibraryCount,
     required this.onSelectSection,
     required this.onToggleServer,
@@ -111,7 +132,24 @@ class _ServerSwitcherPanelState extends State<ServerSwitcherPanel> {
       resources = const [];
     }
     if (!mounted) return;
-    final rows = resources.map(_ServerRow.new).toList();
+    final jellyfin = widget.jellyfin;
+    final rows = [
+      for (final resource in resources)
+        _ServerRow(
+          id: resource.machineIdentifier,
+          name: resource.name,
+          backend: MediaBackend.plex,
+          ownership: resource.owned ? 'Owned' : 'Shared',
+          probe: () => widget.probeServer(resource),
+        ),
+      if (jellyfin != null)
+        _ServerRow(
+          id: jellyfin.serverId,
+          name: jellyfin.serverName,
+          backend: MediaBackend.jellyfin,
+          probe: widget.probeJellyfin ?? () async => null,
+        ),
+    ];
     setState(() => _rows = rows);
     // _firstFocus is only actually attached to a row once _rows is
     // non-empty — requesting focus any earlier (e.g. from initState) would
@@ -139,9 +177,7 @@ class _ServerSwitcherPanelState extends State<ServerSwitcherPanel> {
     // whichever resources aren't already part of the hub (disabled, or
     // failed to connect last time).
     final already = widget.connectedServers
-        .where(
-          (c) => c.server.machineIdentifier == row.resource.machineIdentifier,
-        )
+        .where((c) => c.server.id == row.id)
         .firstOrNull;
     if (already != null) {
       setState(() {
@@ -160,7 +196,7 @@ class _ServerSwitcherPanelState extends State<ServerSwitcherPanel> {
     }
     ReachableServer? reached;
     try {
-      reached = await widget.probeServer(row.resource);
+      reached = await row.probe();
     } catch (_) {
       reached = null;
     }
@@ -279,18 +315,15 @@ class _ServerSwitcherPanelState extends State<ServerSwitcherPanel> {
                                 _ServerResultRow(
                                   row: row,
                                   enabled: !widget.disabledServerIds.contains(
-                                    row.resource.machineIdentifier,
+                                    row.id,
                                   ),
                                   focusNode: index == 0 ? _firstFocus : null,
-                                  onToggle: (enabled) => widget.onToggleServer(
-                                    row.resource,
-                                    enabled,
-                                  ),
+                                  onToggle: (enabled) =>
+                                      widget.onToggleServer(row.id, enabled),
                                 ),
                                 SizedBox(height: AppSpacing.md.du(context)),
                               ],
-                              const JellyfinComingSoonRow(),
-                              SizedBox(height: AppSpacing.xl.du(context)),
+                              SizedBox(height: AppSpacing.md.du(context)),
                               DecoratedBox(
                                 decoration: BoxDecoration(
                                   border: Border(
@@ -364,8 +397,8 @@ class _ServerResultRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final unreachable = row.reachability == ServerReachability.unreachable;
     final subtitleParts = <String>[
-      'Plex',
-      row.resource.owned ? 'Owned' : 'Shared',
+      row.backend.label,
+      ?row.ownership,
       if (row.libraryCount != null)
         '${row.libraryCount} librar${row.libraryCount == 1 ? 'y' : 'ies'}',
     ];
@@ -394,7 +427,7 @@ class _ServerResultRow extends StatelessWidget {
                     mainAxisSize: MainAxisSize.min,
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      AppText(row.resource.name, style: AppTypography.label),
+                      AppText(row.name, style: AppTypography.label),
                       SizedBox(height: 3.du(context)),
                       AppText(
                         subtitleParts.join(' · '),

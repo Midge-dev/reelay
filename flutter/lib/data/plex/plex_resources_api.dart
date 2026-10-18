@@ -3,18 +3,8 @@ import 'dart:async';
 import 'package:dio/dio.dart';
 
 import 'plex_http_client.dart';
+import '../media/media_server.dart';
 import 'plex_models.dart';
-
-/// Which path a [PlexResource] was actually reached through — screen 06 of
-/// the Nocturne handoff calls this Local/Relayed/Unreachable.
-enum ServerReachability { local, relayed, unreachable }
-
-class ReachableServer {
-  final PlexServer server;
-  final ServerReachability reachability;
-
-  const ReachableServer(this.server, this.reachability);
-}
 
 /// Result of probing every enabled server at once — see
 /// [PlexResourcesApi.connectToAllServers]. [unreachable] backs the
@@ -66,7 +56,7 @@ class PlexResourcesApi {
 
   /// Owned sorts after shared, so non-owned (shared) servers are tried
   /// first.
-  Future<PlexServer?> findReachableServer(
+  Future<MediaServer?> findReachableServer(
     String accountToken, {
     String? preferredMachineIdentifier,
   }) async {
@@ -87,7 +77,7 @@ class PlexResourcesApi {
     return null;
   }
 
-  Future<PlexServer?> _connectTo(PlexResource resource) async =>
+  Future<MediaServer?> _connectTo(PlexResource resource) async =>
       (await connectToResource(resource))?.server;
 
   /// The multi-server hub's entry point: probes every listed server
@@ -121,7 +111,7 @@ class PlexResourcesApi {
   }
 
   /// Like [_connectTo], but reports *which* path answered rather than
-  /// just handing back the first working [PlexServer] — the server
+  /// just handing back the first working [MediaServer] — the server
   /// switcher (screen 06) shows this per row, direct connections tried
   /// before relay so "Local" only ever means genuinely local.
   Future<ReachableServer?> connectToResource(PlexResource resource) async {
@@ -144,7 +134,7 @@ class PlexResourcesApi {
     return null;
   }
 
-  PlexServer _toServer(
+  MediaServer _toServer(
     PlexResource resource,
     String token,
     PlexConnection connection,
@@ -152,11 +142,11 @@ class PlexResourcesApi {
     final baseUrl = connection.uri.endsWith('/')
         ? connection.uri.substring(0, connection.uri.length - 1)
         : connection.uri;
-    return PlexServer(
+    return MediaServer(
       name: resource.name,
       baseUrl: baseUrl,
       accessToken: token,
-      machineIdentifier: resource.machineIdentifier,
+      id: resource.machineIdentifier,
     );
   }
 

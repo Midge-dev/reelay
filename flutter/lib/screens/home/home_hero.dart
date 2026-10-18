@@ -1,9 +1,9 @@
 import 'package:flutter/widgets.dart';
 
+import '../../data/media/artwork_url.dart';
+import '../../data/media/media_models.dart';
 import '../../theme/phosphor_icons.dart';
 
-import '../../data/plex/plex_image_url.dart';
-import '../../data/plex/plex_models.dart';
 import '../../focus/screen_memory.dart';
 import '../../kit/button.dart';
 import '../../kit/icon.dart';
@@ -15,8 +15,6 @@ import '../../theme/typography.dart';
 import '../common/artwork.dart';
 import '../common/time_format.dart';
 import 'home_posters.dart';
-
-const _typeEpisode = 'episode';
 
 // Screen 01, first viewport: backdrop 1180 du wide on the right, full
 // height; text column from 120 du down, 18 du between blocks, capped at
@@ -39,13 +37,13 @@ const _footerGap = 28.0;
 /// in which case the footer simply continues below the fold.
 ///
 /// No Episodes action — that needs the parent show's own ratingKey, which
-/// [PlexOnDeckItem] doesn't carry — and no restart action, since the detail
+/// [MediaItem] doesn't carry — and no restart action, since the detail
 /// screen this hero's Resume reaches already has one.
 class HomeHero extends StatelessWidget {
-  final FoldedWork<PlexOnDeckItem> item;
+  final FoldedWork<MediaItem> item;
   final double height;
   final VoidCallback onResume;
-  final ValueChanged<Sourced<PlexOnDeckItem>>? onWatchTogether;
+  final ValueChanged<Sourced<MediaItem>>? onWatchTogether;
   final FocusNode? resumeFocusNode;
   final bool autofocus;
   final List<Widget> footer;
@@ -70,7 +68,7 @@ class HomeHero extends StatelessWidget {
   Widget build(BuildContext context) {
     final active = item.primary;
     final value = active.value;
-    final isEpisode = value.type == _typeEpisode;
+    final isEpisode = value.kind == MediaKind.episode;
     final remainingMs = (value.duration ?? 0) - (value.viewOffset ?? 0);
     final progress = progressFraction(value);
     final gap = SizedBox(height: _heroBlockGap.du(context));
@@ -96,10 +94,7 @@ class HomeHero extends StatelessWidget {
             right: 0,
             width: _backdropWidth.du(context),
             child: Artwork(
-              imageUrl: PlexImageUrl.of(
-                active.server,
-                value.art ?? value.thumb,
-              ),
+              imageUrl: ArtworkUrl.of(active.server, value.art ?? value.thumb),
             ),
           ),
           // scrim.edge — the ground holds solid under the text column and

@@ -23,12 +23,7 @@ const _itemGap = 56.0;
 class ProfilePickerScreen extends StatefulWidget {
   final List<Profile> profiles;
   final ValueChanged<Profile> onSelectProfile;
-  final Future<void> Function({
-    required String name,
-    required String watchTogetherName,
-    required String token,
-  })
-  onAddProfile;
+  final CreateProfile onAddProfile;
   // Forwarded to AddProfileDialog — see its own doc comment.
   final Widget Function(ValueChanged<String> onLinked)? linkPanelBuilder;
 
@@ -60,18 +55,6 @@ class _ProfilePickerScreenState extends State<ProfilePickerScreen> {
   void dispose() {
     _firstFocus.dispose();
     super.dispose();
-  }
-
-  Future<void> _addProfile({
-    required String name,
-    required String watchTogetherName,
-    required String token,
-  }) async {
-    await widget.onAddProfile(
-      name: name,
-      watchTogetherName: watchTogetherName,
-      token: token,
-    );
   }
 
   @override
@@ -119,7 +102,7 @@ class _ProfilePickerScreenState extends State<ProfilePickerScreen> {
           ),
           if (_showingAddDialog)
             AddProfileDialog(
-              onCreate: _addProfile,
+              onCreate: widget.onAddProfile,
               onCancel: () => setState(() => _showingAddDialog = false),
               linkPanelBuilder: widget.linkPanelBuilder,
             ),
@@ -196,7 +179,7 @@ class _ProfileItemState extends State<_ProfileItem> {
             color: _focused ? AppColors.ink : AppColors.ink2,
           ),
           SizedBox(height: AppSpacing.xs.du(context)),
-          AppText('Plex · ${profile.plexUsername}', color: AppColors.ink3),
+          AppText(profile.accountsLabel, color: AppColors.ink3),
         ],
       ),
     );

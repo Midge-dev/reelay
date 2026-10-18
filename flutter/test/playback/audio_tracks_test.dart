@@ -1,19 +1,19 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:reelay/data/plex/plex_models.dart';
+import 'package:reelay/data/media/media_models.dart';
 import 'package:reelay/playback/audio_tracks.dart';
 
-PlexPart _part(List<PlexStream> streams) => PlexPart(id: 1, key: '/library/parts/1/file.mkv', streams: streams);
+MediaPart _part(List<MediaStream> streams) => MediaPart(id: '1', key: '/library/parts/1/file.mkv', streams: streams);
 
-const _english = PlexStream(id: 10, streamType: 2, languageCode: 'eng', displayTitle: 'English (TrueHD 7.1)');
-const _commentary = PlexStream(id: 11, streamType: 2, languageCode: 'eng', displayTitle: 'English (AAC Stereo)');
-const _french = PlexStream(id: 12, streamType: 2, languageCode: 'fre', displayTitle: 'Français (AC3 5.1)', selected: true);
+const _english = MediaStream(id: 10, kind: StreamKind.audio, languageCode: 'eng', displayTitle: 'English (TrueHD 7.1)');
+const _commentary = MediaStream(id: 11, kind: StreamKind.audio, languageCode: 'eng', displayTitle: 'English (AAC Stereo)');
+const _french = MediaStream(id: 12, kind: StreamKind.audio, languageCode: 'fre', displayTitle: 'Français (AC3 5.1)', selected: true);
 
 void main() {
   test('lists only audio streams, in container order, with Plex\'s labels', () {
     final options = audioOptions(_part([
-      const PlexStream(id: 1, streamType: 1),
+      const MediaStream(id: 1, kind: StreamKind.video),
       _english,
-      const PlexStream(id: 2, streamType: 3, codec: 'srt'),
+      const MediaStream(id: 2, kind: StreamKind.subtitle, codec: 'srt'),
       _french,
     ]));
     expect(options.map((o) => o.streamId), [10, 12]);

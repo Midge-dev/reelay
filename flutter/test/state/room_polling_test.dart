@@ -1,15 +1,15 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:reelay/data/settings/relay_identity_store.dart';
-import 'package:reelay/data/plex/plex_models.dart';
-import 'package:reelay/data/plex/plex_resources_api.dart';
+import 'package:reelay/data/media/media_models.dart';
+import 'package:reelay/data/media/media_server.dart';
 import 'package:reelay/state/app_root_controller.dart';
 import 'package:reelay/state/app_state.dart';
 import 'package:reelay/state/duplicate_fold.dart';
 import 'package:reelay/sync/relay_client.dart';
 
-const _server = PlexServer(name: 'Loft', baseUrl: 'http://192.168.1.5:32400', accessToken: 'tok', machineIdentifier: 'loft');
+const _server = MediaServer(name: 'Loft', baseUrl: 'http://192.168.1.5:32400', accessToken: 'tok', id: 'loft');
 const _servers = [ReachableServer(_server, ServerReachability.local)];
-const _group = SectionGroup(type: 'movie', title: 'Movies', sectionsByServerId: {});
+const _group = SectionGroup(kind: MediaKind.movie, title: 'Movies', sectionsByServerId: {});
 const _home = Home(
   servers: _servers,
   sectionGroups: [_group],
@@ -19,7 +19,7 @@ const _home = Home(
   suggestions: [],
 );
 const _ctx = LibraryContext(servers: _servers, sectionGroups: [_group], selectedSectionGroup: _group, items: []);
-const _movie = PlexLibraryItem(ratingKey: '1', title: 'Arrival', type: 'movie');
+const _movie = MediaItem(id: '1', title: 'Arrival', kind: MediaKind.movie);
 
 void main() {
   test('rooms are polled on every screen the rooms panel opens over, not only Home', () {
@@ -43,7 +43,7 @@ void main() {
       const Checking(),
       const LoggedOut(),
       const ConnectingToServer(),
-      const Player(server: _server, detail: PlexMovieDetail(ratingKey: '1', title: 'Arrival'), returnState: _home),
+      const Player(server: _server, detail: MediaDetail(id: '1', title: 'Arrival'), returnState: _home),
     ]) {
       expect(pollsLiveRooms(state), isFalse, reason: '${state.runtimeType}');
     }
@@ -52,7 +52,7 @@ void main() {
   group("a host's kept-open room", () {
     final room = RelayClient('wss://relay.example.com', const RelayIdentity(peerId: 'me'));
     final other = RelayClient('wss://relay.example.com', const RelayIdentity(peerId: 'me'));
-    const detail = PlexMovieDetail(ratingKey: '1', title: 'Arrival');
+    const detail = MediaDetail(id: '1', title: 'Arrival');
     Lobby lobby(RelayClient relay) =>
         Lobby(server: _server, detail: detail, returnState: _home, relay: relay, hostName: 'Sean', relayNickname: 'Home');
 

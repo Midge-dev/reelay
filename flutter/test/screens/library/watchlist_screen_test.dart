@@ -1,20 +1,20 @@
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:reelay/data/plex/plex_models.dart';
+import 'package:reelay/data/media/media_models.dart';
 import 'package:reelay/screens/library/poster_card.dart';
 import 'package:reelay/screens/library/watchlist_screen.dart';
 
 const _items = [
-  PlexWatchlistItem(ratingKey: '1', title: 'Arrival', year: 2016),
-  PlexWatchlistItem(ratingKey: '2', title: 'Aftershow', year: 2024),
+  MediaItem(id: '1', title: 'Arrival', year: 2016),
+  MediaItem(id: '2', title: 'Aftershow', year: 2024),
 ];
 
 Future<void> _pump(
   WidgetTester tester, {
-  List<PlexWatchlistItem> items = _items,
-  ValueChanged<PlexWatchlistItem>? onSelectItem,
-  ValueChanged<PlexWatchlistItem>? onRemove,
+  List<MediaItem> items = _items,
+  ValueChanged<MediaItem>? onSelectItem,
+  ValueChanged<MediaItem>? onRemove,
   Map<String, String?> availability = const {},
 }) async {
   tester.view.physicalSize = const Size(1920, 1080);
@@ -52,13 +52,13 @@ void main() {
   });
 
   testWidgets('tapping a title invokes onSelectItem, newest first', (tester) async {
-    PlexWatchlistItem? selected;
+    MediaItem? selected;
     await _pump(tester, onSelectItem: (e) => selected = e);
 
     await tester.tap(find.byType(PosterCard).first);
     await tester.pump();
 
-    expect(selected?.ratingKey, '2', reason: 'Recently added sorts the newest (last in the account list) first');
+    expect(selected?.id, '2', reason: 'Recently added sorts the newest (last in the account list) first');
   });
 
   testWidgets('holding a card removes it immediately and shows an undo chip, without calling onRemove yet', (tester) async {
@@ -114,7 +114,7 @@ void main() {
   });
 
   testWidgets('letting the undo window expire commits the removal', (tester) async {
-    PlexWatchlistItem? removedEntry;
+    MediaItem? removedEntry;
     await _pump(tester, onRemove: (e) => removedEntry = e);
 
     await tester.longPress(find.byType(PosterCard).first);
@@ -122,12 +122,12 @@ void main() {
 
     await tester.pump(const Duration(seconds: 8));
 
-    expect(removedEntry?.ratingKey, '2');
+    expect(removedEntry?.id, '2');
     expect(find.textContaining('Undo'), findsNothing);
   });
 
   testWidgets('a title on none of your servers stays in the grid, marked, and counted (screen 20)', (tester) async {
-    PlexWatchlistItem? opened;
+    MediaItem? opened;
     await _pump(tester, availability: const {'1': 'Attic', '2': null}, onSelectItem: (e) => opened = e);
 
     expect(find.text('Not on your servers'), findsOneWidget);

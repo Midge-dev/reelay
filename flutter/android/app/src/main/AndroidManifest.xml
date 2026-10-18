@@ -19,7 +19,15 @@
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher"
         android:roundIcon="@mipmap/ic_launcher_round"
-        android:banner="@drawable/tv_banner">
+        android:banner="@drawable/tv_banner"
+        android:usesCleartextTraffic="true">
+        <!-- Cleartext: a Jellyfin server is usually plain http on the home
+             network (http://loft:8096), and ExoPlayer, unlike Dart's own
+             HTTP client, enforces Android's no-cleartext default — every
+             Jellyfin stream failed with "Cleartext HTTP traffic not
+             permitted". Android can't scope this to private addresses
+             (domain-config takes no IP ranges), and the address is
+             whatever was typed at linking. -->
         <activity
             android:name=".MainActivity"
             android:exported="true"
