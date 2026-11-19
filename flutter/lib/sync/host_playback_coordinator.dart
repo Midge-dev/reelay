@@ -24,7 +24,7 @@ class HostPlaybackCoordinator {
   // to a stalled peer when it's further out than that — and never drags
   // everyone back further than a couple of minutes for one peer.
   static const _rendezvousToleranceMs = 500;
-  static const _rendezvousMaxBehindMs = 120000;
+  static const _rendezvousMaxMs = 120000;
 
   final String myPeerId;
   final SyncedPlayer player;
@@ -93,12 +93,32 @@ class HostPlaybackCoordinator {
       _onSelfBuffering(buffering);
     },
     onSeek: (positionMs) {
+      _seekTargetMs = positionMs;
+      _seekTargetAtMs = _lastSeekAtMs = nowMs();
       if (_isSeekSuppressed()) return;
       _afterHostSeek(positionMs, myPeerId);
     },
   );
 
   bool _isSeekSuppressed() => nowMs() < _suppressSeekUntilMs;
+
+  // A real player reports its old position for a moment after a seek (see
+  // VideoPlayerSyncedPlayer: video_player updates it once the platform call
+  // returns). Until it catches up, the host's position is the seek target.
+  static const _seekReportGraceMs = 1000;
+  int? _seekTargetMs;
+  int _seekTargetAtMs = 0;
+  int _lastSeekAtMs = -_seekReportGraceMs;
+
+  int get _positionMs {
+    final target = _seekTargetMs;
+    if (target == null) return player.currentPosition;
+    if ((player.currentPosition - target).abs() <= 250 || nowMs() - _seekTargetAtMs > _seekReportGraceMs) {
+      _seekTargetMs = null;
+      return player.currentPosition;
+    }
+    return target;
+  }
 
   void _suppressedSeek(void Function() block) {
     _suppressSeekUntilMs = nowMs() + _seekSuppressionWindowMs;
@@ -169,6 +189,12 @@ class HostPlaybackCoordinator {
     final previous = _peerStatuses[peerId];
     _peerStatuses[peerId] = status;
     if (status.ready && !status.buffering) _excused.remove(peerId);
+    // A peer the room is waiting for has moved (its seek landed somewhere
+    // else, or it re-seeked): wait for it there instead.
+    if (_phase == PlaybackPhase.waitingForPeers && _stalledSinceStart.contains(peerId)) {
+      final moved = _rendezvous();
+      if (moved != null) _broadcast(anchorOverrideMs: moved);
+    }
 
     if (status.ready && status.buffering) {
       if (_phase == PlaybackPhase.playing && !_stalledPeers.contains(peerId)) {
@@ -236,6 +262,14 @@ class HostPlaybackCoordinator {
   void _onSelfBuffering(bool buffering) {
     if (buffering) {
       if (_phase != PlaybackPhase.playing || _localStalled) return;
+      // Buffering just after a seek is the seek landing, not a hiccup: on a
+      // slow stream (a remote transcode) it lasts seconds, and guests would
+      // play on ahead of the host for the whole grace.
+      if (nowMs() - _lastSeekAtMs < _seekReportGraceMs) {
+        _localStalled = true;
+        _enterWaiting();
+        return;
+      }
       _selfStallGraceTimer = Timer(Duration(milliseconds: _stallGraceMs), () {
         if (_disposed) return;
         if (!_localBuffering || _phase != PlaybackPhase.playing) return;
@@ -244,7 +278,13 @@ class HostPlaybackCoordinator {
       });
     } else if (_localStalled) {
       _localStalled = false;
+      // The host stayed "playing" through its own stall so it could carry
+      // on the moment it recovered — but if the room is still waiting, it
+      // must hold where it is, not play on ahead of everyone.
+      if (_phase == PlaybackPhase.waitingForPeers) _setPaused();
       _scheduleAllReadyCheck(_recoveryHysteresisMs);
+    } else if (_phase == PlaybackPhase.waitingForPeers) {
+      _scheduleAllReadyCheck(0);
     }
   }
 
@@ -303,7 +343,9 @@ class HostPlaybackCoordinator {
       }
       if (_stalledPeers.contains(peerId)) gating.add(peerId);
     }
-    if (!_localReady || _localStalled) gating.add(myPeerId);
+    // While the room's stopped, the host starts no one until its own player
+    // is ready to go too.
+    if (!_localReady || _localStalled || (_localBuffering && _phase != PlaybackPhase.playing)) gating.add(myPeerId);
     return gating;
   }
 
@@ -324,9 +366,11 @@ class HostPlaybackCoordinator {
   /// and resuming at the host's spot makes that peer seek again, and a peer
   /// whose seeks are slow (a remote transcode that has to make new segments)
   /// stalls again, the host runs ahead again, and the room loops forever.
-  /// So the host steps back to the earliest stalled peer instead: the host's
-  /// own seek is the cheap one, and the slow peer is already where it needs
-  /// to be. Seeks the host itself (suppressed, so it isn't a user seek) and
+  /// So the host goes to the earliest stalled peer instead — usually a step
+  /// back, sometimes forward when a guest aimed ahead: the host's own seek is
+  /// the cheap one, and the slow peer is already where it needs to be.
+  /// Guests don't seek while the room waits on them (see
+  /// GuestPlaybackReconciler), so the two never chase each other. Seeks the host itself (suppressed, so it isn't a user seek) and
   /// returns the position to anchor on, or null to stay where it is.
   int? _rendezvous() {
     int? earliest;
@@ -337,8 +381,8 @@ class HostPlaybackCoordinator {
       if (earliest == null || position < earliest) earliest = position;
     }
     if (earliest == null) return null;
-    final behindMs = player.currentPosition - earliest;
-    if (behindMs <= _rendezvousToleranceMs || behindMs > _rendezvousMaxBehindMs) return null;
+    final offMs = (_positionMs - earliest).abs();
+    if (offMs <= _rendezvousToleranceMs || offMs > _rendezvousMaxMs) return null;
     final target = earliest;
     _suppressedSeek(() => player.seekTo(target));
     return target;
@@ -380,7 +424,7 @@ class HostPlaybackCoordinator {
     final otherPeers = _knownPeers.difference(_excused);
     final delayMs = otherPeers.isEmpty ? 0 : _startDelayMs;
     final startAt = nowMs() + delayMs;
-    startPositionMs ??= player.currentPosition;
+    startPositionMs ??= _positionMs;
     _stalledSinceStart.clear();
     _firstStartCompleted = true;
     _setPhase(PlaybackPhase.playing);
@@ -396,7 +440,7 @@ class HostPlaybackCoordinator {
     final startMs = startPositionMs;
     _pendingStartTimer = Timer(Duration(milliseconds: delayMs), () {
       if (_disposed || _phase != PlaybackPhase.playing) return;
-      if ((player.currentPosition - startMs).abs() > 250) {
+      if ((_positionMs - startMs).abs() > 250) {
         _suppressedSeek(() => player.seekTo(startMs));
       }
       _setPlaying();
@@ -443,7 +487,7 @@ class HostPlaybackCoordinator {
     PlaybackActionHint? hint;
     if (last != null && _pendingStartTimer == null) {
       final expected = last.targetPositionMs(nowMs());
-      if ((player.currentPosition - expected).abs() > _implicitJumpThresholdMs) hint = PlaybackActionHint.seek;
+      if ((_positionMs - expected).abs() > _implicitJumpThresholdMs) hint = PlaybackActionHint.seek;
     }
     _broadcast(hint: hint, actor: hint != null ? myPeerId : null);
   }
@@ -469,7 +513,7 @@ class HostPlaybackCoordinator {
     int? anchorHostTimeOverrideMs,
   }) {
     if (_disposed) return;
-    final anchorPositionMs = anchorOverrideMs ?? player.currentPosition;
+    final anchorPositionMs = anchorOverrideMs ?? _positionMs;
     final anchorHostTimeMs = anchorHostTimeOverrideMs ?? nowMs();
     final waitingOn = _phase == PlaybackPhase.waitingForPeers ? (_gatingPeers().toList()..sort()) : const <String>[];
 

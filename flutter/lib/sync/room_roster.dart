@@ -65,6 +65,10 @@ class RoomRoster {
 
   /// Public for tests; [start] wires it to the relay.
   void handle(RelayEvent event) {
+    if (event.kind == 'peerLeft') {
+      if (_people.remove(event.fromPeerId) != null) _changes.add(current);
+      return;
+    }
     if (event.kind != 'presence') return;
     final from = event.fromPeerId;
     if (from == null || from == relay.myPeerId) return;

@@ -236,6 +236,13 @@ function releaseConnection(ws) {
     if (seat && seat.ws === ws) {
       seat.ws = null;
       seat.reservedUntil = Date.now() + RECONNECT_GRACE_MS;
+      // Tell the room at once, so a host waiting on this device stops
+      // waiting. If it reconnects (within the grace, same seat), its next
+      // event brings it back. Older apps ignore kinds they don't know.
+      const data = JSON.stringify({ type: 'event', payload: { kind: 'peerLeft', fromPeerId: seat.peerId } });
+      for (const other of room.seats) {
+        if (other && other.ws && other.ws.readyState === WebSocket.OPEN) other.ws.send(data);
+      }
     }
   }
 }

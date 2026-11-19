@@ -28,6 +28,8 @@ import '../../sync/relay_protocol.dart';
 import '../../sync/relay_urls.dart';
 import '../../sync/room_roster.dart';
 import '../../sync/sync_view_model.dart';
+import '../../sync/sync_trace.dart';
+import '../../sync/sync_trace_file.dart';
 import '../../theme/scale.dart';
 import '../../theme/tokens.dart';
 import '../../theme/typography.dart';
@@ -127,6 +129,10 @@ class _PlayerScreenState extends State<PlayerScreen> {
   VideoPlayerSyncedPlayer? _player;
   SyncViewModel? _sync;
   int _playerGeneration = 0;
+
+  /// One trace per room session, across every stream restart (see
+  /// [SyncTraceFile]); null outside a room.
+  Future<SyncTrace?>? _syncTrace;
 
   StreamSubscription<ConnectionState>? _connectionSub;
   StreamSubscription<PlaybackPhase?>? _phaseSub;
@@ -232,6 +238,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
       if (mounted) _playPauseFocusNode.requestFocus();
     });
 
+    if (widget.relay != null) _syncTrace = SyncTraceFile.start();
     unawaited(_start());
 
     if (widget.relay != null) {
@@ -265,6 +272,9 @@ class _PlayerScreenState extends State<PlayerScreen> {
     _waitingOnSub?.cancel();
     _roomIdSub?.cancel();
     _sync?.dispose();
+    _syncTrace?.then((trace) {
+      if (trace != null) unawaited(SyncTraceFile.finish(trace));
+    });
     _controller?.removeListener(_handleControllerTick);
     unawaited(_controller?.dispose());
     if (_matchedFrameRate) unawaited(DisplayMode.clear(owner: this));
@@ -303,6 +313,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
 
   Future<void> _initPlayer({required int startPositionMs}) async {
     final generation = ++_playerGeneration;
+    final trace = await _syncTrace;
     await _selectServerStreams();
     if (!mounted || generation != _playerGeneration) return;
     final String url;
@@ -352,7 +363,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
     controller.addListener(_handleControllerTick);
 
     final player = VideoPlayerSyncedPlayer(controller);
-    final sync = SyncViewModel(player: player, relay: widget.relay);
+    final sync = SyncViewModel(player: player, relay: widget.relay, trace: trace);
 
     _phaseSub?.cancel();
     _waitingOnSub?.cancel();

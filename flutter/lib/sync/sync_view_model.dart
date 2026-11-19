@@ -8,6 +8,7 @@ import 'host_playback_coordinator.dart';
 import 'playback_state.dart';
 import 'relay_client.dart';
 import 'relay_protocol.dart';
+import 'sync_trace.dart';
 import 'synced_player.dart';
 import 'time_utils.dart';
 
@@ -19,7 +20,18 @@ class SyncViewModel {
   final SyncedPlayer player;
   final RelayClient? relay;
 
-  SyncViewModel({required this.player, required this.relay});
+  /// Where this session's sync activity is recorded, if anywhere (see
+  /// [SyncTrace]). The engine gets a [TracingSyncedPlayer] around [player].
+  final SyncTrace? trace;
+
+  /// This device's wall clock as clock sync reads it — tests pass one
+  /// that's off, to check guests still line up with the host's clock.
+  final int Function()? deviceClock;
+
+  SyncViewModel({required SyncedPlayer player, required this.relay, this.trace, this.deviceClock})
+    : player = trace == null ? player : TracingSyncedPlayer(player, trace);
+
+  static const _syncKinds = {'playbackState', 'controlRequest', 'peerStatus', 'clockPing', 'clockPong', 'peerLeft'};
 
   Stream<ConnectionState> get connectionState =>
       relay?.connectionState ?? Stream<ConnectionState>.value(ConnectionState.disconnected);
@@ -38,11 +50,16 @@ class SyncViewModel {
   ClockSync? _clock;
   StreamSubscription<RelayEvent>? _eventsSubscription;
   StreamSubscription<int?>? _roleSubscription;
+  Timer? _sampleTimer;
 
   void start() {
     final relay = this.relay;
     if (relay == null) return;
-    _eventsSubscription = relay.events.listen((event) => _handleEvent(relay, event));
+    _eventsSubscription = relay.events.listen((event) {
+      if (_syncKinds.contains(event.kind)) trace?.record('in', {'event': event.toJson()});
+      _handleEvent(relay, event);
+    });
+    if (trace != null) _sampleTimer = Timer.periodic(const Duration(seconds: 1), (_) => _sample());
     _roleSubscription = relay.seatIndex.listen((seatIndex) {
       if (seatIndex == null || _host != null || _guest != null) return;
       if (seatIndex == 0) {
@@ -53,7 +70,26 @@ class SyncViewModel {
     });
   }
 
+  void _sample() {
+    final clock = _clock;
+    trace?.record('sample', {
+      'pos': player.currentPosition,
+      'playing': player.isPlaying,
+      'state': player.playbackState.name,
+      if (clock != null) 'clockOffset': clock.offsetMs,
+      if (clock != null) 'rtt': clock.minRttMs,
+    });
+  }
+
+  void _send(RelayClient relay, RelayEvent event) {
+    trace?.record('out', {'event': event.toJson()});
+    relay.send(event);
+  }
+
   void stop() {
+    _sampleTimer?.cancel();
+    final traced = player;
+    if (traced is TracingSyncedPlayer) traced.detach();
     _eventsSubscription?.cancel();
     _roleSubscription?.cancel();
     _host?.stop();
@@ -69,11 +105,12 @@ class SyncViewModel {
   }
 
   void _startAsHost(RelayClient relay) {
+    trace?.record('session', {'role': 'host', 'peerId': relay.myPeerId});
     _host = HostPlaybackCoordinator(
       myPeerId: relay.myPeerId,
       player: player,
       sendState: (state) {
-        relay.send(_playbackStateToRelayEvent(state));
+        _send(relay, _playbackStateToRelayEvent(state));
         _phase.add(state.phase);
         _waitingOn.add(state.waitingOn);
       },
@@ -82,21 +119,28 @@ class SyncViewModel {
   }
 
   void _startAsGuest(RelayClient relay) {
+    trace?.record('session', {'role': 'guest', 'peerId': relay.myPeerId});
     final clockSync = ClockSync(
-      sendPing: (pingId) => relay.send(RelayEvent(kind: 'clockPing', fromPeerId: relay.myPeerId, pingId: pingId)),
+      nowMsFn: deviceClock,
+      sendPing: (pingId) => _send(relay, RelayEvent(kind: 'clockPing', fromPeerId: relay.myPeerId, pingId: pingId)),
     );
     _clock = clockSync;
     _guest = GuestPlaybackReconciler(
       myPeerId: relay.myPeerId,
       player: player,
       clock: clockSync,
-      sendControl: (request) => relay.send(_controlRequestToRelayEvent(request, relay.myPeerId)),
-      sendStatus: (status) => relay.send(_peerStatusToRelayEvent(status, relay.myPeerId)),
+      sendControl: (request) => _send(relay, _controlRequestToRelayEvent(request, relay.myPeerId)),
+      sendStatus: (status) => _send(relay, _peerStatusToRelayEvent(status, relay.myPeerId)),
     )..start();
   }
 
   void _handleEvent(RelayClient relay, RelayEvent event) {
     final fromPeerId = event.fromPeerId;
+    if (event.kind == 'peerLeft') {
+      // From the relay itself: that device's connection closed.
+      if (fromPeerId != null && fromPeerId != relay.myPeerId) _host?.onPeerLeft(fromPeerId);
+      return;
+    }
     if (fromPeerId != null && fromPeerId != relay.myPeerId) _host?.onPeerJoined(fromPeerId);
 
     switch (event.kind) {
@@ -122,7 +166,7 @@ class SyncViewModel {
         if (fromPeerId == null) return;
         final pingId = event.pingId;
         if (pingId == null) return;
-        relay.send(RelayEvent(kind: 'clockPong', fromPeerId: fromPeerId, pingId: pingId, remoteTimestampMs: nowMs()));
+        _send(relay, RelayEvent(kind: 'clockPong', fromPeerId: fromPeerId, pingId: pingId, remoteTimestampMs: nowMs()));
       case 'clockPong':
         if (event.fromPeerId != relay.myPeerId) return;
         final pingId = event.pingId;

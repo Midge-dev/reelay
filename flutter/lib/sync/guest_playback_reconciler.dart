@@ -20,6 +20,10 @@ class GuestPlaybackReconciler {
   // Below the host's stall grace (2500ms): a seek slower than that makes the
   // host wait for this guest where it landed, so it needs no lead.
   static const _maxSeekLeadMs = 2000;
+  // While a seek is still landing, only a host target this far from it is a
+  // new place to go (someone seeked); anything nearer is drift the host
+  // sorts out by waiting for this guest where it lands.
+  static const _inFlightRetargetMs = 10000;
 
   final String myPeerId;
   final SyncedPlayer player;
@@ -52,6 +56,12 @@ class GuestPlaybackReconciler {
   int _optimisticDeadlineMs = 0;
   PeerStatus? _lastSentStatus;
   int? _hardSeekStartedAtMs;
+
+  /// Where a seek in flight is headed. A player reports buffering the
+  /// moment it seeks but its old position until the seek lands, and the
+  /// host decides where the room resumes from what guests report — so
+  /// until this player is ready again, it reports where it's going.
+  int? _seekTargetMs;
   bool _hardSeekBuffered = false;
   int _seekLeadMs = 0;
   bool _disposed = false;
@@ -107,9 +117,11 @@ class GuestPlaybackReconciler {
       }
       if (state == SyncPlaybackState.buffering && _hardSeekStartedAtMs != null) _hardSeekBuffered = true;
       if (state == SyncPlaybackState.ready && _hardSeekBuffered) _measureSeekLead();
+      if (state == SyncPlaybackState.ready) _seekTargetMs = null;
       _sendStatusNow();
     },
     onSeek: (positionMs) {
+      _seekTargetMs = positionMs;
       if (_isSeekSuppressed()) return;
       if (_latestState == null) return;
       sendControl(ControlRequest(ControlRequestKind.seek, positionMs: positionMs));
@@ -166,6 +178,10 @@ class GuestPlaybackReconciler {
     if (!_localReady || _optimisticWindowActive() || _hostIsStale()) return;
 
     switch (state.phase) {
+      case PlaybackPhase.waitingForPeers when state.waitingOn.contains(myPeerId):
+        // The room waits for this guest where it is (the host moves to it),
+        // so seeking now would only move the spot it's waiting at.
+        _ensurePaused();
       case PlaybackPhase.loading:
       case PlaybackPhase.waitingForPeers:
       case PlaybackPhase.paused:
@@ -206,6 +222,7 @@ class GuestPlaybackReconciler {
 
     _setPlaying();
 
+    if (_seekLanding(targetMs)) return;
     final drift = player.currentPosition - targetMs;
     if (drift.abs() <= _deadbandMs) return;
     if (!_cooldownElapsed()) return;
@@ -244,9 +261,21 @@ class GuestPlaybackReconciler {
       }
     });
     _suppressedSeek(() => player.seekTo(targetMs < 0 ? 0 : targetMs));
+    // Already buffering from an earlier seek, the player reports no change —
+    // but the host needs to know where this one is headed.
+    _sendStatusNow(force: true);
+  }
+
+  /// A seek is still buffering and [targetMs] is near where it's headed:
+  /// let it land rather than restart it.
+  bool _seekLanding(int targetMs) {
+    final inFlight = _seekTargetMs;
+    if (inFlight == null || player.playbackState != SyncPlaybackState.buffering) return false;
+    return (targetMs - inFlight).abs() < _inFlightRetargetMs;
   }
 
   void _alignWhileStopped(PlaybackState state) {
+    if (_seekLanding(state.anchorPositionMs)) return;
     final offBy = (player.currentPosition - state.anchorPositionMs).abs();
     if (offBy > _pausedSeekThresholdMs && _cooldownElapsed()) _hardSeek(state.anchorPositionMs);
   }
@@ -254,10 +283,11 @@ class GuestPlaybackReconciler {
   void _ensurePaused() => _setPaused();
 
   void _sendStatusNow({bool force = false}) {
+    final buffering = player.playbackState == SyncPlaybackState.buffering;
     final status = PeerStatus(
       ready: _localReady,
-      buffering: player.playbackState == SyncPlaybackState.buffering,
-      positionMs: player.currentPosition,
+      buffering: buffering,
+      positionMs: (buffering ? _seekTargetMs : null) ?? player.currentPosition,
       rttMs: clock.minRttMs,
     );
     final last = _lastSentStatus;
