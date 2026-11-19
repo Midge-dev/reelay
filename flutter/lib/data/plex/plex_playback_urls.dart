@@ -61,8 +61,10 @@ String plexTranscodeUrl(
       '&directPlay=0&directStream=0'
       '&videoResolution=1920x1080&maxVideoBitrate=$maxVideoBitrateKbps'
       '&subtitleSize=100'
+      // Which track burns comes from the part's server-side selection (see
+      // streamSelectionUrl), never from here: PMS ignores a subtitleStreamID
+      // on this endpoint and burns the selected one (plezy measured it).
       '&subtitles=${subtitleStreamId != null ? 'burn' : 'none'}'
-      '&subtitleStreamID=${subtitleStreamId ?? 0}'
       '&session=$session'
       '&X-Plex-Product=Reelay'
       '&X-Plex-Platform=$_plexPlatform'
@@ -109,3 +111,33 @@ Map<String, String> timelineReportHeaders(MediaServer server, String clientIdent
   'X-Plex-Product': 'Reelay',
   'X-Plex-Session-Identifier': sessionIdentifier,
 };
+
+/// The transcoder's own verdict on [transcodeStartUrl] — the same request,
+/// asked of `/decision` instead of `start.m3u8`. Plex's apps ask first; it
+/// answers in words when it won't, where the stream itself just 400s.
+String plexTranscodeDecisionUrl(String transcodeStartUrl) =>
+    transcodeStartUrl.replaceFirst('/video/:/transcode/universal/start.m3u8', '/video/:/transcode/universal/decision');
+
+/// Ends the transcode for [session] on the server, so it isn't left running
+/// once nothing is watching it.
+String plexStopTranscodeUrl(MediaServer server, String session, String clientIdentifier) =>
+    '${server.baseUrl}/video/:/transcode/universal/stop'
+    '?session=${Uri.encodeQueryComponent(session)}'
+    '&X-Plex-Client-Identifier=${Uri.encodeQueryComponent(clientIdentifier)}'
+    '&X-Plex-Token=${server.accessToken}';
+
+/// Why a `/decision` answer refuses, in Plex's own words; null when it'll
+/// stream. Codes of 2000 and up are refusals (1000 direct play, 1001
+/// transcode); the first failing one's text is the reason.
+String? plexTranscodeRefusal(Object? body) {
+  final container = body is Map ? body['MediaContainer'] : null;
+  if (container is! Map) return null;
+  for (final kind in const ['general', 'transcode', 'mde', 'directPlay']) {
+    final code = int.tryParse('${container['${kind}DecisionCode']}');
+    if (code != null && code >= 2000) {
+      final text = container['${kind}DecisionText'];
+      return text is String && text.trim().isNotEmpty ? text.trim() : 'refused with code $code';
+    }
+  }
+  return null;
+}

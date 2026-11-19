@@ -1,3 +1,4 @@
+import 'package:dio/dio.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart' hide ConnectionState;
 import 'package:flutter_test/flutter_test.dart';
@@ -12,6 +13,17 @@ import 'package:reelay/sync/relay_protocol.dart';
 import 'package:video_player_platform_interface/video_player_platform_interface.dart';
 
 import '../../playback/fake_video_player_platform.dart';
+
+/// No server at all: every request is refused at once (the transcode
+/// decision check, progress reports), so nothing waits on a timeout.
+class _Offline implements HttpClientAdapter {
+  @override
+  Future<ResponseBody> fetch(RequestOptions options, Stream<Uint8List>? requestStream, Future<void>? cancelFuture) =>
+      throw DioException.connectionError(requestOptions: options, reason: 'offline');
+
+  @override
+  void close({bool force = false}) {}
+}
 
 const _server = MediaServer(name: 'Loft', baseUrl: 'http://192.168.1.5:32400', accessToken: 'tok');
 const _detail = MediaDetail(
@@ -41,7 +53,7 @@ Future<List<(String, int)>> _pumpPlayer(
     Directionality(
       textDirection: TextDirection.ltr,
       child: PlayerScreen(
-        client: PlexClient(_server, 'client-1'),
+        client: PlexClient(_server, 'client-1', client: Dio()..httpClientAdapter = _Offline()),
         detail: detail,
         relay: relay,
         settings: settings,
@@ -51,8 +63,11 @@ Future<List<(String, int)>> _pumpPlayer(
       ),
     ),
   );
-  await tester.pump();
-  await tester.pump();
+  // Opening is a few async steps (asking the server about a transcode,
+  // initialising the player); let them finish.
+  for (var i = 0; i < 6; i++) {
+    await tester.pump(const Duration(milliseconds: 20));
+  }
   return failures;
 }
 
@@ -122,9 +137,9 @@ void main() {
     expect(failures, isEmpty);
 
     fake.emitError(0); // the direct stream
-    await tester.pump();
-    await tester.pump();
-    await tester.pump();
+    for (var i = 0; i < 6; i++) {
+      await tester.pump(const Duration(milliseconds: 20));
+    }
     expect(failures, isEmpty);
     expect(fake.openedUris.last, contains('/transcode/'));
 

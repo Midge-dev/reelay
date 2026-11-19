@@ -31,6 +31,20 @@ class _RecordingClient implements MediaServerClient {
   final reports = <({PlaybackReportState state, int timeMs})>[];
   final subtitleFetches = <String>[];
 
+  /// What checkTranscode answers: null to go ahead, else a refusal.
+  String? transcodeRefusal;
+  final transcodeChecks = <String>[];
+  final stoppedTranscodes = <String>[];
+
+  @override
+  Future<String?> checkTranscode(String transcodeUrl) async {
+    transcodeChecks.add(transcodeUrl);
+    return transcodeRefusal;
+  }
+
+  @override
+  Future<void> stopTranscode(String sessionId) async => stoppedTranscodes.add(sessionId);
+
   @override
   MediaServer get server => inner.server;
   @override
@@ -156,6 +170,7 @@ Future<_Session> _open(
   AppSettings settings = const AppSettings(),
   Map<String, String> subtitleFiles = const {},
   Future<MediaItem?> Function()? loadNextEpisode,
+  String? transcodeRefusal,
 }) async {
   final platform = fake ?? FakeVideoPlayerPlatform();
   VideoPlayerPlatform.instance = platform;
@@ -164,7 +179,7 @@ Future<_Session> _open(
   addTearDown(tester.view.resetPhysicalSize);
   addTearDown(tester.view.resetDevicePixelRatio);
 
-  final client = _RecordingClient(b.client(), platform, subtitleFiles: subtitleFiles);
+  final client = _RecordingClient(b.client(), platform, subtitleFiles: subtitleFiles)..transcodeRefusal = transcodeRefusal;
   final failures = <(String, int)>[];
   final exits = <int>[];
   final bitrates = <int>[];
@@ -430,6 +445,79 @@ void main() {
             expect(s.fake.openedUris.last, contains('AudioStreamIndex='));
             expect(s.fake.seeksByPlayer[s.fake.latestPlayerId], [200000]);
           }
+          await _close(tester);
+        });
+      });
+
+      group('the transcode session', () {
+        String? sessionOf(String url) => Uri.parse(url).queryParameters['session'];
+
+        testWidgets('every transcode restart reuses one session, so the server replaces the job', (tester) async {
+          final s = await _open(tester, b, detail: _film(b, streams: const [_srt, _pgs]), settings: const AppSettings(forceBurnSubtitles: true));
+          await _pressSubtitles(tester); // SRT, burned in: a transcode
+          await _press(tester, LogicalKeyboardKey.select); // PGS: another
+          await _press(tester, LogicalKeyboardKey.arrowRight); // Quality
+          await _press(tester, LogicalKeyboardKey.select); // and another
+
+          final transcodes = s.fake.openedUris.where((u) => u.contains(b.transcodePath)).toList();
+          expect(transcodes, hasLength(3));
+          if (b.startsAtOffset) {
+            expect(transcodes.map(sessionOf).toSet(), hasLength(1), reason: transcodes.join('\n'));
+            expect(sessionOf(transcodes.first), isNotNull);
+          }
+          expect(s.client.stoppedTranscodes, isEmpty, reason: 'replaced in place, not stopped');
+          await _close(tester);
+        });
+
+        testWidgets('the server is asked before every transcode opens, never before direct play', (tester) async {
+          final s = await _open(tester, b, detail: _film(b, streams: const [_pgs]));
+          expect(s.client.transcodeChecks, isEmpty);
+
+          await _pressSubtitles(tester);
+          expect(s.client.transcodeChecks, [s.fake.openedUris.last]);
+          await _close(tester);
+        });
+
+        testWidgets('going back to direct play, or leaving, ends the transcode', (tester) async {
+          final s = await _open(tester, b, detail: _film(b, streams: const [_pgs]));
+          await _pressSubtitles(tester); // PGS: a transcode
+          final session = Uri.parse(s.fake.openedUris.last).queryParameters['session'];
+          await _press(tester, LogicalKeyboardKey.select); // Off: direct play
+          expect(s.client.stoppedTranscodes, hasLength(1));
+          if (b.startsAtOffset) expect(s.client.stoppedTranscodes.single, session);
+
+          await _press(tester, LogicalKeyboardKey.select); // PGS again
+          await _close(tester);
+          expect(s.client.stoppedTranscodes, hasLength(2), reason: 'leaving the player mid-transcode');
+        });
+
+        testWidgets("leaving a direct play doesn't touch transcodes", (tester) async {
+          final s = await _open(tester, b, detail: _film(b));
+          await _close(tester);
+          expect(s.client.stoppedTranscodes, isEmpty);
+        });
+
+        testWidgets("when the server refuses and the stream fails, the error gives the server's reason", (tester) async {
+          final s = await _open(
+            tester,
+            b,
+            detail: _film(b, streams: const [_pgs]),
+            fake: FakeVideoPlayerPlatform(failInitWhere: (uri) => uri.contains(b.transcodePath)),
+            transcodeRefusal: 'Remote stream limit reached',
+          );
+          await _playTo(tester, s, 90000);
+          await _pressSubtitles(tester);
+
+          expect(s.failures, [("${b.server.name} wouldn't transcode this: Remote stream limit reached", 90000)]);
+          await _close(tester);
+        });
+
+        testWidgets('a refusal never stops a stream the server serves anyway', (tester) async {
+          final s = await _open(tester, b, detail: _film(b, streams: const [_pgs]), transcodeRefusal: 'answered 400');
+          await _pressSubtitles(tester);
+
+          expect(s.fake.openedUris.last, contains(b.transcodePath));
+          expect(s.failures, isEmpty);
           await _close(tester);
         });
       });

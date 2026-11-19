@@ -106,6 +106,13 @@ class _PlayerScreenState extends State<PlayerScreen> {
   /// request and every timeline report carry it (see TimelineReporter).
   final _sessionIdentifier = const Uuid().v4();
 
+  /// The server's transcode session, one per playback like
+  /// [_sessionIdentifier]: every transcode restart (subtitle, quality,
+  /// audio) reuses it so Plex replaces the running job. A new one each time
+  /// left the old transcode running beside the new one — for a remote
+  /// viewer, one stream more than Plex would serve, and the switch 400'd.
+  final _transcodeSessionId = const Uuid().v4();
+
   late MediaPart? _resolvedPart;
   List<AudioOption> _audioOptions = const [];
   int? _audioStreamId;
@@ -259,6 +266,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
 
   @override
   void dispose() {
+    if (_decision is Transcode) unawaited(widget.client.stopTranscode(_transcodeSessionId));
     _rosterSub?.cancel();
     _roster?.dispose();
     HardwareKeyboard.instance.removeHandler(_recordInteraction);
@@ -292,7 +300,10 @@ class _PlayerScreenState extends State<PlayerScreen> {
       DirectPlay() => decision.part.id,
       // Audio too: a transcode carries one audio track, so changing it
       // means a new stream. Direct play switches in the player instead.
-      Transcode() => (decision.itemId, maxVideoBitrateKbps, _audioStreamId),
+      // And the burned-in subtitle: it's in the picture, so another one is
+      // another stream (without it, one burned track to the next changed
+      // nothing on screen).
+      Transcode() => (decision.itemId, maxVideoBitrateKbps, _audioStreamId, decision.subtitleStreamId),
     };
   }
 
@@ -320,6 +331,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
         _decision,
         _maxVideoBitrateKbps,
         sessionIdentifier: _sessionIdentifier,
+        sessionId: _transcodeSessionId,
         audioStreamId: _audioOptions.length > 1 ? _audioStreamId : null,
         offsetMs: startPositionMs,
       );
@@ -328,6 +340,19 @@ class _PlayerScreenState extends State<PlayerScreen> {
       _fail(e.message ?? 'This server can’t play here yet', startPositionMs);
       return;
     }
+    // Ask first, as Plex's own apps do: if the server won't, it says why in
+    // words, where the stream would only 400. The stream is still tried —
+    // a refusal here mustn't stop one the server would in fact serve — and
+    // the reason is what the error says if it then fails.
+    String? refusal;
+    if (_decision is Transcode) {
+      refusal = await widget.client.checkTranscode(url);
+      if (!mounted || generation != _playerGeneration) return;
+    }
+    debugPrint(
+      '[playback] opening ${_decision is Transcode ? 'transcode' : 'direct play'} at ${startPositionMs}ms'
+      '${refusal != null ? ' (server said: $refusal)' : ''}',
+    );
     final controller = VideoPlayerController.networkUrl(Uri.parse(url));
     try {
       await controller.initialize();
@@ -337,7 +362,9 @@ class _PlayerScreenState extends State<PlayerScreen> {
           generation == _playerGeneration &&
           !_fallBackToTranscode(startPositionMs)) {
         _fail(
-          '${widget.server.name} sent a stream this TV couldn\'t open',
+          refusal != null
+              ? '${widget.server.name} wouldn\'t transcode this: $refusal'
+              : '${widget.server.name} sent a stream this TV couldn\'t open',
           startPositionMs,
         );
       }
@@ -835,6 +862,10 @@ class _PlayerScreenState extends State<PlayerScreen> {
   void _applyDecisionChange({required int restartPositionMs}) {
     final newDecision = _decide();
     final newIdentity = _identityFor(newDecision, _maxVideoBitrateKbps);
+    // Back to direct play: nothing will use the transcode again.
+    if (_decision is Transcode && newDecision is DirectPlay) {
+      unawaited(widget.client.stopTranscode(_transcodeSessionId));
+    }
     _decision = newDecision;
 
     if (newIdentity == _playerIdentity) {
