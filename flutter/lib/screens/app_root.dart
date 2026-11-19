@@ -12,7 +12,6 @@ import '../data/plex/plex_models.dart';
 import '../data/plex/plex_resources_api.dart';
 import '../focus/back_handler.dart';
 import '../focus/screen_memory.dart';
-import '../kit/text.dart';
 import '../state/app_root_controller.dart';
 import '../state/app_state.dart';
 import '../state/data_providers.dart';
@@ -21,12 +20,12 @@ import '../state/duplicate_fold.dart';
 import '../state/person_credits.dart';
 import '../sync/relay_directory_api.dart';
 import '../theme/tokens.dart';
-import '../theme/typography.dart';
 import 'onboarding/onboarding_screen.dart';
 import 'onboarding/setup_ready_screen.dart';
 import 'onboarding/watch_together_step.dart';
 import 'common/loading_screen.dart';
 import 'common/no_servers_screen.dart';
+import 'common/error_screen.dart';
 import 'common/playback_failed_screen.dart';
 import 'home/home_loading_skeleton.dart';
 import 'home/home_screen.dart';
@@ -293,11 +292,9 @@ class _AppContent extends StatelessWidget {
         ),
       AppError(:final message, :final retryState) => BackHandler(
         onBack: () => controller.returnTo(retryState),
-        child: ColoredBox(
-          color: AppColors.background,
-          child: Center(
-            child: AppText('Error: $message', style: AppTypography.body),
-          ),
+        child: ErrorScreen(
+          message: message,
+          onBack: () => controller.returnTo(retryState),
         ),
       ),
       // An install set up before the Watch Together step existed meets it
@@ -595,7 +592,7 @@ class _AppContent extends StatelessWidget {
               state,
               resumeAtMs: at,
             ),
-            onWatchTogether: (targetItemId) =>
+            onWatchTogether: (targetItemId, resumeAtMs) =>
                 controller.openWatchTogetherStart(
                   ctx: ctx,
                   server: activeCopy.server,
@@ -603,6 +600,7 @@ class _AppContent extends StatelessWidget {
                   roomTitle: activeCopy.value.title,
                   thumb: activeCopy.value.thumb,
                   targetItemId: targetItemId,
+                  resumeAtMs: resumeAtMs,
                 ),
             onRestartSolo: (targetItemId) => controller.playMovie(
               ctx,
@@ -723,6 +721,7 @@ class _AppContent extends StatelessWidget {
               roomTitle: _episodeRoomTitle(activeCopy.value, episode),
               thumb: episode.thumb,
               targetItemId: episode.id,
+              resumeAtMs: episode.viewOffset ?? 0,
             ),
             onRestartTogether: () => controller.openWatchTogetherStart(
               ctx: ctx,
@@ -745,6 +744,7 @@ class _AppContent extends StatelessWidget {
         :final thumb,
         :final targetItemId,
         :final defaultRestart,
+        :final resumeAtMs,
       ) =>
         Stack(
           fit: StackFit.expand,
@@ -760,6 +760,7 @@ class _AppContent extends StatelessWidget {
               child: WatchTogetherStartScreen(
                 roomTitle: roomTitle,
                 defaultRestart: defaultRestart,
+                resumeAtMs: resumeAtMs,
                 maxSeats: controller.currentSettings.maxHostSeats,
                 relayNickname:
                     controller.currentSettings.defaultRelay?.nickname,
@@ -796,7 +797,7 @@ class _AppContent extends StatelessWidget {
           key: ValueKey('lobby-${detail.id}'),
           server: state.server,
           detail: detail,
-          localUsername: controller.localAccount?.username ?? 'You',
+          localUsername: controller.watchTogetherName,
           localAvatarUrl: controller.localAccount?.thumb,
           hostName: hostName,
           relayNickname: relayNickname,
@@ -826,7 +827,7 @@ class _AppContent extends StatelessWidget {
           client: controller.clientFor(state.server),
           detail: detail,
           relay: relay,
-          localName: controller.localAccount?.username ?? 'You',
+          localName: controller.watchTogetherName,
           localAvatarUrl: controller.localAccount?.thumb,
           settings: controller.currentSettings,
           onBitrateChanged: controller.saveBitratePreference,
@@ -934,6 +935,7 @@ class _AppContent extends StatelessWidget {
               roomTitle: _episodeRoomTitleFromOnDeck(item.value),
               thumb: item.value.thumb,
               targetItemId: item.value.id,
+              resumeAtMs: item.value.viewOffset ?? 0,
             ),
           ),
         ),

@@ -123,7 +123,7 @@ class SyncViewModel {
       myPeerId: relay.myPeerId,
       player: player,
       sendState: (state) {
-        _send(relay, _playbackStateToRelayEvent(state));
+        _send(relay, _playbackStateToRelayEvent(state, relay.myPeerId));
         _phase.add(state.phase);
         _waitingOn.add(state.waitingOn);
       },
@@ -224,8 +224,12 @@ PlaybackActionHint? _wireToActionHint(String wire) => switch (wire) {
       _ => null,
     };
 
-RelayEvent _playbackStateToRelayEvent(PlaybackState state) => RelayEvent(
+/// [hostPeerId] says who the host is: guests learn it from the first state
+/// they hear, so the lobby can seat the host once and the player can tell
+/// when the host's device has gone (`peerLeft`). Older apps ignore it.
+RelayEvent _playbackStateToRelayEvent(PlaybackState state, String hostPeerId) => RelayEvent(
       kind: 'playbackState',
+      fromPeerId: hostPeerId,
       seq: state.seq,
       phase: _phaseToWire(state.phase),
       anchorPositionMs: state.anchorPositionMs,

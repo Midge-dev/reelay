@@ -255,6 +255,7 @@ class PlayerControlsBar extends StatelessWidget {
                     onClick: onRewind,
                     focusNode: rewindFocusNode,
                     icon: PhosphorIconsRegular.rewind,
+                    semanticLabel: 'Rewind',
                   ),
                 ),
                 gap,
@@ -266,6 +267,7 @@ class PlayerControlsBar extends StatelessWidget {
                     icon: isPlaying
                         ? PhosphorIconsFill.pause
                         : PhosphorIconsFill.play,
+                    semanticLabel: isPlaying ? 'Pause' : 'Play',
                   ),
                 ),
                 gap,
@@ -275,6 +277,7 @@ class PlayerControlsBar extends StatelessWidget {
                     onClick: onForward,
                     focusNode: forwardFocusNode,
                     icon: PhosphorIconsRegular.fastForward,
+                    semanticLabel: 'Forward',
                   ),
                 ),
                 if (hasNext) ...[

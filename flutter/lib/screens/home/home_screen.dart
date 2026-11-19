@@ -6,6 +6,7 @@ import '../../data/media/media_models.dart';
 import '../../data/media/media_server.dart';
 import '../../data/plex/plex_models.dart';
 import '../../focus/screen_memory.dart';
+import '../../focus/arrow_to.dart';
 import '../../focus/row_end_stop.dart';
 import '../../kit/edge_fade_row.dart';
 import '../../kit/icon.dart';
@@ -259,15 +260,17 @@ class _HomeScreenState extends State<HomeScreen> {
             padding: EdgeInsets.symmetric(
               horizontal: AppSpacing.safeX.du(context),
             ),
-            child: WatchTogetherBar(
-              rooms: widget.liveRooms,
-              myRoomId: widget.myRoomId,
-              hostedRoomIds: widget.hostedRoomIds,
-              onEndSession: widget.onEndSession,
-              onSelectRoom: widget.onSelectRoom,
-              onMoreRooms: widget.onOpenRooms,
-              focusNode: _watchTogetherRowFocus,
-              autofocus: watchTogetherGetsFocus,
+            child: NearestRowTraversal(
+              child: WatchTogetherBar(
+                rooms: widget.liveRooms,
+                myRoomId: widget.myRoomId,
+                hostedRoomIds: widget.hostedRoomIds,
+                onEndSession: widget.onEndSession,
+                onSelectRoom: widget.onSelectRoom,
+                onMoreRooms: widget.onOpenRooms,
+                focusNode: _watchTogetherRowFocus,
+                autofocus: watchTogetherGetsFocus,
+              ),
             ),
           );
 
@@ -429,6 +432,7 @@ class _HomeScreenState extends State<HomeScreen> {
           ? _continueWatchingRowFocus
           : null,
       autofocus: continueWatchingGetsFocus,
+      actionsDownTo: watchTogetherBar == null ? null : _watchTogetherRowFocus,
       onActionsFocused: () {
         // After the traversal's own ensureVisible has started, so this
         // animation replaces it rather than racing it.
@@ -447,64 +451,69 @@ class _HomeScreenState extends State<HomeScreen> {
       footer: [
         ?watchTogetherBar,
         if (moreInProgress.isNotEmpty)
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Padding(
-                padding: EdgeInsets.only(left: AppSpacing.safeX.du(context)),
-                child: AppText(
-                  'More in progress',
-                  style: AppTypography.rowLabel,
+          ArrowTo(
+            // Up from these cards to the bar above, not past it.
+            direction: LogicalKeyboardKey.arrowUp,
+            target: watchTogetherBar == null ? null : _watchTogetherRowFocus,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Padding(
+                  padding: EdgeInsets.only(left: AppSpacing.safeX.du(context)),
+                  child: AppText(
+                    'More in progress',
+                    style: AppTypography.rowLabel,
+                  ),
                 ),
-              ),
-              // Row label → cards is 16; the ListView's own 12 du top
-              // headroom (rowHeadroom / 2) makes up the rest.
-              SizedBox(
-                height: (AppSpacing.lg - AppSpacing.rowHeadroom / 2).du(
-                  context,
+                // Row label → cards is 16; the ListView's own 12 du top
+                // headroom (rowHeadroom / 2) makes up the rest.
+                SizedBox(
+                  height: (AppSpacing.lg - AppSpacing.rowHeadroom / 2).du(
+                    context,
+                  ),
                 ),
-              ),
-              SizedBox(
-                // 209 card + 12 + 26 title + 3 + 24 caption, +8 for
-                // 16:9's 209.25 and text line boxes rounding up at
-                // fractional scales, plus rowHeadroom so a focused
-                // card's scale and frame are never clipped.
-                height: (209 + 12 + 26 + 3 + 24 + 8 + AppSpacing.rowHeadroom)
-                    .du(context),
-                child: EdgeFadeRow(
-                  child: RowEndStop(
-                    child: ListView.separated(
-                      key: const PageStorageKey('home-row-in-progress'),
-                      scrollDirection: Axis.horizontal,
-                      clipBehavior: Clip.none,
-                      padding: EdgeInsets.symmetric(
-                        horizontal: AppSpacing.safeX.du(context),
-                        vertical: (AppSpacing.rowHeadroom / 2).du(context),
+                SizedBox(
+                  // 209 card + 12 + 26 title + 3 + 24 caption, +8 for
+                  // 16:9's 209.25 and text line boxes rounding up at
+                  // fractional scales, plus rowHeadroom so a focused
+                  // card's scale and frame are never clipped.
+                  height: (209 + 12 + 26 + 3 + 24 + 8 + AppSpacing.rowHeadroom)
+                      .du(context),
+                  child: EdgeFadeRow(
+                    child: RowEndStop(
+                      child: ListView.separated(
+                        key: const PageStorageKey('home-row-in-progress'),
+                        scrollDirection: Axis.horizontal,
+                        clipBehavior: Clip.none,
+                        padding: EdgeInsets.symmetric(
+                          horizontal: AppSpacing.safeX.du(context),
+                          vertical: (AppSpacing.rowHeadroom / 2).du(context),
+                        ),
+                        itemCount: moreInProgress.length,
+                        separatorBuilder: (context, index) =>
+                            SizedBox(width: AppSpacing.cardGap.du(context)),
+                        itemBuilder: (context, index) {
+                          final item = moreInProgress[index];
+                          return RememberFocus(
+                            key: ValueKey(_workId(item)),
+                            id: 'home:in-progress:${_workId(item)}',
+                            child: ContinueWatchingPoster(
+                              item: item,
+                              onResume: () => widget.onResume(item),
+                              onRemove: () => widget.onRemove(item),
+                              focusNode: index == 0
+                                  ? _continueWatchingRowFocus
+                                  : null,
+                            ),
+                          );
+                        },
                       ),
-                      itemCount: moreInProgress.length,
-                      separatorBuilder: (context, index) =>
-                          SizedBox(width: AppSpacing.cardGap.du(context)),
-                      itemBuilder: (context, index) {
-                        final item = moreInProgress[index];
-                        return RememberFocus(
-                          key: ValueKey(_workId(item)),
-                          id: 'home:in-progress:${_workId(item)}',
-                          child: ContinueWatchingPoster(
-                            item: item,
-                            onResume: () => widget.onResume(item),
-                            onRemove: () => widget.onRemove(item),
-                            focusNode: index == 0
-                                ? _continueWatchingRowFocus
-                                : null,
-                          ),
-                        );
-                      },
                     ),
                   ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
       ],
     );

@@ -189,6 +189,28 @@ class _PlayerScreenState extends State<PlayerScreen> {
   /// guest's request and the host's own Up Next arriving together).
   bool _movingOn = false;
   StreamSubscription<RelayEvent>? _roomEventsSub;
+  bool _leavingClosedRoom = false;
+
+  /// A guest's view of the host: who it is (from its playback states) and
+  /// whether its device has left the room (the relay's `peerLeft`) — then
+  /// the room isn't "In sync", whatever the last state said.
+  String? _hostPeerId;
+  String? _hostName;
+  bool _hostGone = false;
+
+  void _watchHost(RelayEvent event) {
+    final from = event.fromPeerId;
+    if (from == null) return;
+    if (event.kind == 'playbackState') {
+      _hostPeerId = from;
+      _hostName = _roster?.nameOf(from) ?? _hostName;
+      if (_hostGone) setState(() => _hostGone = false);
+    } else if (event.kind == 'presence' && from == _hostPeerId) {
+      _hostName = event.username ?? _hostName;
+    } else if (event.kind == 'peerLeft' && from == _hostPeerId) {
+      setState(() => _hostGone = true);
+    }
+  }
 
   Timer? _controlsHideTimer;
   Timer? _reportTimer;
@@ -275,6 +297,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
     final relay = widget.relay;
     if (relay != null) {
       _roomEventsSub = relay.events.listen((event) {
+        if (relay.seatIndexValue != 0) _watchHost(event);
         if (relay.seatIndexValue == 0) {
           if (event.kind == 'controlRequest' && event.requestKind == EpisodeSwitch.nextRequestKind) _nextEpisodePressed();
           return;
@@ -294,9 +317,15 @@ class _PlayerScreenState extends State<PlayerScreen> {
       _rosterSub = roster.people.listen(
         (people) => setState(() => _people = people),
       );
-      _connectionSub = widget.relay!.connectionState.listen(
-        (state) => setState(() => _connectionState = state),
-      );
+      _connectionSub = widget.relay!.connectionState.listen((state) {
+        setState(() => _connectionState = state);
+        // The host ended the room: everyone goes back to where they were,
+        // as the host's "End the session?" promised them.
+        if (state == ConnectionState.roomClosed && !_leavingClosedRoom) {
+          _leavingClosedRoom = true;
+          unawaited(_handleBack());
+        }
+      });
       _roomIdSub = widget.relay!.roomId.listen(
         (id) => setState(() => _roomId = id),
       );
@@ -576,6 +605,24 @@ class _PlayerScreenState extends State<PlayerScreen> {
           : 0.0;
     });
     _maybeLoadUpNext();
+    if (value.isCompleted) _finished();
+  }
+
+  bool _ended = false;
+
+  /// The end of the film or episode. Up Next still on offer means the
+  /// episode ran out before its countdown did: go on to the next one now.
+  /// Otherwise leave the player as Back does — the stop is reported at the
+  /// end, which is what marks the title watched on the server — rather
+  /// than sitting on the last frame.
+  void _finished() {
+    if (_ended || _movingOn) return;
+    _ended = true;
+    if (_upNextItem != null && !_upNextDismissed) {
+      _nextEpisodePressed();
+      return;
+    }
+    unawaited(_handleBack(atEnd: true));
   }
 
   void _maybeLoadUpNext() {
@@ -850,13 +897,19 @@ class _PlayerScreenState extends State<PlayerScreen> {
     widget.onFailed(reason, positionMs);
   }
 
-  Future<void> _handleBack() async {
+  /// Leaves the player, reporting where it stopped — [atEnd] at the very
+  /// end (the controller's position is polled, so at completion it can
+  /// still read a moment earlier, and the server must see the end to count
+  /// the title watched).
+  Future<void> _handleBack({bool atEnd = false}) async {
     final controller = _controller;
     final duration =
         widget.detail.duration ??
         controller?.value.duration.inMilliseconds ??
         0;
-    final position = controller?.value.position.inMilliseconds ?? 0;
+    final position = atEnd
+        ? duration
+        : controller?.value.position.inMilliseconds ?? 0;
     _sync?.stop();
     await _reporter.report(
       widget.detail.id,
@@ -1192,11 +1245,15 @@ class _PlayerScreenState extends State<PlayerScreen> {
 
   bool get _roomInSync =>
       _connectionState == ConnectionState.connected &&
+      !_hostGone &&
       !(_phase == PlaybackPhase.waitingForPeers && _waitingOn.isNotEmpty);
 
   (String, Color) _roomStatus() {
     if (_connectionState != ConnectionState.connected) {
       return (_syncStatusLabel(), AppColors.warning);
+    }
+    if (_hostGone) {
+      return ('${_hostName ?? 'The host'} has left', AppColors.warning);
     }
     if (!_roomInSync) {
       return (

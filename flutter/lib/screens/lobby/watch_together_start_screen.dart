@@ -9,6 +9,7 @@ import '../../kit/switch.dart';
 import '../../kit/text.dart';
 import '../../theme/phosphor_icons.dart';
 import '../../theme/scale.dart';
+import '../common/time_format.dart';
 import '../../theme/tokens.dart';
 import '../../theme/typography.dart';
 
@@ -22,6 +23,11 @@ import '../../theme/typography.dart';
 class WatchTogetherStartScreen extends StatefulWidget {
   final String roomTitle;
   final bool defaultRestart;
+
+  /// Where the title was left off. 0: it never was, so there's no Resume
+  /// to choose between (it starts at the beginning either way). Null:
+  /// not known here — both choices show.
+  final int? resumeAtMs;
   final int maxSeats;
   final String? relayNickname;
   final Future<bool> Function()? checkRelayReachable;
@@ -33,6 +39,7 @@ class WatchTogetherStartScreen extends StatefulWidget {
     super.key,
     required this.roomTitle,
     this.defaultRestart = false,
+    this.resumeAtMs,
     required this.maxSeats,
     this.relayNickname,
     this.checkRelayReachable,
@@ -121,20 +128,24 @@ class _WatchTogetherStartScreenState extends State<WatchTogetherStartScreen> {
                 style: AppTypography.title2,
               ),
               SizedBox(height: AppSpacing.xl.du(context)),
-              _ChoiceRow(
-                title: 'Resume',
-                subtitle: 'Where you left off',
-                selected: !_restart,
-                onClick: () => setState(() => _restart = false),
-              ),
-              SizedBox(height: AppSpacing.sm.du(context)),
-              _ChoiceRow(
-                title: 'Start from the beginning',
-                subtitle: 'Everyone sees it fresh',
-                selected: _restart,
-                onClick: () => setState(() => _restart = true),
-              ),
-              SizedBox(height: AppSpacing.lg.du(context)),
+              if (widget.resumeAtMs != 0) ...[
+                _ChoiceRow(
+                  title: 'Resume',
+                  subtitle: widget.resumeAtMs == null
+                      ? 'Where you left off'
+                      : 'From ${formatTimecode(widget.resumeAtMs!)}',
+                  selected: !_restart,
+                  onClick: () => setState(() => _restart = false),
+                ),
+                SizedBox(height: AppSpacing.sm.du(context)),
+                _ChoiceRow(
+                  title: 'Start from the beginning',
+                  subtitle: 'Everyone sees it fresh',
+                  selected: _restart,
+                  onClick: () => setState(() => _restart = true),
+                ),
+                SizedBox(height: AppSpacing.lg.du(context)),
+              ],
               Row(
                 children: [
                   Expanded(

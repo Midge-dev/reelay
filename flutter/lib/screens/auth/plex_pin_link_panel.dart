@@ -83,7 +83,7 @@ class _PlexPinLinkPanelState extends ConsumerState<PlexPinLinkPanel> {
       if (authToken == null) {
         setState(
           () => _state = const _LinkError(
-            'Code expired — restart to get a new one',
+            'That code expired. Go back and start again for a new one.',
           ),
         );
         return;
@@ -92,7 +92,12 @@ class _PlexPinLinkPanelState extends ConsumerState<PlexPinLinkPanel> {
       widget.onLinked(authToken);
     } catch (e) {
       if (_disposed) return;
-      setState(() => _state = _LinkError('$e'));
+      // Never the exception itself on a television.
+      setState(
+        () => _state = const _LinkError(
+          "Couldn't reach plex.tv. Check this TV's connection, then try again.",
+        ),
+      );
     }
   }
 
@@ -136,7 +141,7 @@ class _PlexPinLinkPanelState extends ConsumerState<PlexPinLinkPanel> {
           ),
         ],
       ),
-      _LinkError(:final message) => AppText('Error: $message'),
+      _LinkError(:final message) => AppText(message),
     };
   }
 }

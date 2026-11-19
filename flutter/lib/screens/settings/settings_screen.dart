@@ -585,7 +585,13 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         // version line rides at the end of the list rather than being
         // pinned under it.
         Expanded(
-          child: SingleChildScrollView(
+          // Unclipped at the sides and top, for a focused row's scale and
+          // frame; clipped (with that much room) at the bottom, where the
+          // version line otherwise ran past the list onto the screen's
+          // edge — out of the safe area, its second line off screen.
+          child: ClipRect(
+            clipper: _BottomEdgeClip(AppSpacing.sm.du(context)),
+            child: SingleChildScrollView(
             clipBehavior: Clip.none,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -611,6 +617,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 ),
               ],
             ),
+          ),
           ),
         ),
       ],
@@ -1291,4 +1298,19 @@ class _ToggleIndicator extends StatelessWidget {
       ),
     );
   }
+}
+
+/// Clips only the bottom, [room] below the box; the other sides are left
+/// open far enough for anything focus scales out.
+class _BottomEdgeClip extends CustomClipper<Rect> {
+  final double room;
+
+  const _BottomEdgeClip(this.room);
+
+  @override
+  Rect getClip(Size size) =>
+      Rect.fromLTRB(-size.width, -size.height, size.width * 2, size.height + room);
+
+  @override
+  bool shouldReclip(_BottomEdgeClip old) => old.room != room;
 }

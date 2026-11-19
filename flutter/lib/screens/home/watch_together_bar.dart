@@ -1,5 +1,7 @@
+import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 
+import '../../focus/back_handler.dart';
 import '../../kit/button.dart';
 import '../../kit/focusable_surface.dart' show LeadingSpinePainter;
 import '../../kit/icon.dart';
@@ -55,9 +57,22 @@ class WatchTogetherBar extends StatefulWidget {
 }
 
 class _WatchTogetherBarState extends State<WatchTogetherBar> {
-  bool _confirmingEnd = false;
   bool _endFailed = false;
   Object? _endResetToken;
+
+  /// The confirm is drawn over the whole screen (the app's overlay), not
+  /// inside the 68 du bar — inside it, it overflowed, its scrim covered
+  /// only the bar, and focus stayed on End behind it.
+  final _confirm = OverlayPortalController();
+  final _endFocus = FocusNode(debugLabel: 'wt-bar-end');
+  final _keepOpenFocus = FocusNode(debugLabel: 'wt-bar-keep-open');
+
+  @override
+  void dispose() {
+    _endFocus.dispose();
+    _keepOpenFocus.dispose();
+    super.dispose();
+  }
 
   MergedRoom _selectRoom() {
     for (final merged in widget.rooms) {
@@ -68,11 +83,22 @@ class _WatchTogetherBarState extends State<WatchTogetherBar> {
     return widget.rooms.first;
   }
 
-  void _openEndConfirm() => setState(() => _confirmingEnd = true);
-  void _closeEndConfirm() => setState(() => _confirmingEnd = false);
+  void _openEndConfirm() {
+    _confirm.show();
+    // Not autofocus: End still holds focus, and autofocus never takes it
+    // from something that has it.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _keepOpenFocus.requestFocus();
+    });
+  }
+
+  void _closeEndConfirm() {
+    _confirm.hide();
+    _endFocus.requestFocus();
+  }
 
   Future<void> _endNow(MergedRoom merged) async {
-    setState(() => _confirmingEnd = false);
+    _confirm.hide();
     final token = Object();
     _endResetToken = token;
     final ok = await widget.onEndSession(merged);
@@ -125,7 +151,7 @@ class _WatchTogetherBarState extends State<WatchTogetherBar> {
     // Screens 01/11: fit-content, not full width — a 4px semantic spine
     // plus words (DESIGN.md #9), 14/22 padding around a 40 du button, so
     // the whole slot is 68 du.
-    return Stack(
+    final bar = Stack(
       clipBehavior: Clip.none,
       children: [
         Align(
@@ -199,6 +225,7 @@ class _WatchTogetherBarState extends State<WatchTogetherBar> {
                     AppOutlinedButton(
                       dense: true,
                       onClick: _openEndConfirm,
+                      focusNode: _endFocus,
                       child: const AppText('End'),
                     ),
                   ] else
@@ -243,12 +270,16 @@ class _WatchTogetherBarState extends State<WatchTogetherBar> {
             ),
           ),
         ),
-        if (_confirmingEnd)
-          _EndSessionConfirm(
-            onKeepOpen: _closeEndConfirm,
-            onEndForEveryone: () => _endNow(selected),
-          ),
       ],
+    );
+    return OverlayPortal(
+      controller: _confirm,
+      overlayChildBuilder: (context) => _EndSessionConfirm(
+        keepOpenFocus: _keepOpenFocus,
+        onKeepOpen: _closeEndConfirm,
+        onEndForEveryone: () => _endNow(selected),
+      ),
+      child: bar,
     );
   }
 }
@@ -258,11 +289,15 @@ class _WatchTogetherBarState extends State<WatchTogetherBar> {
 /// don't get one, but ending a room affects other people, so it does).
 /// Focus defaults to "Keep it open"; the destructive option is never the
 /// default and carries the error spine.
+/// Drawn in the app's overlay, in its own focus scope so the arrows stay
+/// inside it; Back keeps the room open.
 class _EndSessionConfirm extends StatelessWidget {
+  final FocusNode keepOpenFocus;
   final VoidCallback onKeepOpen;
   final VoidCallback onEndForEveryone;
 
   const _EndSessionConfirm({
+    required this.keepOpenFocus,
     required this.onKeepOpen,
     required this.onEndForEveryone,
   });
@@ -270,51 +305,71 @@ class _EndSessionConfirm extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Positioned.fill(
-      child: ColoredBox(
-        color: AppScrims.dialog,
-        child: Center(
-          child: ConstrainedBox(
-            constraints: BoxConstraints(maxWidth: 520.du(context)),
-            child: Container(
-              padding: EdgeInsets.all(AppSpacing.xxl.du(context)),
-              decoration: BoxDecoration(
-                color: AppColors.surfaceOverlay,
-                borderRadius: BorderRadius.circular(
-                  AppShape.radiusLg.du(context),
-                ),
-                border: Border.all(color: AppColors.lineStrong),
-                boxShadow: AppElevation.overlay,
-              ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  AppText('End the session?', style: AppTypography.title2),
-                  SizedBox(height: AppSpacing.md.du(context)),
-                  AppText(
-                    'Everyone will be dropped back to their own home screens. Your place is kept, and you can keep watching on your own.',
-                    color: AppColors.ink2,
+      child: BackHandler(
+        onBack: onKeepOpen,
+        child: FocusScope(
+          // Arrows move between the two buttons and go no further: one
+          // unused here would bubble up to Home and open the rail.
+          onKeyEvent: (node, event) {
+            if (event is KeyUpEvent) return KeyEventResult.ignored;
+            final direction = switch (event.logicalKey) {
+              LogicalKeyboardKey.arrowLeft => TraversalDirection.left,
+              LogicalKeyboardKey.arrowRight => TraversalDirection.right,
+              LogicalKeyboardKey.arrowUp => TraversalDirection.up,
+              LogicalKeyboardKey.arrowDown => TraversalDirection.down,
+              _ => null,
+            };
+            if (direction == null) return KeyEventResult.ignored;
+            node.focusInDirection(direction);
+            return KeyEventResult.handled;
+          },
+          child: ColoredBox(
+            color: AppScrims.dialog,
+            child: Center(
+              child: ConstrainedBox(
+                constraints: BoxConstraints(maxWidth: 520.du(context)),
+                child: Container(
+                  padding: EdgeInsets.all(AppSpacing.xxl.du(context)),
+                  decoration: BoxDecoration(
+                    color: AppColors.surfaceOverlay,
+                    borderRadius: BorderRadius.circular(
+                      AppShape.radiusLg.du(context),
+                    ),
+                    border: Border.all(color: AppColors.lineStrong),
+                    boxShadow: AppElevation.overlay,
                   ),
-                  SizedBox(height: AppSpacing.xl.du(context)),
-                  Row(
+                  child: Column(
                     mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      AppButton(
-                        onClick: onKeepOpen,
-                        autofocus: true,
-                        child: const AppText('Keep it open'),
+                      AppText('End the session?', style: AppTypography.title2),
+                      SizedBox(height: AppSpacing.md.du(context)),
+                      AppText(
+                        'Everyone will be dropped back to their own home screens. Your place is kept, and you can keep watching on your own.',
+                        color: AppColors.ink2,
                       ),
-                      SizedBox(width: AppSpacing.md.du(context)),
-                      AppOutlinedButton(
-                        onClick: onEndForEveryone,
-                        child: const AppText(
-                          'End for everyone',
-                          color: AppColors.error,
-                        ),
+                      SizedBox(height: AppSpacing.xl.du(context)),
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          AppButton(
+                            onClick: onKeepOpen,
+                            focusNode: keepOpenFocus,
+                            child: const AppText('Keep it open'),
+                          ),
+                          SizedBox(width: AppSpacing.md.du(context)),
+                          AppOutlinedButton(
+                            onClick: onEndForEveryone,
+                            child: const AppText(
+                              'End for everyone',
+                              color: AppColors.error,
+                            ),
+                          ),
+                        ],
                       ),
                     ],
                   ),
-                ],
+                ),
               ),
             ),
           ),

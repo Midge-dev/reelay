@@ -1,5 +1,7 @@
 import 'dart:io';
+import 'dart:ui' as ui;
 
+import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -9,6 +11,7 @@ import 'package:reelay/data/settings/app_settings.dart';
 import 'package:reelay/data/settings/settings_store.dart';
 import 'package:reelay/main.dart';
 import 'package:reelay/state/data_providers.dart';
+import 'package:reelay/sync/relay_client.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:shared_preferences_platform_interface/in_memory_shared_preferences_async.dart';
 import 'package:shared_preferences_platform_interface/shared_preferences_async_platform_interface.dart';
@@ -18,6 +21,7 @@ import 'package:video_player_platform_interface/video_player_platform_interface.
 import '../../playback/fake_video_player_platform.dart';
 import 'fake_http.dart';
 import 'fake_jellyfin.dart';
+import 'fake_relay.dart';
 
 class _MemoryTokenStore implements SecureTokenStore {
   final values = <String, String>{};
@@ -46,16 +50,51 @@ class _MemoryTokenStore implements SecureTokenStore {
 /// Nothing is faked above the network and the two stores — every screen,
 /// controller and focus rule is the app's own.
 class Journey {
-  Journey._(this.tester, this.server, this.network);
+  Journey._(this.tester, this.server, this.network, this._relay);
 
   final WidgetTester tester;
   final FakeJellyfin server;
+  final FakeRelay? _relay;
+
+  final _friends = <Friend>[];
+
+  /// Someone else on their own TV, on this journey's relay. Left for you at
+  /// the end of the journey.
+  Friend friend({String name = 'Riley'}) {
+    final f = Friend(relay, name: name, peerId: '${name.toLowerCase()}-peer');
+    _friends.add(f);
+    return f;
+  }
+
+  /// The Watch Together relay, for journeys started with one.
+  FakeRelay get relay => _relay ?? (throw StateError('this journey has no relay: pass relay: to journey()'));
   final FakeNetwork network;
 
   /// Steps taken so far, for a failure to show how it got there.
   final steps = <String>[];
 
-  static Future<Journey> _boot(WidgetTester tester, FakeJellyfin server, FakeNetwork network, {double uiScale = AppSettings.defaultUiScale}) async {
+  static bool _realFontsLoaded = false;
+
+  /// The app's own type (Inter) and icons (Phosphor) in place of the test
+  /// font's boxes — for screenshots a person can read. Off by default: the
+  /// test font's wide square glyphs make the crawler's overflow check
+  /// stricter than real text.
+  static Future<void> _loadRealFonts(WidgetTester tester) async {
+    if (_realFontsLoaded) return;
+    _realFontsLoaded = true;
+    await tester.runAsync(() async {
+      Future<void> load(String family, String asset) async {
+        await (FontLoader(family)..addFont(rootBundle.load(asset))).load();
+      }
+
+      await load('Inter', 'assets/fonts/Inter-Variable.ttf');
+      await load('packages/phosphor_flutter/PhosphorRegular', 'packages/phosphor_flutter/lib/fonts/Phosphor.ttf');
+      await load('packages/phosphor_flutter/PhosphorFill', 'packages/phosphor_flutter/lib/fonts/Phosphor-Fill.ttf');
+    });
+  }
+
+  static Future<Journey> _boot(WidgetTester tester, FakeJellyfin server, FakeNetwork network, {double uiScale = AppSettings.defaultUiScale, FakeRelay? relay, bool realFonts = false}) async {
+    if (realFonts) await _loadRealFonts(tester);
     VideoPlayerPlatform.instance = FakeVideoPlayerPlatform();
     // The Shield's real geometry: a 960×540 logical canvas (1080p at 2×).
     tester.view.physicalSize = const Size(960, 540);
@@ -71,7 +110,16 @@ class Journey {
       watchTogetherName: 'Sam',
       jellyfin: JellyfinLink(serverId: 'jf-den', serverName: 'Den', baseUrl: 'http://den.local:8096', userId: FakeJellyfin.userId, username: 'sam'),
     );
-    await store.save(AppSettings(profiles: const [profile], setupComplete: true, uiScale: uiScale));
+    if (relay != null) {
+      RelayClient.openChannel = relay.open;
+      addTearDown(() => RelayClient.openChannel = defaultOpenChannel);
+    }
+    await store.save(AppSettings(
+      profiles: const [profile],
+      setupComplete: true,
+      uiScale: uiScale,
+      relays: [if (relay != null) RelayEntry(id: 'r1', nickname: 'Test relay', url: relay.url, isDefault: true)],
+    ));
     final tokens = _MemoryTokenStore()..values['jellyfin:p1'] = 'jf-token';
 
     await tester.pumpWidget(
@@ -80,7 +128,7 @@ class Journey {
         child: const ReelayApp(),
       ),
     );
-    final journey = Journey._(tester, server, network);
+    final journey = Journey._(tester, server, network, relay);
     // Start-up needs a moment of real time once (an asset load resolves on
     // the real clock, not the test's), then the splash and first rows run
     // on the test's clock.
@@ -98,6 +146,37 @@ class Journey {
     const step = Duration(milliseconds: 50);
     for (var t = Duration.zero; t < total; t += step) {
       await tester.pump(step);
+    }
+  }
+
+  /// The video player underneath the app (fake): what it opened, and
+  /// whether it was last told to play or to pause.
+  FakeVideoPlayerPlatform get video => VideoPlayerPlatform.instance as FakeVideoPlayerPlatform;
+  bool get videoPlaying => video.calls.lastWhere((c) => c == 'play' || c == 'pause', orElse: () => 'pause') == 'play';
+
+  /// Saves what's on screen as a PNG under build/journey_shots/ (or
+  /// \$JOURNEY_SHOTS), for looking at a screen rather than reading its
+  /// text. Fonts are the test's — the app's own type is loaded by the
+  /// harness only where the test environment allows it.
+  Future<String> screenshot(String name) async {
+    final dir = Directory(Platform.environment['JOURNEY_SHOTS'] ?? 'build/journey_shots')..createSync(recursive: true);
+    final path = '${dir.path}/$name.png';
+    final layer = tester.binding.renderViews.first.debugLayer! as OffsetLayer;
+    final size = tester.view.physicalSize;
+    await tester.runAsync(() async {
+      final image = await layer.toImage(Offset.zero & size);
+      final bytes = await image.toByteData(format: ui.ImageByteFormat.png);
+      File(path).writeAsBytesSync(bytes!.buffer.asUint8List());
+    });
+    return path;
+  }
+
+  /// Lets a moment of real time pass — for work that resolves on the real
+  /// clock rather than the test's (the settings store's reads).
+  Future<void> realTime([int hops = 3]) async {
+    for (var i = 0; i < hops; i++) {
+      await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 20)));
+      await wait(const Duration(milliseconds: 200));
     }
   }
 
@@ -265,6 +344,13 @@ class Journey {
     return !visible.isEmpty && visible.width * visible.height >= rect.width * rect.height / 2;
   }
 
+  /// Every piece of text on screen, top to bottom — for exploring a screen
+  /// and for failure messages.
+  List<String> screenTexts() {
+    final root = tester.binding.rootElement;
+    return root == null ? const [] : _textsUnder(root);
+  }
+
   /// Whether [text] is anywhere on screen right now — as text, or as an
   /// icon button's name.
   bool shows(String text) =>
@@ -312,6 +398,8 @@ extension RailNavigation on Journey {
     await wait(const Duration(seconds: 1));
   }
 }
+
+final defaultOpenChannel = RelayClient.openChannel;
 
 /// What a crawl found.
 class CrawlReport {
@@ -369,13 +457,28 @@ class _Rng {
 
 /// A test that runs the whole app against [FakeJellyfin], with the fake
 /// network in place for everything the test (and the app) does.
-void journey(String description, Future<void> Function(Journey j) body, {FakeJellyfin Function()? server, double uiScale = AppSettings.defaultUiScale}) {
-  testWidgets(description, (tester) async {
+void journey(
+  String description,
+  Future<void> Function(Journey j) body, {
+  FakeJellyfin Function()? server,
+  double uiScale = AppSettings.defaultUiScale,
+  bool relay = false,
+  bool realFonts = false,
+  bool skip = false,
+}) {
+  testWidgets(skip: skip, description, (tester) async {
     final jellyfin = server?.call() ?? FakeJellyfin();
-    final network = FakeNetwork([jellyfin.route]);
+    final fakeRelay = relay ? FakeRelay() : null;
+    final network = FakeNetwork([jellyfin.route, ?fakeRelay?.route]);
     await HttpOverrides.runWithHttpOverrides(() async {
-      final j = await Journey._boot(tester, jellyfin, network, uiScale: uiScale);
-      await body(j);
+      final j = await Journey._boot(tester, jellyfin, network, uiScale: uiScale, relay: fakeRelay, realFonts: realFonts);
+      try {
+        await body(j);
+      } finally {
+        for (final f in j._friends) {
+          f.leave();
+        }
+      }
       // Unmount and let leftover timers (auto-hide, polls) run out.
       await tester.pumpWidget(const SizedBox());
       await tester.pump(const Duration(seconds: 30));

@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart';
 import 'package:rxdart/rxdart.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 
@@ -63,6 +64,12 @@ class RelayClient {
     this.onHostedRoomIdUpdated = _noopHostedRoom,
   }) : _identity = identity;
 
+  /// How a socket to the relay is opened. Tests swap in an in-process relay
+  /// (test/journeys/harness/fake_relay.dart) so whole-app journeys can host
+  /// and join rooms.
+  @visibleForTesting
+  static WebSocketChannel Function(Uri uri) openChannel = WebSocketChannel.connect;
+
   static void _noopIdentity(RelayIdentity _) {}
   static void _noopHostedRoom(String roomId, String reconnectToken) {}
 
@@ -120,7 +127,7 @@ class RelayClient {
 
     WebSocketChannel channel;
     try {
-      channel = WebSocketChannel.connect(Uri.parse(relayUrl));
+      channel = openChannel(Uri.parse(relayUrl));
       await channel.ready;
     } catch (_) {
       finishAndMaybeReconnect();

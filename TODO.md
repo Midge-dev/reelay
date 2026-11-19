@@ -54,8 +54,9 @@
 - [ ] **Relay settings rows are skipped by Up/Down** — their buttons sit far
   right, so vertical moves from "‹ Settings" / "Add a relay" jump past them.
   Only Right reaches them.
-- [ ] **The player stays on the last frame** at the end of a movie instead
-  of closing.
+- [x] **The player stays on the last frame** at the end of a movie instead
+  of closing. (Fixed on `qa-journeys-ux-polish`: it reports the end, which
+  marks the title watched, and leaves; an episode with Up Next goes on.)
 - [x] **A "Next episode" button in the player** (done on
   `fix-watch-together-seek-loop`; works in rooms — see ARCHITECTURE.md
   §2.5) for anything with episodes,
@@ -64,3 +65,36 @@
   `onPlayNext`); it needs a button in the controls row (only when there is a
   next episode), its D-pad place in the row, and in Watch Together, what a
   guest pressing it does (likely: only the host can, or it asks the host).
+
+## From the 2026-11-19 QA pass (branch `qa-journeys-ux-polish`)
+
+Fixed there, each with a journey: the Watch Together bar on Home was
+skipped by Up/Down; its End confirm was drawn inside the bar; a late
+joiner's lobby seated the host twice; a guest stayed in the player after
+the host ended the room, and saw "In sync" after the host's TV went off;
+Jellyfin-only profiles were called "You" in rooms; error screens were a
+bare line with nothing to focus; the room dialog offered Resume on titles
+never started; the player's main buttons had no accessible names; the
+Settings version line ran onto the screen's edge.
+
+Open — design decisions:
+
+- [ ] **Home's hero Resume opens the page** rather than resuming, so it
+  takes two presses. Deliberate (home_hero.dart), but labelled like play.
+- [ ] **Watchlist removal asks to confirm** (long-press → "Remove … from
+  your watchlist?"). DESIGN.md #12 says act at once with an 8 s undo chip.
+- [ ] **The room dialog's Phone chat toggle does nothing** (disclosed in
+  watch_together_start_screen.dart). Wire it (open the Chat QR in the
+  lobby?) or drop it.
+- [ ] **Lobby's "Close the room" only parks it** for 3 minutes (same as
+  Back). Rename, or make it end the room (confirm if anyone has joined).
+- [ ] **Joining late lands in the lobby** with "Start for everyone" while
+  the host is already watching; going straight into the player at the
+  room's spot may be better.
+- [ ] **A show page opens with its title cut in half** at the top edge
+  (focus on the next episode scrolls the header partly away).
+- [ ] **Copy:** "guests will sync within a frame" overclaims; the bar says
+  "End" and its confirm "End the session?" while everywhere else says
+  "room"; Search's no-results line has no instruction.
+- [ ] **The selected-and-focused dot** crowds short labels (Movies' Titles
+  tab, the player menu's Subtitles tab).

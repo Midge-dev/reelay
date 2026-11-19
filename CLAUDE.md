@@ -52,6 +52,15 @@ Before the Shield pass, the automated layers catch most of it (run with
   real flows (open, Back, remove, panels, errors);
   `focus_crawl_test.dart` random-walks every screen at 100/130/150% UI
   size, failing on hidden or faded-out focus, dead ends and overflows.
+  `watch_together_journeys_test.dart` hosts and joins rooms through the
+  real screens against an in-process relay (`harness/fake_relay.dart`)
+  with a friend on another TV (the real relay client and sync logic);
+  `playback_journeys_test.dart` checks resume, progress reports and the
+  end of a film as the server sees them.
+- `test/journeys/ux_tour_test.dart` — not a test: `UX_TOUR=1 flutter test
+  test/journeys/ux_tour_test.dart` screenshots every screen in the app's
+  own type into `build/journey_shots/` (`UX_SCALE=1.5` for another UI size),
+  for a design pass against DESIGN.md.
 - `test/screens/player/player_playback_test.dart` — playback and subtitles
   on Plex and Jellyfin.
 - `test/sync/` — Watch Together rooms in simulation, plus a fuzzer (see

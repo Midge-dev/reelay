@@ -111,6 +111,16 @@ class AppRootController extends ChangeNotifier {
   Profile? _activeProfile;
   Profile? get activeProfile => _activeProfile;
 
+  /// What the others in a Watch Together room call you: the profile's own
+  /// Watch Together name, else the Plex account's. Never "You" — that's
+  /// what a Jellyfin-only profile (no Plex account) used to send, so
+  /// friends saw a seat called "You".
+  String get watchTogetherName {
+    final named = _activeProfile?.watchTogetherName.trim();
+    if (named != null && named.isNotEmpty) return named;
+    return _localAccount?.username ?? _activeProfile?.name ?? 'Guest';
+  }
+
   AppSettings get currentSettings =>
       _settingsStore.current ?? const AppSettings();
 
@@ -1156,6 +1166,7 @@ class AppRootController extends ChangeNotifier {
     String? thumb,
     required String targetItemId,
     bool defaultRestart = false,
+    int? resumeAtMs,
   }) {
     _setState(
       WatchTogetherStart(
@@ -1166,6 +1177,7 @@ class AppRootController extends ChangeNotifier {
         thumb: thumb,
         targetItemId: targetItemId,
         defaultRestart: defaultRestart,
+        resumeAtMs: resumeAtMs,
       ),
     );
   }
@@ -1179,8 +1191,7 @@ class AppRootController extends ChangeNotifier {
     required String targetItemId,
     required bool restart,
   }) async {
-    final hostName =
-        _activeProfile?.watchTogetherName ?? _localAccount?.username ?? 'Host';
+    final hostName = watchTogetherName;
     final settings = await _settingsStore.observe().first;
     final defaultRelay = settings.defaultRelay;
     if (defaultRelay == null) {
@@ -1200,7 +1211,12 @@ class AppRootController extends ChangeNotifier {
     try {
       detail = await clientFor(server).fetchDetail(targetItemId);
     } catch (e) {
-      _setState(AppError(message: '$e', retryState: returnState));
+      _setState(
+        AppError(
+          message: "${server.name} didn't answer, so the room couldn't open. Try again in a moment.",
+          retryState: returnState,
+        ),
+      );
       return;
     }
 
@@ -1261,8 +1277,7 @@ class AppRootController extends ChangeNotifier {
     );
     if (next == null) return;
     releaseRelayClient();
-    final hostName =
-        _activeProfile?.watchTogetherName ?? _localAccount?.username ?? 'Host';
+    final hostName = watchTogetherName;
     final newClient = await _ensureRelayClient(
       next.url,
       CreateRoom(
@@ -1640,7 +1655,7 @@ class AppRootController extends ChangeNotifier {
     if (found == null) {
       _setState(
         AppError(
-          message: 'Could not find that title on any connected server',
+          message: "${merged.room.mediaTitle ?? merged.room.title} isn't on any of your servers, so you can't join ${merged.room.hostName}'s room.",
           retryState: current,
         ),
       );
@@ -1654,7 +1669,12 @@ class AppRootController extends ChangeNotifier {
       JoinRoom(merged.room.roomId),
     );
     if (relay == null) {
-      _setState(AppError(message: 'No relay configured', retryState: current));
+      _setState(
+        AppError(
+          message: 'Add a relay in Settings to watch with friends.',
+          retryState: current,
+        ),
+      );
       return;
     }
     final resolved = await relay.connectionState
@@ -1669,7 +1689,10 @@ class AppRootController extends ChangeNotifier {
         );
     if (resolved == ConnectionState.roomNotFound) {
       _setState(
-        AppError(message: 'That room just ended.', retryState: current),
+        AppError(
+          message: '${merged.room.hostName} ended that room just now.',
+          retryState: current,
+        ),
       );
     } else {
       _setState(

@@ -1,9 +1,11 @@
+import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 
 import '../../data/media/artwork_url.dart';
 import '../../data/media/media_models.dart';
 import '../../theme/phosphor_icons.dart';
 
+import '../../focus/arrow_to.dart';
 import '../../focus/screen_memory.dart';
 import '../../kit/button.dart';
 import '../../kit/icon.dart';
@@ -52,6 +54,10 @@ class HomeHero extends StatelessWidget {
   /// — Home scrolls back to the very top so the whole hero shows.
   final VoidCallback? onActionsFocused;
 
+  /// Where Down from the hero's actions goes — the Watch Together bar in
+  /// the [footer], whose buttons sit too far right for traversal to find.
+  final FocusNode? actionsDownTo;
+
   const HomeHero({
     super.key,
     required this.item,
@@ -62,6 +68,7 @@ class HomeHero extends StatelessWidget {
     this.autofocus = false,
     this.footer = const [],
     this.onActionsFocused,
+    this.actionsDownTo,
   });
 
   @override
@@ -221,57 +228,63 @@ class HomeHero extends StatelessWidget {
                         ),
                       ],
                       SizedBox(height: (_heroBlockGap + 10).du(context)),
-                      Focus(
-                        canRequestFocus: false,
-                        skipTraversal: true,
-                        onFocusChange: (focused) {
-                          if (focused) onActionsFocused?.call();
-                        },
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            RememberFocus(
-                              id: 'hero:resume',
-                              child: AppButton(
-                                onClick: onResume,
-                                focusNode: resumeFocusNode,
-                                autofocus: autofocus,
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    const AppIcon(
-                                      PhosphorIconsFill.play,
-                                      size: 22,
-                                    ),
-                                    SizedBox(width: AppSpacing.md.du(context)),
-                                    const AppText('Resume'),
-                                  ],
-                                ),
-                              ),
-                            ),
-                            if (onWatchTogether != null) ...[
-                              SizedBox(width: AppSpacing.lg.du(context)),
+                      ArrowTo(
+                        direction: LogicalKeyboardKey.arrowDown,
+                        target: actionsDownTo,
+                        child: Focus(
+                          canRequestFocus: false,
+                          skipTraversal: true,
+                          onFocusChange: (focused) {
+                            if (focused) onActionsFocused?.call();
+                          },
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
                               RememberFocus(
-                                id: 'hero:watch-together',
-                                child: AppOutlinedButton(
-                                  onClick: () => onWatchTogether!(active),
+                                id: 'hero:resume',
+                                child: AppButton(
+                                  onClick: onResume,
+                                  focusNode: resumeFocusNode,
+                                  autofocus: autofocus,
                                   child: Row(
                                     mainAxisSize: MainAxisSize.min,
                                     children: [
                                       const AppIcon(
-                                        PhosphorIconsRegular.usersThree,
+                                        PhosphorIconsFill.play,
                                         size: 22,
                                       ),
                                       SizedBox(
                                         width: AppSpacing.md.du(context),
                                       ),
-                                      const AppText('Watch Together'),
+                                      const AppText('Resume'),
                                     ],
                                   ),
                                 ),
                               ),
+                              if (onWatchTogether != null) ...[
+                                SizedBox(width: AppSpacing.lg.du(context)),
+                                RememberFocus(
+                                  id: 'hero:watch-together',
+                                  child: AppOutlinedButton(
+                                    onClick: () => onWatchTogether!(active),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        const AppIcon(
+                                          PhosphorIconsRegular.usersThree,
+                                          size: 22,
+                                        ),
+                                        SizedBox(
+                                          width: AppSpacing.md.du(context),
+                                        ),
+                                        const AppText('Watch Together'),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ],
                             ],
-                          ],
+                          ),
                         ),
                       ),
                     ],

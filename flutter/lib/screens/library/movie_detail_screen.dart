@@ -68,7 +68,9 @@ class MovieDetailScreen extends StatefulWidget {
   /// The ratingKey, and how far in to start — the title's progress,
   /// which can be further than this copy's own.
   final void Function(String ratingKey, int resumeAtMs) onPlay;
-  final ValueChanged<String> onWatchTogether;
+
+  /// The ratingKey, and where the room would resume (0: never started).
+  final void Function(String ratingKey, int resumeAtMs) onWatchTogether;
   final ValueChanged<String> onRestartSolo;
   final bool Function(String?) isOnWatchlist;
   final ValueChanged<String?> onToggleWatchlist;
@@ -279,7 +281,7 @@ class _MovieDetailScreenState extends State<MovieDetailScreen> {
                       playFocus: _playFocus,
                       onPlay: () => widget.onPlay(widget.movie.id, viewOffset),
                       onWatchTogether: () =>
-                          widget.onWatchTogether(widget.movie.id),
+                          widget.onWatchTogether(widget.movie.id, viewOffset),
                       onRestartSolo: () =>
                           widget.onRestartSolo(widget.movie.id),
                       isOnWatchlist: widget.isOnWatchlist(

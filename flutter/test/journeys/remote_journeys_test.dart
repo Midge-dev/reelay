@@ -186,11 +186,23 @@ void main() {
         await j.right(); // Contact, which no server here can find
         await j.select();
         expect(j.shows("isn't on any of your servers"), isTrue, reason: j.why('the error should show'));
+        j.expectFocusOn('Go back', because: 'an error always gives the remote a way out');
 
-        j.checkFocusAfterEveryPress = false; // the error screen is the thing under test
         await j.back();
         expect(j.shows("isn't on any of your servers"), isFalse, reason: j.why('Back should leave the error screen'));
-        j.checkFocusAfterEveryPress = true;
+        j.expectFocusOn('Contact');
+      },
+      server: () => FakeJellyfin(unfindable: {'m3'}),
+    );
+
+    journey(
+      "the error's Go back returns to where you were",
+      (j) async {
+        await j.down();
+        await j.right(); // Contact
+        await j.select();
+        await j.select(); // Go back
+        expect(j.shows("isn't on any of your servers"), isFalse, reason: j.why('Go back should leave the error screen'));
         j.expectFocusOn('Contact');
       },
       server: () => FakeJellyfin(unfindable: {'m3'}),

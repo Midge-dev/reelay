@@ -198,11 +198,24 @@ class _LobbyScreenState extends State<LobbyScreen> {
     );
   }
 
+  /// The host's peer id, once a playback state names it — a host already
+  /// watching announces itself like anyone else, and has its own seat.
+  String? _hostPeerId;
+
   void _handleEvent(RelayEvent event) {
     switch (event.kind) {
+      case 'playbackState':
+        final host = event.fromPeerId;
+        if (host != null && host != _hostPeerId) {
+          setState(() {
+            _hostPeerId = host;
+            _roster = {..._roster}..remove(host);
+          });
+        }
       case 'presence':
         final fromPeerId = event.fromPeerId;
         if (fromPeerId == null || fromPeerId == widget.relay.myPeerId) return;
+        if (fromPeerId == _hostPeerId) return;
         setState(
           () => _roster = {
             ..._roster,

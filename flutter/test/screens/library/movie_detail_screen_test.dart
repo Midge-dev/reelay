@@ -43,7 +43,7 @@ Future<void> _pump(
         resumeAtMs: resumeAtMs,
         onBack: () {},
         onPlay: onPlay ?? (_, _) {},
-        onWatchTogether: (_) {},
+        onWatchTogether: (_, _) {},
         onRestartSolo: (_) {},
         isOnWatchlist: isOnWatchlist ?? (_) => false,
         onToggleWatchlist: (_) {},
