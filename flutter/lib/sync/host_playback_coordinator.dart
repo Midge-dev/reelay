@@ -19,6 +19,12 @@ class HostPlaybackCoordinator {
   static const _implicitJumpThresholdMs = 1500;
   static const _seekSuppressionWindowMs = 400;
   static const _expectationTimeoutMs = 3000;
+  // Guests re-seek while stopped once they're more than 500ms off (see
+  // GuestPlaybackReconciler._pausedSeekThresholdMs), so the room only moves
+  // to a stalled peer when it's further out than that — and never drags
+  // everyone back further than a couple of minutes for one peer.
+  static const _rendezvousToleranceMs = 500;
+  static const _rendezvousMaxBehindMs = 120000;
 
   final String myPeerId;
   final SyncedPlayer player;
@@ -50,6 +56,9 @@ class HostPlaybackCoordinator {
   final Map<String, PeerStatus> _peerStatuses = {};
   final Set<String> _stalledPeers = {};
   final Set<String> _excused = {};
+  /// Peers that stalled since the room last started playing: the room
+  /// resumes from where they are, not from where the host got to.
+  final Set<String> _stalledSinceStart = {};
   final Map<String, Timer> _peerStallGraceTimers = {};
   Timer? _selfStallGraceTimer;
 
@@ -171,11 +180,13 @@ class HostPlaybackCoordinator {
             if (latest == null) return;
             if (!latest.buffering || _phase != PlaybackPhase.playing) return;
             _stalledPeers.add(peerId);
+            _stalledSinceStart.add(peerId);
             _enterWaiting();
           });
         });
       } else if (_phase == PlaybackPhase.waitingForPeers && !_stalledPeers.contains(peerId)) {
         _stalledPeers.add(peerId);
+        _stalledSinceStart.add(peerId);
         _scheduleAllReadyCheck(0);
       }
     } else {
@@ -194,6 +205,7 @@ class HostPlaybackCoordinator {
     _knownPeers.remove(peerId);
     _excused.remove(peerId);
     _stalledPeers.remove(peerId);
+    _stalledSinceStart.remove(peerId);
     _peerStatuses.remove(peerId);
     _peerStallGraceTimers.remove(peerId)?.cancel();
     _scheduleAllReadyCheck(0);
@@ -260,6 +272,7 @@ class HostPlaybackCoordinator {
   void _requestPause(String actor) {
     _intendedPlaying = false;
     _pendingActor = null;
+    _stalledSinceStart.clear();
     _cancelPendingStart();
     _cancelSafety();
     _setPaused();
@@ -299,8 +312,36 @@ class HostPlaybackCoordinator {
     if (!_localStalled) _setPaused();
     _intendedPlaying = true;
     _setPhase(PlaybackPhase.waitingForPeers);
-    _broadcast();
+    _broadcast(anchorOverrideMs: _rendezvous());
     _armSafetyIfGated();
+  }
+
+  /// Where the room should wait and then resume after a peer stalled.
+  ///
+  /// A peer only counts as stalled after [_stallGraceMs] of buffering, and
+  /// the host keeps playing through that grace — so by the time the room
+  /// pauses, the host is seconds ahead of the peer it's waiting for. Pausing
+  /// and resuming at the host's spot makes that peer seek again, and a peer
+  /// whose seeks are slow (a remote transcode that has to make new segments)
+  /// stalls again, the host runs ahead again, and the room loops forever.
+  /// So the host steps back to the earliest stalled peer instead: the host's
+  /// own seek is the cheap one, and the slow peer is already where it needs
+  /// to be. Seeks the host itself (suppressed, so it isn't a user seek) and
+  /// returns the position to anchor on, or null to stay where it is.
+  int? _rendezvous() {
+    int? earliest;
+    for (final peerId in _stalledSinceStart) {
+      if (_excused.contains(peerId)) continue;
+      final position = _peerStatuses[peerId]?.positionMs;
+      if (position == null) continue;
+      if (earliest == null || position < earliest) earliest = position;
+    }
+    if (earliest == null) return null;
+    final behindMs = player.currentPosition - earliest;
+    if (behindMs <= _rendezvousToleranceMs || behindMs > _rendezvousMaxBehindMs) return null;
+    final target = earliest;
+    _suppressedSeek(() => player.seekTo(target));
+    return target;
   }
 
   void _scheduleAllReadyCheck(int delayMs) {
@@ -321,7 +362,9 @@ class HostPlaybackCoordinator {
   void _resolveAllReady() {
     _cancelSafety();
     if (_intendedPlaying) {
-      _scheduleStart(_pendingActor ?? myPeerId);
+      // The stalled peers' latest statuses (sent as they recovered, while
+      // paused) say exactly where they are now.
+      _scheduleStart(_pendingActor ?? myPeerId, startPositionMs: _rendezvous());
     } else {
       _setPhase(PlaybackPhase.paused);
       _broadcast();
@@ -329,12 +372,16 @@ class HostPlaybackCoordinator {
     _pendingActor = null;
   }
 
-  void _scheduleStart(String actor) {
+  /// [startPositionMs] is for a position the host just seeked to: a real
+  /// player's [SyncedPlayer.currentPosition] can lag a seek it hasn't
+  /// finished.
+  void _scheduleStart(String actor, {int? startPositionMs}) {
     _cancelPendingStart();
     final otherPeers = _knownPeers.difference(_excused);
     final delayMs = otherPeers.isEmpty ? 0 : _startDelayMs;
     final startAt = nowMs() + delayMs;
-    final startPositionMs = player.currentPosition;
+    startPositionMs ??= player.currentPosition;
+    _stalledSinceStart.clear();
     _firstStartCompleted = true;
     _setPhase(PlaybackPhase.playing);
     _broadcast(
@@ -346,10 +393,11 @@ class HostPlaybackCoordinator {
 
     if (delayMs <= 0 && player.isPlaying) return;
 
+    final startMs = startPositionMs;
     _pendingStartTimer = Timer(Duration(milliseconds: delayMs), () {
       if (_disposed || _phase != PlaybackPhase.playing) return;
-      if ((player.currentPosition - startPositionMs).abs() > 250) {
-        _suppressedSeek(() => player.seekTo(startPositionMs));
+      if ((player.currentPosition - startMs).abs() > 250) {
+        _suppressedSeek(() => player.seekTo(startMs));
       }
       _setPlaying();
     });
@@ -365,6 +413,7 @@ class HostPlaybackCoordinator {
       if (gating.isEmpty) return;
       _excused.addAll(gating);
       _stalledPeers.removeAll(gating);
+      _stalledSinceStart.removeAll(gating);
       _scheduleAllReadyCheck(0);
     });
   }
@@ -387,6 +436,9 @@ class HostPlaybackCoordinator {
 
   void _onHeartbeat() {
     if (_disposed) return;
+    // Just after a seek the host made itself, a real player may still report
+    // the old position: wait for the next beat rather than announce it.
+    if (_isSeekSuppressed()) return;
     final last = _lastBroadcast;
     PlaybackActionHint? hint;
     if (last != null && _pendingStartTimer == null) {
