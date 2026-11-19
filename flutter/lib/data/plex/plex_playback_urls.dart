@@ -28,12 +28,14 @@ const plexTranscodeProfileExtra =
 String plexDirectPlayUrl(MediaServer server, MediaPart part) =>
     '${server.baseUrl}${part.key}?X-Plex-Token=${server.accessToken}';
 
-// offsetMs tells Plex where in the source to *start encoding* — the
-// returned HLS stream's own position 0 IS offsetMs into the original
-// file. A client-side seekTo() after opening this URL is not just
-// redundant but actively wrong: it asks for a position Plex's transcode
-// session was never told about and hasn't produced segments for, which
-// 400s (see project notes on the CC-cycle-mid-playback crash this fixed).
+// offsetMs tells Plex where in the source to *start encoding*. The player
+// still reports the film's own time (copyts=1 keeps the source timestamps:
+// checked on the Shield 2026-11-18 — a transcode resumed at 30 min shows
+// 30:00 of the full running time), so positions need no offset added. A
+// client-side seekTo() after opening this URL is not just redundant but
+// actively wrong: it asks for a position Plex's transcode session was never
+// told about and hasn't produced segments for, which 400s (see project
+// notes on the CC-cycle-mid-playback crash this fixed).
 //
 // The X-Plex-* identity params are required: with no platform or profile
 // name, PMS logs "Unable to find client profile for device" and 400s the

@@ -27,6 +27,7 @@ import '../../sync/relay_client.dart';
 import '../../sync/relay_protocol.dart';
 import '../../sync/relay_urls.dart';
 import '../../sync/room_roster.dart';
+import '../../focus/focus_log.dart';
 import '../../sync/sync_view_model.dart';
 import '../../sync/sync_trace.dart';
 import '../../sync/sync_trace_file.dart';
@@ -579,6 +580,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
         const Duration(milliseconds: _controlsHideDelayMs),
         () {
           if (!mounted) return;
+          focusLogNote('player controls auto-hide (menu ${_menuOpen ? 'open' : 'closed'})');
           setState(() => _controlsVisible = false);
           // Never pull focus out of an open panel: focus decides which Back
           // handler answers, and with it on the screen node Back left the
@@ -591,6 +593,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
   }
 
   void _showControls() {
+    focusLogNote('player controls shown');
     setState(() => _controlsVisible = true);
     // See the matching comment in initState — PlayerControlsBar remounts
     // fresh here, and _screenFocusNode still holds focus at that instant,

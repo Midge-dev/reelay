@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'data/settings/settings_store.dart';
+import 'focus/focus_log.dart';
 import 'focus/smooth_traversal.dart';
 import 'screens/app_root.dart';
 import 'state/data_providers.dart';
@@ -18,6 +19,7 @@ Future<void> main() async {
     SharedPreferencesAsync(),
   );
   AppColors.applyTheme(appearance.$1);
+  startFocusLog();
   runApp(
     ProviderScope(
       overrides: [bootAppearanceProvider.overrideWithValue(appearance)],
