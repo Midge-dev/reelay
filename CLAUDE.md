@@ -43,6 +43,20 @@ cutover); `com.reelay.reelay.MainActivity` is Flutter's Android embedding under
 `android/app/src/main/kotlin/`, which intentionally doesn't match the applicationId — see the
 comment in `android/app/build.gradle.kts`.
 
+Before the Shield pass, the automated layers catch most of it (run with
+`flutter test`):
+
+- `test/journeys/` — the whole real app against a fake Jellyfin server,
+  driven with D-pad/Select/Back on the Shield's 960×540 canvas. Every press
+  checks something visible has focus. `remote_journeys_test.dart` walks
+  real flows (open, Back, remove, panels, errors);
+  `focus_crawl_test.dart` random-walks every screen at 100/130/150% UI
+  size, failing on hidden or faded-out focus, dead ends and overflows.
+- `test/screens/player/player_playback_test.dart` — playback and subtitles
+  on Plex and Jellyfin.
+- `test/sync/` — Watch Together rooms in simulation, plus a fuzzer (see
+  ARCHITECTURE.md §2.7).
+
 Target device and ADB connection details are in `NOTES.md`.
 
 ## Repo layout

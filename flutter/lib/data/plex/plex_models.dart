@@ -382,6 +382,7 @@ class PlexMovieDetail {
 
   /// Episode context (null for movies) — the player's "SHOW · S2 E4" kicker.
   final String? grandparentTitle;
+  final String? grandparentRatingKey;
   final int? parentIndex;
   final int? index;
 
@@ -422,6 +423,7 @@ class PlexMovieDetail {
     this.contentRating,
     this.year,
     this.grandparentTitle,
+    this.grandparentRatingKey,
     this.parentIndex,
     this.index,
     this.media = const [],

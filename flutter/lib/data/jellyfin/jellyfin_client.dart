@@ -339,9 +339,22 @@ class JellyfinClient implements MediaServerClient {
   @override
   bool get transcodeStartsAtOffset => false;
 
+  @override
+  Future<String?> checkTranscode(String transcodeUrl) async => null;
+
+  // Jellyfin ends the encode itself on the stopped progress report.
+  @override
+  Future<void> stopTranscode(String sessionId) async {}
+
   /// [key] is a subtitle's WebVTT path (see subtitleVttPath).
   @override
   String subtitleUrl(String key) => '${server.baseUrl}$key?$_tokenQuery';
+
+  @override
+  Future<List<int>> fetchSubtitle(String key) async {
+    final response = await _client.get<List<int>>(subtitleUrl(key), options: Options(responseType: ResponseType.bytes));
+    return response.data ?? const [];
+  }
 
   /// Jellyfin takes the tracks on the transcode URL instead.
   @override

@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show debugPrint;
 import 'package:dio/dio.dart';
 
 import '../media/media_models.dart';
@@ -23,9 +24,9 @@ class PlexClient implements MediaServerClient {
   @override
   final MediaServer server;
   final String clientIdentifier;
-  final Dio _client = plexHttpClient();
+  final Dio _client;
 
-  PlexClient(this.server, this.clientIdentifier);
+  PlexClient(this.server, this.clientIdentifier, {Dio? client}) : _client = client ?? plexHttpClient();
 
   Options get _headers => Options(
     headers: {'X-Plex-Token': server.accessToken, 'X-Plex-Client-Identifier': clientIdentifier},
@@ -245,7 +246,49 @@ class PlexClient implements MediaServerClient {
   bool get transcodeStartsAtOffset => true;
 
   @override
+  Future<String?> checkTranscode(String transcodeUrl) async {
+    try {
+      final response = await _client.get<Object?>(
+        plexTranscodeDecisionUrl(transcodeUrl),
+        options: Options(headers: const {'Accept': 'application/json'}, validateStatus: (_) => true),
+      );
+      final refusal = plexTranscodeRefusal(response.data);
+      final status = response.statusCode ?? 0;
+      debugPrint('[playback] Plex transcode decision: HTTP $status, ${refusal ?? 'ok'}');
+      if (refusal != null) return refusal;
+      if (status >= 400) {
+        debugPrint('[playback] decision body: ${_clip(response.data)}');
+        return 'answered $status';
+      }
+      return null;
+    } catch (e) {
+      debugPrint('[playback] Plex transcode decision unreachable: ${e.runtimeType}');
+      return null;
+    }
+  }
+
+  static String _clip(Object? data) {
+    final text = '$data';
+    return text.length > 600 ? '${text.substring(0, 600)}…' : text;
+  }
+
+  @override
+  Future<void> stopTranscode(String sessionId) async {
+    try {
+      await _client.get<void>(plexStopTranscodeUrl(server, sessionId, clientIdentifier));
+    } catch (_) {
+      // Best effort: PMS reaps an abandoned transcode on its own eventually.
+    }
+  }
+
+  @override
   String subtitleUrl(String key) => '${server.baseUrl}$key?X-Plex-Token=${server.accessToken}';
+
+  @override
+  Future<List<int>> fetchSubtitle(String key) async {
+    final response = await _client.get<List<int>>(subtitleUrl(key), options: Options(responseType: ResponseType.bytes));
+    return response.data ?? const [];
+  }
 
   /// See [streamSelectionUrl].
   @override

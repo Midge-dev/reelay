@@ -1,7 +1,6 @@
 import 'dart:async';
 
 import 'package:collection/collection.dart';
-import 'package:dio/dio.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart' hide ConnectionState;
 import 'package:uuid/uuid.dart';
@@ -11,7 +10,6 @@ import '../../data/media/media_facts.dart';
 import '../../data/media/media_models.dart';
 import '../../data/media/media_server.dart';
 import '../../data/media/media_server_client.dart';
-import '../../data/plex/plex_http_client.dart';
 import '../../data/settings/app_settings.dart';
 import '../../focus/back_handler.dart';
 import '../../kit/text.dart';
@@ -27,7 +25,11 @@ import '../../sync/relay_client.dart';
 import '../../sync/relay_protocol.dart';
 import '../../sync/relay_urls.dart';
 import '../../sync/room_roster.dart';
+import '../../focus/focus_log.dart';
+import '../../sync/episode_switch.dart';
 import '../../sync/sync_view_model.dart';
+import '../../sync/sync_trace.dart';
+import '../../sync/sync_trace_file.dart';
 import '../../theme/scale.dart';
 import '../../theme/tokens.dart';
 import '../../theme/typography.dart';
@@ -70,8 +72,19 @@ class PlayerScreen extends StatefulWidget {
   final void Function(String reason, int positionMs) onFailed;
   // Screen 16 — both null when playing a movie or when the show context
   // isn't available (see Player.showId's doc comment).
+  /// The episode after this one, when this is an episode with one: it puts
+  /// a Next episode button in the controls, and the Up Next card at the end.
   final Future<MediaItem?> Function()? loadNextEpisode;
-  final ValueChanged<MediaItem>? onPlayNext;
+
+  /// Plays the next episode — solo, or as a room's host, for the whole room
+  /// ([roomPeers]: the guests the new stream should wait for).
+  final void Function(MediaItem next, List<String> roomPeers)? onPlayNext;
+
+  /// A guest's side: the host moved the room on to another episode.
+  final ValueChanged<EpisodeSwitch>? onFollowEpisode;
+
+  /// In a room after an episode change, the guests the last one knew.
+  final List<String> roomPeers;
 
   /// Who this television is in a Watch Together room (its presence).
   final String localName;
@@ -88,6 +101,8 @@ class PlayerScreen extends StatefulWidget {
     required this.onFailed,
     this.loadNextEpisode,
     this.onPlayNext,
+    this.onFollowEpisode,
+    this.roomPeers = const [],
     this.localName = 'You',
     this.localAvatarUrl,
   });
@@ -104,7 +119,13 @@ class _PlayerScreenState extends State<PlayerScreen> {
   /// One per playback, kept across subtitle/bitrate restarts: the stream
   /// request and every timeline report carry it (see TimelineReporter).
   final _sessionIdentifier = const Uuid().v4();
-  late final Dio _captionClient;
+
+  /// The server's transcode session, one per playback like
+  /// [_sessionIdentifier]: every transcode restart (subtitle, quality,
+  /// audio) reuses it so Plex replaces the running job. A new one each time
+  /// left the old transcode running beside the new one — for a remote
+  /// viewer, one stream more than Plex would serve, and the switch 400'd.
+  final _transcodeSessionId = const Uuid().v4();
 
   late MediaPart? _resolvedPart;
   List<AudioOption> _audioOptions = const [];
@@ -127,6 +148,10 @@ class _PlayerScreenState extends State<PlayerScreen> {
   VideoPlayerSyncedPlayer? _player;
   SyncViewModel? _sync;
   int _playerGeneration = 0;
+
+  /// One trace per room session, across every stream restart (see
+  /// [SyncTraceFile]); null outside a room.
+  Future<SyncTrace?>? _syncTrace;
 
   StreamSubscription<ConnectionState>? _connectionSub;
   StreamSubscription<PlaybackPhase?>? _phaseSub;
@@ -155,8 +180,15 @@ class _PlayerScreenState extends State<PlayerScreen> {
   // trigger check would otherwise re-show it the very next tick.
   static const _upNextTriggerMs = 40000;
   MediaItem? _upNextItem;
-  bool _upNextLoadAttempted = false;
   bool _upNextDismissed = false;
+
+  /// The episode after this one, once looked up; null for none (or a film).
+  MediaItem? _nextEpisode;
+
+  /// Moving on to another episode has begun: nothing starts it twice (a
+  /// guest's request and the host's own Up Next arriving together).
+  bool _movingOn = false;
+  StreamSubscription<RelayEvent>? _roomEventsSub;
 
   Timer? _controlsHideTimer;
   Timer? _reportTimer;
@@ -166,6 +198,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
   final _rewindFocusNode = FocusNode(debugLabel: 'player-rewind');
   final _playPauseFocusNode = FocusNode(debugLabel: 'player-play-pause');
   final _forwardFocusNode = FocusNode(debugLabel: 'player-forward');
+  final _nextEpisodeFocusNode = FocusNode(debugLabel: 'player-next-episode');
   final _subtitlesFocusNode = FocusNode(debugLabel: 'player-subtitles');
   final _bitrateFocusNode = FocusNode(debugLabel: 'player-bitrate');
   final _chatFocusNode = FocusNode(debugLabel: 'player-chat');
@@ -191,7 +224,6 @@ class _PlayerScreenState extends State<PlayerScreen> {
   void initState() {
     super.initState();
     _reporter = TimelineReporter(widget.client, _sessionIdentifier);
-    _captionClient = plexHttpClient();
 
     final media = widget.detail.media.isNotEmpty
         ? widget.detail.media.first
@@ -232,7 +264,25 @@ class _PlayerScreenState extends State<PlayerScreen> {
       if (mounted) _playPauseFocusNode.requestFocus();
     });
 
+    if (widget.relay != null) _syncTrace = SyncTraceFile.start();
     unawaited(_start());
+    final loadNext = widget.loadNextEpisode;
+    if (loadNext != null) {
+      loadNext().then((next) {
+        if (mounted && next != null) setState(() => _nextEpisode = next);
+      }, onError: (_) {});
+    }
+    final relay = widget.relay;
+    if (relay != null) {
+      _roomEventsSub = relay.events.listen((event) {
+        if (relay.seatIndexValue == 0) {
+          if (event.kind == 'controlRequest' && event.requestKind == EpisodeSwitch.nextRequestKind) _nextEpisodePressed();
+          return;
+        }
+        final to = EpisodeSwitch.fromEvent(event);
+        if (to != null) _followRoom(to);
+      });
+    }
 
     if (widget.relay != null) {
       final roster = RoomRoster(
@@ -255,6 +305,8 @@ class _PlayerScreenState extends State<PlayerScreen> {
 
   @override
   void dispose() {
+    _roomEventsSub?.cancel();
+    if (_decision is Transcode) unawaited(widget.client.stopTranscode(_transcodeSessionId));
     _rosterSub?.cancel();
     _roster?.dispose();
     HardwareKeyboard.instance.removeHandler(_recordInteraction);
@@ -265,6 +317,9 @@ class _PlayerScreenState extends State<PlayerScreen> {
     _waitingOnSub?.cancel();
     _roomIdSub?.cancel();
     _sync?.dispose();
+    _syncTrace?.then((trace) {
+      if (trace != null) unawaited(SyncTraceFile.finish(trace));
+    });
     _controller?.removeListener(_handleControllerTick);
     unawaited(_controller?.dispose());
     if (_matchedFrameRate) unawaited(DisplayMode.clear(owner: this));
@@ -273,6 +328,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
     _rewindFocusNode.dispose();
     _playPauseFocusNode.dispose();
     _forwardFocusNode.dispose();
+    _nextEpisodeFocusNode.dispose();
     _subtitlesFocusNode.dispose();
     _bitrateFocusNode.dispose();
     _chatFocusNode.dispose();
@@ -285,7 +341,10 @@ class _PlayerScreenState extends State<PlayerScreen> {
       DirectPlay() => decision.part.id,
       // Audio too: a transcode carries one audio track, so changing it
       // means a new stream. Direct play switches in the player instead.
-      Transcode() => (decision.itemId, maxVideoBitrateKbps, _audioStreamId),
+      // And the burned-in subtitle: it's in the picture, so another one is
+      // another stream (without it, one burned track to the next changed
+      // nothing on screen).
+      Transcode() => (decision.itemId, maxVideoBitrateKbps, _audioStreamId, decision.subtitleStreamId),
     };
   }
 
@@ -303,6 +362,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
 
   Future<void> _initPlayer({required int startPositionMs}) async {
     final generation = ++_playerGeneration;
+    final trace = await _syncTrace;
     await _selectServerStreams();
     if (!mounted || generation != _playerGeneration) return;
     final String url;
@@ -312,6 +372,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
         _decision,
         _maxVideoBitrateKbps,
         sessionIdentifier: _sessionIdentifier,
+        sessionId: _transcodeSessionId,
         audioStreamId: _audioOptions.length > 1 ? _audioStreamId : null,
         offsetMs: startPositionMs,
       );
@@ -320,6 +381,19 @@ class _PlayerScreenState extends State<PlayerScreen> {
       _fail(e.message ?? 'This server can’t play here yet', startPositionMs);
       return;
     }
+    // Ask first, as Plex's own apps do: if the server won't, it says why in
+    // words, where the stream would only 400. The stream is still tried —
+    // a refusal here mustn't stop one the server would in fact serve — and
+    // the reason is what the error says if it then fails.
+    String? refusal;
+    if (_decision is Transcode) {
+      refusal = await widget.client.checkTranscode(url);
+      if (!mounted || generation != _playerGeneration) return;
+    }
+    debugPrint(
+      '[playback] opening ${_decision is Transcode ? 'transcode' : 'direct play'} at ${startPositionMs}ms'
+      '${refusal != null ? ' (server said: $refusal)' : ''}',
+    );
     final controller = VideoPlayerController.networkUrl(Uri.parse(url));
     try {
       await controller.initialize();
@@ -329,7 +403,9 @@ class _PlayerScreenState extends State<PlayerScreen> {
           generation == _playerGeneration &&
           !_fallBackToTranscode(startPositionMs)) {
         _fail(
-          '${widget.server.name} sent a stream this TV couldn\'t open',
+          refusal != null
+              ? '${widget.server.name} wouldn\'t transcode this: $refusal'
+              : '${widget.server.name} sent a stream this TV couldn\'t open',
           startPositionMs,
         );
       }
@@ -352,7 +428,12 @@ class _PlayerScreenState extends State<PlayerScreen> {
     controller.addListener(_handleControllerTick);
 
     final player = VideoPlayerSyncedPlayer(controller);
-    final sync = SyncViewModel(player: player, relay: widget.relay);
+    final sync = SyncViewModel(
+      player: player,
+      relay: widget.relay,
+      trace: trace,
+      initialPeers: widget.roomPeers,
+    );
 
     _phaseSub?.cancel();
     _waitingOnSub?.cancel();
@@ -459,12 +540,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
   }
 
   Future<ClosedCaptionFile> _fetchCaptionFile(ExternalSubtitle source) async {
-    final url = widget.client.subtitleUrl(source.key);
-    final response = await _captionClient.get<List<int>>(
-      url,
-      options: Options(responseType: ResponseType.bytes),
-    );
-    return captionFileFromBytes(response.data ?? const []);
+    return captionFileFromBytes(await widget.client.fetchSubtitle(source.key));
   }
 
   void _handleControllerTick() {
@@ -503,15 +579,13 @@ class _PlayerScreenState extends State<PlayerScreen> {
   }
 
   void _maybeLoadUpNext() {
-    if (_upNextDismissed || _upNextLoadAttempted) return;
-    final loadNextEpisode = widget.loadNextEpisode;
-    if (loadNextEpisode == null) return;
-    if (_durationMs <= 0 || _durationMs - _positionMs > _upNextTriggerMs)
+    if (_upNextDismissed || _upNextItem != null) return;
+    final next = _nextEpisode;
+    if (next == null) return;
+    if (_durationMs <= 0 || _durationMs - _positionMs > _upNextTriggerMs) {
       return;
-    _upNextLoadAttempted = true;
-    loadNextEpisode().then((item) {
-      if (mounted && item != null) setState(() => _upNextItem = item);
-    });
+    }
+    setState(() => _upNextItem = next);
   }
 
   void _dismissUpNext() => setState(() {
@@ -519,10 +593,58 @@ class _PlayerScreenState extends State<PlayerScreen> {
     _upNextDismissed = true;
   });
 
-  void _playUpNext() {
-    final item = _upNextItem;
-    if (item == null) return;
-    widget.onPlayNext?.call(item);
+  void _playUpNext() => _nextEpisodePressed();
+
+  /// The Next episode button, Up Next, or a guest asking: solo or as host,
+  /// play it (for the whole room); as a guest, ask the host, who moves
+  /// everyone on together.
+  void _nextEpisodePressed() {
+    final next = _nextEpisode;
+    if (next == null || _movingOn) return;
+    final relay = widget.relay;
+    if (relay != null && relay.seatIndexValue != 0) {
+      relay.send(
+        RelayEvent(
+          kind: 'controlRequest',
+          fromPeerId: relay.myPeerId,
+          requestKind: EpisodeSwitch.nextRequestKind,
+        ),
+      );
+      return;
+    }
+    final onPlayNext = widget.onPlayNext;
+    if (onPlayNext == null) return;
+    _movingOn = true;
+    final peers = _sync?.knownPeers ?? widget.roomPeers;
+    _reportStoppedHere();
+    onPlayNext(next, peers.isEmpty ? widget.roomPeers : peers);
+  }
+
+  /// A guest, when the host moves the room on: stop this stream's sync at
+  /// once — left running, it would tell the host's new session it's ready
+  /// while still on the old episode — pause, and go find the new one.
+  void _followRoom(EpisodeSwitch to) {
+    final follow = widget.onFollowEpisode;
+    if (_movingOn || follow == null) return;
+    _movingOn = true;
+    _sync?.stop();
+    _controller?.pause();
+    _reportStoppedHere();
+    follow(to);
+  }
+
+  /// Leaving this episode for another: the server keeps where it got to.
+  void _reportStoppedHere() {
+    final controller = _controller;
+    if (controller == null) return;
+    unawaited(
+      _reporter.report(
+        widget.detail.id,
+        PlaybackReportState.stopped,
+        controller.value.position.inMilliseconds,
+        widget.detail.duration ?? controller.value.duration.inMilliseconds,
+      ),
+    );
   }
 
   Future<void> _reportProgress() async {
@@ -568,6 +690,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
         const Duration(milliseconds: _controlsHideDelayMs),
         () {
           if (!mounted) return;
+          focusLogNote('player controls auto-hide (menu ${_menuOpen ? 'open' : 'closed'})');
           setState(() => _controlsVisible = false);
           // Never pull focus out of an open panel: focus decides which Back
           // handler answers, and with it on the screen node Back left the
@@ -580,6 +703,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
   }
 
   void _showControls() {
+    focusLogNote('player controls shown');
     setState(() => _controlsVisible = true);
     // See the matching comment in initState — PlayerControlsBar remounts
     // fresh here, and _screenFocusNode still holds focus at that instant,
@@ -830,6 +954,10 @@ class _PlayerScreenState extends State<PlayerScreen> {
   void _applyDecisionChange({required int restartPositionMs}) {
     final newDecision = _decide();
     final newIdentity = _identityFor(newDecision, _maxVideoBitrateKbps);
+    // Back to direct play: nothing will use the transcode again.
+    if (_decision is Transcode && newDecision is DirectPlay) {
+      unawaited(widget.client.stopTranscode(_transcodeSessionId));
+    }
     _decision = newDecision;
 
     if (newIdentity == _playerIdentity) {
@@ -978,6 +1106,12 @@ class _PlayerScreenState extends State<PlayerScreen> {
                               menuFocusNode: _menuFocusNode,
                               onOpenMenu: () =>
                                   setState(() => _menuOpen = true),
+                              nextEpisodeFocusNode: _nextEpisode == null
+                                  ? null
+                                  : _nextEpisodeFocusNode,
+                              onNextEpisode: _nextEpisode == null
+                                  ? null
+                                  : _nextEpisodePressed,
                             ),
                           ),
                         ],

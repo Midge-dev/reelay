@@ -205,6 +205,15 @@ function handleChatHello(ws, msg) {
 function broadcastEvent(sender, payload) {
   const room = rooms.get(sender.roomId);
   if (!room) return;
+  // The host moved the room on to another episode: the directory names it,
+  // and someone joining later finds that episode, not the first one.
+  if (payload && payload.kind === 'episodeSwitch' && room.seats[0] && room.seats[0].ws === sender) {
+    if (typeof payload.title === 'string' && payload.title) room.title = truncate(payload.title);
+    if (typeof payload.ratingKey === 'string') room.ratingKey = truncate(payload.ratingKey);
+    if (typeof payload.serverId === 'string') room.serverId = truncate(payload.serverId);
+    room.ids = cleanIds(payload.ids);
+    if (typeof payload.mediaTitle === 'string') room.mediaTitle = truncate(payload.mediaTitle);
+  }
   if (payload && payload.kind === 'chat') {
     payload.username = truncate(payload.username, 40);
     payload.text = truncate(payload.text, 500);
@@ -236,6 +245,13 @@ function releaseConnection(ws) {
     if (seat && seat.ws === ws) {
       seat.ws = null;
       seat.reservedUntil = Date.now() + RECONNECT_GRACE_MS;
+      // Tell the room at once, so a host waiting on this device stops
+      // waiting. If it reconnects (within the grace, same seat), its next
+      // event brings it back. Older apps ignore kinds they don't know.
+      const data = JSON.stringify({ type: 'event', payload: { kind: 'peerLeft', fromPeerId: seat.peerId } });
+      for (const other of room.seats) {
+        if (other && other.ws && other.ws.readyState === WebSocket.OPEN) other.ws.send(data);
+      }
     }
   }
 }

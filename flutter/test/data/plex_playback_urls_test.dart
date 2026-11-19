@@ -39,7 +39,6 @@ void main() {
         '&videoResolution=1920x1080&maxVideoBitrate=8000'
         '&subtitleSize=100'
         '&subtitles=burn'
-        '&subtitleStreamID=5'
         '&session=fixed-session'
         '&X-Plex-Product=Reelay'
         '&X-Plex-Platform=Android'
@@ -77,8 +76,12 @@ void main() {
       expect(params['X-Plex-Session-Identifier'], 'play-1');
     });
 
-    test('defaults subtitleStreamID to 0 and burns nothing when no subtitle is selected', () {
-      expect(transcode(), contains('&subtitles=none&subtitleStreamID=0&'));
+    test('burns nothing when no subtitle is selected', () {
+      expect(transcode(), contains('&subtitles=none&'));
+    });
+
+    test('never names the subtitle stream: PMS burns the part\'s selection and ignores it', () {
+      expect(transcode(subtitleStreamId: 5), isNot(contains('subtitleStreamID')));
     });
 
     test('generates a fresh session id per call when none is given', () {
@@ -113,7 +116,7 @@ void main() {
       expect(url, contains('/video/:/transcode/universal/start.m3u8'));
       expect(url, contains('%2Flibrary%2Fmetadata%2F100'));
       expect(url, contains('&offset=5&'));
-      expect(url, contains('&subtitleStreamID=7&'));
+      expect(url, contains('&subtitles=burn&'));
     });
   });
 
@@ -162,6 +165,39 @@ void main() {
         client.reportProgress('1', PlaybackReportState.playing, timeMs: 0, durationMs: 1000, sessionIdentifier: 'play-1'),
         completes,
       );
+    });
+  });
+
+  group('asking Plex before transcoding', () {
+    test('the decision is the same request to /decision', () {
+      final start = plexTranscodeUrl(_server, '100', maxVideoBitrateKbps: 8000, clientIdentifier: 'c', sessionIdentifier: 'p', sessionId: 's');
+      final decision = plexTranscodeDecisionUrl(start);
+      expect(decision, startsWith('http://192.168.1.5:32400/video/:/transcode/universal/decision?'));
+      expect(Uri.parse(decision).queryParameters, Uri.parse(start).queryParameters);
+    });
+
+    test('stopping names the transcode session', () {
+      expect(
+        plexStopTranscodeUrl(_server, 'sess 1', 'client-1'),
+        'http://192.168.1.5:32400/video/:/transcode/universal/stop?session=sess+1&X-Plex-Client-Identifier=client-1&X-Plex-Token=tok123',
+      );
+    });
+
+    test('a refusal is the first decision code of 2000 or more, in its own words', () {
+      expect(plexTranscodeRefusal({'MediaContainer': {'generalDecisionCode': 1001, 'transcodeDecisionCode': 1001}}), isNull);
+      expect(
+        plexTranscodeRefusal({
+          'MediaContainer': {
+            'generalDecisionCode': 2000,
+            'generalDecisionText': 'Cannot direct play or transcode. ',
+            'transcodeDecisionCode': 4005,
+            'transcodeDecisionText': 'No transcode target found',
+          },
+        }),
+        'Cannot direct play or transcode.',
+      );
+      expect(plexTranscodeRefusal({'MediaContainer': {'mdeDecisionCode': 4002}}), 'refused with code 4002');
+      expect(plexTranscodeRefusal('<html>400</html>'), isNull);
     });
   });
 }

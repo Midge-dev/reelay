@@ -208,20 +208,28 @@ class _WatchlistScreenState extends State<WatchlistScreen> {
                       onUndo: _undoRemoval,
                     )
                   else if (_items.isNotEmpty)
-                    Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        AppIcon(
-                          PhosphorIconsRegular.dotOutline,
-                          size: 22,
-                          tint: AppColors.ink4,
-                        ),
-                        SizedBox(width: AppSpacing.md.du(context)),
-                        AppText(
-                          'Hold Select on a title to take it off the list',
-                          style: AppTypography.caption,
-                        ),
-                      ],
+                    // Flexible: at the 130% default on a 960x540 canvas the
+                    // hint is wider than the room the sort chip leaves it.
+                    Flexible(
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          AppIcon(
+                            PhosphorIconsRegular.dotOutline,
+                            size: 22,
+                            tint: AppColors.ink4,
+                          ),
+                          SizedBox(width: AppSpacing.md.du(context)),
+                          Flexible(
+                            child: AppText(
+                              'Hold Select on a title to take it off the list',
+                              style: AppTypography.caption,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                 ],
               ),

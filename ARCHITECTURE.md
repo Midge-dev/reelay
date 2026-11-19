@@ -150,6 +150,41 @@ Tuning with history behind it:
   creation, before the coordinator is listening, so a `false` default meant
   every session needed a manual Play press to get going.
 
+Seeks with slow players (2026-11): a seek on a remote Plex transcode can
+take seconds to play again, and the engine used to turn that into a loop —
+the host played on through its stall grace, paused the room *ahead* of the
+slow guest, resumed there, so the guest seeked, stalled, and fell behind
+again, forever. The "stall/resume cycles" behind the grace widenings above
+were probably this, which a wider grace makes worse, not better. The rules
+now:
+
+- **When the room waits for you, it comes to you.** Waiting for a stalled
+  peer, the host seeks itself to that peer's reported position (within 2
+  minutes) and resumes there; a guest the host is waiting on doesn't seek.
+- **A guest reports where it's going, not where it was.** While a seek is
+  buffering, its status carries the seek target (the player still reports
+  the old position), and it doesn't restart a seek still landing unless the
+  host's target is 10 s+ away. Catch-up seeks while playing aim ahead by
+  how long the last one took (capped at 2 s).
+- **The host treats its own post-seek buffering as a stall at once**, holds
+  (paused) through a waiting room after its own stall, and starts no one
+  until its own player is ready.
+- **The relay announces `peerLeft`** when a device's socket closes, so a
+  host isn't left waiting the 15 s safety timeout for a guest that's gone.
+
+Binging in a room (2026-11): the host's Next episode (its button, Up Next,
+or a guest's `controlRequest` of kind `next`) sends `episodeSwitch` before
+its own player moves on: the room's new title, the host's item and server,
+the episode's provider ids, the show's title and ids, and its season and
+episode numbers. A guest stops its old stream's sync at once — left
+running, it would tell the host's new session it's ready while still on the
+old episode — then plays the host's own item if it shares the server, else
+that season/episode of the show it's already watching, else the show found
+by title and matched on its ids (`resolveEpisodeSwitch`). The host's new
+session is handed the room's guests (`SyncViewModel.initialPeers`) so it
+waits for them to load rather than starting alone. The relay renames the
+room from the host's switch, so the directory and late joiners follow.
+
 During playback every client also sends `presence` (name, avatar) every
 3 s (`sync/room_roster.dart`), which is what turns the sync layer's peer ids
 into "Holding for Marcus".
@@ -167,7 +202,26 @@ regularly see round trips over a second; rejecting those left the offset
 unresolved forever, silently assuming zero clock difference and turning any
 real difference into permanent "drift" and a hard seek every cycle.
 
-### 2.7 Phone chat
+### 2.7 Testing sync, and traces from real rooms
+
+`test/sync/sim/` runs whole rooms in fake time: the real `SyncViewModel`
+(so host and guest engines, wire format and clock sync) per device, a
+`SimPlayer` that behaves like `video_player` (intent-style `isPlaying`,
+polled position, seconds-long seeks on a transcode), and a relay with
+per-link delay and jitter. `room_scenarios_test.dart` covers things that
+happen in real rooms; `room_fuzz_test.dart` runs random rooms from seeds
+(`SYNC_FUZZ_SEED=n` replays one, `SYNC_FUZZ_RUNS=2000` for a deeper run).
+A room passes when every guest is within 2 s of the host, all doing the same
+thing, soon after the last action, without excessive corrective seeks.
+
+The simulation can't tell you what real players and servers do — how long
+a transcode really takes to seek, whether ExoPlayer reports buffering on
+every seek. For that, every device in a room writes a trace
+(`sync/sync_trace.dart`, `sync-traces/*.jsonl`), and
+`test/sync/traces/` turns a real session back into a scenario; see its
+README.
+
+### 2.8 Phone chat
 
 The relay serves `relay/chat.html` at `/chat` (read from disk at start-up,
 `Cache-Control: no-cache`). The TV's QR link carries `&theme=<ThemeId.name>`

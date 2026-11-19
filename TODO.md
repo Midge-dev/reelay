@@ -38,10 +38,15 @@
 
 ## Found while testing
 
-- [ ] **Plex burn-in 400s.** Choosing an embedded subtitle on Plex (e.g. 300)
-  offers only "(transcode)", and PMS rejects the transcode with a 400. Next:
-  replay the `start.m3u8` URL with curl to read PMS's reason, then try the
-  `/video/:/transcode/universal/decision` call first (plezy does).
+- [ ] **Plex burn-in 400s — fix to try on the Shield.** The first transcode
+  opens fine; switching subtitles mid-film (a restart) 400'd on ScreamTiki.
+  Branch `fix-watch-together-seek-loop` now reuses one transcode `session`
+  per playback (it used to start a second transcode beside the still-running
+  first), asks `/decision` first and puts Plex's reason on the error screen,
+  stops the transcode on leaving/going back to direct play, and no longer
+  sends the ignored `subtitleStreamID`. If it still fails, the error screen
+  and `adb logcat -s flutter | grep '\[playback\]'` say why. Not yet tried:
+  dropping `offset=` and seeking in-stream as plezy does.
 - [ ] **Quality cap doesn't force a transcode.** `decidePlayback` only
   transcodes for burn-in or a failed direct play, so picking 2 Mbps on a
   4 Mbps file still direct-plays. Decide whether a cap below the file's
@@ -51,3 +56,11 @@
   Only Right reaches them.
 - [ ] **The player stays on the last frame** at the end of a movie instead
   of closing.
+- [x] **A "Next episode" button in the player** (done on
+  `fix-watch-together-seek-loop`; works in rooms — see ARCHITECTURE.md
+  §2.5) for anything with episodes,
+  so you can skip on whenever you like, not only from the Up Next card in
+  the last 40 s. PlayerScreen already has the pieces (`loadNextEpisode`,
+  `onPlayNext`); it needs a button in the controls row (only when there is a
+  next episode), its D-pad place in the row, and in Watch Together, what a
+  guest pressing it does (likely: only the host can, or it asks the host).

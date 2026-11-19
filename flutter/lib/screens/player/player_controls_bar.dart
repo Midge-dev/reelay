@@ -69,6 +69,11 @@ class PlayerControlsBar extends StatelessWidget {
   final FocusNode menuFocusNode;
   final VoidCallback onOpenMenu;
 
+  /// Next episode: only shown when there is one (an episode with another
+  /// after it).
+  final FocusNode? nextEpisodeFocusNode;
+  final VoidCallback? onNextEpisode;
+
   const PlayerControlsBar({
     super.key,
     required this.isPlaying,
@@ -96,6 +101,8 @@ class PlayerControlsBar extends StatelessWidget {
     required this.onOpenChatQr,
     required this.menuFocusNode,
     required this.onOpenMenu,
+    this.nextEpisodeFocusNode,
+    this.onNextEpisode,
   });
 
   @override
@@ -104,10 +111,14 @@ class PlayerControlsBar extends StatelessWidget {
         ? (positionMs / durationMs).clamp(0.0, 1.0)
         : 0.0;
 
+    final nextNode = nextEpisodeFocusNode;
+    final onNext = onNextEpisode;
+    final hasNext = nextNode != null && onNext != null;
     final row = [
       _RowButton(rewindFocusNode, true),
       _RowButton(playPauseFocusNode, true),
       _RowButton(forwardFocusNode, true),
+      _RowButton(nextNode ?? FocusNode(canRequestFocus: false), hasNext),
       _RowButton(subtitlesFocusNode, subtitlesAvailable),
       _RowButton(bitrateFocusNode, true),
       _RowButton(chatFocusNode, chatAvailable),
@@ -266,17 +277,36 @@ class PlayerControlsBar extends StatelessWidget {
                     icon: PhosphorIconsRegular.fastForward,
                   ),
                 ),
+                if (hasNext) ...[
+                  gap,
+                  trapped(
+                    3,
+                    // Icon only, like Rewind and Forward beside it: a label
+                    // made the row overflow at the 130% default in a room.
+                    _ControlButton(
+                      onClick: onNext,
+                      focusNode: nextNode,
+                      icon: PhosphorIconsRegular.skipForward,
+                      semanticLabel: 'Next episode',
+                    ),
+                  ),
+                ],
                 if (inRoom) ...[
                   SizedBox(width: 24.du(context)),
-                  AppText(
-                    'Seeking moves the whole room',
-                    style: AppTypography.caption,
-                    color: AppColors.ink2,
+                  // Gives way first when the row is tight (a big UI size).
+                  Flexible(
+                    child: AppText(
+                      'Seeking moves the whole room',
+                      style: AppTypography.caption,
+                      color: AppColors.ink2,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
                   ),
                 ],
                 const Spacer(),
                 trapped(
-                  3,
+                  4,
                   _ControlButton(
                     onClick: onCycleSubtitles,
                     enabled: subtitlesAvailable,
@@ -287,7 +317,7 @@ class PlayerControlsBar extends StatelessWidget {
                 ),
                 gap,
                 trapped(
-                  4,
+                  5,
                   _ControlButton(
                     onClick: onCycleBitrate,
                     focusNode: bitrateFocusNode,
@@ -300,7 +330,7 @@ class PlayerControlsBar extends StatelessWidget {
                 if (chatAvailable) ...[
                   gap,
                   trapped(
-                    5,
+                    6,
                     _ControlButton(
                       onClick: onOpenChatQr,
                       focusNode: chatFocusNode,
@@ -310,7 +340,7 @@ class PlayerControlsBar extends StatelessWidget {
                 ],
                 gap,
                 trapped(
-                  6,
+                  7,
                   _ControlButton(
                     onClick: onOpenMenu,
                     focusNode: menuFocusNode,
@@ -345,19 +375,23 @@ class _ControlButton extends StatelessWidget {
   final IconData icon;
   final String? label;
 
+  /// What an icon-only button is called, for screen readers and tests.
+  final String? semanticLabel;
+
   const _ControlButton({
     required this.onClick,
     this.enabled = true,
     required this.focusNode,
     required this.icon,
     this.label,
+    this.semanticLabel,
   });
 
   @override
   Widget build(BuildContext context) {
     final size = 64.du(context);
     final label = this.label;
-    return SizedBox(
+    final button = SizedBox(
       height: size,
       width: label == null ? size : null,
       child: FocusableSurface(
@@ -388,6 +422,8 @@ class _ControlButton extends StatelessWidget {
               ),
       ),
     );
+    final name = semanticLabel;
+    return name == null ? button : Semantics(label: name, button: true, child: button);
   }
 }
 

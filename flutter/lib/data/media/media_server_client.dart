@@ -96,6 +96,19 @@ abstract class MediaServerClient {
   /// The caption file for a sidecar [MediaStream.key].
   String subtitleUrl(String key);
 
+  /// That caption file's bytes, fetched with this server's own auth.
+  Future<List<int>> fetchSubtitle(String key);
+
+  /// Asks the server whether it will stream [transcodeUrl], before the
+  /// player opens it. Null to go ahead — including when the server can't
+  /// say; otherwise its own one-line reason it won't (Plex's decision text).
+  Future<String?> checkTranscode(String transcodeUrl);
+
+  /// Ends the server-side transcode for [sessionId] (the `sessionId` given
+  /// to [transcodeUrl]); best effort, never throws. A no-op for backends
+  /// that end it from the stopped progress report (Jellyfin).
+  Future<void> stopTranscode(String sessionId);
+
   /// Makes these tracks the file's selection server-side, for backends
   /// whose transcoder reads it from there (Plex). A no-op for the rest.
   Future<void> selectStreams(String partId, {int? audioStreamId, int? subtitleStreamId});

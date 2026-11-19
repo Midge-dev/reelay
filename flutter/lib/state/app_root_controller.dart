@@ -25,6 +25,7 @@ import '../data/settings/settings_store.dart';
 import '../focus/screen_memory.dart';
 import '../screens/home/watch_together_row.dart';
 import '../sync/relay_client.dart';
+import '../sync/episode_switch.dart';
 import '../sync/relay_directory_api.dart';
 import '../sync/relay_protocol.dart';
 import 'app_state.dart';
@@ -1471,6 +1472,94 @@ class AppRootController extends ChangeNotifier {
   /// lives on (the caller already knows this — a MovieDetail/EpisodeDetail
   /// screen holds a [Sourced] item, and [ctx] alone can no longer say
   /// "the" server now that it holds every connected one).
+  /// Next episode, from the player (its button, or Up Next): opens [next]
+  /// from the start, in place of [current] — same server, same way Back
+  /// out, same room. A host first tells the room ([EpisodeSwitch]), so
+  /// every guest moves on with it; [roomPeers] is who the new host session
+  /// waits for before anyone starts.
+  Future<void> playNextEpisode(Player current, MediaItem next, {List<String> roomPeers = const []}) async {
+    final client = clientFor(current.server);
+    final MediaDetail detail;
+    try {
+      detail = await client.fetchDetail(next.id);
+    } catch (_) {
+      _setState(
+        PlaybackFailed(
+          ctx: current.ctx,
+          server: current.server,
+          targetItemId: next.id,
+          fromStart: true,
+          reason: '${current.server.name} stopped answering partway through starting',
+          returnState: current.returnState,
+        ),
+      );
+      return;
+    }
+    final showId = detail.showId ?? current.showId;
+    final relay = current.relay;
+    if (relay != null && relay.seatIndexValue == 0) {
+      var showIds = const <String>[];
+      if (showId != null) {
+        try {
+          showIds = roomIdsFor(await client.fetchDetail(showId));
+        } catch (_) {}
+      }
+      relay.send(
+        EpisodeSwitch.to(
+          detail,
+          current.server,
+          showTitle: detail.grandparentTitle ?? current.detail.grandparentTitle ?? '',
+          showIds: showIds,
+        ).toEvent(relay.myPeerId),
+      );
+    }
+    _setState(
+      Player(
+        ctx: current.ctx,
+        server: current.server,
+        detail: detail.copyWith(viewOffset: 0),
+        returnState: current.returnState,
+        relay: relay,
+        showId: showId,
+        roomPeers: roomPeers,
+      ),
+    );
+  }
+
+  /// A guest's side of [playNextEpisode]: the host moved the room on, so
+  /// find that episode on this hub and play it from the start, still in
+  /// the room. If no server here has it, leave the room and say so.
+  Future<void> followRoomToEpisode(Player current, EpisodeSwitch to) async {
+    final found = await resolveEpisodeSwitch(
+      _connectedServers,
+      to,
+      clientFor,
+      currentServer: current.server,
+      currentShowId: current.detail.showId ?? current.showId,
+    );
+    if (found == null) {
+      leaveRoom();
+      _setState(
+        AppError(
+          message: "The room moved on to ${to.title}, which isn't on any of your servers, so you've left the room.",
+          retryState: current.returnState,
+        ),
+      );
+      return;
+    }
+    final (server, detail) = found;
+    _setState(
+      Player(
+        ctx: current.ctx,
+        server: server,
+        detail: detail.copyWith(viewOffset: 0),
+        returnState: current.returnState,
+        relay: current.relay,
+        showId: detail.showId,
+      ),
+    );
+  }
+
   Future<void> playMovie(
     LibraryContext? ctx,
     MediaServer server,

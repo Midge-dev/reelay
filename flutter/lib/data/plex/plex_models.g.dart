@@ -338,6 +338,7 @@ PlexMovieDetail _$PlexMovieDetailFromJson(Map<String, dynamic> json) =>
       contentRating: json['contentRating'] as String?,
       year: (json['year'] as num?)?.toInt(),
       grandparentTitle: json['grandparentTitle'] as String?,
+      grandparentRatingKey: json['grandparentRatingKey'] as String?,
       parentIndex: (json['parentIndex'] as num?)?.toInt(),
       index: (json['index'] as num?)?.toInt(),
       media:
@@ -391,6 +392,7 @@ Map<String, dynamic> _$PlexMovieDetailToJson(PlexMovieDetail instance) =>
       'contentRating': instance.contentRating,
       'year': instance.year,
       'grandparentTitle': instance.grandparentTitle,
+      'grandparentRatingKey': instance.grandparentRatingKey,
       'parentIndex': instance.parentIndex,
       'index': instance.index,
       'Media': instance.media,
