@@ -102,37 +102,11 @@ void main() {
     expect(find.byIcon(PhosphorIconsRegular.arrowCounterClockwise), findsNothing);
   });
 
-  testWidgets('tapping "Chat QR" opens the modal', (tester) async {
+  testWidgets('no QR before the room has an id (still connecting)', (tester) async {
     await _pump(tester);
 
-    expect(find.text('Join the chat'), findsNothing);
-
-    await tester.tap(find.text('Chat QR'));
-    await tester.pump();
-
-    expect(find.text('Join the chat'), findsOneWidget);
-  });
-
-  testWidgets('the chat modal shows "still connecting" before a room id is known', (tester) async {
-    await _pump(tester);
-
-    await tester.tap(find.text('Chat QR'));
-    await tester.pump();
-
-    expect(find.text('Still connecting to the room — try again in a moment.'), findsOneWidget);
-  });
-
-  testWidgets('closing the chat modal dismisses it', (tester) async {
-    await _pump(tester);
-
-    await tester.tap(find.text('Chat QR'));
-    await tester.pump();
-    expect(find.text('Join the chat'), findsOneWidget);
-
-    await tester.tap(find.text('Close'));
-    await tester.pump();
-
-    expect(find.text('Join the chat'), findsNothing);
+    expect(find.text('Scan to chat'), findsNothing);
+    expect(find.text('Chat QR'), findsNothing, reason: 'the QR is shown, not behind a button');
   });
 
   // PopScope only registers a pop entry once it finds an ancestor
@@ -160,30 +134,7 @@ void main() {
           ),
         );
 
-    testWidgets('back with the chat modal open closes the modal, not the screen', (tester) async {
-      var wentBack = false;
-      final client = _relay();
-      addTearDown(client.dispose);
-
-      tester.view.physicalSize = const Size(1920, 1080);
-      tester.view.devicePixelRatio = 1.0;
-      addTearDown(tester.view.resetPhysicalSize);
-      addTearDown(tester.view.resetDevicePixelRatio);
-      await tester.pumpWidget(testApp(() => wentBack = true, client));
-      await tester.pump();
-
-      await tester.tap(find.text('Chat QR'));
-      await tester.pump();
-      expect(find.text('Join the chat'), findsOneWidget);
-
-      await tester.binding.handlePopRoute();
-      await tester.pump();
-
-      expect(find.text('Join the chat'), findsNothing);
-      expect(wentBack, isFalse);
-    });
-
-    testWidgets('back with no modal open leaves the lobby', (tester) async {
+    testWidgets('back leaves the lobby', (tester) async {
       var wentBack = false;
       final client = _relay();
       addTearDown(client.dispose);

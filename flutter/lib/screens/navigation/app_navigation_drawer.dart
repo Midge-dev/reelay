@@ -53,6 +53,10 @@ class RoomsPanelData {
   final ValueChanged<MergedRoom> onJoin;
   final VoidCallback onRetry;
 
+  /// A room is live that this person hasn't seen yet: the rail's Watch
+  /// Together item carries a dot.
+  final bool unseen;
+
   const RoomsPanelData({
     required this.relays,
     required this.relayHealth,
@@ -61,6 +65,7 @@ class RoomsPanelData {
     this.hostedRoomIds = const {},
     required this.onJoin,
     required this.onRetry,
+    this.unseen = false,
   });
 }
 
@@ -440,6 +445,7 @@ class _AppNavigationDrawerState extends State<AppNavigationDrawer> {
       enabled: enabled,
       onClick: onClick,
       focusNode: node,
+      badge: id == railRooms && (rooms?.unseen ?? false),
     );
   }
 
@@ -646,6 +652,11 @@ class _SidebarItem extends StatelessWidget {
   final VoidCallback onClick;
   final FocusNode? focusNode;
 
+  /// Something new here (a room you haven't seen): a small accent mark on
+  /// the icon's corner — a mark, not a flood (DESIGN.md #8) — and said in
+  /// words for anyone who can't see it.
+  final bool badge;
+
   const _SidebarItem({
     super.key,
     required this.icon,
@@ -656,6 +667,7 @@ class _SidebarItem extends StatelessWidget {
     this.enabled = true,
     required this.onClick,
     this.focusNode,
+    this.badge = false,
   });
 
   @override
@@ -679,7 +691,33 @@ class _SidebarItem extends StatelessWidget {
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              AppIcon(selected ? selectedIcon : icon, size: _railIconSize),
+              badge
+                  ? Semantics(
+                      label: 'New',
+                      child: Stack(
+                        clipBehavior: Clip.none,
+                        children: [
+                          AppIcon(
+                            selected ? selectedIcon : icon,
+                            size: _railIconSize,
+                          ),
+                          Positioned(
+                            top: -AppSpacing.xs.du(context) / 2,
+                            right: -AppSpacing.xs.du(context),
+                            child: Container(
+                              key: const ValueKey('rail-new-dot'),
+                              width: AppSpacing.sm.du(context),
+                              height: AppSpacing.sm.du(context),
+                              decoration: BoxDecoration(
+                                color: AppColors.accent,
+                                shape: BoxShape.circle,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    )
+                  : AppIcon(selected ? selectedIcon : icon, size: _railIconSize),
               Flexible(
                 child: ClipRect(
                   child: AnimatedSize(

@@ -69,6 +69,11 @@ class HostPlaybackCoordinator {
   /// resumes from where they are, not from where the host got to.
   final Set<String> _stalledSinceStart = {};
   final Map<String, Timer> _peerStallGraceTimers = {};
+
+  /// Peers that arrived after the room had started, not yet ready: the room
+  /// holds for them where it is, so they join in on the same frame rather
+  /// than chasing a room that plays on without them.
+  final Set<String> _lateJoiners = {};
   Timer? _selfStallGraceTimer;
 
   Timer? _pendingStartTimer;
@@ -197,7 +202,14 @@ class HostPlaybackCoordinator {
     _knownPeers.add(peerId);
     final previous = _peerStatuses[peerId];
     _peerStatuses[peerId] = status;
-    if (status.ready && !status.buffering) _excused.remove(peerId);
+    if (status.ready && !status.buffering) {
+      _excused.remove(peerId);
+      _lateJoiners.remove(peerId);
+    }
+    if (previous == null && !status.ready && _firstStartCompleted) {
+      _lateJoiners.add(peerId);
+      if (_phase == PlaybackPhase.playing) _enterWaiting();
+    }
     // A peer the room is waiting for has moved (its seek landed somewhere
     // else, or it re-seeked): wait for it there instead.
     if (_phase == PlaybackPhase.waitingForPeers && _stalledSinceStart.contains(peerId)) {
@@ -242,6 +254,7 @@ class HostPlaybackCoordinator {
     _stalledPeers.remove(peerId);
     _stalledSinceStart.remove(peerId);
     _peerStatuses.remove(peerId);
+    _lateJoiners.remove(peerId);
     _peerStallGraceTimers.remove(peerId)?.cancel();
     _scheduleAllReadyCheck(0);
   }
@@ -347,7 +360,7 @@ class HostPlaybackCoordinator {
       if (_excused.contains(peerId)) continue;
       final status = _peerStatuses[peerId];
       if (status == null || !status.ready) {
-        if (!_firstStartCompleted) gating.add(peerId);
+        if (!_firstStartCompleted || _lateJoiners.contains(peerId)) gating.add(peerId);
         continue;
       }
       if (_stalledPeers.contains(peerId)) gating.add(peerId);
@@ -465,6 +478,7 @@ class HostPlaybackCoordinator {
       final gating = _gatingPeers().difference({myPeerId});
       if (gating.isEmpty) return;
       _excused.addAll(gating);
+      _lateJoiners.removeAll(gating);
       _stalledPeers.removeAll(gating);
       _stalledSinceStart.removeAll(gating);
       _scheduleAllReadyCheck(0);

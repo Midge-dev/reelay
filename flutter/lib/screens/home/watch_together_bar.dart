@@ -226,7 +226,7 @@ class _WatchTogetherBarState extends State<WatchTogetherBar> {
                       dense: true,
                       onClick: _openEndConfirm,
                       focusNode: _endFocus,
-                      child: const AppText('End'),
+                      child: const AppText('End room'),
                     ),
                   ] else
                     AppOutlinedButton(
@@ -274,7 +274,7 @@ class _WatchTogetherBarState extends State<WatchTogetherBar> {
     );
     return OverlayPortal(
       controller: _confirm,
-      overlayChildBuilder: (context) => _EndSessionConfirm(
+      overlayChildBuilder: (context) => EndRoomConfirm(
         keepOpenFocus: _keepOpenFocus,
         onKeepOpen: _closeEndConfirm,
         onEndForEveryone: () => _endNow(selected),
@@ -289,14 +289,16 @@ class _WatchTogetherBarState extends State<WatchTogetherBar> {
 /// don't get one, but ending a room affects other people, so it does).
 /// Focus defaults to "Keep it open"; the destructive option is never the
 /// default and carries the error spine.
-/// Drawn in the app's overlay, in its own focus scope so the arrows stay
-/// inside it; Back keeps the room open.
-class _EndSessionConfirm extends StatelessWidget {
+/// Drawn over the whole screen (Home: the app's overlay; the lobby: its
+/// own Stack), in its own focus scope so the arrows stay inside it; Back
+/// keeps the room open. The caller puts focus on [keepOpenFocus].
+class EndRoomConfirm extends StatelessWidget {
   final FocusNode keepOpenFocus;
   final VoidCallback onKeepOpen;
   final VoidCallback onEndForEveryone;
 
-  const _EndSessionConfirm({
+  const EndRoomConfirm({
+    super.key,
     required this.keepOpenFocus,
     required this.onKeepOpen,
     required this.onEndForEveryone,
@@ -342,7 +344,7 @@ class _EndSessionConfirm extends StatelessWidget {
                     mainAxisSize: MainAxisSize.min,
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      AppText('End the session?', style: AppTypography.title2),
+                      AppText('End the room?', style: AppTypography.title2),
                       SizedBox(height: AppSpacing.md.du(context)),
                       AppText(
                         'Everyone will be dropped back to their own home screens. Your place is kept, and you can keep watching on your own.',

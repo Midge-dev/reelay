@@ -55,11 +55,24 @@ class PlayerProfile {
 ///   to [PlayerProfile.positionPollMs] stale — while [truePosition] is the
 ///   frame actually on screen, which is what the room checks compare.
 class SimPlayer implements SyncedPlayer {
-  SimPlayer(this.profile, {required this.random, int startMs = 0, this.durationMs = 2 * 3600 * 1000})
+  /// [openMs]: how long the stream takes to open — idle (not ready) until
+  /// then, as a real player is while it loads.
+  SimPlayer(this.profile, {required this.random, int startMs = 0, this.durationMs = 2 * 3600 * 1000, int openMs = 0})
     : _truePos = startMs,
       _reportedPos = startMs {
     _ticker = Timer.periodic(const Duration(milliseconds: _tickMs), (_) => _tick());
+    if (openMs > 0) {
+      _opening = true;
+      _state = SyncPlaybackState.idle;
+      _openTimer = Timer(Duration(milliseconds: openMs), () {
+        _opening = false;
+        _updateState();
+      });
+    }
   }
+
+  bool _opening = false;
+  Timer? _openTimer;
 
   static const _tickMs = 50;
 
@@ -108,6 +121,7 @@ class SimPlayer implements SyncedPlayer {
   }
 
   void _updateState() {
+    if (_opening) return;
     final next = (_seekBuffering || _stalled) ? SyncPlaybackState.buffering : SyncPlaybackState.ready;
     if (next == _state) return;
     _state = next;
@@ -189,5 +203,6 @@ class SimPlayer implements SyncedPlayer {
     _rebuffer?.cancel();
     _report?.cancel();
     _stallTimer?.cancel();
+    _openTimer?.cancel();
   }
 }

@@ -26,6 +26,9 @@ class DeviceSpec {
   /// When it arrives in the room, after the host.
   final int joinAtMs;
 
+  /// How long its stream takes to open once it arrives.
+  final int openMs;
+
   const DeviceSpec(
     this.name, {
     this.player = PlayerProfile.directPlay,
@@ -33,6 +36,7 @@ class DeviceSpec {
     this.startMs = 600000,
     this.clockSkewMs = 0,
     this.joinAtMs = 0,
+    this.openMs = 0,
   });
 
   @override
@@ -331,7 +335,7 @@ RoomResult runRoom(Scenario scenario) {
     final subscriptions = <StreamSubscription<Object?>>[];
 
     void join(DeviceSpec spec) {
-      final player = SimPlayer(spec.player, random: random, startMs: spec.startMs);
+      final player = SimPlayer(spec.player, random: random, startMs: spec.startMs, openMs: spec.openMs);
       final relay = server.connect(spec.name, spec.link);
       int deviceNow() => nowMs() + spec.clockSkewMs;
       // Stamped with the device's own clock, like a real device's trace.

@@ -1,4 +1,7 @@
+import 'package:flutter/widgets.dart' hide ConnectionState;
 import 'package:flutter_test/flutter_test.dart';
+
+import 'package:reelay/sync/playback_state.dart';
 
 import 'harness/journey.dart';
 
@@ -107,12 +110,12 @@ void main() {
       await j.up();
       j.expectFocusOn('Go back in', because: 'Up from the row underneath comes back to the bar, not past it');
       await j.right();
-      j.expectFocusOn('End');
+      j.expectFocusOn('End room');
       await j.select();
       await j.screenshot('end-confirm');
       j.expectFocusOn('Keep it open', because: 'ending a room for others is confirmed, and the confirm opens on the safe choice');
       await j.back();
-      j.expectFocusOn('End', because: 'Back keeps the room open and returns to End');
+      j.expectFocusOn('End room', because: 'Back keeps the room open and returns to End');
       expect(j.relay.rooms, isNotEmpty);
       await j.select();
       await j.up();
@@ -129,10 +132,116 @@ void main() {
     }, relay: true, realFonts: true);
   });
 
+  group('Close the room', () {
+    Future<void> toClose(Journey j) async {
+      for (var i = 0; i < 4 && !j.focusedTexts().any((t) => t.contains('Close the room')); i++) {
+        await j.right();
+      }
+      j.expectFocusOn('Close the room');
+    }
+
+    journey('with nobody in it, it closes at once — not kept open', (j) async {
+      await hostArrival(j);
+      await toClose(j);
+      await j.select();
+      await j.realTime();
+      await j.wait(const Duration(seconds: 2));
+      expect(j.relay.rooms, isEmpty, reason: j.why('the room should be gone from the relay'));
+      j.expectFocusOn('Watch Together', because: "back on the film's page");
+    }, relay: true);
+
+    journey('with a friend in it, it asks first; Keep it open, then End for everyone', (j) async {
+      await hostArrival(j);
+      final riley = j.friend()..join(j.relay.rooms.values.single.id);
+      await j.wait(const Duration(seconds: 4));
+      await toClose(j);
+      await j.select();
+      j.expectFocusOn('Keep it open', because: 'ending a room for others is confirmed, safe choice first');
+      await j.select();
+      j.expectFocusOn('Close the room', because: 'Keep it open returns to the button');
+      expect(j.relay.rooms, isNotEmpty);
+
+      await j.select();
+      await j.right();
+      j.expectFocusOn('End for everyone');
+      await j.select();
+      await j.realTime();
+      await j.wait(const Duration(seconds: 2));
+      expect(j.relay.rooms, isEmpty, reason: j.why('ended for everyone'));
+      expect(riley.client.connectionStateValue.name, 'roomClosed', reason: j.why('Riley is told'));
+    }, relay: true);
+  });
+
+  group('The rail says when a room opens', () {
+    bool dot(Journey j) => find.byKey(const ValueKey('rail-new-dot')).evaluate().isNotEmpty;
+
+    journey("a friend's room opening while you're in Movies puts a dot on Watch Together; the rooms panel clears it", (j) async {
+      await j.openFromRail('Movies');
+      expect(dot(j), isFalse);
+      j.friend().host(title: 'Arrival', ids: ['imdb://tt00m1'], year: 1980);
+      await j.wait(const Duration(seconds: 6)); // the next directory poll
+      await j.realTime();
+      expect(dot(j), isTrue, reason: j.why('a new room: the rail shows it from any screen'));
+
+      await j.openFromRail('Watch Together');
+      await j.realTime();
+      await j.back();
+      await j.wait(const Duration(seconds: 6));
+      expect(dot(j), isFalse, reason: j.why('seen in the rooms panel'));
+    }, relay: true);
+
+    journey("Home's bar counts as seeing it", (j) async {
+      await j.openFromRail('Movies');
+      j.friend().host(title: 'Arrival', ids: ['imdb://tt00m1'], year: 1980);
+      await j.wait(const Duration(seconds: 6));
+      await j.realTime();
+      expect(dot(j), isTrue);
+      await j.openFromRail('Home');
+      await j.wait(const Duration(seconds: 6));
+      await j.realTime();
+      expect(dot(j), isFalse, reason: j.why("it's on Home's bar"));
+    }, relay: true);
+
+    journey('your own room never gets a dot', (j) async {
+      await hostArrival(j);
+      await j.back(); // the lobby; the room stays open
+      await j.realTime();
+      await j.back();
+      await j.wait(const Duration(seconds: 6));
+      await j.realTime();
+      expect(j.relay.rooms, isNotEmpty);
+      expect(dot(j), isFalse, reason: j.why('nothing new about your own room'));
+    }, relay: true);
+  });
+
+  group('Phone chat', () {
+    journey('on (the default): the lobby shows its QR, and the player has a chat button', (j) async {
+      await hostArrival(j);
+      expect(j.shows('Scan to chat'), isTrue, reason: j.why('the QR is in the lobby, no button to find'));
+      j.friend().join(j.relay.rooms.values.single.id);
+      await j.wait(const Duration(seconds: 4));
+      await j.select(); // Start for everyone
+      await j.realTime();
+      await j.wait(const Duration(seconds: 2));
+      await j.down(); // the controls
+      expect(find.bySemanticsLabel('Phone chat'), findsOneWidget, reason: j.why("the player's chat QR button is there"));
+    }, relay: true);
+
+    journey('off in Settings: no QR in the lobby, no chat button in the player', (j) async {
+      await hostArrival(j);
+      expect(j.shows('Scan to chat'), isFalse, reason: j.why('phone chat is off'));
+      j.friend().join(j.relay.rooms.values.single.id);
+      await j.wait(const Duration(seconds: 4));
+      await j.select();
+      await j.realTime();
+      await j.wait(const Duration(seconds: 2));
+      await j.down();
+      expect(find.bySemanticsLabel('Phone chat'), findsNothing, reason: j.why('phone chat is off'));
+    }, relay: true, settings: (s) => s.copyWith(phoneChat: false));
+  });
+
   journey("a part-watched film's room offers Resume, from where it was left", (j) async {
-    await j.select(); // Home's hero: Blade Runner, a third in
-    await j.wait(const Duration(seconds: 1));
-    await j.right();
+    await j.right(); // Home's hero: Blade Runner, a third in — its Watch Together
     j.expectFocusOn('Watch Together');
     await j.select();
     expect(j.shows('From 33:20'), isTrue, reason: j.why('Resume says from when: ${j.screenTexts()}'));
@@ -175,12 +284,24 @@ void main() {
       expect(j.videoPlaying, isTrue, reason: j.why("Riley's play resumes you"));
     }, relay: true);
 
-    journey('joining late, while the host is already watching: the host sits in one seat', (j) async {
+    journey('joining late, while the host is already watching: straight into the player, in step with them', (j) async {
       final riley = j.friend()..host(title: 'Arrival', ids: ['imdb://tt00m1'], year: 1980);
       riley.start(atMs: 60000);
-      await joinRileysRoom(j);
-      final texts = j.screenTexts();
-      expect(texts.where((t) => t == 'Riley').length, 1, reason: j.why('Riley is shown once, as the host — on screen: $texts'));
+      await j.wait(const Duration(seconds: 20));
+      await j.realTime();
+      await j.openFromRail('Watch Together');
+      await j.realTime();
+      await j.select(); // Join
+      await j.realTime();
+      await j.wait(const Duration(seconds: 3));
+      await j.realTime();
+      expect(j.shows('Start for everyone'), isFalse, reason: j.why('no lobby once the room is underway'));
+      expect(j.video.openedUris.last, contains('/Videos/m1/'), reason: j.why('your own Arrival is playing'));
+      await j.wait(const Duration(seconds: 10));
+      expect(riley.phase, PlaybackPhase.playing, reason: j.why('the room plays on by itself once you have caught up'));
+      expect(j.videoPlaying, isTrue);
+      expect(j.relay.eventLog.any((e) => e.kind == 'playbackState' && e.phase == 'waitingForPeers'), isTrue,
+          reason: j.why('the room held for you while you opened'));
     }, relay: true);
 
     journey('the host ends the room: you leave the player, and are told why', (j) async {

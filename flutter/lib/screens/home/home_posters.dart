@@ -3,7 +3,6 @@ import 'package:flutter/widgets.dart';
 import '../../data/media/artwork_url.dart';
 import '../../data/media/media_models.dart';
 import '../../data/media/media_server.dart';
-import '../../focus/back_handler.dart';
 import '../../focus/dpad_long_press.dart';
 import '../../kit/scroll_peek.dart';
 import '../../kit/text.dart';
@@ -13,7 +12,6 @@ import '../../theme/tokens.dart';
 import '../library/poster_card.dart' show posterWidth;
 import '../../theme/typography.dart';
 import '../common/artwork.dart';
-import '../common/remove_confirm_overlay.dart';
 import '../common/time_format.dart';
 
 /// A recently-added item's caption: a season shows its show's title.
@@ -67,10 +65,8 @@ double progressFraction(MediaItem item) {
   return fraction.clamp(0.0, 1.0);
 }
 
-/// A 2:3 poster with long-press-
-/// to-remove. Reuses DpadLongPressDetector for the hold-to-open gesture;
-/// the confirm overlay's own "swallow the trailing release" guard lives in
-/// RemoveConfirmOverlay itself (see that file's doc comment for why).
+/// A 2:3 poster with hold-to-remove: the hold takes it off the list at
+/// once, and Home offers Undo (screen 21 — undo, not confirm).
 class WatchlistPoster extends StatefulWidget {
   final MediaServer server;
   final MediaItem entry;
@@ -97,9 +93,8 @@ class _WatchlistPosterState extends State<WatchlistPoster> {
   late FocusNode _focusNode;
   bool _ownsFocusNode = false;
   bool _focused = false;
-  bool _confirmingRemove = false;
   late final DpadLongPressDetector _longPress = DpadLongPressDetector(
-    onLongPress: _openConfirm,
+    onLongPress: () => widget.onRemove(),
   );
 
   @override
@@ -128,91 +123,67 @@ class _WatchlistPosterState extends State<WatchlistPoster> {
     }
   }
 
-  void _openConfirm() => setState(() => _confirmingRemove = true);
-
-  void _closeConfirm() {
-    setState(() => _confirmingRemove = false);
-    WidgetsBinding.instance.addPostFrameCallback(
-      (_) => _focusNode.requestFocus(),
-    );
-  }
-
   KeyEventResult _handleKeyEvent(FocusNode node, KeyEvent event) =>
       handleDpadSelect(event, longPress: _longPress, onClick: widget.onClick);
 
   @override
   Widget build(BuildContext context) {
-    return BackHandler(
-      enabled: _confirmingRemove,
-      onBack: _closeConfirm,
-      child: SizedBox(
-        // The system's 220x330 poster, like every other row — at 160 the
-        // row (sized for 220x330) left a band of empty space under it.
-        width: posterWidth.du(context),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            AspectRatio(
-              aspectRatio: 2 / 3,
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(8.du(context)),
-                child: Container(
-                  decoration: BoxDecoration(
-                    border: _focused
-                        ? Border.all(
-                            color: AppColors.accent,
-                            width: 2.du(context),
-                          )
-                        : null,
-                  ),
-                  child: Focus(
-                    focusNode: _focusNode,
-                    autofocus: widget.autofocus,
-                    onKeyEvent: _handleKeyEvent,
-                    child: GestureDetector(
-                      behavior: HitTestBehavior.opaque,
-                      onTap: () {
-                        _focusNode.requestFocus();
-                        if (!_confirmingRemove) widget.onClick();
-                      },
-                      child: Stack(
-                        fit: StackFit.expand,
-                        children: [
-                          Artwork(
-                            imageUrl: ArtworkUrl.of(
-                              widget.server,
-                              widget.entry.thumb,
-                            ),
+    return SizedBox(
+      // The system's 220x330 poster, like every other row — at 160 the
+      // row (sized for 220x330) left a band of empty space under it.
+      width: posterWidth.du(context),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          AspectRatio(
+            aspectRatio: 2 / 3,
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(8.du(context)),
+              child: Container(
+                decoration: BoxDecoration(
+                  border: _focused
+                      ? Border.all(
+                          color: AppColors.accent,
+                          width: 2.du(context),
+                        )
+                      : null,
+                ),
+                child: Focus(
+                  focusNode: _focusNode,
+                  autofocus: widget.autofocus,
+                  onKeyEvent: _handleKeyEvent,
+                  child: GestureDetector(
+                    behavior: HitTestBehavior.opaque,
+                    onTap: () {
+                      _focusNode.requestFocus();
+                      widget.onClick();
+                    },
+                    child: Stack(
+                      fit: StackFit.expand,
+                      children: [
+                        Artwork(
+                          imageUrl: ArtworkUrl.of(
+                            widget.server,
+                            widget.entry.thumb,
                           ),
-                          if (_confirmingRemove)
-                            RemoveConfirmOverlay(
-                              message:
-                                  'Remove ${widget.entry.title} from your watchlist?',
-                              onConfirm: () {
-                                setState(() => _confirmingRemove = false);
-                                widget.onRemove();
-                              },
-                              onCancel: _closeConfirm,
-                              compact: true,
-                            ),
-                        ],
-                      ),
+                        ),
+                      ],
                     ),
                   ),
                 ),
               ),
             ),
-            Padding(
-              padding: EdgeInsets.only(top: 12.du(context)),
-              child: AppText(
-                widget.entry.title,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
+          ),
+          Padding(
+            padding: EdgeInsets.only(top: 12.du(context)),
+            child: AppText(
+              widget.entry.title,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -245,9 +216,8 @@ class _ContinueWatchingPosterState extends State<ContinueWatchingPoster> {
   late FocusNode _focusNode;
   bool _ownsFocusNode = false;
   bool _focused = false;
-  bool _confirmingRemove = false;
   late final DpadLongPressDetector _longPress = DpadLongPressDetector(
-    onLongPress: _openConfirm,
+    onLongPress: () => widget.onRemove(),
   );
 
   @override
@@ -277,15 +247,6 @@ class _ContinueWatchingPosterState extends State<ContinueWatchingPoster> {
     }
   }
 
-  void _openConfirm() => setState(() => _confirmingRemove = true);
-
-  void _closeConfirm() {
-    setState(() => _confirmingRemove = false);
-    WidgetsBinding.instance.addPostFrameCallback(
-      (_) => _focusNode.requestFocus(),
-    );
-  }
-
   KeyEventResult _handleKeyEvent(FocusNode node, KeyEvent event) =>
       handleDpadSelect(event, longPress: _longPress, onClick: widget.onResume);
 
@@ -297,136 +258,118 @@ class _ContinueWatchingPosterState extends State<ContinueWatchingPoster> {
 
     final remainingMs = (value.duration ?? 0) - (value.viewOffset ?? 0);
 
-    return BackHandler(
-      enabled: _confirmingRemove,
-      onBack: _closeConfirm,
-      child: SizedBox(
-        width: 372.du(context),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            AspectRatio(
-              aspectRatio: 16 / 9,
-              child: AnimatedScale(
-                scale: _focused ? AppFocusTreatment.focusScale : 1.0,
-                duration: AppMotion.focusEnter,
-                curve: AppMotion.enter,
-                child: Container(
-                  // Artwork takes a frame all the way round instead of a
-                  // spine on focus — a spine would cover the thumbnail.
-                  // DESIGN.md #3.
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(
-                      AppShape.radiusMd.du(context),
-                    ),
-                    border: Border.all(
-                      color: _focused
-                          ? AppFocusTreatment.artFrameColor
-                          : AppColors.line,
-                      width:
-                          (_focused
-                                  ? AppShape.artFrameWidth
-                                  : AppShape.borderWidth)
-                              .du(context),
-                    ),
+    return SizedBox(
+      width: 372.du(context),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          AspectRatio(
+            aspectRatio: 16 / 9,
+            child: AnimatedScale(
+              scale: _focused ? AppFocusTreatment.focusScale : 1.0,
+              duration: AppMotion.focusEnter,
+              curve: AppMotion.enter,
+              child: Container(
+                // Artwork takes a frame all the way round instead of a
+                // spine on focus — a spine would cover the thumbnail.
+                // DESIGN.md #3.
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(
+                    AppShape.radiusMd.du(context),
                   ),
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(8.du(context)),
-                    child: Focus(
-                      focusNode: _focusNode,
-                      autofocus: widget.autofocus,
-                      onKeyEvent: _handleKeyEvent,
-                      child: GestureDetector(
-                        behavior: HitTestBehavior.opaque,
-                        onTap: () {
-                          _focusNode.requestFocus();
-                          if (!_confirmingRemove) widget.onResume();
-                        },
-                        child: Stack(
-                          fit: StackFit.expand,
-                          children: [
-                            Artwork(
-                              imageUrl: ArtworkUrl.of(
-                                active.server,
-                                value.thumb,
-                              ),
-                            ),
-                            if (_focused &&
-                                !_confirmingRemove &&
-                                remainingMs > 0)
-                              Positioned(
-                                left: 16.du(context),
-                                bottom: 16.du(context),
-                                child: AppText(
-                                  formatMinutesLeft(remainingMs),
-                                  color: AppColors.inkOnArt,
-                                  style: AppTypography.caption,
-                                ),
-                              ),
+                  border: Border.all(
+                    color: _focused
+                        ? AppFocusTreatment.artFrameColor
+                        : AppColors.line,
+                    width:
+                        (_focused
+                                ? AppShape.artFrameWidth
+                                : AppShape.borderWidth)
+                            .du(context),
+                  ),
+                ),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(8.du(context)),
+                  child: Focus(
+                    focusNode: _focusNode,
+                    autofocus: widget.autofocus,
+                    onKeyEvent: _handleKeyEvent,
+                    child: GestureDetector(
+                      behavior: HitTestBehavior.opaque,
+                      onTap: () {
+                        _focusNode.requestFocus();
+                        widget.onResume();
+                      },
+                      child: Stack(
+                        fit: StackFit.expand,
+                        children: [
+                          Artwork(
+                            imageUrl: ArtworkUrl.of(active.server, value.thumb),
+                          ),
+                          if (_focused && remainingMs > 0)
                             Positioned(
-                              left: 0,
-                              right: 0,
-                              bottom: 0,
-                              child: Container(
-                                height: 4.du(context),
-                                color: AppColors.ink.withValues(alpha: 0.22),
-                                alignment: Alignment.centerLeft,
-                                child: FractionallySizedBox(
-                                  widthFactor: progress,
-                                  // Flat ink3 fill: screens 01/11 keep the
-                                  // accent for the hero's bar only.
-                                  child: ColoredBox(color: AppColors.ink3),
-                                ),
+                              left: 16.du(context),
+                              bottom: 16.du(context),
+                              child: AppText(
+                                formatMinutesLeft(remainingMs),
+                                color: AppColors.inkOnArt,
+                                style: AppTypography.caption,
                               ),
                             ),
-                            if (_confirmingRemove)
-                              RemoveConfirmOverlay(
-                                message: 'Remove from Continue Watching?',
-                                onConfirm: () {
-                                  setState(() => _confirmingRemove = false);
-                                  widget.onRemove();
-                                },
-                                onCancel: _closeConfirm,
+                          Positioned(
+                            left: 0,
+                            right: 0,
+                            bottom: 0,
+                            child: Container(
+                              height: 4.du(context),
+                              color: AppColors.ink.withValues(alpha: 0.22),
+                              alignment: Alignment.centerLeft,
+                              child: FractionallySizedBox(
+                                widthFactor: progress,
+                                // Flat ink3 fill: screens 01/11 keep the
+                                // accent for the hero's bar only.
+                                child: ColoredBox(color: AppColors.ink3),
                               ),
-                          ],
-                        ),
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   ),
                 ),
               ),
             ),
-            Padding(
-              padding: EdgeInsets.only(top: 12.du(context)),
-              child: AppText(
-                continueWatchingTitle(value),
-                style: _focused
-                    ? AppTypography.label.copyWith(fontWeight: FontWeight.w500)
-                    : AppTypography.label,
-                color: _focused ? AppColors.ink : AppColors.ink2,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
+          ),
+          Padding(
+            padding: EdgeInsets.only(top: 12.du(context)),
+            child: AppText(
+              continueWatchingTitle(value),
+              style: _focused
+                  ? AppTypography.label.copyWith(fontWeight: FontWeight.w500)
+                  : AppTypography.label,
+              color: _focused ? AppColors.ink : AppColors.ink2,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
             ),
-            Builder(
-              builder: (context) {
-                final subtitle = continueWatchingSubtitle(value);
-                if (subtitle.isEmpty) return const SizedBox.shrink();
-                return Padding(
-                  padding: EdgeInsets.only(top: 3.du(context)),
-                  child: AppText(
-                    subtitle,
-                    style: AppTypography.caption,
-                    color: AppColors.ink3,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                );
-              },
-            ),
-          ],
-        ),
+          ),
+          Builder(
+            builder: (context) {
+              final subtitle = continueWatchingSubtitle(value);
+              if (subtitle.isEmpty) return const SizedBox.shrink();
+              return Padding(
+                padding: EdgeInsets.only(top: 3.du(context)),
+                child: AppText(
+                  subtitle,
+                  style: AppTypography.caption,
+                  color: AppColors.ink3,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              );
+            },
+          ),
+        ],
       ),
     );
   }

@@ -3,7 +3,6 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:reelay/data/media/media_models.dart';
 import 'package:reelay/data/media/media_server.dart';
-import 'package:reelay/screens/common/click_to_type_text_field.dart';
 import 'package:reelay/screens/library/library_screen.dart';
 import 'package:reelay/state/app_state.dart';
 import 'package:reelay/state/duplicate_fold.dart';
@@ -46,16 +45,6 @@ Future<void> _pump(
       ),
     ),
   );
-}
-
-Future<void> _typeInSearchField(WidgetTester tester, String value) async {
-  final field = tester.widget<ClickToTypeTextField>(find.byType(ClickToTypeTextField));
-  field.focusNode!.requestFocus();
-  await tester.pump();
-  await tester.sendKeyEvent(LogicalKeyboardKey.select);
-  await tester.pump();
-  await tester.enterText(find.byType(EditableText), value);
-  await tester.pump();
 }
 
 void main() {
@@ -159,16 +148,6 @@ void main() {
     expect(find.text('Genre'), findsOneWidget);
     expect(find.text('Alien'), findsOneWidget);
     expect(find.text('Arrival'), findsOneWidget);
-  });
-
-  testWidgets('typing in the search field narrows the grid without leaving the screen', (tester) async {
-    await _pump(tester);
-
-    await _typeInSearchField(tester, 'AR');
-
-    expect(find.text('Arrival'), findsOneWidget);
-    expect(find.text('Alien'), findsNothing, reason: '"Alien" does not contain "AR"');
-    expect(find.text('Genre'), findsOneWidget, reason: 'the filter row is still there — this never was a separate destination');
   });
 
   testWidgets('switching to Collections with none loaded shows the loading then empty state', (tester) async {

@@ -4,6 +4,7 @@ import 'dart:math';
 
 import 'package:reelay/data/settings/relay_identity_store.dart';
 import 'package:reelay/sync/relay_client.dart';
+import 'package:reelay/sync/playback_state.dart';
 import 'package:reelay/sync/relay_protocol.dart';
 import 'package:reelay/sync/room_roster.dart';
 import 'package:reelay/sync/sync_view_model.dart';
@@ -250,6 +251,11 @@ class Friend {
   RoomRoster? _roster;
   StreamSubscription<RelayEvent>? _events;
   bool _hosting = false;
+
+  /// The room's phase as this friend's own sync sees it (a host doesn't
+  /// hear its own states, so [roomPhase] is a guest's view).
+  PlaybackPhase? phase;
+  StreamSubscription<PlaybackPhase?>? _phaseSub;
   bool _left = false;
 
   /// The friend's player, once it has started.
@@ -297,7 +303,10 @@ class Friend {
   /// The friend's player opens and plays (after either side's Start).
   void play({int atMs = 0}) {
     final player = _player ??= SimPlayer(PlayerProfile.directPlay, random: Random(7), startMs: atMs);
-    sync ??= SyncViewModel(player: player, relay: client)..start();
+    if (sync == null) {
+      sync = SyncViewModel(player: player, relay: client)..start();
+      _phaseSub = sync!.phase.listen((p) => phase = p);
+    }
     _announce();
     player.play();
   }
@@ -318,6 +327,7 @@ class Friend {
     if (_left) return;
     _left = true;
     sync?.stop();
+    _phaseSub?.cancel();
     _roster?.dispose();
     _events?.cancel();
     _player?.dispose();

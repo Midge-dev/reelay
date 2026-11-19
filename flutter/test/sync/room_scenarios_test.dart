@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:reelay/sync/playback_state.dart';
 
 import 'sim/sim_player.dart';
 import 'sim/sim_relay.dart';
@@ -41,6 +42,18 @@ void main() {
         host,
         DeviceSpec('guest', player: PlayerProfile.remoteTranscode, link: LinkProfile.far, joinAtMs: 20000),
       ]));
+      expectSettles(r, maxSyncSeeks: 3);
+    });
+
+    test('a guest arriving late, whose stream takes 4s to open: the room holds for them, then plays on by itself', () {
+      final r = runRoom(const Scenario('late join, slow open', devices: [
+        host,
+        DeviceSpec('guest', player: PlayerProfile.remoteTranscode, link: LinkProfile.far, joinAtMs: 20000, openMs: 4000, startMs: 0),
+      ]));
+      final why = r.describe();
+      final afterJoin = r.samples.where((s) => s.t > 20000).toList();
+      expect(afterJoin.any((s) => s.hostPhase == PlaybackPhase.waitingForPeers), isTrue,
+          reason: 'the room should hold for the newcomer\n$why');
       expectSettles(r, maxSyncSeeks: 3);
     });
 

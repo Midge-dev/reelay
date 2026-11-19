@@ -338,6 +338,7 @@ class PlayerControlsBar extends StatelessWidget {
                       onClick: onOpenChatQr,
                       focusNode: chatFocusNode,
                       icon: PhosphorIconsRegular.chatCircleText,
+                      semanticLabel: 'Phone chat',
                     ),
                   ),
                 ],

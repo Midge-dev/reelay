@@ -269,6 +269,7 @@ class _TabButton extends StatelessWidget {
       child: FocusableSurface(
         onClick: onClick,
         selected: selected,
+        selectedMark: false,
         focusNode: focusNode,
         shape: _tabShape(context),
         colors: _tabColors,

@@ -27,8 +27,11 @@ void main() {
   journey('UX tour: browsing', (j) async {
     j.checkFocusAfterEveryPress = false; // a tour, not a test
     await shot(j, 'home');
-    await j.down();
+    await j.down(2);
     await shot(j, 'home-watchlist-row');
+    await j.holdSelect();
+    await shot(j, 'home-undo-chip');
+    await j.back(); // undo
     await j.down(3);
     await shot(j, 'home-lower-rows');
 
@@ -99,6 +102,14 @@ void main() {
 
   journey('UX tour: Watch Together and settings', (j) async {
     j.checkFocusAfterEveryPress = false;
+    await j.openFromRail('Movies');
+    final riley = j.friend()..host(title: 'Dune', ids: ['imdb://tt00m4'], year: 1995);
+    await j.wait(const Duration(seconds: 6));
+    await j.realTime();
+    await j.left();
+    await shot(j, 'rail-new-room-dot');
+    riley.leave();
+    await j.wait(const Duration(seconds: 6));
     await j.openFromRail('Watch Together');
     await j.realTime();
     await shot(j, 'rooms-panel-empty');
@@ -114,7 +125,7 @@ void main() {
     await j.select();
     await j.realTime();
     await j.wait(const Duration(seconds: 2));
-    j.friend().join(j.relay.rooms.values.single.id);
+    j.friend(name: 'Jo').join(j.relay.roomOf('Sam')!.id);
     await j.wait(const Duration(seconds: 4));
     await shot(j, 'lobby-host');
     await j.select();
@@ -151,7 +162,7 @@ void main() {
 
   journey('UX tour: errors', (j) async {
     j.checkFocusAfterEveryPress = false;
-    await j.down();
+    await j.down(2);
     await j.right(); // Contact: on the watchlist, gone from the server
     await j.select();
     await j.wait(const Duration(seconds: 1));

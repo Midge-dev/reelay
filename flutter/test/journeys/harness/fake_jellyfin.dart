@@ -138,7 +138,13 @@ class FakeJellyfin {
     };
   }
 
-  Iterable<Map<String, Object?>> get _allEpisodes => _episodes.values.expand((e) => e);
+  /// Episodes are built with their show — reading [shows] first, or a
+  /// request that comes before anything else (Next Up, at start-up) finds
+  /// none.
+  Iterable<Map<String, Object?>> get _allEpisodes {
+    shows;
+    return _episodes.values.expand((e) => e);
+  }
 
   Map<String, Object?>? _byId(String id) {
     for (final item in [...movies, ...shows, ..._seasons.values.expand((s) => s), ..._allEpisodes]) {

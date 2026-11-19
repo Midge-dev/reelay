@@ -50,6 +50,7 @@ class AppFilterChip extends StatelessWidget {
       onClick: onClick,
       enabled: enabled,
       selected: selected,
+      selectedMark: false,
       focusNode: focusNode,
       shape: _chipShape(context),
       colors: _chipColors,

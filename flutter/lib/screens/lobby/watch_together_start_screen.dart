@@ -5,7 +5,6 @@ import '../../kit/focusable_surface.dart';
 import '../../kit/icon.dart';
 import '../../kit/radio_button.dart';
 import '../../kit/surface_style.dart';
-import '../../kit/switch.dart';
 import '../../kit/text.dart';
 import '../../theme/phosphor_icons.dart';
 import '../../theme/scale.dart';
@@ -17,9 +16,8 @@ import '../../theme/typography.dart';
 /// Rendered as its own full screen, matching PlaybackFailed's disclosed
 /// simplification (no literal dimmed-detail-page-behind-it). Seats shows
 /// the account's configured max (not editable here — changing it lives in
-/// Settings); Phone chat is a real, working toggle in this UI but isn't
-/// wired to a specific effect yet (see the code's own note at its call
-/// site) — disclosed rather than either faked or dropped from the layout.
+/// Settings). Phone chat is a setting of its own (Settings → Watch
+/// Together); when it's on, the lobby shows its QR.
 class WatchTogetherStartScreen extends StatefulWidget {
   final String roomTitle;
   final bool defaultRestart;
@@ -31,8 +29,7 @@ class WatchTogetherStartScreen extends StatefulWidget {
   final int maxSeats;
   final String? relayNickname;
   final Future<bool> Function()? checkRelayReachable;
-  final void Function({required bool restart, required bool showPhoneChat})
-  onConfirm;
+  final void Function({required bool restart}) onConfirm;
   final VoidCallback onCancel;
 
   const WatchTogetherStartScreen({
@@ -56,7 +53,6 @@ enum _RelayCheck { checking, reachable, unreachable, unknown }
 
 class _WatchTogetherStartScreenState extends State<WatchTogetherStartScreen> {
   late bool _restart = widget.defaultRestart;
-  bool _phoneChatEnabled = true;
   _RelayCheck _relayCheck = _RelayCheck.unknown;
   final _confirmFocus = FocusNode(debugLabel: 'wt-start-confirm');
 
@@ -146,31 +142,13 @@ class _WatchTogetherStartScreenState extends State<WatchTogetherStartScreen> {
                 ),
                 SizedBox(height: AppSpacing.lg.du(context)),
               ],
-              Row(
-                children: [
-                  Expanded(
-                    child: _InfoRow(
-                      title: 'Seats',
-                      subtitle: 'Including you',
-                      trailing: AppText(
-                        '${widget.maxSeats}',
-                        style: AppTypography.label,
-                      ),
-                    ),
-                  ),
-                  SizedBox(width: AppSpacing.md.du(context)),
-                  Expanded(
-                    child: _InfoRow(
-                      title: 'Phone chat',
-                      subtitle: 'Show a QR to join',
-                      trailing: AppSwitch(
-                        checked: _phoneChatEnabled,
-                        onCheckedChange: (v) =>
-                            setState(() => _phoneChatEnabled = v),
-                      ),
-                    ),
-                  ),
-                ],
+              _InfoRow(
+                title: 'Seats',
+                subtitle: 'Including you',
+                trailing: AppText(
+                  '${widget.maxSeats}',
+                  style: AppTypography.label,
+                ),
               ),
               SizedBox(height: AppSpacing.lg.du(context)),
               _RelayStatusRow(
@@ -182,10 +160,7 @@ class _WatchTogetherStartScreenState extends State<WatchTogetherStartScreen> {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   AppButton(
-                    onClick: () => widget.onConfirm(
-                      restart: _restart,
-                      showPhoneChat: _phoneChatEnabled,
-                    ),
+                    onClick: () => widget.onConfirm(restart: _restart),
                     focusNode: _confirmFocus,
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
@@ -338,7 +313,7 @@ class _RelayStatusRow extends StatelessWidget {
       _RelayCheck.checking => (AppColors.ink4, 'Checking relay…'),
       _RelayCheck.reachable => (
         AppColors.success,
-        'Relay reachable · guests will sync within a frame',
+        'Relay reachable · guests stay in sync',
       ),
       _RelayCheck.unreachable => (
         AppColors.error,

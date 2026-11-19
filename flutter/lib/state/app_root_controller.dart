@@ -74,6 +74,7 @@ class AppRootController extends ChangeNotifier {
     final wasPolling = pollsLiveRooms(_state);
     final polls = pollsLiveRooms(next);
     _state = next;
+    _seeRoomsIfOnHome();
     if (polls && !wasPolling) {
       _startRoomPolling();
     } else if (!polls && wasPolling) {
@@ -221,6 +222,33 @@ class AppRootController extends ChangeNotifier {
   /// "Retry now" on screen 12 — hurries the next poll rather than waiting
   /// for the timer.
   void retryRelays() => unawaited(_pollRooms());
+
+  /// Rooms this person has had in front of them — on Home's bar or in the
+  /// rooms panel. Anything else live is new, and the rail's Watch Together
+  /// item carries a dot for it, so a room opening is noticed from any
+  /// screen, not only Home.
+  final _seenRoomIds = <String>{};
+
+  bool get hasUnseenRooms => liveRooms.any((m) {
+    final id = m.room.roomId;
+    return !_seenRoomIds.contains(id) &&
+        !_hostedRoomIds.contains(id) &&
+        id != _myRoomId;
+  });
+
+  /// The rooms panel opened: every live room has now been seen.
+  void markRoomsSeen() {
+    final before = _seenRoomIds.length;
+    _seenRoomIds.addAll(liveRooms.map((m) => m.room.roomId));
+    if (_seenRoomIds.length != before) notifyListeners();
+  }
+
+  /// Home shows every live room on its bar.
+  void _seeRoomsIfOnHome() {
+    if (_state is Home) {
+      _seenRoomIds.addAll(liveRooms.map((m) => m.room.roomId));
+    }
+  }
 
   List<MergedRoom> get liveRooms => [
     for (final entry in _liveRoomsByRelay.entries)
@@ -1079,6 +1107,7 @@ class AppRootController extends ChangeNotifier {
             ..._liveRoomsByRelay,
             entry.id: rooms ?? const [],
           };
+          _seeRoomsIfOnHome();
           notifyListeners();
         }),
       );
@@ -1472,8 +1501,12 @@ class AppRootController extends ChangeNotifier {
           )
           .toList(),
     );
-    ScreenMemory.carry(home, updated);
-    _setState(updated);
+    // Home commits a removal when its Undo runs out — maybe after you've
+    // moved on, and then this mustn't take you back there.
+    if (identical(_state, home)) {
+      ScreenMemory.carry(home, updated);
+      _setState(updated);
+    }
     unawaited(
       clientFor(target.server)
           .removeFromContinueWatching(target.value.id)
@@ -1707,6 +1740,31 @@ class AppRootController extends ChangeNotifier {
         ),
       );
     }
+  }
+
+  /// Home's hero Resume: plays from where it was left, at once — the page
+  /// is a press away on its card, and Back from the player comes Home.
+  Future<void> playOnDeckItem(Home current, FoldedWork<MediaItem> onDeckWork) {
+    final active = onDeckWork.primary;
+    final furthest = onDeckWork.copies
+        .map((c) => c.value.viewOffset ?? 0)
+        .fold(0, (a, b) => a > b ? a : b);
+    final ctx = LibraryContext(
+      servers: current.servers,
+      sectionGroups: current.sectionGroups,
+      selectedSectionGroup: sectionGroupFor(
+        current.sectionGroups,
+        active.value.kind == MediaKind.episode ? MediaKind.show : active.value.kind,
+      ),
+      items: const [],
+    );
+    return playMovie(
+      ctx,
+      active.server,
+      active.value.id,
+      current,
+      resumeAtMs: furthest > 0 ? furthest : null,
+    );
   }
 
   void resumeOnDeckItem(Home current, FoldedWork<MediaItem> onDeckWork) {

@@ -26,6 +26,11 @@ class FocusableSurface extends StatefulWidget {
   final VoidCallback? onLongClick;
   final bool enabled;
   final bool selected;
+
+  /// The small dot marking "selected, and focused". Off for segmented tabs
+  /// (a mode switch, season or menu tabs), where the selected fill already
+  /// says which one is chosen and the dot crowded their short labels.
+  final bool selectedMark;
   final OutlinedBorder shape;
   final SurfaceColors colors;
   final SurfaceBorder border;
@@ -42,6 +47,7 @@ class FocusableSurface extends StatefulWidget {
     this.onLongClick,
     this.enabled = true,
     this.selected = false,
+    this.selectedMark = true,
     required this.shape,
     required this.colors,
     this.border = const SurfaceBorder(),
@@ -265,7 +271,7 @@ class _FocusableSurfaceState extends State<FocusableSurface> {
       );
     }
 
-    if (widget.selected && _focused) {
+    if (widget.selected && widget.selectedMark && _focused) {
       surface = Stack(
         fit: StackFit.passthrough,
         children: [

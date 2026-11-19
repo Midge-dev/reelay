@@ -97,7 +97,7 @@ void main() {
       final merged = MergedRoom(_relay, _room());
       await pump(tester, merged: merged, isHosted: true, isMine: true);
 
-      expect(find.text('End session'), findsOneWidget);
+      expect(find.text('End room'), findsOneWidget);
       expect(find.text("You're hosting"), findsOneWidget);
     });
 
@@ -105,7 +105,7 @@ void main() {
       final merged = MergedRoom(_relay, _room());
       await pump(tester, merged: merged);
 
-      expect(find.text('End session'), findsNothing);
+      expect(find.text('End room'), findsNothing);
     });
 
     testWidgets('tapping End session invokes onEndSession', (tester) async {
@@ -122,7 +122,7 @@ void main() {
         },
       );
 
-      await tester.tap(find.text('End session'));
+      await tester.tap(find.text('End room'));
       await tester.pump();
 
       expect(ended, same(merged));
@@ -132,11 +132,11 @@ void main() {
       final merged = MergedRoom(_relay, _room());
       await pump(tester, merged: merged, isHosted: true, isMine: true, onEndSession: (_) async => false);
 
-      await tester.tap(find.text('End session'));
+      await tester.tap(find.text('End room'));
       await tester.pump();
 
       expect(find.text("Can't reach relay"), findsOneWidget);
-      expect(find.text('End session'), findsNothing);
+      expect(find.text('End room'), findsNothing);
 
       // Drain the 4s auto-reset timer so it doesn't outlive the test.
       await tester.pump(const Duration(seconds: 5));

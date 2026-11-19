@@ -364,10 +364,23 @@ class _ResultsPanelState extends State<_ResultsPanel> {
 
     final total = shows.length + movies.length;
     if (!widget.searching && total == 0) {
-      // Verbatim from the handoff's copy list.
-      return AppText(
-        'Nothing on your servers matches that.',
-        style: AppTypography.body,
+      // The handoff's line, plus what to try (DESIGN.md: an empty screen
+      // gets one sentence of fact and one of instruction).
+      return Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          AppText(
+            'Nothing on your servers matches that.',
+            style: AppTypography.body,
+          ),
+          SizedBox(height: AppSpacing.sm.du(context)),
+          AppText(
+            'Try fewer letters, or another word from the title.',
+            style: AppTypography.body,
+            color: AppColors.ink3,
+          ),
+        ],
       );
     }
 

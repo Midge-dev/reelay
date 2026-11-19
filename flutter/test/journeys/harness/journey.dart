@@ -93,7 +93,7 @@ class Journey {
     });
   }
 
-  static Future<Journey> _boot(WidgetTester tester, FakeJellyfin server, FakeNetwork network, {double uiScale = AppSettings.defaultUiScale, FakeRelay? relay, bool realFonts = false}) async {
+  static Future<Journey> _boot(WidgetTester tester, FakeJellyfin server, FakeNetwork network, {double uiScale = AppSettings.defaultUiScale, FakeRelay? relay, bool realFonts = false, AppSettings Function(AppSettings)? settings}) async {
     if (realFonts) await _loadRealFonts(tester);
     VideoPlayerPlatform.instance = FakeVideoPlayerPlatform();
     // The Shield's real geometry: a 960×540 logical canvas (1080p at 2×).
@@ -114,12 +114,13 @@ class Journey {
       RelayClient.openChannel = relay.open;
       addTearDown(() => RelayClient.openChannel = defaultOpenChannel);
     }
-    await store.save(AppSettings(
+    final initial = AppSettings(
       profiles: const [profile],
       setupComplete: true,
       uiScale: uiScale,
       relays: [if (relay != null) RelayEntry(id: 'r1', nickname: 'Test relay', url: relay.url, isDefault: true)],
-    ));
+    );
+    await store.save(settings?.call(initial) ?? initial);
     final tokens = _MemoryTokenStore()..values['jellyfin:p1'] = 'jf-token';
 
     await tester.pumpWidget(
@@ -465,13 +466,14 @@ void journey(
   bool relay = false,
   bool realFonts = false,
   bool skip = false,
+  AppSettings Function(AppSettings)? settings,
 }) {
   testWidgets(skip: skip, description, (tester) async {
     final jellyfin = server?.call() ?? FakeJellyfin();
     final fakeRelay = relay ? FakeRelay() : null;
     final network = FakeNetwork([jellyfin.route, ?fakeRelay?.route]);
     await HttpOverrides.runWithHttpOverrides(() async {
-      final j = await Journey._boot(tester, jellyfin, network, uiScale: uiScale, relay: fakeRelay, realFonts: realFonts);
+      final j = await Journey._boot(tester, jellyfin, network, uiScale: uiScale, relay: fakeRelay, realFonts: realFonts, settings: settings);
       try {
         await body(j);
       } finally {

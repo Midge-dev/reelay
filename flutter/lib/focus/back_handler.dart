@@ -16,7 +16,12 @@ class BackHandler extends StatefulWidget {
   final VoidCallback onBack;
   final Widget child;
 
-  const BackHandler({super.key, this.enabled = true, required this.onBack, required this.child});
+  /// Wins over every other handler while enabled, wherever focus is — for
+  /// a short-lived offer like Undo, which Back should take wherever you are
+  /// on the screen.
+  final bool precedence;
+
+  const BackHandler({super.key, this.enabled = true, this.precedence = false, required this.onBack, required this.child});
 
   @override
   State<BackHandler> createState() => _BackHandlerState();
@@ -61,6 +66,8 @@ class _BackHandlerState extends State<BackHandler> {
   static _BackHandlerState? _winner() {
     final candidates = _mounted.where((h) => h.mounted && h.widget.enabled).toList();
     if (candidates.isEmpty) return null;
+    final urgent = candidates.where((h) => h.widget.precedence);
+    if (urgent.isNotEmpty) return urgent.last;
     final focus = FocusManager.instance.primaryFocus?.context;
     if (focus != null) {
       _BackHandlerState? best;

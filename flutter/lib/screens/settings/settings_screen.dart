@@ -727,6 +727,13 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         onClick: () => setState(() => _maxSeatsMenuExpanded = true),
       ),
       _SettingRow(
+        label: 'Phone chat',
+        description: 'Friends in a room scan a code to chat from their phones',
+        toggle: _settings.phoneChat,
+        onClick: () => _update((s) => s.copyWith(phoneChat: !s.phoneChat)),
+      ),
+      if (_settings.phoneChat) ...[
+      _SettingRow(
         label: 'Show phone chat during playback',
         description: 'Messages from guests appear over the picture',
         toggle: _settings.showChatOverlay,
@@ -745,6 +752,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           );
         }),
       ),
+      ],
     ];
   }
 

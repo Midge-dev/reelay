@@ -75,6 +75,11 @@ class _AppRootState extends ConsumerState<AppRoot> {
     // Nothing hidden under the splash should react to the remote.
     HardwareKeyboard.instance.addHandler(_swallowKeysDuringSplash);
     WidgetsBinding.instance.addPostFrameCallback((_) => _start());
+    _roomsPanelOpen.addListener(() {
+      if (_roomsPanelOpen.value) {
+        ref.read(appRootControllerProvider).markRoomsSeen();
+      }
+    });
   }
 
   @override
@@ -170,6 +175,7 @@ class _AppContent extends StatelessWidget {
         hostedRoomIds: controller.hostedRoomIds,
         onJoin: (room) => controller.joinRoom(current, servers, room),
         onRetry: controller.retryRelays,
+        unseen: controller.hasUnseenRooms,
       );
 
   @override
@@ -770,7 +776,7 @@ class _AppContent extends StatelessWidget {
                     : () => RelayDirectoryApi().testReachable(
                         controller.currentSettings.defaultRelay!.url,
                       ),
-                onConfirm: ({required restart, required showPhoneChat}) =>
+                onConfirm: ({required restart}) =>
                     controller.startWatchTogether(
                       ctx: ctx,
                       server: server,
@@ -803,8 +809,16 @@ class _AppContent extends StatelessWidget {
           relayNickname: relayNickname,
           measureLatency: () => controller.measureRelayLatency(relay.relayUrl),
           relay: relay,
+          phoneChat: controller.currentSettings.phoneChat,
+          chatOverlayCorner: controller.currentSettings.chatOverlayCorner,
           onHostOnAnother: isHost
               ? () => controller.hostOnAnotherRelay(state)
+              : null,
+          onEndRoom: isHost
+              ? () {
+                  controller.returnTo(returnState);
+                  unawaited(controller.endParkedRoom());
+                }
               : null,
           onStart: (restartFromBeginning) => controller.returnTo(
             Player(
@@ -915,6 +929,7 @@ class _AppContent extends StatelessWidget {
                 controller.joinRoom(home, home.servers, merged),
             onOpenRooms: () => roomsPanelOpen.value = true,
             onResume: (item) => controller.resumeOnDeckItem(home, item),
+            onPlayHero: (item) => controller.playOnDeckItem(home, item),
             onRemove: (item) =>
                 controller.removeFromContinueWatching(home, item),
             onSelectWatchlistItem: (entry) =>

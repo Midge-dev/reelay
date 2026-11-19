@@ -73,6 +73,14 @@ Scenario randomScenario(int seed) {
         joinAtMs: rng.nextInt(3) == 0 ? between(1000, 15000) : 0,
       ),
   ];
+  // A late joiner's stream takes a while to open (0-5s). Derived, not
+  // drawn, so every existing seed still makes the same room.
+  for (var i = 1; i < devices.length; i++) {
+    final d = devices[i];
+    if (d.joinAtMs > 0) {
+      devices[i] = DeviceSpec(d.name, player: d.player, link: d.link, startMs: d.startMs, clockSkewMs: d.clockSkewMs, joinAtMs: d.joinAtMs, openMs: (d.joinAtMs * 7) % 5000);
+    }
+  }
   final names = devices.map((d) => d.name).toList();
 
   final actions = <SimAction>[];

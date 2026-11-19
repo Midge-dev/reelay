@@ -15,6 +15,7 @@ const _maxBitrateKey = 'max_video_bitrate_kbps';
 const _forceBurnKey = 'force_burn_subtitles';
 const _matchFrameRateKey = 'match_frame_rate';
 const _showChatOverlayKey = 'show_chat_overlay';
+const _phoneChatKey = 'phone_chat';
 const _chatOverlayCornerKey = 'chat_overlay_corner';
 const _disabledServerIdsKey = 'disabled_server_ids';
 const _profilesKey = 'profiles';
@@ -64,6 +65,7 @@ class SettingsStore {
           AppSettings.defaultMaxBitrateKbps,
       forceBurnSubtitles: await _prefs.getBool(_forceBurnKey) ?? false,
       matchFrameRate: await _prefs.getBool(_matchFrameRateKey) ?? false,
+      phoneChat: await _prefs.getBool(_phoneChatKey) ?? true,
       showChatOverlay: await _prefs.getBool(_showChatOverlayKey) ?? true,
       chatOverlayCorner: _decodeCorner(
         await _prefs.getString(_chatOverlayCornerKey),
@@ -172,6 +174,7 @@ class SettingsStore {
     await _prefs.setInt(_maxBitrateKey, normalized.maxVideoBitrateKbps);
     await _prefs.setBool(_forceBurnKey, normalized.forceBurnSubtitles);
     await _prefs.setBool(_matchFrameRateKey, normalized.matchFrameRate);
+    await _prefs.setBool(_phoneChatKey, normalized.phoneChat);
     await _prefs.setBool(_showChatOverlayKey, normalized.showChatOverlay);
     await _prefs.setString(
       _chatOverlayCornerKey,

@@ -3,7 +3,6 @@ import 'dart:async';
 import 'package:flutter/widgets.dart';
 
 import '../../data/media/media_models.dart';
-import '../../focus/back_handler.dart';
 import '../../focus/screen_memory.dart';
 import '../../kit/focusable_surface.dart';
 import '../../kit/surface_style.dart';
@@ -14,9 +13,9 @@ import '../../theme/scale.dart';
 import '../../theme/tokens.dart';
 import '../../theme/typography.dart';
 import '../common/time_format.dart';
+import '../common/undo_chip.dart';
 import 'poster_card.dart';
 
-const _undoSeconds = 8;
 // Screens 20/21: 20 du between header, action bar and grid; the action
 // bar's controls are 58 tall.
 const _blockGap = 20.0;
@@ -78,7 +77,7 @@ class WatchlistScreen extends StatefulWidget {
 class _WatchlistScreenState extends State<WatchlistScreen> {
   late List<MediaItem> _items = widget.items;
   MediaItem? _pendingRemoval;
-  int _secondsLeft = _undoSeconds;
+  int _secondsLeft = undoSeconds;
   Timer? _timer;
   final _scrollController = ScrollController();
   final _undoFocus = FocusNode(debugLabel: 'watchlist-undo');
@@ -121,7 +120,7 @@ class _WatchlistScreenState extends State<WatchlistScreen> {
     setState(() {
       _items = _items.where((i) => i.id != entry.id).toList();
       _pendingRemoval = entry;
-      _secondsLeft = _undoSeconds;
+      _secondsLeft = undoSeconds;
     });
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) _undoFocus.requestFocus();
@@ -201,11 +200,12 @@ class _WatchlistScreenState extends State<WatchlistScreen> {
                   ),
                   const Spacer(),
                   if (_pendingRemoval != null)
-                    _UndoChip(
-                      title: _pendingRemoval!.title,
+                    UndoChip(
+                      message: 'Took ${_pendingRemoval!.title} off the list',
                       secondsLeft: _secondsLeft,
                       focusNode: _undoFocus,
                       onUndo: _undoRemoval,
+                      height: _barHeight,
                     )
                   else if (_items.isNotEmpty)
                     // Flexible: at the 130% default on a 960x540 canvas the
@@ -374,111 +374,3 @@ class _SortChip extends StatelessWidget {
 /// Screen 21: the chip that takes the hint's place for eight seconds and
 /// holds focus — "Took X off the list" and an Undo action, with a 3 du
 /// rule underneath depleting to zero. Back triggers it while it lives.
-class _UndoChip extends StatelessWidget {
-  final String title;
-  final int secondsLeft;
-  final FocusNode focusNode;
-  final VoidCallback onUndo;
-
-  const _UndoChip({
-    required this.title,
-    required this.secondsLeft,
-    required this.focusNode,
-    required this.onUndo,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return BackHandler(
-      onBack: onUndo,
-      // IntrinsicWidth: the depleting rule stretches to the chip's width,
-      // and the chip sits in an unbounded Row.
-      child: IntrinsicWidth(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            SizedBox(
-              height: (_barHeight - 3).du(context),
-              child: FocusableSurface(
-                onClick: onUndo,
-                focusNode: focusNode,
-                shape: _chipShape(context),
-                colors: _chipColors,
-                border: _chipBorder,
-                child: Padding(
-                  padding: EdgeInsetsDirectional.only(
-                    start: 22.du(context),
-                    end: 10.du(context),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      AppIcon(
-                        PhosphorIconsRegular.bookmarkSimple,
-                        size: 22,
-                        tint: AppColors.accent300,
-                      ),
-                      SizedBox(width: 18.du(context)),
-                      AppText(
-                        'Took $title off the list',
-                        style: AppTypography.label,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      SizedBox(width: 18.du(context)),
-                      Container(
-                        height: 42.du(context),
-                        padding: EdgeInsets.symmetric(
-                          horizontal: 20.du(context),
-                        ),
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(
-                            AppShape.radiusSm.du(context),
-                          ),
-                          border: Border.all(
-                            color: AppColors.accent,
-                            width: AppShape.borderWidth.du(context),
-                          ),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            const AppIcon(
-                              PhosphorIconsRegular.arrowCounterClockwise,
-                              size: 20,
-                            ),
-                            SizedBox(width: 10.du(context)),
-                            AppText(
-                              'Undo',
-                              style: AppTypography.caption,
-                              color: null,
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-            ClipRRect(
-              borderRadius: BorderRadius.circular(2.du(context)),
-              child: SizedBox(
-                height: 3.du(context),
-                child: ColoredBox(
-                  color: AppColors.line,
-                  child: FractionallySizedBox(
-                    alignment: AlignmentDirectional.centerStart,
-                    widthFactor: secondsLeft / _undoSeconds,
-                    child: ColoredBox(color: AppColors.accent),
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}

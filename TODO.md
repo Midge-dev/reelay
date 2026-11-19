@@ -77,24 +77,32 @@ bare line with nothing to focus; the room dialog offered Resume on titles
 never started; the player's main buttons had no accessible names; the
 Settings version line ran onto the screen's edge.
 
-Open — design decisions:
+Decided and done (same branch, 2026-11-19), each with a journey or test:
 
-- [ ] **Home's hero Resume opens the page** rather than resuming, so it
-  takes two presses. Deliberate (home_hero.dart), but labelled like play.
-- [ ] **Watchlist removal asks to confirm** (long-press → "Remove … from
-  your watchlist?"). DESIGN.md #12 says act at once with an 8 s undo chip.
-- [ ] **The room dialog's Phone chat toggle does nothing** (disclosed in
-  watch_together_start_screen.dart). Wire it (open the Chat QR in the
-  lobby?) or drop it.
-- [ ] **Lobby's "Close the room" only parks it** for 3 minutes (same as
-  Back). Rename, or make it end the room (confirm if anyone has joined).
-- [ ] **Joining late lands in the lobby** with "Start for everyone" while
-  the host is already watching; going straight into the player at the
-  room's spot may be better.
-- [ ] **A show page opens with its title cut in half** at the top edge
-  (focus on the next episode scrolls the header partly away).
-- [ ] **Copy:** "guests will sync within a frame" overclaims; the bar says
-  "End" and its confirm "End the session?" while everywhere else says
-  "room"; Search's no-results line has no instruction.
-- [ ] **The selected-and-focused dot** crowds short labels (Movies' Titles
-  tab, the player menu's Subtitles tab).
+- [x] Home's hero Resume plays straight away (cards still open the page).
+- [x] Removing from Home's watchlist row or Continue Watching acts at once
+  with an 8 s undo chip (Back undoes, Up reaches it); the server hears when
+  it runs out or you leave Home. RemoveConfirmOverlay is gone.
+- [x] Phone chat is a setting (Settings → Watch Together). On: the lobby
+  shows the QR, the player keeps its QR button. Off: neither. The room
+  dialog's dead toggle is gone.
+- [x] The lobby's "Close the room" ends the room (asks first if anyone has
+  joined); Back still keeps it open for 3 minutes.
+- [x] Joining a room that's already playing goes straight into the player;
+  the room holds ("Catching up with the room") until you've opened, then
+  plays on by itself.
+- [x] A show page opens on its Play button, header whole.
+- [x] Copy: "guests stay in sync"; "End room" / "End the room?"; Search's
+  no-results line says what to try. "Narrow this library" is gone.
+- [x] No selected-and-focused dot on segmented tabs and filter chips.
+- [x] The rail's Watch Together item gets a dot when a room you haven't
+  seen opens (seen = on Home's bar or in the rooms panel).
+
+Still open:
+
+- [ ] **Slow settles in the sync fuzzer:** 2 of 1000 rooms (seeds 447,
+  600) take over 30 s — a guest sits ~1 s off the host until a late
+  correction. Was 4 of 1000 before the late-joiner change. Same class as
+  the known drift follow-up (rate-nudging).
+- [ ] **The undo chip doesn't animate the hold** (the handoff's 4% draw-in
+  and desaturate over the 600 ms hold).

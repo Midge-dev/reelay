@@ -22,6 +22,7 @@ import '../../sync/time_utils.dart';
 import '../../theme/scale.dart';
 import '../../theme/tokens.dart';
 import '../../theme/typography.dart';
+import '../home/watch_together_bar.dart' show EndRoomConfirm;
 import '../common/artwork.dart';
 import '../common/chat_overlay.dart';
 import '../common/relay_status.dart';
@@ -53,9 +54,16 @@ class LobbyScreen extends StatefulWidget {
   final Future<int?> Function()? measureLatency;
   final RelayClient relay;
   final ChatOverlayCorner chatOverlayCorner;
+
+  /// Phone chat is on (Settings): the lobby shows the QR that opens it.
+  final bool phoneChat;
   final VoidCallback? onHostOnAnother;
   final ValueChanged<bool> onStart;
   final VoidCallback onBack;
+
+  /// The host's "Close the room": ends it for everyone (Back only steps
+  /// away and keeps it open). Null for guests, who leave instead.
+  final VoidCallback? onEndRoom;
 
   const LobbyScreen({
     super.key,
@@ -68,9 +76,11 @@ class LobbyScreen extends StatefulWidget {
     this.measureLatency,
     required this.relay,
     this.chatOverlayCorner = ChatOverlayCorner.bottomEnd,
+    this.phoneChat = true,
     this.onHostOnAnother,
     required this.onStart,
     required this.onBack,
+    this.onEndRoom,
   });
 
   @override
@@ -90,7 +100,6 @@ class _LobbyScreenState extends State<LobbyScreen> {
   Timer? _latencyTimer;
   int? _latencyMs;
   Map<String, _RosterEntry> _roster = {};
-  bool _showChatModal = false;
   late ConnectionState _connectionState;
   int? _seatIndex;
   String? _roomId;
@@ -98,6 +107,34 @@ class _LobbyScreenState extends State<LobbyScreen> {
   bool get _isHost => _seatIndex == 0;
 
   final _startFocus = FocusNode(debugLabel: 'lobby-start');
+  final _closeFocus = FocusNode(debugLabel: 'lobby-close');
+  final _keepOpenFocus = FocusNode(debugLabel: 'lobby-keep-open');
+  bool _confirmingEnd = false;
+
+  /// Close the room: at once if nobody has joined; asked first if someone
+  /// has, since it ends their evening too.
+  void _closeRoom() {
+    final end = widget.onEndRoom;
+    if (!_isHost || end == null) {
+      widget.onBack();
+      return;
+    }
+    if (_roster.isEmpty) {
+      end();
+      return;
+    }
+    setState(() => _confirmingEnd = true);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _keepOpenFocus.requestFocus();
+    });
+  }
+
+  void _keepOpen() {
+    setState(() => _confirmingEnd = false);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _closeFocus.requestFocus();
+    });
+  }
 
   @override
   void initState() {
@@ -163,6 +200,8 @@ class _LobbyScreenState extends State<LobbyScreen> {
     _chatMessages.close();
     _statusTracker.dispose();
     _startFocus.dispose();
+    _closeFocus.dispose();
+    _keepOpenFocus.dispose();
     super.dispose();
   }
 
@@ -202,6 +241,14 @@ class _LobbyScreenState extends State<LobbyScreen> {
   /// watching announces itself like anyone else, and has its own seat.
   String? _hostPeerId;
 
+  bool _started = false;
+
+  void _startOnce() {
+    if (_started) return;
+    _started = true;
+    widget.onStart(false);
+  }
+
   void _handleEvent(RelayEvent event) {
     switch (event.kind) {
       case 'playbackState':
@@ -211,6 +258,12 @@ class _LobbyScreenState extends State<LobbyScreen> {
             _hostPeerId = host;
             _roster = {..._roster}..remove(host);
           });
+        }
+        // The host is already watching (it plays out a state as soon as it
+        // hears from someone new): straight into the player — the room
+        // holds for this guest to open and catch up, then plays on.
+        if (!_isHost && event.phase != null && event.phase != 'loading') {
+          _startOnce();
         }
       case 'presence':
         final fromPeerId = event.fromPeerId;
@@ -227,18 +280,14 @@ class _LobbyScreenState extends State<LobbyScreen> {
           },
         );
       case 'start':
-        widget.onStart(false);
+        _startOnce();
       case 'chat':
         _chatMessages.add(relayEventToChatMessage(event));
     }
   }
 
   void _handleBack() {
-    if (_showChatModal) {
-      setState(() => _showChatModal = false);
-    } else {
-      widget.onBack();
-    }
+    widget.onBack();
   }
 
   Alignment _cornerAlignment(ChatOverlayCorner corner) => switch (corner) {
@@ -411,23 +460,8 @@ class _LobbyScreenState extends State<LobbyScreen> {
                     ],
                     SizedBox(width: 16.du(context)),
                     AppOutlinedButton(
-                      onClick: () => setState(() => _showChatModal = true),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const AppIcon(PhosphorIconsRegular.qrCode, size: 22),
-                          SizedBox(width: AppSpacing.md.du(context)),
-                          AppText(
-                            'Chat QR',
-                            style: AppTypography.label,
-                            color: null,
-                          ),
-                        ],
-                      ),
-                    ),
-                    SizedBox(width: 16.du(context)),
-                    AppOutlinedButton(
-                      onClick: widget.onBack,
+                      onClick: _closeRoom,
+                      focusNode: _closeFocus,
                       child: AppText(
                         _isHost ? 'Close the room' : 'Leave the room',
                         style: AppTypography.label,
@@ -439,19 +473,20 @@ class _LobbyScreenState extends State<LobbyScreen> {
               ],
             ),
           ),
-          Align(
-            alignment: _cornerAlignment(widget.chatOverlayCorner),
-            child: Padding(
-              padding: EdgeInsets.all(48.du(context)),
-              child: SizedBox(
-                width: 520.du(context),
-                child: ChatOverlay(
-                  messages: _chatMessages.stream,
-                  corner: widget.chatOverlayCorner,
+          if (widget.phoneChat)
+            Align(
+              alignment: _cornerAlignment(widget.chatOverlayCorner),
+              child: Padding(
+                padding: EdgeInsets.all(48.du(context)),
+                child: SizedBox(
+                  width: 520.du(context),
+                  child: ChatOverlay(
+                    messages: _chatMessages.stream,
+                    corner: widget.chatOverlayCorner,
+                  ),
                 ),
               ),
             ),
-          ),
           // Only the states the header line can't carry on its own: the
           // slow-wake explanation and the failure actions.
           Align(
@@ -477,12 +512,31 @@ class _LobbyScreenState extends State<LobbyScreen> {
               ),
             ),
           ),
-          if (_showChatModal)
-            _ChatQrModal(
-              relayUrl: widget.relay.relayUrl,
-              roomId: _roomId,
-              defaultName: widget.localUsername,
-              onDismiss: () => setState(() => _showChatModal = false),
+          if (_confirmingEnd)
+            EndRoomConfirm(
+              keepOpenFocus: _keepOpenFocus,
+              onKeepOpen: _keepOpen,
+              onEndForEveryone: () {
+                setState(() => _confirmingEnd = false);
+                widget.onEndRoom?.call();
+              },
+            ),
+          // Phone chat's QR sits in a top corner, clear of the corner the
+          // messages arrive in — no button, no modal: whoever is in the
+          // room can scan it while everyone gathers.
+          if (widget.phoneChat)
+            Align(
+              alignment: widget.chatOverlayCorner == ChatOverlayCorner.topEnd
+                  ? Alignment.topLeft
+                  : Alignment.topRight,
+              child: Padding(
+                padding: EdgeInsets.all(48.du(context)),
+                child: _ChatQrCard(
+                  relayUrl: widget.relay.relayUrl,
+                  roomId: _roomId,
+                  defaultName: widget.localUsername,
+                ),
+              ),
             ),
         ],
       ),
@@ -551,17 +605,16 @@ class _StatusLine extends StatelessWidget {
   }
 }
 
-class _ChatQrModal extends StatelessWidget {
+/// The phone chat QR, in the lobby's corner: scan it to chat from a phone.
+class _ChatQrCard extends StatelessWidget {
   final String relayUrl;
   final String? roomId;
   final String defaultName;
-  final VoidCallback onDismiss;
 
-  const _ChatQrModal({
+  const _ChatQrCard({
     required this.relayUrl,
     this.roomId,
     required this.defaultName,
-    required this.onDismiss,
   });
 
   @override
@@ -575,81 +628,34 @@ class _ChatQrModal extends StatelessWidget {
             themeId: AppColors.currentTheme.name,
           )
         : null;
-
-    return Positioned.fill(
-      child: ColoredBox(
-        color: AppScrims.dialog.withValues(alpha: 0.85),
-        child: Center(
-          child: ConstrainedBox(
-            constraints: BoxConstraints(maxWidth: 560.du(context)),
-            child: Padding(
-              padding: EdgeInsets.symmetric(vertical: 24.du(context)),
-              child: DecoratedBox(
-                decoration: BoxDecoration(color: AppColors.surface),
-                child: SingleChildScrollView(
-                  padding: EdgeInsets.all(28.du(context)),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    children: [
-                      AppText(
-                        'Join the chat',
-                        style: AppTypography.title2,
-                        color: AppColors.inkOnArt,
-                      ),
-                      if (chatUrl == null)
-                        Padding(
-                          padding: EdgeInsets.only(top: 20.du(context)),
-                          child: AppText(
-                            'Still connecting to the room — try again in a moment.',
-                            color: AppColors.inkOnArt,
-                          ),
-                        )
-                      else ...[
-                        Padding(
-                          padding: EdgeInsets.only(top: 20.du(context)),
-                          child: Container(
-                            width: 220.du(context),
-                            height: 220.du(context),
-                            color: AppColors.inkOnArt,
-                            padding: EdgeInsets.all(12.du(context)),
-                            child: QrImageView(
-                              data: chatUrl,
-                              backgroundColor: AppColors.inkOnArt,
-                            ),
-                          ),
-                        ),
-                        Padding(
-                          padding: EdgeInsets.only(top: 20.du(context)),
-                          child: AppText(
-                            'Scan with your phone, or visit:',
-                            color: AppColors.inkOnArt,
-                          ),
-                        ),
-                        Padding(
-                          padding: EdgeInsets.only(top: 8.du(context)),
-                          child: AppText(
-                            chatUrl,
-                            color: AppColors.inkOnArt,
-                            style: AppTypography.body,
-                          ),
-                        ),
-                      ],
-                      Padding(
-                        padding: EdgeInsets.only(top: 28.du(context)),
-                        child: AppOutlinedButton(
-                          onClick: onDismiss,
-                          autofocus: true,
-                          child: const AppText('Close'),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
+    if (chatUrl == null) return const SizedBox.shrink();
+    return Container(
+      padding: EdgeInsets.all(AppSpacing.lg.du(context)),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        border: Border.all(color: AppColors.line),
+        borderRadius: BorderRadius.circular(AppShape.radiusMd.du(context)),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 150.du(context),
+            height: 150.du(context),
+            color: AppColors.inkOnArt,
+            padding: EdgeInsets.all(AppSpacing.sm.du(context)),
+            child: QrImageView(
+              data: chatUrl,
+              backgroundColor: AppColors.inkOnArt,
             ),
           ),
-        ),
+          SizedBox(height: AppSpacing.md.du(context)),
+          AppText(
+            'Scan to chat',
+            style: AppTypography.caption,
+            color: AppColors.ink2,
+          ),
+        ],
       ),
     );
   }

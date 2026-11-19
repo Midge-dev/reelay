@@ -461,7 +461,7 @@ class _RoomCardState extends State<RoomCard>
                               child: AppOutlinedButton(
                                 onClick: _endNow,
                                 compact: true,
-                                child: const AppText('End session'),
+                                child: const AppText('End room'),
                               ),
                             ),
                         ],

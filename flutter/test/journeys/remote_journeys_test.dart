@@ -15,7 +15,7 @@ import 'harness/journey.dart';
 void main() {
   group('Home', () {
     journey('opening a title from a row and coming Back lands on the same poster', (j) async {
-      await j.down(); // the Watchlist row
+      await j.down(2); // past More in progress, to the Watchlist row
       j.expectFocusOn('Andor');
       await j.right();
       j.expectFocusOn('Contact');
@@ -27,7 +27,7 @@ void main() {
     });
 
     journey('Left reaches the rail, and Right comes back to the same poster', (j) async {
-      await j.down();
+      await j.down(2);
       await j.right(); // Contact
       await j.left(2); // Andor, then the rail
       j.expectFocusOn('Home');
@@ -78,7 +78,9 @@ void main() {
       await j.select();
       await j.wait(const Duration(seconds: 1));
       expect(j.shows('Season 1'), isTrue, reason: j.why('the show page lists its seasons'));
-      j.expectFocusOn('Severance 1x2', because: 'a show opens on the next episode to watch');
+      j.expectFocusOn('Play S1 E2', because: "a show opens on Play for the next episode to watch");
+      final title = j.tester.getRect(find.text('Severance').first);
+      expect(title.top >= 0, isTrue, reason: j.why("the show's title is whole on screen, not cut off at the top ($title)"));
 
       // Down through the page reaches the episodes, every move visible.
       for (var i = 0; i < 4; i++) {
@@ -91,37 +93,64 @@ void main() {
     });
   });
 
-  group('Removing things (checklist 2, 3)', () {
-    journey('removing a watchlist title: confirm, it goes, focus stays in the row', (j) async {
-      await j.down();
+  group('Removing things, with Undo (checklist 2, 3; screen 21)', () {
+    journey('a hold takes a watchlist title off at once; focus stays in the row; the server hears after Undo runs out', (j) async {
+      await j.down(2);
       j.expectFocusOn('Andor');
       await j.holdSelect();
-      expect(j.shows('Remove Andor from your watchlist?'), isTrue, reason: j.why('the confirm should be open'));
-      j.expectFocusOn('Remove', because: "the long press's release mustn't confirm it on its own");
+      expect(j.screenTexts(), isNot(contains('Andor')), reason: j.why('Andor is gone at once — no confirm'));
+      j.expectFocusOn('Contact', because: 'focus moves to the next title in the row, never to the chip');
+      expect(j.shows('Took Andor off the list'), isTrue, reason: j.why('the undo chip shows'));
+      expect(j.server.favoriteIds, contains('s2'), reason: j.why('the server hears only once Undo has run out'));
 
-      await j.select();
-      await j.wait(const Duration(seconds: 1));
-      expect(j.server.favoriteIds, isNot(contains('s2')), reason: j.why('Andor is off the server watchlist'));
-      j.expectFocusOn('Contact', because: 'focus moves to the next title in the row, not to the rail');
+      await j.wait(const Duration(seconds: 9));
+      expect(j.server.favoriteIds, isNot(contains('s2')), reason: j.why('Undo ran out: off the server watchlist'));
+      expect(j.shows('Took Andor off the list'), isFalse, reason: j.why('the chip expires quietly'));
+      j.expectFocusOn('Contact');
     });
 
-    journey('Cancel keeps the title and puts focus back on it', (j) async {
-      await j.down();
-      await j.holdSelect();
-      await j.down(); // Cancel: on a poster-sized card the buttons stack
-      j.expectFocusOn('Cancel');
-      await j.select();
-      expect(j.server.favoriteIds, contains('s2'));
-      j.expectFocusOn('Andor');
-    });
-
-    journey('Back closes the confirm without removing anything (checklist 1, 8)', (j) async {
-      await j.down();
+    journey('Back while the chip lives puts the title back, and stays on Home', (j) async {
+      await j.down(2);
       await j.holdSelect();
       await j.back();
-      expect(j.shows('Remove Andor from your watchlist?'), isFalse, reason: j.why('Back closes the confirm'));
-      expect(j.server.favoriteIds, contains('s2'));
-      j.expectFocusOn('Andor', because: 'closing an overlay returns focus to what opened it, not the rail');
+      expect(j.screenTexts(), contains('Andor'), reason: j.why('Back undid it'));
+      expect(j.shows('Took Andor off the list'), isFalse);
+      expect(j.shows('RESUME'), isTrue, reason: j.why('Back undid, rather than leaving Home'));
+      await j.wait(const Duration(seconds: 10));
+      expect(j.server.favoriteIds, contains('s2'), reason: j.why('an undone removal never reaches the server'));
+    });
+
+    journey('Up reaches the chip; Undo puts the title back and focus with it', (j) async {
+      await j.down(2);
+      await j.holdSelect();
+      for (var i = 0; i < 4 && !j.focusedTexts().any((t) => t.contains('Undo')); i++) {
+        await j.up();
+      }
+      j.expectFocusOn('Undo', because: 'Up from the page reaches the chip in its corner');
+      await j.select();
+      expect(j.screenTexts(), contains('Andor'), reason: j.why('Undo put it back'));
+      j.expectFocusOn('Andor', because: 'focus goes back to the row, not off into nothing');
+    });
+
+    journey('two removals restate one chip, and Undo takes back the newest', (j) async {
+      await j.down(2);
+      await j.holdSelect(); // Andor
+      await j.holdSelect(); // Contact
+      expect(j.shows('Took 2 titles off the list'), isTrue, reason: j.why('one chip, restated: ${j.screenTexts()}'));
+      await j.back();
+      expect(j.screenTexts(), contains('Contact'), reason: j.why('the newest came back first: ${j.screenTexts()}'));
+      expect(j.shows('Took Andor off the list'), isTrue, reason: j.why('the chip restates for the rest'));
+    });
+
+    journey('Continue Watching works the same way', (j) async {
+      await j.down(); // More in progress: Severance 1x2
+      j.expectFocusOn('50 min left');
+      await j.holdSelect();
+      expect(j.shows('Took Severance off Continue Watching'), isTrue, reason: j.why('the chip names it'));
+      expect(j.network.requests.where((r) => r.uri.path.endsWith('/UserData')), isEmpty);
+      await j.wait(const Duration(seconds: 9));
+      expect(j.network.requests.where((r) => r.uri.path.endsWith('/UserData')), isNotEmpty,
+          reason: j.why('Undo ran out: the server is told'));
     });
   });
 
@@ -133,9 +162,7 @@ void main() {
       await j.right(); // Severance
       await j.select();
       await j.wait(const Duration(seconds: 1));
-      j.expectFocusOn('Severance 1x2');
-      await j.select(); // the episode's page
-      j.expectFocusOn('Play');
+      j.expectFocusOn('Play S1 E2');
       await j.select();
       await j.wait(const Duration(seconds: 2));
       expect(playingNow(), contains('s1-s1-e2'));
@@ -157,7 +184,10 @@ void main() {
       await j.openFromRail('Shows');
       await j.select(); // Andor: one season of three
       await j.wait(const Duration(seconds: 1));
-      await j.down(2); // to its last episode
+      for (var i = 0; i < 6 && !j.focusedTexts().any((t) => t.contains('Andor 1x3')); i++) {
+        await j.down(); // to its last episode
+      }
+      j.expectFocusOn('Andor 1x3');
       await j.select();
       await j.select(); // Play
       await j.wait(const Duration(seconds: 2));
@@ -182,7 +212,7 @@ void main() {
     journey(
       "Back always leaves an error screen — a watchlist title that isn't on any server",
       (j) async {
-        await j.down();
+        await j.down(2);
         await j.right(); // Contact, which no server here can find
         await j.select();
         expect(j.shows("isn't on any of your servers"), isTrue, reason: j.why('the error should show'));
@@ -198,7 +228,7 @@ void main() {
     journey(
       "the error's Go back returns to where you were",
       (j) async {
-        await j.down();
+        await j.down(2);
         await j.right(); // Contact
         await j.select();
         await j.select(); // Go back

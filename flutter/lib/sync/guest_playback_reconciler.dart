@@ -93,7 +93,12 @@ class GuestPlaybackReconciler {
     }
   }
 
+  /// Whether this guest has played in the room yet. Until it has, it is
+  /// arriving: when the room holds for it, it goes to the room's spot.
+  bool _hasPlayedInRoom = false;
+
   void _setPlaying() {
+    _hasPlayedInRoom = true;
     if (!player.isPlaying) {
       _expectPlayWhenReady(true);
       player.play();
@@ -178,9 +183,10 @@ class GuestPlaybackReconciler {
     if (!_localReady || _optimisticWindowActive() || _hostIsStale()) return;
 
     switch (state.phase) {
-      case PlaybackPhase.waitingForPeers when state.waitingOn.contains(myPeerId):
+      case PlaybackPhase.waitingForPeers when state.waitingOn.contains(myPeerId) && _hasPlayedInRoom:
         // The room waits for this guest where it is (the host moves to it),
-        // so seeking now would only move the spot it's waiting at.
+        // so seeking now would only move the spot it's waiting at. (A guest
+        // that hasn't played yet is arriving, and goes to the room's spot.)
         _ensurePaused();
       case PlaybackPhase.loading:
       case PlaybackPhase.waitingForPeers:

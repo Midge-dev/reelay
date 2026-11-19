@@ -195,6 +195,9 @@ class AppSettings {
   /// the length of playback, so motion doesn't judder. Off by default, as
   /// in Plex's own app: the switch blanks the screen for a second or two.
   final bool matchFrameRate;
+  /// Friends in a room can chat from their phones (a QR in the lobby and
+  /// the player). Off: no QR anywhere, no messages over the picture.
+  final bool phoneChat;
   final bool showChatOverlay;
   final ChatOverlayCorner chatOverlayCorner;
   // Multi-server hub: every reachable, owned/shared server the account can
@@ -223,6 +226,7 @@ class AppSettings {
     this.maxVideoBitrateKbps = defaultMaxBitrateKbps,
     this.forceBurnSubtitles = false,
     this.matchFrameRate = false,
+    this.phoneChat = true,
     this.showChatOverlay = true,
     this.chatOverlayCorner = ChatOverlayCorner.bottomEnd,
     this.disabledServerIds = const {},
@@ -239,6 +243,7 @@ class AppSettings {
     int? maxVideoBitrateKbps,
     bool? forceBurnSubtitles,
     bool? matchFrameRate,
+    bool? phoneChat,
     bool? showChatOverlay,
     ChatOverlayCorner? chatOverlayCorner,
     Set<String>? disabledServerIds,
@@ -254,6 +259,7 @@ class AppSettings {
       maxVideoBitrateKbps: maxVideoBitrateKbps ?? this.maxVideoBitrateKbps,
       forceBurnSubtitles: forceBurnSubtitles ?? this.forceBurnSubtitles,
       matchFrameRate: matchFrameRate ?? this.matchFrameRate,
+      phoneChat: phoneChat ?? this.phoneChat,
       showChatOverlay: showChatOverlay ?? this.showChatOverlay,
       chatOverlayCorner: chatOverlayCorner ?? this.chatOverlayCorner,
       disabledServerIds: disabledServerIds ?? this.disabledServerIds,

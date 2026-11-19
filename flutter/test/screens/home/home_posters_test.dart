@@ -98,29 +98,17 @@ void main() {
       expect(clicked, isTrue);
     });
 
-    testWidgets('holding select past the long-press threshold opens the remove confirm, not onClick', (tester) async {
+    testWidgets('holding select past the long-press threshold removes it at once, not onClick (Home offers Undo)', (tester) async {
       var clicked = false;
       var removed = false;
       await pump(tester, onClick: () => clicked = true, onRemove: () => removed = true);
 
       await tester.sendKeyDownEvent(LogicalKeyboardKey.select);
       await tester.pump(const Duration(milliseconds: 600));
-
-      expect(clicked, isFalse);
-      expect(find.text('Remove Arrival from your watchlist?'), findsOneWidget);
-
-      // The physical select key is still held when the overlay grabs focus
-      // onto Remove, so its eventual key-up lands there as a bare
-      // KeyUpEvent with no KeyDown of its own — which must not confirm.
       await tester.sendKeyUpEvent(LogicalKeyboardKey.select);
       await tester.pump();
 
-      expect(removed, isFalse, reason: 'the hold\'s own release must not confirm');
-      expect(find.text('Remove Arrival from your watchlist?'), findsOneWidget);
-
-      await tester.tap(find.text('Remove'));
-      await tester.pump();
-
+      expect(clicked, isFalse, reason: "the hold's release must not also open it");
       expect(removed, isTrue);
     });
   });
@@ -165,75 +153,18 @@ void main() {
       expect(resumed, isTrue);
     });
 
-    testWidgets('holding select past the long-press threshold opens the remove confirm, not onResume', (tester) async {
+    testWidgets('holding select past the long-press threshold removes it at once, not onResume (Home offers Undo)', (tester) async {
       var resumed = false;
       var removed = false;
       await pump(tester, onResume: () => resumed = true, onRemove: () => removed = true);
 
       await tester.sendKeyDownEvent(LogicalKeyboardKey.select);
       await tester.pump(const Duration(milliseconds: 600));
-
-      expect(resumed, isFalse);
-      expect(find.text('Remove from Continue Watching?'), findsOneWidget);
-
-      // See the matching WatchlistPoster test: the hold's release lands on
-      // the newly-focused Remove button and must not confirm.
       await tester.sendKeyUpEvent(LogicalKeyboardKey.select);
       await tester.pump();
 
-      expect(removed, isFalse);
-      expect(find.text('Remove from Continue Watching?'), findsOneWidget);
-
-      await tester.tap(find.text('Remove'));
-      await tester.pump();
-
+      expect(resumed, isFalse, reason: "the hold's release must not also resume it");
       expect(removed, isTrue);
-    });
-
-    // Directional traversal needs WidgetsApp's arrow-key shortcuts; the
-    // card's own focus node wraps the overlay and spans the whole card, so
-    // it's a geometric candidate for Left/Right too.
-    testWidgets('Right/Left moves between Remove and Cancel without closing the confirm', (tester) async {
-      tester.view.physicalSize = const Size(1920, 1080);
-      tester.view.devicePixelRatio = 1.0;
-      addTearDown(tester.view.resetPhysicalSize);
-      addTearDown(tester.view.resetDevicePixelRatio);
-      await tester.pumpWidget(
-        WidgetsApp(
-          color: const Color(0xFF000000),
-          builder: (_, _) => Center(
-            child: ContinueWatchingPoster(
-              item: FoldedWork(item.guid, [Sourced(item, _server, ServerReachability.local)]),
-              onResume: () {},
-              onRemove: () {},
-              autofocus: true,
-            ),
-          ),
-        ),
-      );
-      await tester.pump();
-
-      await tester.sendKeyDownEvent(LogicalKeyboardKey.select);
-      await tester.pump(const Duration(milliseconds: 600));
-      await tester.sendKeyUpEvent(LogicalKeyboardKey.select);
-      await tester.pump();
-
-      String? focused() => FocusManager.instance.primaryFocus?.debugLabel;
-      expect(focused(), 'remove-confirm-remove');
-
-      await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
-      await tester.pump();
-      expect(find.text('Remove from Continue Watching?'), findsOneWidget);
-      expect(focused(), 'remove-confirm-cancel');
-
-      await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
-      await tester.pump();
-      expect(focused(), 'remove-confirm-cancel');
-
-      await tester.sendKeyEvent(LogicalKeyboardKey.arrowLeft);
-      await tester.pump();
-      expect(find.text('Remove from Continue Watching?'), findsOneWidget);
-      expect(focused(), 'remove-confirm-remove');
     });
   });
 }

@@ -320,7 +320,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
       _connectionSub = widget.relay!.connectionState.listen((state) {
         setState(() => _connectionState = state);
         // The host ended the room: everyone goes back to where they were,
-        // as the host's "End the session?" promised them.
+        // as the host's "End the room?" promised them.
         if (state == ConnectionState.roomClosed && !_leavingClosedRoom) {
           _leavingClosedRoom = true;
           unawaited(_handleBack());
@@ -1086,7 +1086,9 @@ class _PlayerScreenState extends State<PlayerScreen> {
                     count: _waitingOn.length,
                   ),
                 ),
-              if (widget.settings.showChatOverlay && _sync != null)
+              if (widget.settings.phoneChat &&
+                  widget.settings.showChatOverlay &&
+                  _sync != null)
                 Align(
                   alignment: _chatAlignment(),
                   child: Padding(
@@ -1152,7 +1154,8 @@ class _PlayerScreenState extends State<PlayerScreen> {
                               onSeekKeyEvent: _handleProgressSeekKey,
                               onCycleSubtitles: _cycleSubtitle,
                               onCycleBitrate: _cycleBitrate,
-                              chatAvailable: _chatUrl != null,
+                              chatAvailable:
+                                  widget.settings.phoneChat && _chatUrl != null,
                               inRoom: widget.relay != null,
                               onOpenChatQr: () =>
                                   setState(() => _chatQrOpen = true),
@@ -1256,6 +1259,11 @@ class _PlayerScreenState extends State<PlayerScreen> {
       return ('${_hostName ?? 'The host'} has left', AppColors.warning);
     }
     if (!_roomInSync) {
+      final me = widget.relay?.myPeerId;
+      if (me != null && _waitingOn.contains(me)) {
+        // The room is holding for this TV (just joined, or rebuffering).
+        return ('Catching up with the room', AppColors.warning);
+      }
       return (
         'Holding for ${waitingOnPhrase(_waitingOn, (id) => _roster?.nameOf(id))}',
         AppColors.warning,

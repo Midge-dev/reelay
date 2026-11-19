@@ -166,4 +166,40 @@ void main() {
     expect(focusNode.hasFocus, isFalse);
     expect(clicks, 0);
   });
+
+  group('the selected-and-focused dot', () {
+    int dots(WidgetTester tester) => tester
+        .widgetList<Container>(find.byType(Container))
+        .where((c) => c.decoration is BoxDecoration && (c.decoration! as BoxDecoration).shape == BoxShape.circle)
+        .length;
+
+    Future<void> pumpFocused(WidgetTester tester, {required bool mark}) async {
+      final node = FocusNode();
+      addTearDown(node.dispose);
+      await _pump(
+        tester,
+        FocusableSurface(
+          onClick: () {},
+          selected: true,
+          selectedMark: mark,
+          focusNode: node,
+          shape: const RoundedRectangleBorder(),
+          colors: _testColors(),
+          child: const SizedBox(width: 100, height: 40),
+        ),
+      );
+      node.requestFocus();
+      await tester.pump();
+    }
+
+    testWidgets('shows on a selected item with focus', (tester) async {
+      await pumpFocused(tester, mark: true);
+      expect(dots(tester), 1);
+    });
+
+    testWidgets('not on segmented tabs (selectedMark: false)', (tester) async {
+      await pumpFocused(tester, mark: false);
+      expect(dots(tester), 0);
+    });
+  });
 }

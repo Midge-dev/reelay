@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 
@@ -16,6 +18,7 @@ import '../../theme/phosphor_icons.dart';
 import '../../theme/scale.dart';
 import '../../theme/tokens.dart';
 import '../../theme/typography.dart';
+import '../common/undo_chip.dart';
 import '../library/poster_card.dart';
 import 'home_hero.dart';
 import 'home_posters.dart';
@@ -48,6 +51,9 @@ class HomeScreen extends StatefulWidget {
   final ValueChanged<MergedRoom> onSelectRoom;
   final VoidCallback onOpenRooms;
   final ValueChanged<FoldedWork<MediaItem>> onResume;
+
+  /// The hero's Resume, which plays; [onResume] (a card) opens the page.
+  final ValueChanged<FoldedWork<MediaItem>>? onPlayHero;
   final ValueChanged<FoldedWork<MediaItem>> onRemove;
   final ValueChanged<MediaItem> onSelectWatchlistItem;
   final ValueChanged<MediaItem> onRemoveFromWatchlist;
@@ -72,6 +78,7 @@ class HomeScreen extends StatefulWidget {
     required this.onSelectRoom,
     required this.onOpenRooms,
     required this.onResume,
+    this.onPlayHero,
     required this.onRemove,
     required this.onSelectWatchlistItem,
     required this.onRemoveFromWatchlist,
@@ -99,6 +106,107 @@ class _HomeScreenState extends State<HomeScreen> {
   int _lastInputAtMs = 0;
   bool _hasScrolledToTopForWatchTogether = false;
 
+  // ---- Taking things off Home, with Undo (screen 21) ----
+  //
+  // A hold takes a title off at once; the server hears of it when the
+  // eight-second Undo runs out (or Home is left), so Undo is exact even
+  // where the server can't take a removal back (Plex's Continue Watching).
+
+  final _pending = <_Removal>[];
+
+  /// Committed, but still in the lists Home was given until they refresh.
+  final _committed = <String>{};
+  Timer? _undoTimer;
+  int _undoLeft = 0;
+  final _undoFocus = FocusNode(debugLabel: 'home-undo');
+
+  Set<String> get _hidden => {for (final r in _pending) r.key, ..._committed};
+
+  List<FoldedWork<MediaItem>> get _onDeck {
+    final hidden = _hidden;
+    return [
+      for (final w in widget.onDeck)
+        if (!hidden.contains(_Removal.continueWatchingKey(w))) w,
+    ];
+  }
+
+  List<MediaItem> get _watchlist {
+    final hidden = _hidden;
+    return [
+      for (final e in widget.watchlist)
+        if (!hidden.contains(_Removal.watchlistKey(e))) e,
+    ];
+  }
+
+  void _takeOff(_Removal removal) {
+    final rowFocus = removal.fromWatchlist
+        ? _watchlistRowFocus
+        : _continueWatchingRowFocus;
+    final before = removal.fromWatchlist ? _watchlist.length : _onDeck.length;
+    setState(() {
+      _pending.add(removal);
+      _undoLeft = undoSeconds;
+    });
+    _reclaimFocusOnRemoval(before - 1, before, rowFocus);
+    _prevWatchlistCount = _watchlist.length;
+    _prevOnDeckCount = _onDeck.length;
+    _undoTimer?.cancel();
+    _undoTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (!mounted) return;
+      if (_undoLeft <= 1) {
+        _commitRemovals();
+        return;
+      }
+      setState(() => _undoLeft -= 1);
+    });
+  }
+
+  void _commitRemovals({bool rebuild = true}) {
+    _undoTimer?.cancel();
+    _undoTimer = null;
+    final done = List.of(_pending);
+    _pending.clear();
+    _committed.addAll(done.map((r) => r.key));
+    for (final r in done) {
+      r.commit();
+    }
+    if (rebuild && mounted) setState(() {});
+  }
+
+  /// Undo puts back the newest removal; the chip restates for the rest.
+  void _undo() {
+    if (_pending.isEmpty) return;
+    final restored = _pending.last;
+    final chipHadFocus = _undoFocus.hasFocus;
+    setState(() => _pending.removeLast());
+    _prevWatchlistCount = _watchlist.length;
+    _prevOnDeckCount = _onDeck.length;
+    if (_pending.isEmpty) {
+      _undoTimer?.cancel();
+      _undoTimer = null;
+    }
+    if (chipHadFocus && _pending.isEmpty) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        (restored.fromWatchlist
+                ? _watchlistRowFocus
+                : _continueWatchingRowFocus)
+            .requestFocus();
+      });
+    }
+  }
+
+  String get _undoMessage {
+    final n = _pending.length;
+    if (n == 1) return _pending.single.message;
+    final where = _pending.every((r) => r.fromWatchlist)
+        ? 'the list'
+        : _pending.every((r) => !r.fromWatchlist)
+        ? 'Continue Watching'
+        : 'Home';
+    return 'Took $n titles off $where';
+  }
+
   int _prevLiveRoomsCount = 0;
   int _prevWatchlistCount = 0;
   int _prevOnDeckCount = 0;
@@ -107,8 +215,8 @@ class _HomeScreenState extends State<HomeScreen> {
   void initState() {
     super.initState();
     _prevLiveRoomsCount = widget.liveRooms.length;
-    _prevWatchlistCount = widget.watchlist.length;
-    _prevOnDeckCount = widget.onDeck.length;
+    _prevWatchlistCount = _watchlist.length;
+    _prevOnDeckCount = _onDeck.length;
     // Rooms already live at mount are covered by the default focus; only
     // rooms appearing later pull the page to the top. Otherwise coming
     // back to Home with a room live yanked it off the remembered card.
@@ -119,24 +227,29 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void didUpdateWidget(covariant HomeScreen oldWidget) {
     super.didUpdateWidget(oldWidget);
+    _committed.retainWhere(
+      (key) =>
+          widget.watchlist.any((e) => _Removal.watchlistKey(e) == key) ||
+          widget.onDeck.any((w) => _Removal.continueWatchingKey(w) == key),
+    );
     _reclaimFocusOnRemoval(
       widget.liveRooms.length,
       _prevLiveRoomsCount,
       _watchTogetherRowFocus,
     );
     _reclaimFocusOnRemoval(
-      widget.watchlist.length,
+      _watchlist.length,
       _prevWatchlistCount,
       _watchlistRowFocus,
     );
     _reclaimFocusOnRemoval(
-      widget.onDeck.length,
+      _onDeck.length,
       _prevOnDeckCount,
       _continueWatchingRowFocus,
     );
     _prevLiveRoomsCount = widget.liveRooms.length;
-    _prevWatchlistCount = widget.watchlist.length;
-    _prevOnDeckCount = widget.onDeck.length;
+    _prevWatchlistCount = _watchlist.length;
+    _prevOnDeckCount = _onDeck.length;
 
     if (widget.liveRooms.isNotEmpty && !_hasScrolledToTopForWatchTogether) {
       _hasScrolledToTopForWatchTogether = true;
@@ -146,6 +259,9 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   void dispose() {
+    // Leaving Home ends the chance to undo: the server hears now.
+    _commitRemovals(rebuild: false);
+    _undoFocus.dispose();
     HardwareKeyboard.instance.removeHandler(_recordInput);
     _homeScrollController.dispose();
     _watchTogetherRowFocus.dispose();
@@ -214,14 +330,14 @@ class _HomeScreenState extends State<HomeScreen> {
     // row that exists, top to bottom. Coming back to Home, the card that
     // was left focused gets it instead (ScreenMemory).
     final restoring = ScreenMemory.restoringOf(context);
-    final continueWatchingGetsFocus = !restoring && widget.onDeck.isNotEmpty;
+    final continueWatchingGetsFocus = !restoring && _onDeck.isNotEmpty;
     final watchTogetherGetsFocus =
         !restoring && !continueWatchingGetsFocus && widget.liveRooms.isNotEmpty;
     final watchlistGetsFocus =
         !restoring &&
         !continueWatchingGetsFocus &&
         !watchTogetherGetsFocus &&
-        widget.watchlist.isNotEmpty;
+        _watchlist.isNotEmpty;
     final recentActivityGetsFocus =
         !restoring &&
         !watchTogetherGetsFocus &&
@@ -244,7 +360,7 @@ class _HomeScreenState extends State<HomeScreen> {
         !recentlyAddedGetsFocus &&
         widget.suggestions.isNotEmpty;
 
-    final watchlistReversed = widget.watchlist.reversed.toList();
+    final watchlistReversed = _watchlist.reversed.toList();
     // Which row sits directly under the hero (see _HomeRow.afterHero).
     final rowsFilled = [
       watchlistReversed.isNotEmpty,
@@ -252,7 +368,7 @@ class _HomeScreenState extends State<HomeScreen> {
       widget.recentlyAdded.isNotEmpty,
       widget.suggestions.isNotEmpty,
     ];
-    final firstRow = widget.onDeck.isEmpty ? -1 : rowsFilled.indexOf(true);
+    final firstRow = _onDeck.isEmpty ? -1 : rowsFilled.indexOf(true);
 
     final watchTogetherBar = widget.liveRooms.isEmpty
         ? null
@@ -274,7 +390,7 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           );
 
-    return ColoredBox(
+    final page = ColoredBox(
       color: AppColors.background,
       child: LayoutBuilder(
         builder: (context, constraints) => ListView(
@@ -284,7 +400,7 @@ class _HomeScreenState extends State<HomeScreen> {
           children: [
             if (widget.unreachableResources.isNotEmpty)
               _buildPartialOutageBanner(),
-            if (widget.onDeck.isNotEmpty)
+            if (_onDeck.isNotEmpty)
               _buildHeroViewport(
                 constraints.maxHeight,
                 continueWatchingGetsFocus,
@@ -307,7 +423,12 @@ class _HomeScreenState extends State<HomeScreen> {
                 server: _watchlistServer(entry),
                 entry: entry,
                 onClick: () => widget.onSelectWatchlistItem(entry),
-                onRemove: () => widget.onRemoveFromWatchlist(entry),
+                onRemove: () => _takeOff(
+                  _Removal.watchlist(
+                    entry,
+                    () => widget.onRemoveFromWatchlist(entry),
+                  ),
+                ),
                 focusNode: index == 0 ? _watchlistRowFocus : null,
                 autofocus: index == 0 && watchlistGetsFocus,
               ),
@@ -370,6 +491,28 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
       ),
     );
+    if (_pending.isEmpty) return page;
+    // The undo chip sits in the top corner, under the clock (screen 21).
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        page,
+        Positioned(
+          top: (20 + 44).du(context),
+          right: AppSpacing.xxl.du(context),
+          child: UndoChip(
+            message: _undoMessage,
+            icon: _pending.last.fromWatchlist
+                ? PhosphorIconsRegular.bookmarkSimple
+                : PhosphorIconsRegular.arrowCounterClockwise,
+            secondsLeft: _undoLeft,
+            focusNode: _undoFocus,
+            onUndo: _undo,
+            backTakesPrecedence: true,
+          ),
+        ),
+      ],
+    );
   }
 
   /// "Partial is not empty" (DESIGN.md) — one or more servers not
@@ -418,15 +561,15 @@ class _HomeScreenState extends State<HomeScreen> {
     bool continueWatchingGetsFocus,
     Widget? watchTogetherBar,
   ) {
-    final hero = widget.onDeck.first;
-    final moreInProgress = widget.onDeck.length > 1
-        ? widget.onDeck.sublist(1)
+    final hero = _onDeck.first;
+    final moreInProgress = _onDeck.length > 1
+        ? _onDeck.sublist(1)
         : const <FoldedWork<MediaItem>>[];
 
     return HomeHero(
       item: hero,
       height: viewportHeight,
-      onResume: () => widget.onResume(hero),
+      onResume: () => (widget.onPlayHero ?? widget.onResume)(hero),
       onWatchTogether: widget.onHeroWatchTogether,
       resumeFocusNode: moreInProgress.isEmpty
           ? _continueWatchingRowFocus
@@ -501,7 +644,12 @@ class _HomeScreenState extends State<HomeScreen> {
                             child: ContinueWatchingPoster(
                               item: item,
                               onResume: () => widget.onResume(item),
-                              onRemove: () => widget.onRemove(item),
+                              onRemove: () => _takeOff(
+                                _Removal.continueWatching(
+                                  item,
+                                  () => widget.onRemove(item),
+                                ),
+                              ),
                               focusNode: index == 0
                                   ? _continueWatchingRowFocus
                                   : null,
@@ -629,6 +777,43 @@ class _ScrollSectionIntoView extends StatelessWidget {
           );
       },
       child: child,
+    );
+  }
+}
+
+/// One title taken off Home, waiting out its Undo.
+class _Removal {
+  final String key;
+  final String message;
+  final bool fromWatchlist;
+
+  /// Tells the server (and the app) — when Undo has run out.
+  final VoidCallback commit;
+
+  _Removal._(this.key, this.message, this.fromWatchlist, this.commit);
+
+  static String watchlistKey(MediaItem entry) => 'w:${entry.id}';
+  static String continueWatchingKey(FoldedWork<MediaItem> work) =>
+      'c:${_workId(work)}';
+
+  factory _Removal.watchlist(MediaItem entry, VoidCallback commit) =>
+      _Removal._(
+        watchlistKey(entry),
+        'Took ${entry.title} off the list',
+        true,
+        commit,
+      );
+
+  factory _Removal.continueWatching(
+    FoldedWork<MediaItem> work,
+    VoidCallback commit,
+  ) {
+    final value = work.primary.value;
+    return _Removal._(
+      continueWatchingKey(work),
+      'Took ${value.grandparentTitle ?? value.title} off Continue Watching',
+      false,
+      commit,
     );
   }
 }

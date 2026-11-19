@@ -191,8 +191,17 @@ class _ShowDetailScreenState extends State<ShowDetailScreen> {
       _initialFocusNode = FocusNode(
         debugLabel: 'show-detail-episode-$focusKey',
       );
+      // Arriving lands on the header's Play (it plays that same next
+      // episode), so the page opens at its top: focusing the episode row
+      // scrolled the header part-way off and cut the show's title in half.
+      // No Play button: the episode row it would have played.
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) _initialFocusNode?.requestFocus();
+        if (!mounted) return;
+        if (_playFocus.context != null && _playFocus.canRequestFocus) {
+          _playFocus.requestFocus();
+        } else {
+          _initialFocusNode?.requestFocus();
+        }
       });
     }
 

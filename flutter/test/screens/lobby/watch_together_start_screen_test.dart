@@ -8,7 +8,7 @@ Future<void> _pump(
   int maxSeats = 8,
   String? relayNickname = 'Relay server',
   Future<bool> Function()? checkRelayReachable,
-  void Function({required bool restart, required bool showPhoneChat})? onConfirm,
+  void Function({required bool restart})? onConfirm,
   VoidCallback? onCancel,
 }) async {
   tester.view.physicalSize = const Size(1920, 1080);
@@ -25,7 +25,7 @@ Future<void> _pump(
         maxSeats: maxSeats,
         relayNickname: relayNickname,
         checkRelayReachable: checkRelayReachable,
-        onConfirm: onConfirm ?? ({required restart, required showPhoneChat}) {},
+        onConfirm: onConfirm ?? ({required restart}) {},
         onCancel: onCancel ?? () {},
       ),
     ),
@@ -44,7 +44,7 @@ void main() {
 
   testWidgets('confirming without changing anything reports restart:false', (tester) async {
     bool? restarted;
-    await _pump(tester, onConfirm: ({required restart, required showPhoneChat}) => restarted = restart);
+    await _pump(tester, onConfirm: ({required restart}) => restarted = restart);
 
     await tester.tap(find.text('Open the room'));
     await tester.pump();
@@ -54,7 +54,7 @@ void main() {
 
   testWidgets('defaultRestart:true preselects restart, and confirming reports it', (tester) async {
     bool? restarted;
-    await _pump(tester, defaultRestart: true, onConfirm: ({required restart, required showPhoneChat}) => restarted = restart);
+    await _pump(tester, defaultRestart: true, onConfirm: ({required restart}) => restarted = restart);
 
     await tester.tap(find.text('Open the room'));
     await tester.pump();
@@ -64,7 +64,7 @@ void main() {
 
   testWidgets('selecting "Start from the beginning" flips the choice before confirming', (tester) async {
     bool? restarted;
-    await _pump(tester, onConfirm: ({required restart, required showPhoneChat}) => restarted = restart);
+    await _pump(tester, onConfirm: ({required restart}) => restarted = restart);
 
     await tester.tap(find.text('Start from the beginning'));
     await tester.pump();

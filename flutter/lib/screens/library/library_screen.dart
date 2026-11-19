@@ -17,7 +17,6 @@ import '../../theme/phosphor_icons.dart';
 import '../../theme/scale.dart';
 import '../../theme/tokens.dart';
 import '../../theme/typography.dart';
-import '../common/click_to_type_text_field.dart';
 import '../common/loading_screen.dart';
 import '../common/time_format.dart';
 import 'genre_filter_panel.dart';
@@ -28,7 +27,6 @@ import 'poster_card.dart';
 // 22 apart; chips 58 tall.
 const _blockGap = 22.0;
 const _chipHeight = 58.0;
-const _narrowFieldWidth = 320.0;
 
 enum _ViewMode { titles, collections }
 
@@ -41,7 +39,6 @@ class _LibraryView {
   final DateAddedBucket? dateAdded;
   final SortMode sortMode;
   final List<Sourced<MediaItem>>? collections;
-  final String query;
 
   const _LibraryView({
     required this.sectionKey,
@@ -51,7 +48,6 @@ class _LibraryView {
     required this.dateAdded,
     required this.sortMode,
     required this.collections,
-    required this.query,
   });
 }
 
@@ -96,7 +92,6 @@ class _LibraryScreenState extends State<LibraryScreen> {
   SortMode _sortMode = SortMode.title;
   _FilterKind? _openFilter;
   List<Sourced<MediaItem>>? _collections;
-  String _searchQuery = '';
 
   final _gridScrollController = ScrollController();
   final _collectionsScrollController = ScrollController();
@@ -109,7 +104,6 @@ class _LibraryScreenState extends State<LibraryScreen> {
   final _addedChipFocus = FocusNode(debugLabel: 'library-filter-added');
   final _sortChipFocus = FocusNode(debugLabel: 'library-filter-sort');
   final _clearAllFocus = FocusNode(debugLabel: 'library-filter-clear-all');
-  final _searchFieldFocus = FocusNode(debugLabel: 'library-search-field');
 
   final _stackKey = GlobalKey();
   final _genreChipKey = GlobalKey();
@@ -121,8 +115,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
   @override
   void initState() {
     super.initState();
-    // Back from a title comes back to the same mode, filters and narrowing
-    // it left (focus and scroll are ScreenMemory's own).
+    // Back from a title comes back to the same mode and filters it left (focus and scroll are ScreenMemory's own).
     final kept = ScreenMemory.read<_LibraryView>(context, 'library.view');
     if (kept != null && kept.sectionKey == widget.selectedSectionGroup.key) {
       _viewMode = kept.viewMode;
@@ -131,7 +124,6 @@ class _LibraryScreenState extends State<LibraryScreen> {
       _dateAddedFilter = kept.dateAdded;
       _sortMode = kept.sortMode;
       _collections = kept.collections;
-      _searchQuery = kept.query;
     }
   }
 
@@ -146,7 +138,6 @@ class _LibraryScreenState extends State<LibraryScreen> {
       dateAdded: _dateAddedFilter,
       sortMode: _sortMode,
       collections: _collections,
-      query: _searchQuery,
     ),
   );
 
@@ -162,7 +153,6 @@ class _LibraryScreenState extends State<LibraryScreen> {
         _sortMode = SortMode.title;
         _openFilter = null;
         _collections = null;
-        _searchQuery = '';
       });
     }
   }
@@ -178,7 +168,6 @@ class _LibraryScreenState extends State<LibraryScreen> {
     _addedChipFocus.dispose();
     _sortChipFocus.dispose();
     _clearAllFocus.dispose();
-    _searchFieldFocus.dispose();
     super.dispose();
   }
 
@@ -259,7 +248,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
     final byIdentity = {for (final s in widget.items) s.primary.value: s};
     final bareResults = applyLibraryFilters(
       items: widget.items.map((s) => s.primary.value).toList(),
-      query: _searchQuery,
+      query: '',
       sortMode: _sortMode,
       genre: _genreFilter,
       decade: _decadeFilter,
@@ -300,17 +289,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
           ..sort((a, b) => b.compareTo(a));
     final titleResults = _filteredItems();
     final collections = _collections;
-    final collectionResults = collections == null
-        ? null
-        : (_searchQuery.trim().isEmpty
-              ? collections
-              : collections
-                    .where(
-                      (c) => c.value.title.toLowerCase().contains(
-                        _searchQuery.trim().toLowerCase(),
-                      ),
-                    )
-                    .toList());
+    final collectionResults = collections;
 
     return ColoredBox(
       color: AppColors.background,
@@ -428,15 +407,6 @@ class _LibraryScreenState extends State<LibraryScreen> {
                 children: _buildFilterChips(),
               ),
             ),
-          ),
-          SizedBox(width: _blockGap.du(context)),
-          _NarrowField(
-            value: _searchQuery,
-            hintText: _viewMode == _ViewMode.titles
-                ? 'Narrow this library'
-                : 'Narrow collections',
-            focusNode: _searchFieldFocus,
-            onValueChange: (v) => setState(() => _searchQuery = v),
           ),
         ],
       ),
@@ -683,14 +653,9 @@ class _LibraryScreenState extends State<LibraryScreen> {
               () => setState(() => _dateAddedFilter = null),
             ),
         ];
-    final searchActive = _searchQuery.trim().isNotEmpty;
-
     final String headline;
     final String? factSentence;
-    if (causes.isEmpty && searchActive) {
-      headline = 'Nothing matches "${_searchQuery.trim()}"';
-      factSentence = null;
-    } else if (causes.isEmpty) {
+    if (causes.isEmpty) {
       headline = 'Nothing matches these filters';
       factSentence = null;
     } else {
@@ -730,7 +695,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
                   textAlign: TextAlign.center,
                 ),
               ],
-              if (causes.isNotEmpty || searchActive) ...[
+              if (causes.isNotEmpty) ...[
                 SizedBox(height: 24.du(context)),
                 Wrap(
                   alignment: WrapAlignment.center,
@@ -763,25 +728,12 @@ class _LibraryScreenState extends State<LibraryScreen> {
                             ],
                           ),
                         ),
-                    if (searchActive)
-                      AppOutlinedButton(
-                        onClick: () => setState(() => _searchQuery = ''),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            const AppIcon(PhosphorIconsRegular.x, size: 20),
-                            SizedBox(width: AppSpacing.sm.du(context)),
-                            const AppText('Clear search'),
-                          ],
-                        ),
-                      ),
-                    if (causes.length + (searchActive ? 1 : 0) > 1)
+                    if (causes.length > 1)
                       AppOutlinedButton(
                         onClick: () => setState(() {
                           _genreFilter = null;
                           _decadeFilter = null;
                           _dateAddedFilter = null;
-                          _searchQuery = '';
                         }),
                         child: const AppText('Clear all'),
                       ),
@@ -908,6 +860,7 @@ class _ModeSwitch extends StatelessWidget {
       child: FocusableSurface(
         onClick: onClick,
         selected: selected,
+        selectedMark: false,
         focusNode: focusNode,
         shape: _segmentShape(context),
         colors: _segmentColors,
@@ -1037,88 +990,3 @@ class _ClearAllChip extends StatelessWidget {
   }
 }
 
-/// "Narrow this library" — screen 17 draws it as one more chip at the end
-/// of the filter bar (58 tall, radius 6, 2 du line border, 19 du ink3 text
-/// behind a 20 du glass), not a bare text field; focus is the standard
-/// signal, painted here because the field itself is not a FocusableSurface.
-class _NarrowField extends StatefulWidget {
-  final String value;
-  final String hintText;
-  final FocusNode focusNode;
-  final ValueChanged<String> onValueChange;
-
-  const _NarrowField({
-    required this.value,
-    required this.hintText,
-    required this.focusNode,
-    required this.onValueChange,
-  });
-
-  @override
-  State<_NarrowField> createState() => _NarrowFieldState();
-}
-
-class _NarrowFieldState extends State<_NarrowField> {
-  bool _focused = false;
-
-  @override
-  Widget build(BuildContext context) {
-    final shape = _filterChipShape(context);
-    final field = AnimatedContainer(
-      duration: _focused ? AppMotion.focusEnter : AppMotion.focusExit,
-      curve: _focused ? AppMotion.enter : AppMotion.exit,
-      width: _narrowFieldWidth.du(context),
-      height: _chipHeight.du(context),
-      padding: EdgeInsets.symmetric(horizontal: 20.du(context)),
-      decoration: ShapeDecoration(
-        color: _focused ? AppColors.surfaceRaised : AppColors.transparent,
-        shape: shape.copyWith(
-          side: BorderSide(
-            color: _focused ? AppColors.accent : AppColors.line,
-            width: AppShape.borderWidth.du(context),
-          ),
-        ),
-        shadows: _focused && AppMotion.scaleOnFocus
-            ? AppElevation.raised
-            : AppElevation.surface,
-      ),
-      child: Row(
-        children: [
-          AppIcon(
-            PhosphorIconsRegular.magnifyingGlass,
-            size: 20,
-            tint: _focused ? AppColors.ink : AppColors.ink3,
-          ),
-          SizedBox(width: AppSpacing.md.du(context)),
-          Expanded(
-            child: ClickToTypeTextField(
-              value: widget.value,
-              onValueChange: widget.onValueChange,
-              focusNode: widget.focusNode,
-              hintText: widget.hintText,
-              showBorder: false,
-              textStyle: AppTypography.caption.copyWith(color: AppColors.ink),
-              onFocusChange: (f) => setState(() => _focused = f),
-            ),
-          ),
-        ],
-      ),
-    );
-    return AnimatedScale(
-      scale: _focused && AppMotion.scaleOnFocus
-          ? AppFocusTreatment.focusScale
-          : 1,
-      duration: _focused ? AppMotion.focusEnter : AppMotion.focusExit,
-      child: _focused
-          ? CustomPaint(
-              foregroundPainter: LeadingSpinePainter(
-                shape: shape,
-                color: AppColors.accent,
-                width: AppShape.spineWidth.du(context),
-              ),
-              child: field,
-            )
-          : field,
-    );
-  }
-}

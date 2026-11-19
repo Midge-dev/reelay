@@ -8,14 +8,12 @@ import 'harness/journey.dart';
 /// (Streams, subtitles and transcodes are in
 /// test/screens/player/player_playback_test.dart.)
 void main() {
-  /// Home's hero (Blade Runner, a third in) → its page → Resume.
+  /// Home's hero (Blade Runner, a third in): Resume plays at once.
   Future<void> resumeBladeRunner(Journey j) async {
     j.expectFocusOn('Resume');
-    await j.select(); // the hero opens the film's page
-    await j.wait(const Duration(seconds: 1));
-    j.expectFocusOn('Resume', because: "the page's own Resume is ready to press");
     await j.select();
     await j.wait(const Duration(seconds: 3));
+    expect(j.shows('Direct play'), isTrue, reason: j.why("the hero's Resume plays, no page in between"));
   }
 
   journey('Resume starts where you left off, and Back saves the new spot', (j) async {
@@ -35,8 +33,8 @@ void main() {
     await j.wait(const Duration(seconds: 2));
     expect(j.server.playbackReports.last.kind, 'stopped');
     expect(j.server.playbackReports.last.positionMs, const Duration(minutes: 50).inMilliseconds);
-    j.expectFocusOn('Resume', because: 'Back returns to the page, on the button you pressed');
-    expect(j.shows('50 min left'), isTrue, reason: j.why('the page shows the new spot: ${j.screenTexts()}'));
+    j.expectFocusOn('Resume', because: "Back returns Home, to the hero's Resume");
+    expect(j.shows('50 min left'), isTrue, reason: j.why('the hero shows the new spot: ${j.screenTexts()}'));
   });
 
   journey('a film played to the end closes the player and counts as watched', (j) async {
@@ -51,7 +49,8 @@ void main() {
     expect(j.server.playbackReports.last.kind, 'stopped', reason: j.why('the end is reported'));
     expect(j.server.playedIds, contains('m2'), reason: j.why('the server counts it watched'));
     expect(j.shows('Direct play'), isFalse, reason: j.why('the player should have closed, not sat on the last frame'));
-    expect(j.focusOnScreen, isTrue, reason: j.why('focus is back on the page'));
+    expect(j.focusOnScreen, isTrue, reason: j.why('focus is back on Home'));
+    expect(j.shows('1h 07m left'), isFalse, reason: j.why('watched to the end, it has left Continue Watching'));
   });
 
   journey('an episode that ends with Up Next on screen goes straight on to the next', (j) async {
@@ -59,8 +58,7 @@ void main() {
     await j.right(); // Severance
     await j.select();
     await j.wait(const Duration(seconds: 1));
-    await j.select(); // 1x2's page
-    await j.select(); // Play
+    await j.select(); // the show's Play S1 E2
     await j.wait(const Duration(seconds: 2));
     expect(j.video.openedUris.last, contains('s1-s1-e2'));
 

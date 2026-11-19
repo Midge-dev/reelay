@@ -51,8 +51,7 @@ void main() {
         await j.right(); // Severance
         await j.select();
         await j.wait(const Duration(seconds: 1));
-        await j.select(); // its next episode's page
-        await j.select(); // Play
+        await j.select(); // the show's Play S1 E2
         await j.wait(const Duration(seconds: 2));
         expect(j.shows('Next episode'), isTrue, reason: j.why('the episode should have a Next episode button'));
         final report = await j.crawl(presses: 150, pauseEvery: 25);
