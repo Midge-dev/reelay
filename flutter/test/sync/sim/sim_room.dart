@@ -106,6 +106,15 @@ class Stall extends SimAction {
   String toString() => '${atMs}ms $device buffers for ${ms}ms';
 }
 
+/// A subtitle, quality or audio change: PlayerScreen throws the player
+/// away and opens a new stream at the same spot, with a new
+/// SyncViewModel on the same relay connection and trace.
+class RestartStream extends SimAction {
+  const RestartStream(super.atMs, super.device);
+  @override
+  String toString() => '${atMs}ms $device restarts its stream (subtitles/quality)';
+}
+
 /// The device vanishes from the room without saying so.
 class Drop extends SimAction {
   const Drop(super.atMs, super.device);
@@ -156,10 +165,10 @@ class Scenario {
 class _Device {
   _Device(this.spec, this.player, this.relay, this.trace, this.vm);
   final DeviceSpec spec;
-  final SimPlayer player;
+  SimPlayer player;
   final SimRelayClient relay;
   final SyncTrace trace;
-  final SyncViewModel vm;
+  SyncViewModel vm;
   PlaybackPhase? phase;
   bool present = true;
 }
@@ -355,6 +364,17 @@ RoomResult runRoom(Scenario scenario) {
           p.seekTo(positionMs.clamp(0, p.duration));
         case Stall(:final ms):
           p.stall(ms);
+        case RestartStream():
+          final at = p.truePosition;
+          d.vm.stop();
+          d.player.dispose();
+          final fresh = SimPlayer(d.spec.player, random: random, startMs: at);
+          int deviceNow() => nowMs() + d.spec.clockSkewMs;
+          d.player = fresh;
+          d.vm = SyncViewModel(player: fresh, relay: d.relay, trace: d.trace, deviceClock: deviceNow);
+          subscriptions.add(d.vm.phase.listen((ph) => d.phase = ph));
+          d.vm.start();
+          fresh.play();
         case Drop():
           d.present = false;
           d.relay.drop();

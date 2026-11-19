@@ -38,7 +38,19 @@ class FakeVideoPlayerPlatform extends VideoPlayerPlatform {
 
   int _nextPlayerId = 0;
   final _eventControllers = <int, StreamController<VideoEvent>>{};
-  Duration _position = Duration.zero;
+
+  /// Each player's position, as getPosition reports it — a reopened stream
+  /// starts again from 0 like a real one. Tests move it with [setPosition].
+  final _positions = <int, Duration>{};
+
+  /// The most recently opened player.
+  int get latestPlayerId => _nextPlayerId - 1;
+
+  /// The player is now at [position] (playback moved on), without a seek.
+  void setPosition(int playerId, Duration position) => _positions[playerId] = position;
+
+  /// Seeks each player was asked for, by player id, in order.
+  final seeksByPlayer = <int, List<int>>{};
 
   @override
   Future<void> init() async {}
@@ -108,12 +120,13 @@ class FakeVideoPlayerPlatform extends VideoPlayerPlatform {
 
   @override
   Future<void> seekTo(int playerId, Duration position) async {
-    _position = position;
+    _positions[playerId] = position;
+    seeksByPlayer.putIfAbsent(playerId, () => []).add(position.inMilliseconds);
     calls.add('seekTo:${position.inMilliseconds}');
   }
 
   @override
-  Future<Duration> getPosition(int playerId) async => _position;
+  Future<Duration> getPosition(int playerId) async => _positions[playerId] ?? Duration.zero;
 
   // Deliberately does not close the per-player StreamController: closing a
   // broadcast StreamController that had a listener attach-then-cancel was

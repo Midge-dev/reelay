@@ -247,6 +247,12 @@ class PlexClient implements MediaServerClient {
   @override
   String subtitleUrl(String key) => '${server.baseUrl}$key?X-Plex-Token=${server.accessToken}';
 
+  @override
+  Future<List<int>> fetchSubtitle(String key) async {
+    final response = await _client.get<List<int>>(subtitleUrl(key), options: Options(responseType: ResponseType.bytes));
+    return response.data ?? const [];
+  }
+
   /// See [streamSelectionUrl].
   @override
   Future<void> selectStreams(String partId, {int? audioStreamId, int? subtitleStreamId}) async {

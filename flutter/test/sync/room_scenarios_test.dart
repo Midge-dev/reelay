@@ -114,6 +114,26 @@ void main() {
     });
   });
 
+  group('changing subtitles or quality mid-room (a new stream)', () {
+    test('the guest changes subtitles', () {
+      final r = runRoom(const Scenario('guest restart', devices: [host, remoteGuest], actions: [RestartStream(20000, 'guest')]));
+      expectSettles(r, maxSyncSeeks: 3);
+    });
+
+    test('the host changes subtitles', () {
+      final r = runRoom(const Scenario('host restart', devices: [host, remoteGuest], actions: [RestartStream(20000, 'host')]));
+      expectSettles(r, maxSyncSeeks: 3);
+    });
+
+    test('the host changes subtitles, then rewinds', () {
+      final r = runRoom(const Scenario('host restart then seek', devices: [host, remoteGuest], actions: [
+        RestartStream(20000, 'host'),
+        SeekBy(30000, 'host', -60000),
+      ]));
+      expectSettles(r, maxSyncSeeks: 4);
+    });
+  });
+
   group('bad networks', () {
     test('the guest buffers for 5s mid-show', () {
       final r = runRoom(const Scenario('guest stall', devices: [host, remoteGuest], actions: [Stall(20000, 'guest', 5000)]));

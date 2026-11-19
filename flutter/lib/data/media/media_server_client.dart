@@ -96,6 +96,9 @@ abstract class MediaServerClient {
   /// The caption file for a sidecar [MediaStream.key].
   String subtitleUrl(String key);
 
+  /// That caption file's bytes, fetched with this server's own auth.
+  Future<List<int>> fetchSubtitle(String key);
+
   /// Makes these tracks the file's selection server-side, for backends
   /// whose transcoder reads it from there (Plex). A no-op for the rest.
   Future<void> selectStreams(String partId, {int? audioStreamId, int? subtitleStreamId});

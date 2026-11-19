@@ -40,7 +40,13 @@ class HostPlaybackCoordinator {
 
   static void _noop(List<String> _) {}
 
-  int _seq = 0;
+  // Guests drop any state whose seq isn't above the last one they took. A
+  // new coordinator (PlayerScreen makes one per stream: every subtitle,
+  // quality or audio change) counting from 0 again was ignored until it
+  // overtook the old count — after an hour's watching, for about another
+  // hour. Starting from the clock keeps every coordinator on this device
+  // above the last; states go out far less often than once a millisecond.
+  int _seq = nowMs();
   PlaybackPhase _phase = PlaybackPhase.loading;
   bool _intendedPlaying = true;
   bool _localReady = false;

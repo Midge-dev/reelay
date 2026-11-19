@@ -343,6 +343,12 @@ class JellyfinClient implements MediaServerClient {
   @override
   String subtitleUrl(String key) => '${server.baseUrl}$key?$_tokenQuery';
 
+  @override
+  Future<List<int>> fetchSubtitle(String key) async {
+    final response = await _client.get<List<int>>(subtitleUrl(key), options: Options(responseType: ResponseType.bytes));
+    return response.data ?? const [];
+  }
+
   /// Jellyfin takes the tracks on the transcode URL instead.
   @override
   Future<void> selectStreams(

@@ -1,7 +1,6 @@
 import 'dart:async';
 
 import 'package:collection/collection.dart';
-import 'package:dio/dio.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart' hide ConnectionState;
 import 'package:uuid/uuid.dart';
@@ -11,7 +10,6 @@ import '../../data/media/media_facts.dart';
 import '../../data/media/media_models.dart';
 import '../../data/media/media_server.dart';
 import '../../data/media/media_server_client.dart';
-import '../../data/plex/plex_http_client.dart';
 import '../../data/settings/app_settings.dart';
 import '../../focus/back_handler.dart';
 import '../../kit/text.dart';
@@ -107,7 +105,6 @@ class _PlayerScreenState extends State<PlayerScreen> {
   /// One per playback, kept across subtitle/bitrate restarts: the stream
   /// request and every timeline report carry it (see TimelineReporter).
   final _sessionIdentifier = const Uuid().v4();
-  late final Dio _captionClient;
 
   late MediaPart? _resolvedPart;
   List<AudioOption> _audioOptions = const [];
@@ -198,7 +195,6 @@ class _PlayerScreenState extends State<PlayerScreen> {
   void initState() {
     super.initState();
     _reporter = TimelineReporter(widget.client, _sessionIdentifier);
-    _captionClient = plexHttpClient();
 
     final media = widget.detail.media.isNotEmpty
         ? widget.detail.media.first
@@ -471,12 +467,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
   }
 
   Future<ClosedCaptionFile> _fetchCaptionFile(ExternalSubtitle source) async {
-    final url = widget.client.subtitleUrl(source.key);
-    final response = await _captionClient.get<List<int>>(
-      url,
-      options: Options(responseType: ResponseType.bytes),
-    );
-    return captionFileFromBytes(response.data ?? const []);
+    return captionFileFromBytes(await widget.client.fetchSubtitle(source.key));
   }
 
   void _handleControllerTick() {
