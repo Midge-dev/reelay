@@ -172,6 +172,19 @@ now:
 - **The relay announces `peerLeft`** when a device's socket closes, so a
   host isn't left waiting the 15 s safety timeout for a guest that's gone.
 
+Binging in a room (2026-11): the host's Next episode (its button, Up Next,
+or a guest's `controlRequest` of kind `next`) sends `episodeSwitch` before
+its own player moves on: the room's new title, the host's item and server,
+the episode's provider ids, the show's title and ids, and its season and
+episode numbers. A guest stops its old stream's sync at once — left
+running, it would tell the host's new session it's ready while still on the
+old episode — then plays the host's own item if it shares the server, else
+that season/episode of the show it's already watching, else the show found
+by title and matched on its ids (`resolveEpisodeSwitch`). The host's new
+session is handed the room's guests (`SyncViewModel.initialPeers`) so it
+waits for them to load rather than starting alone. The relay renames the
+room from the host's switch, so the directory and late joiners follow.
+
 During playback every client also sends `presence` (name, avatar) every
 3 s (`sync/room_roster.dart`), which is what turns the sync layer's peer ids
 into "Holding for Marcus".

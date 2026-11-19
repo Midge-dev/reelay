@@ -199,6 +199,20 @@ class Journey {
     return found;
   }
 
+  /// The name an icon-only button gives itself (a Semantics label around it).
+  String? _focusedSemanticsLabel() {
+    String? label;
+    focus?.context?.visitAncestorElements((a) {
+      final w = a.widget;
+      if (w is Semantics && w.properties.label != null) {
+        label = w.properties.label;
+        return false;
+      }
+      return true;
+    });
+    return label;
+  }
+
   /// The focused widget's on-screen box, or null if it has none.
   Rect? focusedRect() {
     final node = focus;
@@ -251,14 +265,18 @@ class Journey {
     return !visible.isEmpty && visible.width * visible.height >= rect.width * rect.height / 2;
   }
 
-  /// Whether [text] is anywhere on screen right now.
-  bool shows(String text) => find.text(text).evaluate().isNotEmpty || find.textContaining(text).evaluate().isNotEmpty;
+  /// Whether [text] is anywhere on screen right now — as text, or as an
+  /// icon button's name.
+  bool shows(String text) =>
+      find.text(text).evaluate().isNotEmpty ||
+      find.textContaining(text).evaluate().isNotEmpty ||
+      find.bySemanticsLabel(text).evaluate().isNotEmpty;
 
   /// Fails, with the steps so far, unless focus is on something showing
   /// [text] and is on screen.
   void expectFocusOn(String text, {String? because}) {
     final texts = focusedTexts();
-    final onIt = texts.any((t) => t.contains(text));
+    final onIt = texts.any((t) => t.contains(text)) || _focusedSemanticsLabel() == text;
     expect(onIt && focusOnScreen, isTrue, reason: _why('focus should be on "$text"${because == null ? '' : ' — $because'}'));
   }
 

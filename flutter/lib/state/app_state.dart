@@ -489,6 +489,11 @@ class Player extends AppState {
   // enough for screen 16's real fetchNextEpisodeForShow lookup.
   final String? showId;
 
+  /// In a room, after an episode change: the guests the last episode's
+  /// host session knew, so the new one waits for them (SyncViewModel
+  /// .initialPeers).
+  final List<String> roomPeers;
+
   const Player({
     this.ctx,
     required this.server,
@@ -496,5 +501,6 @@ class Player extends AppState {
     required this.returnState,
     this.relay,
     this.showId,
+    this.roomPeers = const [],
   });
 }

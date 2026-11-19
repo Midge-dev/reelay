@@ -115,6 +115,17 @@ class RestartStream extends SimAction {
   String toString() => '${atMs}ms $device restarts its stream (subtitles/quality)';
 }
 
+/// The host moves the room on to the next episode: its player restarts at
+/// 0 with a new sync session that knows the room's guests; each guest
+/// follows [followAfterMs] later (finding its own copy, opening it), also
+/// at 0.
+class SwitchEpisode extends SimAction {
+  final int followAfterMs;
+  const SwitchEpisode(int atMs, {this.followAfterMs = 1500}) : super(atMs, 'host');
+  @override
+  String toString() => '${atMs}ms the host plays the next episode (guests follow ${followAfterMs}ms later)';
+}
+
 /// The device vanishes from the room without saying so.
 class Drop extends SimAction {
   const Drop(super.atMs, super.device);
@@ -341,6 +352,18 @@ RoomResult runRoom(Scenario scenario) {
       }
     }
 
+    void restart(_Device d, {required int at, List<String> peers = const []}) {
+      d.vm.stop();
+      d.player.dispose();
+      final fresh = SimPlayer(d.spec.player, random: random, startMs: at);
+      int deviceNow() => nowMs() + d.spec.clockSkewMs;
+      d.player = fresh;
+      d.vm = SyncViewModel(player: fresh, relay: d.relay, trace: d.trace, deviceClock: deviceNow, initialPeers: peers);
+      subscriptions.add(d.vm.phase.listen((ph) => d.phase = ph));
+      d.vm.start();
+      fresh.play();
+    }
+
     void act(SimAction action) {
       final d = devices[action.device];
       if (d == null || !d.present) return;
@@ -365,16 +388,24 @@ RoomResult runRoom(Scenario scenario) {
         case Stall(:final ms):
           p.stall(ms);
         case RestartStream():
-          final at = p.truePosition;
-          d.vm.stop();
-          d.player.dispose();
-          final fresh = SimPlayer(d.spec.player, random: random, startMs: at);
-          int deviceNow() => nowMs() + d.spec.clockSkewMs;
-          d.player = fresh;
-          d.vm = SyncViewModel(player: fresh, relay: d.relay, trace: d.trace, deviceClock: deviceNow);
-          subscriptions.add(d.vm.phase.listen((ph) => d.phase = ph));
-          d.vm.start();
-          fresh.play();
+          restart(d, at: p.truePosition);
+        case SwitchEpisode(:final followAfterMs):
+          restart(d, at: 0, peers: d.vm.knownPeers);
+          for (final g in devices.values) {
+            if (identical(g, d) || !g.present) continue;
+            // As PlayerScreen does: the moment the switch arrives, the old
+            // stream's sync stops (so it can't tell the host's new session
+            // it's ready) and the player pauses; then it finds and opens
+            // the episode.
+            Timer(Duration(milliseconds: g.spec.link.downMs + d.spec.link.upMs), () {
+              if (!g.present) return;
+              g.vm.stop();
+              g.player.pause();
+            });
+            Timer(Duration(milliseconds: followAfterMs), () {
+              if (g.present) restart(g, at: 0);
+            });
+          }
         case Drop():
           d.present = false;
           d.relay.drop();

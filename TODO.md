@@ -56,7 +56,9 @@
   Only Right reaches them.
 - [ ] **The player stays on the last frame** at the end of a movie instead
   of closing.
-- [ ] **A "Next episode" button in the player** for anything with episodes,
+- [x] **A "Next episode" button in the player** (done on
+  `fix-watch-together-seek-loop`; works in rooms — see ARCHITECTURE.md
+  §2.5) for anything with episodes,
   so you can skip on whenever you like, not only from the Up Next card in
   the last 40 s. PlayerScreen already has the pieces (`loadNextEpisode`,
   `onPlayNext`); it needs a button in the controls row (only when there is a

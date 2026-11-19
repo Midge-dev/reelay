@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:flutter/foundation.dart' show visibleForTesting;
 import 'package:path_provider/path_provider.dart';
 
 import 'sync_trace.dart';
@@ -33,6 +34,7 @@ class SyncTraceFile {
   /// A trace for one room session, already writing to its own file; null if
   /// there's nowhere to write (a trace is best effort, never in the way).
   static Future<SyncTrace?> start() async {
+    if (!enabled) return null;
     try {
       final file = await _open();
       final trace = SyncTrace(onEntry: file._write);
@@ -45,6 +47,12 @@ class SyncTraceFile {
   }
 
   static final _active = Expando<SyncTraceFile>();
+
+  /// Off in tests: a real file under the fake test clock never finishes
+  /// opening (holding up the player), and would land in the developer's
+  /// own app-support folder.
+  @visibleForTesting
+  static bool enabled = true;
 
   /// Flushes and closes [trace]'s file, if it has one.
   static Future<void> finish(SyncTrace trace) async {

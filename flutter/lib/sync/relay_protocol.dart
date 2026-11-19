@@ -80,6 +80,17 @@ class RelayEvent {
   final int? remoteTimestampMs;
   final String? text;
 
+  // episodeSwitch: the room moves on to another episode (see EpisodeSwitch).
+  final String? title;
+  final String? ratingKey;
+  final String? serverId;
+  final List<String>? ids;
+  final String? mediaTitle;
+  final String? showTitle;
+  final List<String>? showIds;
+  final int? seasonIndex;
+  final int? episodeIndex;
+
   const RelayEvent({
     required this.kind,
     this.username,
@@ -100,6 +111,15 @@ class RelayEvent {
     this.pingId,
     this.remoteTimestampMs,
     this.text,
+    this.title,
+    this.ratingKey,
+    this.serverId,
+    this.ids,
+    this.mediaTitle,
+    this.showTitle,
+    this.showIds,
+    this.seasonIndex,
+    this.episodeIndex,
   });
 
   factory RelayEvent.fromJson(Map<String, dynamic> json) => RelayEvent(
@@ -122,6 +142,15 @@ class RelayEvent {
         pingId: json['pingId'] as int?,
         remoteTimestampMs: json['remoteTimestampMs'] as int?,
         text: json['text'] as String?,
+        title: json['title'] as String?,
+        ratingKey: json['ratingKey'] as String?,
+        serverId: json['serverId'] as String?,
+        ids: (json['ids'] as List<dynamic>?)?.whereType<String>().toList(),
+        mediaTitle: json['mediaTitle'] as String?,
+        showTitle: json['showTitle'] as String?,
+        showIds: (json['showIds'] as List<dynamic>?)?.whereType<String>().toList(),
+        seasonIndex: json['seasonIndex'] as int?,
+        episodeIndex: json['episodeIndex'] as int?,
       );
 
   Map<String, dynamic> toJson() => {
@@ -144,6 +173,15 @@ class RelayEvent {
         if (pingId != null) 'pingId': pingId,
         if (remoteTimestampMs != null) 'remoteTimestampMs': remoteTimestampMs,
         if (text != null) 'text': text,
+        'title': ?title,
+        'ratingKey': ?ratingKey,
+        'serverId': ?serverId,
+        'ids': ?ids,
+        'mediaTitle': ?mediaTitle,
+        'showTitle': ?showTitle,
+        'showIds': ?showIds,
+        'seasonIndex': ?seasonIndex,
+        'episodeIndex': ?episodeIndex,
       };
 }
 

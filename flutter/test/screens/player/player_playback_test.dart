@@ -564,7 +564,7 @@ void main() {
       group('Up Next', () {
         const next = MediaItem(id: '2', kind: MediaKind.episode, title: 'The Second', index: 2, parentIndex: 1);
 
-        testWidgets('loads the next episode in the last 40 seconds, once, and Not now dismisses it', (tester) async {
+        testWidgets('Up Next shows in the last 40 seconds, the next episode looked up once, and Not now dismisses it', (tester) async {
           var loads = 0;
           final s = await _open(
             tester,
@@ -577,11 +577,13 @@ void main() {
             },
           );
           await _playTo(tester, s, 39 * 60000 - 45000);
-          expect(loads, 0, reason: 'not yet: 45s left');
+          expect(loads, 1, reason: 'looked up as it opens, for the Next episode button');
+          expect(find.text('Not now'), findsNothing, reason: 'not yet: 45s left');
 
           await _playTo(tester, s, 39 * 60000 + 30000);
           await _settle(tester);
           expect(loads, 1);
+          expect(find.text('Not now'), findsOneWidget);
           expect(find.text('The Second'), findsOneWidget);
 
           await tester.tap(find.text('Not now'));

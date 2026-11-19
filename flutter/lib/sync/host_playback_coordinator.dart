@@ -59,6 +59,9 @@ class HostPlaybackCoordinator {
   bool _disposed = false;
 
   final Set<String> _knownPeers = {};
+
+  /// Everyone this host has heard from and not seen leave.
+  Set<String> get knownPeers => Set.unmodifiable(_knownPeers);
   final Map<String, PeerStatus> _peerStatuses = {};
   final Set<String> _stalledPeers = {};
   final Set<String> _excused = {};

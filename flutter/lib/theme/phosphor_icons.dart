@@ -163,6 +163,11 @@ class PhosphorIconsRegular {
     fontPackage: 'phosphor_flutter',
     matchTextDirection: true,
   );
+  static const skipForward = IconData(
+    0xe5a6,
+    fontFamily: 'PhosphorRegular',
+    fontPackage: 'phosphor_flutter',
+  );
   static const fastForward = IconData(
     0xe6a6,
     fontFamily: 'PhosphorRegular',

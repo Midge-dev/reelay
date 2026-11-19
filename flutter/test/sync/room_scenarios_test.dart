@@ -134,6 +134,31 @@ void main() {
     });
   });
 
+  group('binging: the room moves on to the next episode', () {
+    for (final follow in [800, 2500, 6000]) {
+      test('everyone starts the next episode together (guest takes ${follow}ms to follow)', () {
+        final r = runRoom(Scenario('next episode', devices: const [host, remoteGuest], actions: [SwitchEpisode(30000, followAfterMs: follow)]));
+        expectSettles(r, maxSyncSeeks: 2);
+        // Nobody may be left catching up: the host waits for the guest.
+        final afterSwitch = r.samples.where((s) => s.t > 30000 + follow + 4000).first;
+        expect(afterSwitch.offHostMs, lessThan(1000), reason: r.describe());
+      });
+    }
+
+    test('three episodes in a row, with a slow and a fast guest', () {
+      final r = runRoom(const Scenario('binge', devices: [
+        host,
+        DeviceSpec('fast', player: PlayerProfile.directPlay, link: LinkProfile.lan),
+        DeviceSpec('slow', player: PlayerProfile.remoteTranscode, link: LinkProfile.far),
+      ], actions: [
+        SwitchEpisode(20000, followAfterMs: 1200),
+        SwitchEpisode(50000, followAfterMs: 3000),
+        SwitchEpisode(80000, followAfterMs: 2000),
+      ]));
+      expectSettles(r, maxSyncSeeks: 6);
+    });
+  });
+
   group('bad networks', () {
     test('the guest buffers for 5s mid-show', () {
       final r = runRoom(const Scenario('guest stall', devices: [host, remoteGuest], actions: [Stall(20000, 'guest', 5000)]));

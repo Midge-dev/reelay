@@ -6,6 +6,7 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../data/media/media_models.dart';
+import '../playback/next_episode.dart';
 import '../data/media/media_server.dart';
 import '../data/plex/plex_models.dart';
 import '../data/plex/plex_resources_api.dart';
@@ -819,7 +820,7 @@ class _AppContent extends StatelessWidget {
             controller.returnTo(returnState);
           },
         ),
-      Player(:final detail, :final returnState, :final relay, :final showId) =>
+      Player(:final detail, :final returnState, :final relay, :final showId, :final roomPeers) =>
         PlayerScreen(
           key: ValueKey('player-${detail.id}'),
           client: controller.clientFor(state.server),
@@ -835,25 +836,16 @@ class _AppContent extends StatelessWidget {
           },
           onFailed: (reason, positionMs) =>
               controller.playbackFailed(state, reason, positionMs: positionMs),
-          // Screen 16 — only real when we actually know the show (see
-          // Player.showId's doc comment: null for movies, and the
-          // "next episode" lookup needs a LibraryContext to actually play
-          // it, which only exists when returnState is the EpisodeDetail we
-          // came from).
-          loadNextEpisode: showId == null
-              ? null
-              : () => controller
-                    .clientFor(state.server)
-                    .fetchNextEpisodeForShow(showId),
-          onPlayNext: returnState is EpisodeDetail
-              ? (next) => controller.playMovie(
-                  returnState.ctx,
-                  state.server,
-                  next.id,
-                  returnState,
-                  showId: showId,
-                )
+          // Next episode (its button, and screen 16's Up Next): any
+          // episode whose show is known — from the detail itself, else the
+          // page it was opened from — wherever it was started, in a room
+          // or not.
+          loadNextEpisode: detail.kind == MediaKind.episode && (detail.showId ?? showId) != null
+              ? () => episodeAfterDetail(controller.clientFor(state.server), detail, showId: showId)
               : null,
+          onPlayNext: (next, peers) => controller.playNextEpisode(state, next, roomPeers: peers),
+          onFollowEpisode: (to) => controller.followRoomToEpisode(state, to),
+          roomPeers: roomPeers,
         ),
     };
   }

@@ -279,6 +279,11 @@ class MediaDetail {
   final int? parentIndex;
   final int? index;
 
+  /// An episode's show, on this server (Plex's grandparentRatingKey,
+  /// Jellyfin's SeriesId) — what finds the episode after it, and a room's
+  /// next episode on a guest's own copy of the show.
+  final String? showId;
+
   final List<MediaVersion> media;
 
   final double? rating;
@@ -308,6 +313,7 @@ class MediaDetail {
     this.grandparentTitle,
     this.parentIndex,
     this.index,
+    this.showId,
     this.media = const [],
     this.rating,
     this.audienceRating,
@@ -337,6 +343,7 @@ class MediaDetail {
     grandparentTitle: grandparentTitle,
     parentIndex: parentIndex,
     index: index,
+    showId: showId,
     media: media,
     rating: rating,
     audienceRating: audienceRating,

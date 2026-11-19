@@ -1,4 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:video_player_platform_interface/video_player_platform_interface.dart';
+
+import '../playback/fake_video_player_platform.dart';
 
 import 'harness/fake_jellyfin.dart';
 import 'harness/journey.dart';
@@ -119,6 +122,47 @@ void main() {
       expect(j.shows('Remove Andor from your watchlist?'), isFalse, reason: j.why('Back closes the confirm'));
       expect(j.server.favoriteIds, contains('s2'));
       j.expectFocusOn('Andor', because: 'closing an overlay returns focus to what opened it, not the rail');
+    });
+  });
+
+  group('Binging', () {
+    String playingNow() => (VideoPlayerPlatform.instance as FakeVideoPlayerPlatform).openedUris.last;
+
+    journey('Next episode plays on through the season and into the next', (j) async {
+      await j.openFromRail('Shows');
+      await j.right(); // Severance
+      await j.select();
+      await j.wait(const Duration(seconds: 1));
+      j.expectFocusOn('Severance 1x2');
+      await j.select(); // the episode's page
+      j.expectFocusOn('Play');
+      await j.select();
+      await j.wait(const Duration(seconds: 2));
+      expect(playingNow(), contains('s1-s1-e2'));
+
+      for (final next in ['s1-s1-e3', 's1-s1-e4', 's1-s2-e1']) {
+        await j.right(2); // Forward, Next episode
+        j.expectFocusOn('Next episode');
+        await j.select();
+        await j.wait(const Duration(seconds: 2));
+        expect(playingNow(), contains(next), reason: j.why('Next episode should be playing $next'));
+        expect(j.shows('Next episode'), isTrue, reason: j.why('there is still one after $next'));
+      }
+
+      await j.back();
+      j.expectFocusOn('Play', because: 'Back from the player returns to the page it was started from');
+    });
+
+    journey('no Next episode on the last one', (j) async {
+      await j.openFromRail('Shows');
+      await j.select(); // Andor: one season of three
+      await j.wait(const Duration(seconds: 1));
+      await j.down(2); // to its last episode
+      await j.select();
+      await j.select(); // Play
+      await j.wait(const Duration(seconds: 2));
+      expect(playingNow(), contains('s2-s1-e3'), reason: j.why('should be playing Andor 1x3, the last episode'));
+      expect(j.shows('Next episode'), isFalse, reason: j.why('nothing comes after the last episode'));
     });
   });
 

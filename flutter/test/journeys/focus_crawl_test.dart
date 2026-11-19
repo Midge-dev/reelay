@@ -46,6 +46,19 @@ void main() {
         }, uiScale: scale);
       }
 
+      journey('the player on an episode (Next episode in the row): focus stays visible', (j) async {
+        await j.openFromRail('Shows');
+        await j.right(); // Severance
+        await j.select();
+        await j.wait(const Duration(seconds: 1));
+        await j.select(); // its next episode's page
+        await j.select(); // Play
+        await j.wait(const Duration(seconds: 2));
+        expect(j.shows('Next episode'), isTrue, reason: j.why('the episode should have a Next episode button'));
+        final report = await j.crawl(presses: 150, pauseEvery: 25);
+        expect(report.traps, isEmpty, reason: j.why('dead ends: ${report.traps}'));
+      }, uiScale: scale);
+
       journey('the player: focus stays visible as the controls come and go', (j) async {
         await j.openFromRail('Movies');
         await j.select(); // Arrival

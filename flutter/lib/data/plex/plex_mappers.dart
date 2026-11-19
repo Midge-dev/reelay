@@ -182,6 +182,7 @@ extension PlexMovieDetailToMedia on PlexMovieDetail {
     grandparentTitle: grandparentTitle,
     parentIndex: parentIndex,
     index: index,
+    showId: grandparentRatingKey,
     media: [for (final m in media) m.toMedia()],
     rating: rating,
     audienceRating: audienceRating,

@@ -28,8 +28,21 @@ class SyncViewModel {
   /// that's off, to check guests still line up with the host's clock.
   final int Function()? deviceClock;
 
-  SyncViewModel({required SyncedPlayer player, required this.relay, this.trace, this.deviceClock})
-    : player = trace == null ? player : TracingSyncedPlayer(player, trace);
+  /// The room's guests from the stream before this one (an episode change):
+  /// a new host session waits for them to load before anyone starts,
+  /// rather than starting alone and making them catch up.
+  final List<String> initialPeers;
+
+  SyncViewModel({
+    required SyncedPlayer player,
+    required this.relay,
+    this.trace,
+    this.deviceClock,
+    this.initialPeers = const [],
+  }) : player = trace == null ? player : TracingSyncedPlayer(player, trace);
+
+  /// The guests a host session knows of, to hand the next one.
+  List<String> get knownPeers => _host?.knownPeers.toList() ?? const [];
 
   static const _syncKinds = {'playbackState', 'controlRequest', 'peerStatus', 'clockPing', 'clockPong', 'peerLeft'};
 
@@ -115,7 +128,11 @@ class SyncViewModel {
         _waitingOn.add(state.waitingOn);
       },
       onWaitingOnChanged: (waitingOn) => _waitingOn.add(waitingOn),
-    )..start();
+    );
+    for (final peer in initialPeers) {
+      _host!.onPeerJoined(peer);
+    }
+    _host!.start();
   }
 
   void _startAsGuest(RelayClient relay) {

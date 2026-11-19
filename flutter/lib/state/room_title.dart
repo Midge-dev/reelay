@@ -3,6 +3,8 @@ import 'package:collection/collection.dart';
 import '../data/media/media_models.dart';
 import '../data/media/media_server.dart';
 import '../data/media/media_server_client.dart';
+import '../playback/next_episode.dart';
+import '../sync/episode_switch.dart';
 import '../sync/relay_protocol.dart';
 
 /// What a Watch Together room advertises for its title: every id another
@@ -68,4 +70,70 @@ Future<(MediaServer, MediaDetail)?> resolveRoomTitle(
       }
     }),
   );
+}
+
+/// Where a guest plays the episode a room has moved on to ([EpisodeSwitch]),
+/// best match first:
+///
+/// 1. the host's own item, when this hub shares the host's server;
+/// 2. the same season and episode of the show this guest is already
+///    watching ([currentShowId] on [currentServer]) — its own copy;
+/// 3. the show found by title on any server, matched on its provider ids,
+///    then that season and episode;
+/// 4. the episode itself found by title, matched on its provider ids.
+Future<(MediaServer, MediaDetail)?> resolveEpisodeSwitch(
+  List<ReachableServer> servers,
+  EpisodeSwitch to,
+  MediaServerClient Function(MediaServer) clientFor, {
+  MediaServer? currentServer,
+  String? currentShowId,
+}) async {
+  Future<(MediaServer, MediaDetail)?> detailOn(MediaServer server, String id) async {
+    try {
+      return (server, await clientFor(server).fetchDetail(id));
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<(MediaServer, MediaDetail)?> numberedOn(MediaServer server, String showId) async {
+    try {
+      final episode = await episodeNumbered(clientFor(server), showId, season: to.seasonIndex, episode: to.episodeIndex);
+      return episode == null ? null : await detailOn(server, episode.id);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  final shared = servers.where((s) => s.server.id == to.serverId).firstOrNull;
+  if (shared != null) {
+    final found = await detailOn(shared.server, to.ratingKey);
+    if (found != null) return found;
+  }
+  if (currentServer != null && currentShowId != null) {
+    final found = await numberedOn(currentServer, currentShowId);
+    if (found != null) return found;
+  }
+  final showIds = to.showIds.toSet();
+  if (showIds.isNotEmpty && to.showTitle.isNotEmpty) {
+    for (final cs in servers) {
+      try {
+        final show = (await clientFor(cs.server).search(to.showTitle))
+            .firstWhereOrNull((item) => item.kind == MediaKind.show && sharesProviderId(item, showIds));
+        if (show == null) continue;
+        final found = await numberedOn(cs.server, show.id);
+        if (found != null) return found;
+      } catch (_) {}
+    }
+  }
+  final ids = to.ids.toSet();
+  if (ids.isNotEmpty && to.mediaTitle.isNotEmpty) {
+    for (final cs in servers) {
+      try {
+        final match = (await clientFor(cs.server).search(to.mediaTitle)).firstWhereOrNull((item) => sharesProviderId(item, ids));
+        if (match != null) return await detailOn(cs.server, match.id);
+      } catch (_) {}
+    }
+  }
+  return null;
 }

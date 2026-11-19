@@ -280,6 +280,7 @@ MediaDetail detailFromJson(Json item) {
     grandparentTitle: base.grandparentTitle,
     parentIndex: base.parentIndex,
     index: base.index,
+    showId: base.kind == MediaKind.episode ? item['SeriesId'] as String? : null,
     media: [
       for (final s
           in ((item['MediaSources'] as List?) ?? const []).cast<Json>())
