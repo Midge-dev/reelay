@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart' show debugPrint;
 import 'package:dio/dio.dart';
 
+import '../../playback/skip_markers.dart';
 import '../media/media_models.dart';
 import '../media/media_server.dart';
 import '../media/media_server_client.dart';
@@ -86,6 +87,37 @@ class PlexClient implements MediaServerClient {
     }
     return items.first.toMedia();
   }
+
+  /// Plex's intro and credits markers come from the server's own
+  /// detection (Plex Pass; a library setting), so many libraries have
+  /// none — chapters named for them stand in.
+  @override
+  Future<List<SkipMarker>> fetchSkipMarkers(String id) async {
+    final data = await _get('${server.baseUrl}/library/metadata/$id?includeMarkers=1&includeChapters=1');
+    final metadata = (data['MediaContainer'] as Map?)?['Metadata'];
+    if (metadata is! List || metadata.isEmpty || metadata.first is! Map) return const [];
+    final item = metadata.first as Map;
+    final markers = <SkipMarker>[
+      for (final m in (item['Marker'] as List? ?? const []).whereType<Map>())
+        if (_plexSkipKind(m['type']) case final kind?)
+          if ((_int(m['startTimeOffset']), _int(m['endTimeOffset'])) case (final start?, final end?) when end > start)
+            SkipMarker(kind, start, end),
+    ];
+    if (markers.isNotEmpty) return markers;
+    return markersFromChapters([
+      for (final c in (item['Chapter'] as List? ?? const []).whereType<Map>())
+        if (_int(c['startTimeOffset']) case final start?)
+          (title: (c['tag'] ?? c['title'])?.toString(), startMs: start, endMs: _int(c['endTimeOffset'])),
+    ], durationMs: _int(item['duration']));
+  }
+
+  static SkipKind? _plexSkipKind(Object? type) => switch (type) {
+    'intro' => SkipKind.intro,
+    'credits' => SkipKind.credits,
+    _ => null,
+  };
+
+  static int? _int(Object? v) => v is num ? v.toInt() : (v is String ? int.tryParse(v) : null);
 
   Future<List<PlexHub>> _hubs(String path) => _list(path, 'Hub', PlexHub.fromJson);
 

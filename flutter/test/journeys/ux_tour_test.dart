@@ -87,6 +87,15 @@ void main() {
     await shot(j, 'player-controls');
     await j.wait(const Duration(seconds: 6));
     await shot(j, 'player-clean');
+    await j.select(); // the tour's extra Select paused it: play on
+    await j.wait(const Duration(seconds: 4));
+    j.video.setPosition(j.video.latestPlayerId, const Duration(milliseconds: FakeJellyfin.introStartMs + 5000));
+    await j.wait(const Duration(seconds: 1));
+    await shot(j, 'player-skip-intro');
+    await j.down();
+    await j.up(2); // the progress track, then Skip intro above it
+    await shot(j, 'player-skip-intro-controls');
+    await j.wait(const Duration(seconds: 6));
     await j.down();
     await j.right(6); // to the far end of the row: the settings gear
     await shot(j, 'player-controls-right');

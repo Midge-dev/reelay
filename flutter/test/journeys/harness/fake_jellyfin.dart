@@ -49,6 +49,20 @@ class FakeJellyfin {
   final favoriteIds = {'m3', 's2'};
   final playedIds = {'m4'};
 
+  /// Media segments (Jellyfin 10.10+, from a plugin like Intro Skipper),
+  /// by episode. Severance's have an intro, 1:00–2:30, and end credits
+  /// over the last five minutes of the fake player's 100-minute files;
+  /// Andor's have none, so it shows how a server without them plays.
+  static const introStartMs = 60000, introEndMs = 150000, creditsStartMs = 95 * 60000;
+  late final segments = <String, List<Map<String, Object?>>>{
+    for (final e in _allEpisodes)
+      if (e['SeriesId'] == 's1')
+        e['Id']! as String: [
+          {'Type': 'Intro', 'StartTicks': introStartMs * 10000, 'EndTicks': introEndMs * 10000},
+          {'Type': 'Outro', 'StartTicks': creditsStartMs * 10000, 'EndTicks': 100 * 60000 * 10000},
+        ],
+  };
+
   /// What playback reported, in order.
   final playbackReports = <PlaybackReport>[];
 
@@ -261,6 +275,11 @@ class FakeJellyfin {
     final showEpisodes = RegExp(r'^/Shows/([^/]+)/Episodes$').firstMatch(path);
     if (showEpisodes != null) {
       return FakeReply.json(_items(_allEpisodes.where((e) => e['SeriesId'] == showEpisodes[1])));
+    }
+    final segmentsOf = RegExp(r'^/MediaSegments/([^/]+)$').firstMatch(path);
+    if (segmentsOf != null) {
+      final found = segments[segmentsOf[1]] ?? const [];
+      return FakeReply.json({'Items': found, 'TotalRecordCount': found.length});
     }
     final similar = RegExp(r'^/Items/([^/]+)/Similar$').firstMatch(path);
     if (similar != null) return FakeReply.json(_items(movies.where((m) => m['Id'] != similar[1]).take(4)));

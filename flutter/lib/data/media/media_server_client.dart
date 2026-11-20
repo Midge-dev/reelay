@@ -1,5 +1,6 @@
 import '../jellyfin/jellyfin_client.dart';
 import '../plex/plex_client.dart';
+import '../../playback/skip_markers.dart';
 import 'media_models.dart';
 import 'media_server.dart';
 
@@ -98,6 +99,10 @@ abstract class MediaServerClient {
 
   /// That caption file's bytes, fetched with this server's own auth.
   Future<List<int>> fetchSubtitle(String key);
+
+  /// Where [id]'s intro and credits are: the server's own markers, else
+  /// chapters named for them; empty when it knows of neither.
+  Future<List<SkipMarker>> fetchSkipMarkers(String id);
 
   /// Asks the server whether it will stream [transcodeUrl], before the
   /// player opens it. Null to go ahead — including when the server can't

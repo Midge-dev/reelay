@@ -19,6 +19,7 @@ import '../../playback/display_mode.dart';
 import '../../playback/playback_decision.dart';
 import '../../playback/seek_timing.dart';
 import '../../playback/timeline_reporter.dart';
+import '../../playback/skip_markers.dart';
 import '../../playback/video_player_synced_player.dart';
 import '../../sync/playback_state.dart';
 import '../../sync/relay_client.dart';
@@ -39,6 +40,7 @@ import '../common/chat_overlay.dart';
 import 'chat_qr_overlay.dart';
 import 'player_controls_bar.dart';
 import 'player_menu_panel.dart';
+import 'skip_intro_button.dart';
 import 'up_next_card.dart';
 
 const _reportIntervalMs = 5000;
@@ -185,6 +187,33 @@ class _PlayerScreenState extends State<PlayerScreen> {
   /// The episode after this one, once looked up; null for none (or a film).
   MediaItem? _nextEpisode;
 
+  /// Where this title's intro and credits are (see fetchSkipMarkers);
+  /// empty until loaded, and for a server that knows of neither.
+  List<SkipMarker> _skipMarkers = const [];
+
+  /// The intro playback is in, while it is.
+  SkipMarker? _intro;
+
+  /// An intro whose Skip intro has had its moment — skipped, dismissed
+  /// with Back, or left alone for [_skipOfferMs]. After that it only shows
+  /// with the controls, so it isn't on screen for a whole title sequence.
+  SkipMarker? _introRetired;
+
+  /// An intro whose Skip intro was skipped or turned down with Back: gone
+  /// for good, controls or not.
+  SkipMarker? _introDismissed;
+  Timer? _skipOfferTimer;
+  static const _skipOfferMs = 8000;
+  final _skipIntroFocusNode = FocusNode(debugLabel: 'player-skip-intro');
+
+  bool get _skipIntroShown =>
+      _intro != null &&
+      !_menuOpen &&
+      !_chatQrOpen &&
+      _upNextItem == null &&
+      _introDismissed != _intro &&
+      (_introRetired != _intro || _controlsVisible);
+
   /// Moving on to another episode has begun: nothing starts it twice (a
   /// guest's request and the host's own Up Next arriving together).
   bool _movingOn = false;
@@ -288,6 +317,11 @@ class _PlayerScreenState extends State<PlayerScreen> {
 
     if (widget.relay != null) _syncTrace = SyncTraceFile.start();
     unawaited(_start());
+    // Best effort: without them there's no Skip intro, and Up Next comes
+    // at its usual time.
+    Future.sync(() => widget.client.fetchSkipMarkers(widget.detail.id)).then((markers) {
+      if (mounted) setState(() => _skipMarkers = markers);
+    }, onError: (_) {});
     final loadNext = widget.loadNextEpisode;
     if (loadNext != null) {
       loadNext().then((next) {
@@ -340,6 +374,8 @@ class _PlayerScreenState extends State<PlayerScreen> {
     _roster?.dispose();
     HardwareKeyboard.instance.removeHandler(_recordInteraction);
     _controlsHideTimer?.cancel();
+    _skipOfferTimer?.cancel();
+    _skipIntroFocusNode.dispose();
     _reportTimer?.cancel();
     _connectionSub?.cancel();
     _phaseSub?.cancel();
@@ -604,6 +640,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
           ? (bufferedMs / _durationMs).clamp(0.0, 1.0)
           : 0.0;
     });
+    _updateSkipIntro();
     _maybeLoadUpNext();
     if (value.isCompleted) _finished();
   }
@@ -625,14 +662,74 @@ class _PlayerScreenState extends State<PlayerScreen> {
     unawaited(_handleBack(atEnd: true));
   }
 
+  /// Up Next comes in when the end credits start, where the server knows
+  /// (see creditsStartMs), else [_upNextTriggerMs] before the end.
   void _maybeLoadUpNext() {
     if (_upNextDismissed || _upNextItem != null) return;
     final next = _nextEpisode;
-    if (next == null) return;
-    if (_durationMs <= 0 || _durationMs - _positionMs > _upNextTriggerMs) {
+    if (next == null || _durationMs <= 0) return;
+    final credits = creditsStartMs(_skipMarkers, _durationMs);
+    final inCredits = credits != null && _positionMs >= credits;
+    if (!inCredits && _durationMs - _positionMs > _upNextTriggerMs) return;
+    final skipHadFocus = _skipIntroFocusNode.hasFocus;
+    setState(() => _upNextItem = next);
+    if (skipHadFocus) _screenFocusNode.requestFocus();
+  }
+
+  /// Offers Skip intro as playback enters an intro, and takes it away as it
+  /// leaves. With the controls down it takes focus, so one Select skips;
+  /// with them up it waits above the progress track (Up reaches it).
+  void _updateSkipIntro() {
+    final intro = _ended ? null : introAt(_skipMarkers, _positionMs);
+    if (intro == _intro) return;
+    final hadFocus = _skipIntroFocusNode.hasFocus;
+    _skipOfferTimer?.cancel();
+    setState(() => _intro = intro);
+    if (intro == null) {
+      if (hadFocus) _focusAfterSkipIntro();
       return;
     }
-    setState(() => _upNextItem = next);
+    if (_introRetired == intro) return;
+    _skipOfferTimer = Timer(
+      const Duration(milliseconds: _skipOfferMs),
+      () => _retireSkipIntro(intro),
+    );
+    if (!_controlsVisible && _skipIntroShown) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && _skipIntroShown) _skipIntroFocusNode.requestFocus();
+      });
+    }
+  }
+
+  void _retireSkipIntro(SkipMarker intro, {bool dismiss = false}) {
+    if (!mounted) return;
+    _skipOfferTimer?.cancel();
+    final hadFocus = _skipIntroFocusNode.hasFocus;
+    setState(() {
+      _introRetired = intro;
+      if (dismiss) _introDismissed = intro;
+    });
+    if (hadFocus && (dismiss || !_controlsVisible)) _focusAfterSkipIntro();
+  }
+
+  /// Where focus goes when Skip intro leaves: the controls when they're
+  /// up, else the screen (where Select plays and pauses again).
+  void _focusAfterSkipIntro() {
+    if (_controlsVisible) {
+      _playPauseFocusNode.requestFocus();
+    } else {
+      _screenFocusNode.requestFocus();
+    }
+  }
+
+  /// Seeks past the intro — through the player, so in a room it's a seek
+  /// like any other and everyone goes with it.
+  void _skipIntro() {
+    final intro = _intro;
+    final player = _player;
+    if (intro == null || player == null) return;
+    player.seekTo(intro.endMs);
+    _retireSkipIntro(intro, dismiss: true);
   }
 
   void _dismissUpNext() => setState(() {
@@ -743,7 +840,11 @@ class _PlayerScreenState extends State<PlayerScreen> {
           // handler answers, and with it on the screen node Back left the
           // player instead of closing the menu.
           if (_menuOpen || _chatQrOpen) return;
-          _screenFocusNode.requestFocus();
+          if (_skipIntroShown) {
+            _skipIntroFocusNode.requestFocus();
+          } else {
+            _screenFocusNode.requestFocus();
+          }
         },
       );
     }
@@ -1168,6 +1269,9 @@ class _PlayerScreenState extends State<PlayerScreen> {
                               onNextEpisode: _nextEpisode == null
                                   ? null
                                   : _nextEpisodePressed,
+                              aboveProgress: _skipIntroShown
+                                  ? _skipIntroFocusNode
+                                  : null,
                             ),
                           ),
                         ],
@@ -1193,6 +1297,26 @@ class _PlayerScreenState extends State<PlayerScreen> {
                   child: ChatQrOverlay(
                     chatUrl: _chatUrl!,
                     onDismiss: () => setState(() => _chatQrOpen = false),
+                  ),
+                ),
+              if (_skipIntroShown)
+                Positioned(
+                  right: 64.du(context),
+                  // Above the progress track while the controls are up,
+                  // where Up from it lands; low in the corner otherwise.
+                  bottom: (_controlsVisible ? 200 : 56).du(context),
+                  child: BackHandler(
+                    onBack: () {
+                      if (_intro case final intro?) {
+                        _retireSkipIntro(intro, dismiss: true);
+                      }
+                    },
+                    child: SkipIntroButton(
+                      onSkip: _skipIntro,
+                      focusNode: _skipIntroFocusNode,
+                      controlsVisible: _controlsVisible,
+                      onDown: _progressFocusNode.requestFocus,
+                    ),
                   ),
                 ),
               if (_upNextItem != null && !_menuOpen)

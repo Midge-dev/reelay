@@ -74,6 +74,10 @@ class PlayerControlsBar extends StatelessWidget {
   final FocusNode? nextEpisodeFocusNode;
   final VoidCallback? onNextEpisode;
 
+  /// Above the progress track: Up from it goes here (the Skip intro
+  /// button, while it's showing); null, Up goes nowhere.
+  final FocusNode? aboveProgress;
+
   const PlayerControlsBar({
     super.key,
     required this.isPlaying,
@@ -103,6 +107,7 @@ class PlayerControlsBar extends StatelessWidget {
     required this.onOpenMenu,
     this.nextEpisodeFocusNode,
     this.onNextEpisode,
+    this.aboveProgress,
   });
 
   @override
@@ -164,7 +169,10 @@ class PlayerControlsBar extends StatelessWidget {
       if (event is! KeyDownEvent && event is! KeyRepeatEvent)
         return KeyEventResult.ignored;
       final key = event.logicalKey;
-      if (key == LogicalKeyboardKey.arrowUp) return KeyEventResult.handled;
+      if (key == LogicalKeyboardKey.arrowUp) {
+        if (event is KeyDownEvent) aboveProgress?.requestFocus();
+        return KeyEventResult.handled;
+      }
       if (key == LogicalKeyboardKey.arrowDown) {
         playPauseFocusNode.requestFocus();
         return KeyEventResult.handled;

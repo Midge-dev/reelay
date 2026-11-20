@@ -1,6 +1,7 @@
 import 'package:dio/dio.dart';
 
 import '../../app_version.dart';
+import '../../playback/skip_markers.dart';
 import '../media/media_models.dart';
 import '../media/media_server.dart';
 import '../media/media_server_client.dart';
@@ -355,6 +356,40 @@ class JellyfinClient implements MediaServerClient {
     final response = await _client.get<List<int>>(subtitleUrl(key), options: Options(responseType: ResponseType.bytes));
     return response.data ?? const [];
   }
+
+  /// Jellyfin's media segments (10.10+) exist only when a plugin such as
+  /// Intro Skipper has found them; an older server 404s the endpoint.
+  /// Chapters named for an intro or the credits stand in.
+  @override
+  Future<List<SkipMarker>> fetchSkipMarkers(String id) async {
+    try {
+      final data = await _get('/MediaSegments/$id');
+      final items = data is Map ? data['Items'] : null;
+      final markers = <SkipMarker>[
+        for (final seg in (items is List ? items : const []).whereType<Map>())
+          if (_jellyfinSkipKind(seg['Type']) case final kind?)
+            if ((ticksToMs(seg['StartTicks']), ticksToMs(seg['EndTicks'])) case (final start?, final end?)
+                when end > start)
+              SkipMarker(kind, start, end),
+      ];
+      if (markers.isNotEmpty) return markers;
+    } on DioException catch (e) {
+      if (e.response?.statusCode != 404) rethrow;
+    }
+    final item = await _get('/Items/$id', {'userId': _userId, 'fields': 'Chapters'});
+    final chapters = item is Map ? item['Chapters'] : null;
+    return markersFromChapters([
+      for (final c in (chapters is List ? chapters : const []).whereType<Map>())
+        if (ticksToMs(c['StartPositionTicks']) case final start?)
+          (title: c['Name']?.toString(), startMs: start, endMs: null),
+    ], durationMs: item is Map ? ticksToMs(item['RunTimeTicks']) : null);
+  }
+
+  static SkipKind? _jellyfinSkipKind(Object? type) => switch (type?.toString().toLowerCase()) {
+    'intro' => SkipKind.intro,
+    'outro' || 'credits' => SkipKind.credits,
+    _ => null,
+  };
 
   /// Jellyfin takes the tracks on the transcode URL instead.
   @override
