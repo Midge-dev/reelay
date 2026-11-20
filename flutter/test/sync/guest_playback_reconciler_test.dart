@@ -101,4 +101,104 @@ void main() {
       reconciler.stop();
     });
   });
+
+  // Inside the 1.5s seek deadband a guest closes the gap by playing a
+  // little fast or slow — no seek, so no rebuffer.
+  group('drift inside the deadband: speed, not a seek', () {
+    late FakeSyncedPlayer player;
+    late ClockSync clock;
+    late GuestPlaybackReconciler reconciler;
+    var seq = 0;
+
+    /// The host says: playing, at [positionMs] now.
+    void playingAt(int positionMs, {PlaybackPhase phase = PlaybackPhase.playing}) => reconciler.onState(PlaybackState(
+          seq: ++seq,
+          phase: phase,
+          anchorPositionMs: positionMs,
+          anchorHostTimeMs: clock.hostNowMs(),
+        ));
+
+    void startAt(int offMs, FakeAsync async) {
+      player = FakeSyncedPlayer();
+      clock = ClockSync(sendPing: (_) {});
+      reconciler = GuestPlaybackReconciler(myPeerId: 'guest', player: player, clock: clock, sendControl: (_) {}, sendStatus: (_) {});
+      reconciler.start();
+      player.becomeReady();
+      player.advancePosition(60000 + offMs);
+      playingAt(60000);
+    }
+
+    test('most of a second behind: 10% fast, and no seek', () {
+      fakeAsync((async) {
+        startAt(-800, async);
+        expect(player.rate, 1.10);
+        expect(player.currentPosition, 59200, reason: 'no seek');
+        reconciler.stop();
+      });
+    });
+
+    test('a little ahead: 5% slow', () {
+      fakeAsync((async) {
+        startAt(300, async);
+        expect(player.rate, 0.95);
+        reconciler.stop();
+      });
+    });
+
+    test('within what the clocks can tell apart: real time', () {
+      fakeAsync((async) {
+        startAt(-100, async);
+        expect(player.rate, 1.0);
+        reconciler.stop();
+      });
+    });
+
+    test('once nudging, it keeps on until nearly there, then back to real time', () {
+      fakeAsync((async) {
+        startAt(-300, async);
+        expect(player.rate, 1.05);
+        player.advancePosition(200); // 100 behind: still closing
+        playingAt(60000);
+        expect(player.rate, 1.05);
+        player.advancePosition(70); // 30 behind
+        playingAt(60000);
+        expect(player.rate, 1.0);
+        reconciler.stop();
+      });
+    });
+
+    test('real time again while buffering, paused, or once the room stops', () {
+      fakeAsync((async) {
+        startAt(-800, async);
+        player.setBuffering(true);
+        playingAt(60000);
+        expect(player.rate, 1.0, reason: 'buffering');
+        player.setBuffering(false);
+        playingAt(60000);
+        expect(player.rate, 1.10);
+        reconciler.stop();
+        expect(player.rate, 1.0, reason: 'stopped');
+      });
+    });
+
+    test('a paused room is real time — and lined up by a seek, as before', () {
+      fakeAsync((async) {
+        startAt(-800, async);
+        playingAt(60000, phase: PlaybackPhase.paused);
+        expect(player.rate, 1.0);
+        expect(player.currentPosition, 60000);
+        reconciler.stop();
+        expect(player.rate, 1.0, reason: 'stopped');
+      });
+    });
+
+    test('past the deadband it seeks, at real time', () {
+      fakeAsync((async) {
+        startAt(-3000, async);
+        expect(player.rate, 1.0);
+        expect(player.currentPosition, greaterThanOrEqualTo(60000), reason: 'a seek to the host');
+        reconciler.stop();
+      });
+    });
+  });
 }

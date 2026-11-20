@@ -73,6 +73,11 @@ class VideoPlayerSyncedPlayer implements SyncedPlayer {
     controller.pause();
   }
 
+  /// ExoPlayer keeps the pitch as the speed changes. video_player applies
+  /// it now if playing, else on the next play().
+  @override
+  void setPlaybackRate(double rate) => unawaited(controller.setPlaybackSpeed(rate));
+
   @override
   void seekTo(int positionMs) {
     controller.seekTo(Duration(milliseconds: positionMs));

@@ -458,6 +458,11 @@ class HostPlaybackCoordinator {
     );
 
     if (delayMs <= 0 && player.isPlaying) return;
+    // A play press starts this player at once, but the room starts
+    // [delayMs] from now: left running, it got that far ahead, the start
+    // seeked it back, the seek rebuffered, and a rebuffer just after a seek
+    // stalls the host — the room waited on its own host before it began.
+    if (delayMs > 0) _setPaused();
 
     final startMs = startPositionMs;
     _pendingStartTimer = Timer(Duration(milliseconds: delayMs), () {

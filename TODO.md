@@ -102,9 +102,17 @@ Decided and done (same branch, 2026-11-19), each with a journey or test:
 
 Still open:
 
-- [ ] **Slow settles in the sync fuzzer:** 2 of 1000 rooms (seeds 447,
+- [x] **Slow settles in the sync fuzzer:** 2 of 1000 rooms (seeds 447,
   600) take over 30 s — a guest sits ~1 s off the host until a late
-  correction. Was 4 of 1000 before the late-joiner change. Same class as
-  the known drift follow-up (rate-nudging).
+  correction. (Fixed 2026-11-19 by rate nudging: guests close gaps under
+  the seek deadband by playing 5-10% fast or slow. The fuzzer now also
+  demands the same frame at the end, 250 ms; 0 of 1000 fail.)
+- [ ] **Seed 1975 thrashes** (`SYNC_FUZZ_SEED=1975`): 42 corrective seeks
+  for 10 actions, with four devices and a 2.5 s-seeking guest. Same count
+  before and after rate nudging, so not caused by it. Look before a
+  release; 1 of 3000 rooms.
+- [ ] **Try rate nudging on the Shield.** The simulator says a second's gap
+  closes in ~10 s; check it's not audible/visible on a real TV and that
+  ExoPlayer's setPlaybackSpeed over an HLS transcode doesn't rebuffer.
 - [ ] **The undo chip doesn't animate the hold** (the handoff's 4% draw-in
   and desaturate over the 600 ms hold).

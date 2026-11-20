@@ -25,6 +25,19 @@ class GuestPlaybackReconciler {
   // sorts out by waiting for this guest where it lands.
   static const _inFlightRetargetMs = 10000;
 
+  // Inside the deadband a seek costs more than it fixes (a rebuffer, on a
+  // remote transcode seconds of one), so the gap is closed by playing a
+  // little fast or slow instead. Start past [_nudgeStartMs] — about what
+  // the clock sync and a 100ms position poll can tell apart — and stop
+  // once inside [_nudgeStopMs]. Bigger gaps get the bigger step, so a
+  // second closes in about ten seconds; 5-10% is too little to see and,
+  // with the pitch held, hard to hear.
+  static const _nudgeStartMs = 150;
+  static const _nudgeStopMs = 50;
+  static const _nudgeBigMs = 500;
+  static const _nudgeSmallRate = 0.05;
+  static const _nudgeBigRate = 0.10;
+
   final String myPeerId;
   final SyncedPlayer player;
   final ClockSync clock;
@@ -66,6 +79,9 @@ class GuestPlaybackReconciler {
   int _seekLeadMs = 0;
   bool _disposed = false;
 
+  /// The rate this player was last set to (1.0 unless nudging).
+  double _rate = 1.0;
+
   bool _isSeekSuppressed() => nowMs() < _suppressSeekUntilMs;
 
   void _suppressedSeek(void Function() block) {
@@ -86,7 +102,27 @@ class GuestPlaybackReconciler {
     return false;
   }
 
+  void _setRate(double rate) {
+    if (rate == _rate) return;
+    _rate = rate;
+    player.setPlaybackRate(rate);
+  }
+
+  /// Plays faster (behind the host) or slower (ahead) until within
+  /// [_nudgeStopMs]; real time otherwise.
+  void _nudge(int driftMs) {
+    final off = driftMs.abs();
+    final nudging = _rate != 1.0;
+    if (off <= _nudgeStopMs || (!nudging && off < _nudgeStartMs)) {
+      _setRate(1.0);
+      return;
+    }
+    final step = off >= _nudgeBigMs ? _nudgeBigRate : _nudgeSmallRate;
+    _setRate(driftMs > 0 ? 1.0 - step : 1.0 + step);
+  }
+
   void _setPaused() {
+    _setRate(1.0);
     if (player.isPlaying) {
       _expectPlayWhenReady(false);
       player.pause();
@@ -149,6 +185,7 @@ class GuestPlaybackReconciler {
     _tickTimer?.cancel();
     _settleTimer?.cancel();
     _scheduledStartTimer?.cancel();
+    _setRate(1.0);
     sendStatus(const PeerStatus(ready: false, buffering: false, positionMs: 0));
   }
 
@@ -229,8 +266,16 @@ class GuestPlaybackReconciler {
     _setPlaying();
 
     if (_seekLanding(targetMs)) return;
+    if (player.playbackState == SyncPlaybackState.buffering) {
+      _setRate(1.0);
+      return;
+    }
     final drift = player.currentPosition - targetMs;
-    if (drift.abs() <= _deadbandMs) return;
+    if (drift.abs() <= _deadbandMs) {
+      _nudge(drift);
+      return;
+    }
+    _setRate(1.0);
     if (!_cooldownElapsed()) return;
     var leadTargetMs = targetMs + _seekLeadMs;
     if (duration > 0 && leadTargetMs > duration) leadTargetMs = duration;

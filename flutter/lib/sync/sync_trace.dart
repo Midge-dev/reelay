@@ -90,6 +90,12 @@ class TracingSyncedPlayer implements SyncedPlayer {
   }
 
   @override
+  void setPlaybackRate(double rate) {
+    trace.record('call', {'op': 'rate', 'value': rate, 'pos': inner.currentPosition});
+    inner.setPlaybackRate(rate);
+  }
+
+  @override
   void addListener(SyncedPlayerListener listener) => inner.addListener(listener);
   @override
   void removeListener(SyncedPlayerListener listener) => inner.removeListener(listener);

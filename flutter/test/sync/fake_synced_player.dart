@@ -51,6 +51,12 @@ class FakeSyncedPlayer implements SyncedPlayer {
     }
   }
 
+  /// The last rate the engine asked for.
+  double rate = 1.0;
+
+  @override
+  void setPlaybackRate(double rate) => this.rate = rate;
+
   @override
   void addListener(SyncedPlayerListener listener) => _listeners.add(listener);
 
@@ -70,6 +76,20 @@ class FakeSyncedPlayer implements SyncedPlayer {
     _playbackState = buffering ? SyncPlaybackState.buffering : SyncPlaybackState.ready;
     for (final l in List.of(_listeners)) {
       l.onPlaybackStateChanged?.call(_playbackState);
+    }
+  }
+
+  /// Test helper: the person presses play or pause on the remote — the
+  /// player changes at once and says it was them, as
+  /// VideoPlayerSyncedPlayer does.
+  void pressPlay() => _press(true);
+  void pressPause() => _press(false);
+
+  void _press(bool playing) {
+    if (_isPlaying == playing) return;
+    _isPlaying = playing;
+    for (final l in List.of(_listeners)) {
+      l.onPlayWhenReadyChanged?.call(playing, true);
     }
   }
 

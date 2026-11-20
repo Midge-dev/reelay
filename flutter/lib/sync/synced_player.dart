@@ -23,6 +23,11 @@ abstract class SyncedPlayer {
   void pause();
   void seekTo(int positionMs);
 
+  /// Plays a little faster or slower than real time (1.0) — how a guest
+  /// closes a small gap to the host without a seek (and the rebuffer one
+  /// costs). The pitch stays put. Nothing reports it back.
+  void setPlaybackRate(double rate);
+
   void addListener(SyncedPlayerListener listener);
   void removeListener(SyncedPlayerListener listener);
 }

@@ -2,6 +2,8 @@ import 'package:fake_async/fake_async.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:reelay/sync/host_playback_coordinator.dart';
 import 'package:reelay/sync/playback_state.dart';
+import 'package:reelay/sync/synced_player.dart';
+import 'package:reelay/sync/time_utils.dart';
 
 import 'fake_synced_player.dart';
 
@@ -105,6 +107,35 @@ void main() {
       expect(player.isPlaying, isFalse);
       expect(broadcasts.last.phase, PlaybackPhase.waitingForPeers);
 
+      coordinator.stop();
+    });
+  });
+
+  test("the host's own play press waits for the room's start time, at the start spot — no seek back, no rebuffer", () {
+    fakeAsync((async) {
+      final player = FakeSyncedPlayer();
+      final broadcasts = <PlaybackState>[];
+      final seeks = <int>[];
+      player.addListener(SyncedPlayerListener(onSeek: seeks.add));
+      final coordinator = HostPlaybackCoordinator(myPeerId: 'host', player: player, sendState: broadcasts.add);
+      coordinator.start();
+      coordinator.onPeerJoined('guest');
+      coordinator.onPeerStatus('guest', const PeerStatus(ready: true, buffering: false, positionMs: 0));
+      player.becomeReady();
+      async.elapse(const Duration(seconds: 2)); // the room starts
+      player.pressPause();
+      async.elapse(const Duration(seconds: 1));
+      seeks.clear();
+
+      player.pressPlay(); // the player starts at once, as ExoPlayer does
+      async.elapse(const Duration(milliseconds: 1));
+      expect(broadcasts.last.phase, PlaybackPhase.playing);
+      expect(broadcasts.last.anchorHostTimeMs, greaterThan(nowMs()), reason: 'the room starts a moment from now');
+      expect(player.isPlaying, isFalse, reason: 'held at the start spot until then, not running ahead of the room');
+
+      async.elapse(const Duration(seconds: 1));
+      expect(player.isPlaying, isTrue, reason: 'playing from the start time');
+      expect(seeks, isEmpty, reason: 'nothing to seek back from');
       coordinator.stop();
     });
   });

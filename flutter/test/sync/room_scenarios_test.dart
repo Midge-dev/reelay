@@ -22,7 +22,24 @@ void main() {
     if (maxSyncSeeks != null) {
       expect(r.totalSyncSeeks, lessThanOrEqualTo(maxSyncSeeks), reason: 'too many corrective seeks\n$why');
     }
+    expect(r.endOffHostMs(), lessThanOrEqualTo(RoomResult.tightMs), reason: 'settled, but not on the same frame\n$why');
   }
+
+  group('drift', () {
+    test('a guest that hiccups for a second catches up without a seek', () {
+      // A 1s stall is under the host's stall grace (2.5s), so the room
+      // plays on and the guest comes back a second behind — inside the
+      // seek deadband, where nothing used to correct it at all.
+      final r = runRoom(const Scenario('one-second hiccup', devices: [
+        host,
+        DeviceSpec('guest'),
+      ], actions: [
+        Stall(15000, 'guest', 1000),
+      ]));
+      expectSettles(r, maxSyncSeeks: 2);
+      expect(r.syncSeeks['guest'] ?? 0, lessThanOrEqualTo(1), reason: 'only its arrival seek: speed brings it back\n${r.describe()}');
+    });
+  });
 
   group('starting a room', () {
     test('everyone opens at the same spot', () {

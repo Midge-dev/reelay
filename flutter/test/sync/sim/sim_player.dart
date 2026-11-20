@@ -11,16 +11,17 @@ class PlayerProfile {
   final int seekLatencyMinMs;
   final int seekLatencyMaxMs;
 
-  /// `video_player` reports position by polling the platform every 500ms
-  /// while playing (and not at all while paused); a seek's new position
-  /// shows once the platform call returns, [seekReportMs] later.
+  /// `video_player` reports position by polling the platform every 100ms
+  /// while playing (2.14: `Timer.periodic(100ms)`; not at all while
+  /// paused); a seek's new position shows once the platform call returns,
+  /// [seekReportMs] later.
   final int positionPollMs;
   final int seekReportMs;
 
   const PlayerProfile({
     this.seekLatencyMinMs = 0,
     this.seekLatencyMaxMs = 0,
-    this.positionPollMs = 500,
+    this.positionPollMs = 100,
     this.seekReportMs = 40,
   });
 
@@ -87,6 +88,8 @@ class SimPlayer implements SyncedPlayer {
   final List<SyncedPlayerListener> _listeners = [];
 
   bool _isPlaying = false;
+  double _rate = 1.0;
+  double _carryMs = 0;
   int _truePos;
   int _reportedPos;
   bool _seekBuffering = false;
@@ -95,6 +98,7 @@ class SimPlayer implements SyncedPlayer {
   bool _disposed = false;
 
   int get truePosition => _truePos;
+  double get rate => _rate;
 
   @override
   int get duration => durationMs;
@@ -107,7 +111,11 @@ class SimPlayer implements SyncedPlayer {
 
   void _tick() {
     if (_isPlaying && _state == SyncPlaybackState.ready) {
-      _truePos = min(_truePos + _tickMs, durationMs);
+      // At a nudged rate a tick moves the picture a little more or less.
+      _carryMs += _tickMs * _rate;
+      final step = _carryMs.floor();
+      _carryMs -= step;
+      _truePos = min(_truePos + step, durationMs);
       if (profile.positionPollMs <= 0) {
         _reportedPos = _truePos;
       } else {
@@ -180,6 +188,9 @@ class SimPlayer implements SyncedPlayer {
       _updateState();
     });
   }
+
+  @override
+  void setPlaybackRate(double rate) => _rate = rate;
 
   /// The network hiccups: buffer for [ms] without moving.
   void stall(int ms) {

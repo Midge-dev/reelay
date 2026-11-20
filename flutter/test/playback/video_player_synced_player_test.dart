@@ -116,6 +116,18 @@ void main() {
     });
   });
 
+  testWidgets('setPlaybackRate reaches the platform while playing (a guest nudging)', (tester) async {
+    final fake = FakeVideoPlayerPlatform();
+    final player = VideoPlayerSyncedPlayer(await _initializedController(fake));
+    player.play();
+    await tester.pump();
+    player.setPlaybackRate(1.05);
+    await tester.pump();
+    expect(fake.calls, contains('speed:1.05'));
+    player.pause();
+    await tester.pump();
+  });
+
   group('seekTo', () {
     testWidgets('delegates to the controller and fires onSeek synchronously', (tester) async {
       final fake = FakeVideoPlayerPlatform();

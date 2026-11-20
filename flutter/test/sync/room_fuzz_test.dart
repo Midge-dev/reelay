@@ -41,6 +41,8 @@ String? _problem(RoomResult r) {
   if (t == null) return 'never settled';
   if (t > r.scenario.settleMs) return 'took ${t}ms to settle';
   if (!r.endsPlaying) return 'ended paused';
+  final off = r.endOffHostMs();
+  if (off > RoomResult.tightMs) return 'settled ${off}ms off the host';
   // Each scrub step is a seek of its own that every device has to follow.
   final actions = r.scenario.devices.length +
       r.scenario.actions.fold<int>(0, (n, a) => n + (a is Scrub ? a.steps : 1));

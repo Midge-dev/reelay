@@ -116,7 +116,7 @@ class FakeVideoPlayerPlatform extends VideoPlayerPlatform {
   Future<void> setVolume(int playerId, double volume) async {}
 
   @override
-  Future<void> setPlaybackSpeed(int playerId, double speed) async {}
+  Future<void> setPlaybackSpeed(int playerId, double speed) async => calls.add('speed:$speed');
 
   @override
   Future<void> seekTo(int playerId, Duration position) async {

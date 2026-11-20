@@ -256,6 +256,46 @@ class RoomResult {
 
   bool get endsPlaying => samples.isNotEmpty && samples.last.hostPhase == PlaybackPhase.playing;
 
+  /// Once the room has had its time to settle, how far any device still is
+  /// from the host: the worst of the last [lastMs]. In sync means the same
+  /// frame, near enough to watch together — not just inside [inSyncMs].
+  ///
+  /// Less what no engine could see: clock sync measures a round trip and
+  /// splits it evenly, so a path slower one way than the other leaves a
+  /// guest's clock off by half the difference ([unmeasurableClockErrorMs]).
+  /// NTP has the same blind spot.
+  int endOffHostMs({int lastMs = 5000}) {
+    if (samples.isEmpty) return 0;
+    final from = samples.last.t - lastMs;
+    final hostName = scenario.devices.first.name;
+    var worst = 0;
+    for (final sample in samples.where((s) => s.t >= from)) {
+      final hostPos = sample.devices[hostName]?.pos;
+      if (hostPos == null) continue;
+      for (final MapEntry(key: name, value: d) in sample.devices.entries) {
+        final off = (d.pos - hostPos).abs() - unmeasurableClockErrorMs(name);
+        worst = max(worst, off);
+      }
+    }
+    return worst;
+  }
+
+  /// Guest to host and back both go through the relay: there, the guest's
+  /// uplink and the host's downlink; back, the host's uplink and the
+  /// guest's downlink. Half the difference is invisible to clock sync.
+  int unmeasurableClockErrorMs(String device) {
+    final host = scenario.devices.first;
+    final guest = scenario.devices.firstWhere((d) => d.name == device);
+    if (identical(guest, host)) return 0;
+    final there = guest.link.upMs + host.link.downMs;
+    final back = host.link.upMs + guest.link.downMs;
+    return (there - back).abs() ~/ 2;
+  }
+
+  /// What "the same frame" means at the end of a room: off by less than a
+  /// few frames' worth of lip sync anyone would notice.
+  static const tightMs = 250;
+
   /// What went wrong, in enough detail to see why: the scenario, the
   /// numbers, how the room looked once a second near the end, and the last
   /// stretch of every device's trace interleaved.

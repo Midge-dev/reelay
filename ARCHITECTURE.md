@@ -130,9 +130,10 @@ reports buffering separately from ready/play intent.
 `HostPlaybackCoordinator` and `GuestPlaybackReconciler` follow a Dart
 reference implementation (Plezy): the same phase machine and
 peer-status-driven stall gating, but without per-media epochs (each
-`PlayerScreen` is already scoped to one title), RTT-adaptive start delay, or
-rate-based drift nudging — a fixed start delay and hard-seek-only
-correction instead.
+`PlayerScreen` is already scoped to one title) or RTT-adaptive start delay —
+a fixed start delay instead. Drift is corrected two ways: a hard seek past
+the deadband, and inside it, playing a little fast or slow
+(`SyncedPlayer.setPlaybackRate`; ExoPlayer holds the pitch).
 
 Tuning with history behind it:
 
@@ -141,11 +142,23 @@ Tuning with history behind it:
   sustaining the transcode bitrate — every buffer pausing the whole room is
   far more visible than one client buffering quietly. A chronically
   insufficient bitrate needs fixing in Settings, not a bigger number here.
-- The guest deadband (`_deadbandMs`, 1500 ms) started at 350 ms. Without
-  rate nudging, a hard seek is the only correction, and normal WAN
-  clock-sync jitter across a relayed, cross-household connection routinely
-  exceeds a few hundred milliseconds — at 350 ms nearly every cooldown
-  cycle caused a disruptive re-seek and rebuffer.
+- The guest deadband (`_deadbandMs`, 1500 ms) started at 350 ms. With a
+  hard seek the only correction, normal WAN clock-sync jitter across a
+  relayed, cross-household connection routinely exceeds a few hundred
+  milliseconds — at 350 ms nearly every cooldown cycle caused a disruptive
+  re-seek and rebuffer. But at 1500 ms nothing corrected a gap under it at
+  all, and a guest could watch a second behind for a whole film (a 1 s
+  hiccup is under the host's stall grace, so the room plays on). Since
+  2026-11-19 the guest closes such a gap by rate: 5% from 150 ms off, 10%
+  from 500 ms, back to real time inside 50 ms — a second in about ten
+  seconds, with no rebuffer. Seeks stay for anything past the deadband.
+- The host holds its own player at the start spot through the start delay
+  (`_startDelayMs`, 750 ms). A play press starts ExoPlayer at once; left
+  running, the host got that far ahead, the start seeked it back, the seek
+  rebuffered, and a rebuffer just after a seek stalls the host — so the room
+  began by waiting on its own host. Found 2026-11-19 by a whole-app journey
+  once the guest started nudging; it's the same play → seek back → buffer
+  shape as that night's on-device loop.
 - `_intendedPlaying` defaults to `true`: the player starts playing on
   creation, before the coordinator is listening, so a `false` default meant
   every session needed a manual Play press to get going.
@@ -212,7 +225,12 @@ per-link delay and jitter. `room_scenarios_test.dart` covers things that
 happen in real rooms; `room_fuzz_test.dart` runs random rooms from seeds
 (`SYNC_FUZZ_SEED=n` replays one, `SYNC_FUZZ_RUNS=2000` for a deeper run).
 A room passes when every guest is within 2 s of the host, all doing the same
-thing, soon after the last action, without excessive corrective seeks.
+thing, soon after the last action, without excessive corrective seeks — and
+then ends on the host's frame: within 250 ms, less what clock sync can't
+see (half the difference between a link's two directions; NTP has the same
+blind spot). On that bar the hard-seek-only guest failed 444 of 1000 random
+rooms; with rate nudging, none (1 of 3000, seed 1975, thrashes with seeks
+the same way on both).
 
 The simulation can't tell you what real players and servers do — how long
 a transcode really takes to seek, whether ExoPlayer reports buffering on
