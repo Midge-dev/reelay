@@ -2,6 +2,7 @@ import 'package:flutter/widgets.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 
 import '../../data/settings/app_settings.dart';
+import '../../focus/arrow_to.dart';
 import '../../kit/button.dart';
 import '../../kit/icon.dart';
 import '../../kit/text.dart';
@@ -89,11 +90,13 @@ class RelaySettingsPane extends StatelessWidget {
                     // The kit's text action, so it gets the system's padding
                     // and focus treatment — the hand-rolled stadium had
                     // neither, and clipped its own chevron.
-                    child: AppGhostButton(
-                      onClick: onBack,
-                      focusNode: backFocus,
-                      dense: true,
-                      child: const AppText('‹ Settings', color: null),
+                    child: NearestRowTraversal(
+                      child: AppGhostButton(
+                        onClick: onBack,
+                        focusNode: backFocus,
+                        dense: true,
+                        child: const AppText('‹ Settings', color: null),
+                      ),
                     ),
                   ),
                   AppText('Relay settings', style: AppTypography.title1),
@@ -111,24 +114,31 @@ class RelaySettingsPane extends StatelessWidget {
                   for (final entry in settings.relays)
                     Padding(
                       padding: EdgeInsets.only(bottom: 12.du(context)),
-                      child: RelayRow(
-                        entry: entry,
-                        status: relayStatuses[entry.id],
-                        onMakeDefault: () => onMakeDefault(entry),
-                        onEdit: () => onEdit(entry),
-                        onRemove: () => onRemove(entry),
+                      // A row's buttons sit at its far right, and plain
+                      // traversal from anything at the left (‹ Settings,
+                      // Add a relay) jumped straight past them.
+                      child: NearestRowTraversal(
+                        child: RelayRow(
+                          entry: entry,
+                          status: relayStatuses[entry.id],
+                          onMakeDefault: () => onMakeDefault(entry),
+                          onEdit: () => onEdit(entry),
+                          onRemove: () => onRemove(entry),
+                        ),
                       ),
                     ),
-                  AppOutlinedButton(
-                    onClick: onAddRelay,
-                    focusNode: addRelayFocus,
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const AppIcon(PhosphorIconsRegular.plus, size: 22),
-                        SizedBox(width: AppSpacing.md.du(context)),
-                        const AppText('Add a relay', color: null),
-                      ],
+                  NearestRowTraversal(
+                    child: AppOutlinedButton(
+                      onClick: onAddRelay,
+                      focusNode: addRelayFocus,
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const AppIcon(PhosphorIconsRegular.plus, size: 22),
+                          SizedBox(width: AppSpacing.md.du(context)),
+                          const AppText('Add a relay', color: null),
+                        ],
+                      ),
                     ),
                   ),
                   if (pairingError != null)

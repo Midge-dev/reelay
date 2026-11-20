@@ -28,9 +28,10 @@
 - [ ] **Collections tab is empty on Jellyfin libraries.** Jellyfin keeps
   collections (BoxSets) in their own view, not under a library, so
   `JellyfinClient.fetchCollections` returns nothing. Opening one works.
-- [ ] **Next-episode cards can't be removed from Continue Watching** on
+- [x] **Next-episode cards can't be removed from Continue Watching** on
   Jellyfin — they have no position to clear and Jellyfin has no "hide".
-  Part-watched titles remove fine.
+  (Fixed 2026-11-19: the TV keeps a per-profile list of hidden Next Up
+  episodes, `AppSettings.hiddenNextUp`; watching on brings the show back.)
 - [ ] **Watchlist as two labeled rows** (Plex Watchlist + Jellyfin
   Favorites) once the design is mocked; today they're one merged list.
 - [ ] **No reviews on Jellyfin titles** — Jellyfin doesn't keep them. Decide
@@ -51,9 +52,10 @@
   transcodes for burn-in or a failed direct play, so picking 2 Mbps on a
   4 Mbps file still direct-plays. Decide whether a cap below the file's
   bitrate should transcode.
-- [ ] **Relay settings rows are skipped by Up/Down** — their buttons sit far
+- [x] **Relay settings rows are skipped by Up/Down** — their buttons sit far
   right, so vertical moves from "‹ Settings" / "Add a relay" jump past them.
-  Only Right reaches them.
+  Only Right reaches them. (Fixed 2026-11-19 with NearestRowTraversal;
+  journey in remote_journeys_test.dart.)
 - [x] **The player stays on the last frame** at the end of a movie instead
   of closing. (Fixed on `qa-journeys-ux-polish`: it reports the end, which
   marks the title watched, and leaves; an episode with Up Next goes on.)

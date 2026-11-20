@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:reelay/data/settings/app_settings.dart';
 import 'package:video_player_platform_interface/video_player_platform_interface.dart';
 
 import '../playback/fake_video_player_platform.dart';
@@ -142,6 +143,22 @@ void main() {
       expect(j.shows('Took Andor off the list'), isTrue, reason: j.why('the chip restates for the rest'));
     });
 
+    journey("a Next Up episode stays off once Undo runs out — Jellyfin has no hide, so the TV keeps it", (j) async {
+      await j.down(); // More in progress: Severance 1x2, Next Up (no position)
+      j.expectFocusOn('50 min left');
+      await j.holdSelect();
+      await j.wait(const Duration(seconds: 9));
+
+      await j.openFromRail('Home'); // Home loads again from the server
+      await j.wait(const Duration(seconds: 1));
+      expect(j.shows('50 min left'), isFalse, reason: j.why('the server still lists it, but it was taken off: ${j.screenTexts()}'));
+
+      j.server.nextUpEpisode = (1, 3); // you watched on, on another device
+      await j.openFromRail('Home');
+      await j.wait(const Duration(seconds: 1));
+      expect(j.shows('S1 E3 · 50 min left'), isTrue, reason: j.why('a new next episode is a new card'));
+    });
+
     journey('Continue Watching works the same way', (j) async {
       await j.down(); // More in progress: Severance 1x2
       j.expectFocusOn('50 min left');
@@ -236,6 +253,64 @@ void main() {
         j.expectFocusOn('Contact');
       },
       server: () => FakeJellyfin(unfindable: {'m3'}),
+    );
+  });
+
+  group('Settings', () {
+    journey('every category fits on screen, Appearance included', (j) async {
+      await j.openFromRail('Settings');
+      await j.realTime();
+      await j.wait(const Duration(seconds: 1));
+      for (final category in ['Playback', 'Subtitles', 'Servers', 'Appearance', 'Display', 'Profiles', 'About']) {
+        await j.down();
+        j.expectFocusOn(category);
+        await j.wait(const Duration(milliseconds: 500));
+      }
+      // The harness fails the journey on any overflow along the way.
+    });
+
+    journey(
+      'relay settings: Up and Down reach every relay row, not only Right',
+      (j) async {
+        await j.openFromRail('Settings');
+        await j.realTime();
+        await j.wait(const Duration(seconds: 1));
+        await j.right(); // into Watch Together, the first category
+        for (var i = 0; i < 4 && !j.focusedTexts().any((t) => t.contains('Relay server')); i++) {
+          await j.down();
+        }
+        j.expectFocusOn('Relay server');
+        await j.select();
+        await j.wait(const Duration(seconds: 1));
+        j.expectFocusOn('Settings', because: 'the pane opens on its back button');
+
+        double rowOf(String nickname) => j.tester.getRect(find.text(nickname).first).top;
+        bool inRow(String nickname, String other) {
+          final top = j.focusedRect()!.top;
+          return (top - rowOf(nickname)).abs() < (top - rowOf(other)).abs();
+        }
+
+        await j.down();
+        j.expectFocusOn('Edit', because: "Down from '‹ Settings' lands in the first relay's row");
+        expect(inRow('Test relay', 'Cabin Pi'), isTrue, reason: j.why('the first row, not the second'));
+        await j.down();
+        j.expectFocusOn('Edit', because: 'Down from Edit goes to the Edit below it');
+        expect(inRow('Cabin Pi', 'Test relay'), isTrue, reason: j.why("the second relay's row"));
+        await j.down();
+        j.expectFocusOn('Add a relay');
+        await j.up();
+        j.expectFocusOn('Make default', because: "Up from Add a relay: the second row, its nearest button");
+        await j.up();
+        j.expectFocusOn('Edit');
+        expect(inRow('Test relay', 'Cabin Pi'), isTrue, reason: j.why('back in the first row'));
+        await j.up();
+        j.expectFocusOn('Settings');
+      },
+      relay: true,
+      settings: (s) => s.copyWith(relays: [
+        ...s.relays,
+        const RelayEntry(id: 'r2', nickname: 'Cabin Pi', url: 'ws://cabin.local:8080'),
+      ]),
     );
   });
 }

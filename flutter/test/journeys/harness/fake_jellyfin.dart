@@ -63,6 +63,10 @@ class FakeJellyfin {
         ],
   };
 
+  /// The episode Next Up offers, as (season, episode); Jellyfin works it
+  /// out from the last one played.
+  var nextUpEpisode = (1, 2);
+
   /// What playback reported, in order.
   final playbackReports = <PlaybackReport>[];
 
@@ -260,7 +264,8 @@ class FakeJellyfin {
         return FakeReply.json(_items([...movies, ..._allEpisodes].where((m) => resumeIds.contains(m['Id']))));
       case '/Shows/NextUp':
         final series = q['seriesId'];
-        final next = _allEpisodes.where((e) => (series == null || e['SeriesId'] == series) && e['IndexNumber'] == 2 && e['ParentIndexNumber'] == 1);
+        final (season, episode) = nextUpEpisode;
+        final next = _allEpisodes.where((e) => (series == null || e['SeriesId'] == series) && e['IndexNumber'] == episode && e['ParentIndexNumber'] == season);
         return FakeReply.json(_items(next.take(1)));
       case '/Items/Latest':
         return FakeReply.json(movies.reversed.take(6).map(_fresh).toList());

@@ -220,6 +220,12 @@ class AppSettings {
   /// which means the default order.
   final List<String> railOrder;
 
+  /// Next Up episodes taken off Continue Watching on a server that can't
+  /// hide them itself (Jellyfin), as `profile|server|item` — see
+  /// AppRootController.removeFromContinueWatching. Oldest first, capped.
+  final List<String> hiddenNextUp;
+  static const hiddenNextUpCap = 200;
+
   const AppSettings({
     this.relays = const [],
     this.maxHostSeats = defaultMaxHostSeats,
@@ -235,6 +241,7 @@ class AppSettings {
     this.uiScale = defaultUiScale,
     this.setupComplete = false,
     this.railOrder = const [],
+    this.hiddenNextUp = const [],
   });
 
   AppSettings copyWith({
@@ -252,6 +259,7 @@ class AppSettings {
     double? uiScale,
     bool? setupComplete,
     List<String>? railOrder,
+    List<String>? hiddenNextUp,
   }) {
     return AppSettings(
       relays: relays ?? this.relays,
@@ -268,6 +276,7 @@ class AppSettings {
       uiScale: uiScale ?? this.uiScale,
       setupComplete: setupComplete ?? this.setupComplete,
       railOrder: railOrder ?? this.railOrder,
+      hiddenNextUp: hiddenNextUp ?? this.hiddenNextUp,
     );
   }
 

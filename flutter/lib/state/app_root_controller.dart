@@ -1371,8 +1371,12 @@ class AppRootController extends ChangeNotifier {
     final recentActivity = <Sourced<MediaItem>>[];
     final suggestions = <Sourced<MediaItem>>[];
     for (final (cs, od, ra, rac, sug) in perServer) {
+      final hidden = currentSettings.hiddenNextUp.toSet();
       onDeckPerServer.add([
-        for (final i in od) Sourced(i, cs.server, cs.reachability),
+        for (final i in od)
+          if (!(_isNextUp(i) &&
+              hidden.contains(_hiddenNextUpKey(cs.server, i.id))))
+            Sourced(i, cs.server, cs.reachability),
       ]);
       recentlyAdded.addAll(
         ra.map((i) => Sourced(i, cs.server, cs.reachability)),
@@ -1512,7 +1516,30 @@ class AppRootController extends ChangeNotifier {
           .removeFromContinueWatching(target.value.id)
           .catchError((_) {}),
     );
+    // A Jellyfin Next Up episode has no position to clear and Jellyfin has
+    // no "hide", so the server would offer it again on the next load: this
+    // TV keeps it off instead, for this profile and this episode only —
+    // once you watch on, the next one is a new card.
+    if (target.server.backend == MediaBackend.jellyfin &&
+        _isNextUp(target.value)) {
+      final hidden = [
+        ...currentSettings.hiddenNextUp,
+        _hiddenNextUpKey(target.server, target.value.id),
+      ];
+      final capped = hidden.length > AppSettings.hiddenNextUpCap
+          ? hidden.sublist(hidden.length - AppSettings.hiddenNextUpCap)
+          : hidden;
+      unawaited(
+        _settingsStore.save(currentSettings.copyWith(hiddenNextUp: capped)),
+      );
+    }
   }
+
+  /// Not started: a show's next episode, not something part-watched.
+  static bool _isNextUp(MediaItem item) => (item.viewOffset ?? 0) <= 0;
+
+  String _hiddenNextUpKey(MediaServer server, String itemId) =>
+      '${_activeProfile?.id ?? ''}|${server.id}|$itemId';
 
   // ---- Player entry points ----
 

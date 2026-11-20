@@ -23,6 +23,7 @@ const _themeIdKey = 'theme_id';
 const _uiScaleKey = 'ui_scale';
 const _setupCompleteKey = 'setup_complete';
 const _railOrderKey = 'rail_order';
+const _hiddenNextUpKey = 'hidden_next_up';
 
 /// App settings over shared_preferences. shared_preferences has no change
 /// stream, so this wraps a BehaviorSubject that's seeded on construction
@@ -79,6 +80,7 @@ class SettingsStore {
           await _prefs.getDouble(_uiScaleKey) ?? AppSettings.defaultUiScale,
       setupComplete: await _prefs.getBool(_setupCompleteKey) ?? false,
       railOrder: await _prefs.getStringList(_railOrderKey) ?? const [],
+      hiddenNextUp: await _prefs.getStringList(_hiddenNextUpKey) ?? const [],
     );
     _subject.add(await _migrateLegacyRelayUrlIfNeeded(settings));
   }
@@ -203,6 +205,11 @@ class SettingsStore {
       await _prefs.setStringList(_railOrderKey, normalized.railOrder);
     } else {
       await _prefs.remove(_railOrderKey);
+    }
+    if (normalized.hiddenNextUp.isNotEmpty) {
+      await _prefs.setStringList(_hiddenNextUpKey, normalized.hiddenNextUp);
+    } else {
+      await _prefs.remove(_hiddenNextUpKey);
     }
 
     _subject.add(normalized);

@@ -651,10 +651,15 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 style: AppTypography.title2,
               ),
               if (_group == _Group.appearance) ...[
-                const Spacer(),
-                AppText(
-                  'Applies to every screen · takes effect at once',
-                  style: AppTypography.caption,
+                SizedBox(width: AppSpacing.lg.du(context)),
+                // Wraps under itself on a narrow pane (a bigger UI size)
+                // rather than running off the edge.
+                Expanded(
+                  child: AppText(
+                    'Applies to every screen · takes effect at once',
+                    style: AppTypography.caption,
+                    textAlign: TextAlign.end,
+                  ),
                 ),
               ],
             ],
@@ -985,10 +990,12 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         children: [
           AppIcon(PhosphorIconsRegular.info, size: 20, tint: AppColors.ink4),
           SizedBox(width: 14.du(context)),
-          AppText(
-            'Artwork is never tinted. Only the interface changes.',
-            style: AppTypography.caption,
-            color: AppColors.ink4,
+          Expanded(
+            child: AppText(
+              'Artwork is never tinted. Only the interface changes.',
+              style: AppTypography.caption,
+              color: AppColors.ink4,
+            ),
           ),
         ],
       ),

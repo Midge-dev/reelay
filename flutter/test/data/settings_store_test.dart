@@ -52,6 +52,15 @@ void main() {
     reloaded.dispose();
   });
 
+  test('Next Up episodes taken off Continue Watching survive a reload', () async {
+    final store = SettingsStore(SharedPreferencesAsync());
+    expect((await store.observe().first).hiddenNextUp, isEmpty);
+    await store.save((await store.observe().first).copyWith(hiddenNextUp: ['p1|jf-den|e2']));
+
+    final reloaded = SettingsStore(SharedPreferencesAsync());
+    expect((await reloaded.observe().first).hiddenNextUp, ['p1|jf-den|e2']);
+  });
+
   test('save persists the theme and re-emits through observe(), surviving a reload', () async {
     final store = SettingsStore(SharedPreferencesAsync());
     await store.observe().first;

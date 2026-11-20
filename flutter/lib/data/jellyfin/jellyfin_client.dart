@@ -268,7 +268,8 @@ class JellyfinClient implements MediaServerClient {
 
   /// Jellyfin has no "hide": clearing the saved position is what takes a
   /// part-watched title off Resume (Jellyfin's own apps do the same). A
-  /// Next Up episode has no position to clear, so it comes back.
+  /// Next Up episode has no position to clear, so the server offers it
+  /// again: AppRootController keeps it off on this TV (hiddenNextUp).
   @override
   Future<void> removeFromContinueWatching(String id) => _client.post<void>(
     '${server.baseUrl}/UserItems/$id/UserData',
