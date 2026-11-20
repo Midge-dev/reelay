@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:video_player/video_player.dart';
 
 import '../sync/synced_player.dart';
@@ -5,18 +7,24 @@ import '../sync/synced_player.dart';
 /// `SyncedPlayer` backed by `video_player`. Two platform limits, both
 /// checked against `video_player`'s actual source:
 ///
-/// - **No reason codes for play/pause changes.** ExoPlayer reports *why*
-///   `playWhenReady` changed (`PLAY_WHEN_READY_CHANGE_REASON_USER_REQUEST`
-///   vs. audio-focus-loss, etc.); `video_player`'s `VideoPlayerValue` only
-///   reports the new `isPlaying`, with no reason. In practice this doesn't
-///   cost anything: a "user request" just means "the app explicitly
-///   called play()/pause()" — which is true of every
-///   `isPlaying` change this adapter can observe, since nothing besides an
-///   explicit call (ours or the platform's own, e.g. another app briefly
-///   taking audio focus) changes it. So `isUserRequest` is always reported
-///   `true` here; [HostPlaybackCoordinator]/[GuestPlaybackReconciler]
-///   already filter out their *own* triggered changes via their
-///   `_expectPlayWhenReady` self-suppression window, not via this flag.
+/// - **No playWhenReady, only isPlaying.** ExoPlayer reports *why*
+///   `playWhenReady` changed; `video_player` forwards only ExoPlayer's
+///   `onIsPlayingChanged` — and ExoPlayer's `isPlaying` is false whenever
+///   it's buffering, though it still means to play. Passed on as is, every
+///   rebuffer looked like the user pressing pause and then play, and in a
+///   Watch Together room each fake press went out to everyone: a host's
+///   play hit a buffer, "paused" the room, "played" it again, and its own
+///   start-up seek rebuffered it again — a loop (trace
+///   test/sync/traces/2026-11-19-pause-loop). So this adapter keeps
+///   playWhenReady itself: it changes on [play]/[pause] (every press from
+///   the remote and every call the sync logic makes goes through them),
+///   on the end of the video, and when the platform stops playback for a
+///   reason of its own (another app taking audio focus) — an `isPlaying`
+///   false that isn't buffering and lasts [platformStopGrace]. A flip
+///   that buffering explains is ignored. Changes are reported with
+///   `isUserRequest: true`; [HostPlaybackCoordinator] and
+///   [GuestPlaybackReconciler] filter out their own calls with their
+///   `_expectPlayWhenReady` window, not with this flag.
 /// - **No seek/position-discontinuity event at all** (`VideoEventType` has
 ///   no such case — checked directly in the platform interface source).
 ///   But every seek in this app, whether the sync coordinator's own
@@ -30,12 +38,19 @@ class VideoPlayerSyncedPlayer implements SyncedPlayer {
 
   final VideoPlayerController controller;
 
+  /// How long the platform's `isPlaying` must stay false, without
+  /// buffering, before it counts as playback stopping. ExoPlayer can report
+  /// `isPlaying` false a moment before it reports buffering.
+  static const platformStopGrace = Duration(milliseconds: 600);
+
   final _listeners = <SyncedPlayerListener>[];
-  bool _lastIsPlaying = false;
+  bool _playWhenReady = false;
+  Timer? _platformStopCheck;
   SyncPlaybackState _lastPlaybackState = SyncPlaybackState.idle;
 
+  /// Whether playback is meant to be running — true through a rebuffer.
   @override
-  bool get isPlaying => controller.value.isPlaying;
+  bool get isPlaying => _playWhenReady;
 
   @override
   int get currentPosition => controller.value.position.inMilliseconds;
@@ -47,10 +62,16 @@ class VideoPlayerSyncedPlayer implements SyncedPlayer {
   SyncPlaybackState get playbackState => _derivePlaybackState(controller.value);
 
   @override
-  void play() => controller.play();
+  void play() {
+    _setPlayWhenReady(true);
+    controller.play();
+  }
 
   @override
-  void pause() => controller.pause();
+  void pause() {
+    _setPlayWhenReady(false);
+    controller.pause();
+  }
 
   @override
   void seekTo(int positionMs) {
@@ -63,7 +84,7 @@ class VideoPlayerSyncedPlayer implements SyncedPlayer {
   @override
   void addListener(SyncedPlayerListener listener) {
     if (_listeners.isEmpty) {
-      _lastIsPlaying = controller.value.isPlaying;
+      _playWhenReady = controller.value.isPlaying;
       _lastPlaybackState = _derivePlaybackState(controller.value);
       controller.addListener(_handleControllerChange);
     }
@@ -73,18 +94,45 @@ class VideoPlayerSyncedPlayer implements SyncedPlayer {
   @override
   void removeListener(SyncedPlayerListener listener) {
     _listeners.remove(listener);
-    if (_listeners.isEmpty) controller.removeListener(_handleControllerChange);
+    if (_listeners.isEmpty) {
+      controller.removeListener(_handleControllerChange);
+      _cancelPlatformStopCheck();
+    }
   }
+
+  void _setPlayWhenReady(bool playWhenReady) {
+    _cancelPlatformStopCheck();
+    if (playWhenReady == _playWhenReady) return;
+    _playWhenReady = playWhenReady;
+    for (final listener in List<SyncedPlayerListener>.of(_listeners)) {
+      listener.onPlayWhenReadyChanged?.call(playWhenReady, true);
+    }
+  }
+
+  void _cancelPlatformStopCheck() {
+    _platformStopCheck?.cancel();
+    _platformStopCheck = null;
+  }
+
+  /// Whether the platform has stopped playing for a reason other than
+  /// buffering or a call through this adapter.
+  bool _platformStopped(VideoPlayerValue value) => _playWhenReady && !value.isPlaying && !value.isBuffering;
 
   void _handleControllerChange() {
     final value = controller.value;
 
-    final isPlaying = value.isPlaying;
-    if (isPlaying != _lastIsPlaying) {
-      _lastIsPlaying = isPlaying;
-      for (final listener in List<SyncedPlayerListener>.of(_listeners)) {
-        listener.onPlayWhenReadyChanged?.call(isPlaying, true);
-      }
+    if (_playWhenReady && value.isCompleted) {
+      _setPlayWhenReady(false);
+    } else if (!_platformStopped(value)) {
+      _cancelPlatformStopCheck();
+    } else {
+      _platformStopCheck ??= Timer(platformStopGrace, () {
+        _platformStopCheck = null;
+        if (!_platformStopped(controller.value)) return;
+        // Settle the controller on paused too, so it doesn't start again
+        // by itself when the platform would let it (focus coming back).
+        pause();
+      });
     }
 
     final state = _derivePlaybackState(value);

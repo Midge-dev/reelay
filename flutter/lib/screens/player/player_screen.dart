@@ -475,11 +475,11 @@ class _PlayerScreenState extends State<PlayerScreen> {
       _controller = controller;
       _player = player;
       _sync = sync;
-      _isPlaying = controller.value.isPlaying;
+      _isPlaying = player.isPlaying;
       _durationMs = controller.value.duration.inMilliseconds;
     });
     sync.start();
-    controller.play();
+    player.play();
   }
 
   /// A transcode uses whatever audio and subtitle the part has selected on
@@ -596,7 +596,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
               .map((r) => r.end.inMilliseconds)
               .reduce((a, b) => a > b ? a : b);
     setState(() {
-      _isPlaying = value.isPlaying;
+      _isPlaying = _player?.isPlaying ?? value.isPlaying;
       _isBuffering = value.isBuffering;
       _positionMs = value.position.inMilliseconds;
       _durationMs = value.duration.inMilliseconds;
@@ -675,7 +675,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
     if (_movingOn || follow == null) return;
     _movingOn = true;
     _sync?.stop();
-    _controller?.pause();
+    _player?.pause();
     _reportStoppedHere();
     follow(to);
   }

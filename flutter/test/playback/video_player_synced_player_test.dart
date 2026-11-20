@@ -1,5 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:reelay/playback/video_player_synced_player.dart';
+import 'package:reelay/sync/host_playback_coordinator.dart';
+import 'package:reelay/sync/playback_state.dart';
 import 'package:reelay/sync/synced_player.dart';
 import 'package:video_player/video_player.dart';
 import 'package:video_player_platform_interface/video_player_platform_interface.dart';
@@ -159,6 +161,110 @@ void main() {
       await tester.pump();
 
       expect(states, isEmpty, reason: 'a buffered-range update alone does not change ready/buffering/ended');
+    });
+  });
+
+  // ExoPlayer's isPlaying is false while it buffers, and video_player
+  // forwards it as is. The 2026-11-19 room loop
+  // (test/sync/traces/2026-11-19-pause-loop) was every rebuffer reported
+  // as a pause and then a play.
+  group('buffering is not a pause', () {
+    Future<(FakeVideoPlayerPlatform, VideoPlayerSyncedPlayer, List<bool>)> playing(WidgetTester tester) async {
+      final fake = FakeVideoPlayerPlatform();
+      final player = VideoPlayerSyncedPlayer(await _initializedController(fake));
+      final changes = <bool>[];
+      player.addListener(SyncedPlayerListener(onPlayWhenReadyChanged: (playWhenReady, _) => changes.add(playWhenReady)));
+      player.play();
+      await tester.pump();
+      changes.clear();
+      return (fake, player, changes);
+    }
+
+    Future<void> rebuffer(WidgetTester tester, FakeVideoPlayerPlatform fake, {bool isPlayingFirst = false}) async {
+      final stop = VideoEvent(eventType: VideoEventType.isPlayingStateUpdate, isPlaying: false);
+      final start = VideoEvent(eventType: VideoEventType.bufferingStart);
+      for (final event in isPlayingFirst ? [stop, start] : [start, stop]) {
+        fake.emit(0, event);
+        await tester.pump();
+      }
+      await tester.pump(const Duration(seconds: 2));
+      fake.emit(0, VideoEvent(eventType: VideoEventType.bufferingEnd));
+      fake.emit(0, VideoEvent(eventType: VideoEventType.isPlayingStateUpdate, isPlaying: true));
+      await tester.pump();
+    }
+
+    testWidgets('a rebuffer while playing reports nothing, and isPlaying stays true through it', (tester) async {
+      final (fake, player, changes) = await playing(tester);
+      fake.emit(0, VideoEvent(eventType: VideoEventType.bufferingStart));
+      fake.emit(0, VideoEvent(eventType: VideoEventType.isPlayingStateUpdate, isPlaying: false));
+      await tester.pump();
+      expect(player.isPlaying, isTrue, reason: 'still meant to be playing');
+      await tester.pump(const Duration(seconds: 2));
+      fake.emit(0, VideoEvent(eventType: VideoEventType.bufferingEnd));
+      fake.emit(0, VideoEvent(eventType: VideoEventType.isPlayingStateUpdate, isPlaying: true));
+      await tester.pump();
+      expect(changes, isEmpty, reason: 'a rebuffer is not a pause and a play');
+      player.pause();
+      await tester.pump();
+    });
+
+    testWidgets('nor when the platform says isPlaying false a moment before it says buffering', (tester) async {
+      final (fake, player, changes) = await playing(tester);
+      await rebuffer(tester, fake, isPlayingFirst: true);
+      expect(changes, isEmpty);
+      player.pause();
+      await tester.pump();
+    });
+
+    testWidgets('pausing during a rebuffer is reported, and stays paused once it has buffered', (tester) async {
+      final (fake, player, changes) = await playing(tester);
+      fake.emit(0, VideoEvent(eventType: VideoEventType.bufferingStart));
+      fake.emit(0, VideoEvent(eventType: VideoEventType.isPlayingStateUpdate, isPlaying: false));
+      await tester.pump();
+      player.pause();
+      await tester.pump();
+      expect(changes, [false]);
+      expect(player.isPlaying, isFalse);
+      expect(fake.calls.last, 'pause', reason: 'the pause reaches the platform, not skipped because isPlaying read false');
+      fake.emit(0, VideoEvent(eventType: VideoEventType.bufferingEnd));
+      await tester.pump(const Duration(seconds: 1));
+      expect(changes, [false]);
+    });
+
+    testWidgets('the platform stopping playback by itself (not buffering) is reported after a moment', (tester) async {
+      final (fake, player, changes) = await playing(tester);
+      fake.emit(0, VideoEvent(eventType: VideoEventType.isPlayingStateUpdate, isPlaying: false));
+      await tester.pump();
+      expect(changes, isEmpty, reason: 'it might be about to say buffering');
+      await tester.pump(VideoPlayerSyncedPlayer.platformStopGrace);
+      expect(changes, [false]);
+      expect(player.isPlaying, isFalse);
+    });
+
+    testWidgets("a host whose own play hits a buffer doesn't pause the room (the 2026-11-19 loop)", (tester) async {
+      final (fake, player, _) = await playing(tester);
+      player.pause();
+      await tester.pump();
+      final broadcasts = <PlaybackState>[];
+      final coordinator = HostPlaybackCoordinator(myPeerId: 'host', player: player, sendState: broadcasts.add);
+      coordinator.start();
+      coordinator.onPeerJoined('guest');
+      coordinator.onPeerStatus('guest', const PeerStatus(ready: true, buffering: false, positionMs: 0));
+      await tester.pump(const Duration(seconds: 2));
+
+      player.play(); // the host presses play after a long pause
+      await tester.pump(const Duration(seconds: 2)); // the start-up delay
+      broadcasts.clear();
+      await rebuffer(tester, fake);
+      await tester.pump(const Duration(seconds: 5));
+
+      expect(broadcasts.where((b) => b.actionHint == PlaybackActionHint.pause), isEmpty,
+          reason: 'no one pressed pause: ${broadcasts.map((b) => '${b.phase.name}/${b.actionHint?.name}').toList()}');
+      expect(broadcasts.where((b) => b.actionHint == PlaybackActionHint.play), isEmpty, reason: 'nor play');
+      expect(broadcasts.last.phase, PlaybackPhase.playing);
+      coordinator.stop();
+      player.pause();
+      await tester.pump();
     });
   });
 }
