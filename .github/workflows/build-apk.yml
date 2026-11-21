@@ -28,9 +28,23 @@ jobs:
           flutter-version: "3.47.4"
           channel: stable
 
+      # Up to three tries: a runner sometimes fails to download Gradle or an
+      # Android dependency (16a2d42's build died 47 s in, with nothing in
+      # the commit touching Android, and built fine locally).
       - name: Build debug APK
         working-directory: flutter
-        run: flutter build apk --debug
+        run: |
+          for attempt in 1 2 3; do
+            if flutter build apk --debug; then
+              exit 0
+            fi
+            if [ "$attempt" -lt 3 ]; then
+              echo "::warning::Build debug APK failed (attempt $attempt of 3), retrying in 30 s"
+              sleep 30
+            fi
+          done
+          echo "::error::Build debug APK failed 3 times"
+          exit 1
 
       - name: Publish latest release
         uses: softprops/action-gh-release@v2
