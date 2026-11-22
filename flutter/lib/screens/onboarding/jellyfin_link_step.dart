@@ -15,7 +15,6 @@ import '../../theme/phosphor_icons.dart';
 import '../../theme/scale.dart';
 import '../../theme/tokens.dart';
 import '../../theme/typography.dart';
-import '../common/click_to_type_text_field.dart';
 import 'jellyfin_link_session.dart';
 import 'onboarding_frame.dart';
 
