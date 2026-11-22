@@ -11,7 +11,11 @@ import 'app_settings.dart';
 const _relayUrlKey = 'relay_url'; // legacy, pre-multi-relay
 const _relayEntriesKey = 'relay_entries';
 const _maxHostSeatsKey = 'max_host_seats';
-const _maxBitrateKey = 'max_video_bitrate_kbps';
+// The quality cap. 'max_video_bitrate_kbps' held it when it only touched
+// transcodes, defaulting to 8 Mbps; now that a cap transcodes a file above
+// it, no one gets that old default as one — everyone starts at Original.
+const _maxBitrateKey = 'quality_cap_kbps';
+const _legacyMaxBitrateKey = 'max_video_bitrate_kbps';
 const _forceBurnKey = 'force_burn_subtitles';
 const _matchFrameRateKey = 'match_frame_rate';
 const _showChatOverlayKey = 'show_chat_overlay';
@@ -174,6 +178,7 @@ class SettingsStore {
     }
     await _prefs.setInt(_maxHostSeatsKey, normalized.maxHostSeats);
     await _prefs.setInt(_maxBitrateKey, normalized.maxVideoBitrateKbps);
+    await _prefs.remove(_legacyMaxBitrateKey);
     await _prefs.setBool(_forceBurnKey, normalized.forceBurnSubtitles);
     await _prefs.setBool(_matchFrameRateKey, normalized.matchFrameRate);
     await _prefs.setBool(_phoneChatKey, normalized.phoneChat);

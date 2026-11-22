@@ -1,5 +1,6 @@
 import '../data/media/media_models.dart';
 import '../data/media/media_server_client.dart';
+import '../data/settings/app_settings.dart';
 
 const _burnRequiredSubtitleCodecs = {'pgs', 'vobsub', 'dvdsub'};
 // The sidecar formats video_player's caption files can parse (SubRip and
@@ -106,6 +107,7 @@ PlaybackDecision decidePlayback(
   int? subtitleStreamId, {
   bool forceBurn = false,
   bool forceTranscode = false,
+  int maxBitrateKbps = AppSettings.originalKbps,
 }) {
   if (detail.media.isEmpty) {
     throw StateError('No playable media found for ${detail.title}');
@@ -125,7 +127,11 @@ PlaybackDecision decidePlayback(
   }
   final requiresBurn = subtitleStreamId != null && (forceBurn || (chosenStream != null && _requiresBurn(chosenStream)));
 
-  if (requiresBurn || forceTranscode) {
+  // A cap below the file's own bitrate: transcode to stay under it. A file
+  // whose bitrate the server didn't give has nothing to compare against.
+  final overCap = maxBitrateKbps > 0 && (media.bitrateKbps ?? 0) > maxBitrateKbps;
+
+  if (requiresBurn || forceTranscode || overCap) {
     return Transcode(
       itemId: detail.id,
       partId: part.id,
@@ -150,8 +156,11 @@ int? firstSubtitleStreamId(MediaDetail detail) {
 }
 
 /// What a first press of Play does with [detail]; see [firstSubtitleStreamId].
-PlaybackDecision firstPlaybackDecision(MediaDetail detail, {bool forceBurn = false}) =>
-    decidePlayback(detail, firstSubtitleStreamId(detail), forceBurn: forceBurn);
+PlaybackDecision firstPlaybackDecision(
+  MediaDetail detail, {
+  bool forceBurn = false,
+  int maxBitrateKbps = AppSettings.originalKbps,
+}) => decidePlayback(detail, firstSubtitleStreamId(detail), forceBurn: forceBurn, maxBitrateKbps: maxBitrateKbps);
 
 int? defaultSubtitleStreamId(MediaDetail detail) {
   if (detail.media.isEmpty || detail.media.first.parts.isEmpty) return null;
@@ -201,7 +210,7 @@ String mediaUrl(
     partId: decision.partId,
     subtitleStreamId: decision.subtitleStreamId,
     audioStreamId: audioStreamId,
-    maxVideoBitrateKbps: maxVideoBitrateKbps,
+    maxVideoBitrateKbps: AppSettings.transcodeKbps(maxVideoBitrateKbps),
     sessionIdentifier: sessionIdentifier,
     sessionId: sessionId,
     offsetMs: offsetMs,

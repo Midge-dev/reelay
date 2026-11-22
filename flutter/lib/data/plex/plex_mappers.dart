@@ -152,6 +152,7 @@ extension PlexMediaToMedia on PlexMedia {
     container: container,
     videoResolution: videoResolution,
     audioChannels: audioChannels,
+    bitrateKbps: bitrate,
     parts: [for (final p in parts) p.toMedia()],
   );
 }

@@ -220,6 +220,10 @@ class MediaVersion {
   /// "4k", "1080", "720", "sd".
   final String? videoResolution;
   final int? audioChannels;
+
+  /// The whole file's bitrate, when the server says — what the quality cap
+  /// compares against (see decidePlayback).
+  final int? bitrateKbps;
   final List<MediaPart> parts;
 
   const MediaVersion({
@@ -228,6 +232,7 @@ class MediaVersion {
     this.container,
     this.videoResolution,
     this.audioChannels,
+    this.bitrateKbps,
     this.parts = const [],
   });
 }

@@ -161,7 +161,15 @@ class BitratePreset {
 }
 
 class AppSettings {
-  static const defaultMaxBitrateKbps = 8000;
+  /// "Original": no cap — files play directly when they can, and a
+  /// transcode that's needed anyway (a burn-in) runs at
+  /// [originalTranscodeKbps]. The default.
+  static const originalKbps = 0;
+  static const originalTranscodeKbps = 20000;
+  static const defaultMaxBitrateKbps = originalKbps;
+
+  /// What a transcode asks the server for under [capKbps].
+  static int transcodeKbps(int capKbps) => capKbps > 0 ? capKbps : originalTranscodeKbps;
   static const defaultMaxHostSeats = 8;
 
   // Screen 22's "UI Size" stepper — a manual multiplier on top of
@@ -177,7 +185,9 @@ class AppSettings {
   static const maxUiScale = 1.5;
   static const uiScaleStep = 0.05;
 
+  /// A cap below a file's bitrate transcodes it (decidePlayback).
   static const bitratePresets = [
+    BitratePreset(originalKbps, 'Original'),
     BitratePreset(2000, '2 Mbps (Low)'),
     BitratePreset(4000, '4 Mbps (Medium)'),
     BitratePreset(8000, '8 Mbps (Good)'),

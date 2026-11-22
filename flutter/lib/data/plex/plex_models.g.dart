@@ -271,6 +271,7 @@ Map<String, dynamic> _$PlexPartToJson(PlexPart instance) => <String, dynamic>{
 
 PlexMedia _$PlexMediaFromJson(Map<String, dynamic> json) => PlexMedia(
   audioChannels: (json['audioChannels'] as num?)?.toInt(),
+  bitrate: (json['bitrate'] as num?)?.toInt(),
   videoCodec: json['videoCodec'] as String?,
   audioCodec: json['audioCodec'] as String?,
   container: json['container'] as String?,
@@ -288,6 +289,7 @@ Map<String, dynamic> _$PlexMediaToJson(PlexMedia instance) => <String, dynamic>{
   'container': instance.container,
   'videoResolution': instance.videoResolution,
   'audioChannels': instance.audioChannels,
+  'bitrate': instance.bitrate,
   'Part': instance.parts,
 };
 

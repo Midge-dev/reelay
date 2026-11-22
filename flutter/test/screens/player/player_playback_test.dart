@@ -34,6 +34,9 @@ class _RecordingClient implements MediaServerClient {
   /// What checkTranscode answers: null to go ahead, else a refusal.
   String? transcodeRefusal;
   final transcodeChecks = <String>[];
+
+  /// The bitrate each transcode URL was built with.
+  final transcodeBitrates = <int>[];
   final stoppedTranscodes = <String>[];
 
   @override
@@ -59,16 +62,20 @@ class _RecordingClient implements MediaServerClient {
     required String sessionIdentifier,
     String? sessionId,
     int offsetMs = 0,
-  }) => inner.transcodeUrl(
-    itemId,
-    partId: partId,
-    subtitleStreamId: subtitleStreamId,
-    audioStreamId: audioStreamId,
-    maxVideoBitrateKbps: maxVideoBitrateKbps,
-    sessionIdentifier: sessionIdentifier,
-    sessionId: sessionId,
-    offsetMs: offsetMs,
-  );
+  }) {
+    transcodeBitrates.add(maxVideoBitrateKbps);
+    return inner.transcodeUrl(
+      itemId,
+      partId: partId,
+      subtitleStreamId: subtitleStreamId,
+      audioStreamId: audioStreamId,
+      maxVideoBitrateKbps: maxVideoBitrateKbps,
+      sessionIdentifier: sessionIdentifier,
+      sessionId: sessionId,
+      offsetMs: offsetMs,
+    );
+  }
+
   @override
   bool get transcodeStartsAtOffset => inner.transcodeStartsAtOffset;
   @override
@@ -141,13 +148,13 @@ const _pgs = MediaStream(id: 21, kind: StreamKind.subtitle, codec: 'pgs', langua
 const _englishAudio = MediaStream(id: 10, kind: StreamKind.audio, languageCode: 'eng', language: 'English', selected: true);
 const _frenchAudio = MediaStream(id: 11, kind: StreamKind.audio, languageCode: 'fre', language: 'Français');
 
-MediaDetail _film(_Backend b, {List<MediaStream> streams = const [], int? viewOffset = 60000, int? duration}) => MediaDetail(
+MediaDetail _film(_Backend b, {List<MediaStream> streams = const [], int? viewOffset = 60000, int? duration, int? bitrateKbps}) => MediaDetail(
   id: '1',
   title: 'Arrival',
   viewOffset: viewOffset,
   duration: duration,
   media: [
-    MediaVersion(parts: [MediaPart(id: '1', key: b.partKey, streams: streams)]),
+    MediaVersion(bitrateKbps: bitrateKbps, parts: [MediaPart(id: '1', key: b.partKey, streams: streams)]),
   ],
 );
 
@@ -390,6 +397,45 @@ void main() {
           } else {
             expect(s.fake.seeksByPlayer[s.fake.latestPlayerId], [300000]);
           }
+          await _close(tester);
+        });
+
+        testWidgets('a 6 Mbps film plays direct on Original; capping it at 2 Mbps transcodes it, from the same spot', (tester) async {
+          final s = await _open(tester, b, detail: _film(b, bitrateKbps: 6000));
+          expect(s.fake.openedUris.single, isNot(contains(b.transcodePath)), reason: 'Original: no cap');
+          await _playTo(tester, s, 300000);
+
+          await _pressQuality(tester, subtitles: false); // Original -> 2 Mbps
+          expect(s.bitrates, [2000]);
+          expect(s.fake.openedUris, hasLength(2), reason: 'a cap below the file means a new, transcoded stream');
+          expect(s.fake.openedUris.last, contains(b.transcodePath));
+          expect(s.client.transcodeBitrates.last, 2000);
+          if (b.startsAtOffset) {
+            expect(s.fake.openedUris.last, contains('offset=300&'));
+          } else {
+            expect(s.fake.seeksByPlayer[s.fake.latestPlayerId], [300000]);
+          }
+          await _close(tester);
+        });
+
+        testWidgets('a capped film opens as a transcode at the cap', (tester) async {
+          final s = await _open(tester, b, detail: _film(b, bitrateKbps: 6000), settings: const AppSettings(maxVideoBitrateKbps: 4000));
+          expect(s.fake.openedUris.single, contains(b.transcodePath));
+          expect(s.client.transcodeBitrates.last, 4000);
+          await _close(tester);
+        });
+
+        testWidgets('a transcode needed anyway (a burn-in) runs at 20 Mbps under Original', (tester) async {
+          final s = await _open(
+            tester,
+            b,
+            detail: _film(b, streams: const [_srt]),
+            settings: const AppSettings(forceBurnSubtitles: true),
+            subtitleFiles: {'/subs/20': _srtFile},
+          );
+          await _pressSubtitles(tester);
+          expect(s.fake.openedUris.last, contains(b.transcodePath));
+          expect(s.client.transcodeBitrates.last, 20000);
           await _close(tester);
         });
 

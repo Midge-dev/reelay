@@ -409,7 +409,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
       // And the burned-in subtitle: it's in the picture, so another one is
       // another stream (without it, one burned track to the next changed
       // nothing on screen).
-      Transcode() => (decision.itemId, maxVideoBitrateKbps, _audioStreamId, decision.subtitleStreamId),
+      Transcode() => (decision.itemId, AppSettings.transcodeKbps(maxVideoBitrateKbps), _audioStreamId, decision.subtitleStreamId),
     };
   }
 
@@ -967,6 +967,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
     _subtitleStreamId,
     forceBurn: widget.settings.forceBurnSubtitles,
     forceTranscode: _directPlayFailed,
+    maxBitrateKbps: _maxVideoBitrateKbps,
   );
 
   /// The file direct-played but this TV couldn't decode it (an HEVC 10-bit

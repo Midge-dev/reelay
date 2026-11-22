@@ -52,6 +52,17 @@ void main() {
     reloaded.dispose();
   });
 
+  test('quality starts at Original (no cap); an 8 Mbps saved before Original existed is not kept', () async {
+    SharedPreferencesAsyncPlatform.instance = InMemorySharedPreferencesAsync.withData({'max_video_bitrate_kbps': 8000});
+    final store = SettingsStore(SharedPreferencesAsync());
+    expect((await store.observe().first).maxVideoBitrateKbps, AppSettings.originalKbps,
+        reason: 'until now the cap only touched transcodes, so nobody chose 8 Mbps as one');
+
+    await store.save((await store.observe().first).copyWith(maxVideoBitrateKbps: 2000));
+    final reloaded = SettingsStore(SharedPreferencesAsync());
+    expect((await reloaded.observe().first).maxVideoBitrateKbps, 2000, reason: 'a cap chosen now is kept');
+  });
+
   test('Next Up episodes taken off Continue Watching survive a reload', () async {
     final store = SettingsStore(SharedPreferencesAsync());
     expect((await store.observe().first).hiddenNextUp, isEmpty);

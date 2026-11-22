@@ -175,4 +175,31 @@ void main() {
       expect(resolveSubtitleSource(part, 999), isA<NoSubtitle>());
     });
   });
+
+  group('the quality cap', () {
+    MediaDetail film(int? bitrateKbps) => MediaDetail(id: 'f', title: 'Film', media: [
+          MediaVersion(bitrateKbps: bitrateKbps, parts: const [MediaPart(id: 'p', key: '/f.mkv')]),
+        ]);
+
+    test('Original (no cap): direct play, whatever the bitrate', () {
+      expect(decidePlayback(film(40000), null), isA<DirectPlay>());
+    });
+
+    test('a cap below the file: a transcode, to stay under it', () {
+      expect(decidePlayback(film(6000), null, maxBitrateKbps: 2000), isA<Transcode>());
+    });
+
+    test('a cap at or above the file: still direct play', () {
+      expect(decidePlayback(film(6000), null, maxBitrateKbps: 8000), isA<DirectPlay>());
+      expect(decidePlayback(film(8000), null, maxBitrateKbps: 8000), isA<DirectPlay>());
+    });
+
+    test("a file whose bitrate the server didn't say: direct play (nothing to compare)", () {
+      expect(decidePlayback(film(null), null, maxBitrateKbps: 2000), isA<DirectPlay>());
+    });
+
+    test('the first press of Play follows the cap too (the "Direct play" on a source row)', () {
+      expect(firstPlaybackDecision(film(6000), maxBitrateKbps: 2000), isA<Transcode>());
+    });
+  });
 }

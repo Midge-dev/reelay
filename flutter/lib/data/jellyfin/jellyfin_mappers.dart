@@ -230,6 +230,11 @@ MediaVersion versionFromJson(Json source, {required String itemId}) {
     container: source['Container'] as String?,
     videoResolution: _resolution(video?.width),
     audioChannels: audio?.channels,
+    // Bits per second.
+    bitrateKbps: switch (source['Bitrate']) {
+      final num bps => bps ~/ 1000,
+      _ => null,
+    },
     parts: [
       MediaPart(
         id: sourceId,

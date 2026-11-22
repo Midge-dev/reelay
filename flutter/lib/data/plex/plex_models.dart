@@ -319,11 +319,15 @@ class PlexMedia {
   final String? videoResolution;
   final int? audioChannels;
 
+  /// Kbps.
+  final int? bitrate;
+
   @JsonKey(name: 'Part', defaultValue: [])
   final List<PlexPart> parts;
 
   const PlexMedia({
     this.audioChannels,
+    this.bitrate,
     this.videoCodec,
     this.audioCodec,
     this.container,

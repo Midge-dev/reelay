@@ -1173,5 +1173,6 @@ class _AppContent extends StatelessWidget {
   Future<CopyFacts> _copyFacts(Sourced<MediaItem> copy) async => CopyFacts.of(
     await controller.clientFor(copy.server).fetchDetail(copy.value.id),
     forceBurn: controller.currentSettings.forceBurnSubtitles,
+    maxBitrateKbps: controller.currentSettings.maxVideoBitrateKbps,
   );
 }

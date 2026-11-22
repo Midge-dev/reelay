@@ -142,6 +142,7 @@ void main() {
             'Id': 'bbb',
             'Container': 'mov',
             'Size': 416751190,
+            'Bitrate': 5589000,
             'RunTimeTicks': 5964616670,
             'MediaStreams': [
               {'Type': 'Video', 'Codec': 'h264', 'Index': 0, 'Width': 1280, 'Height': 720, 'RealFrameRate': 24},
@@ -158,6 +159,7 @@ void main() {
       expect(detail.audienceRating, 6.5);
       final version = detail.media.single;
       expect((version.videoResolution, version.videoCodec, version.audioChannels), ('720', 'h264', 6));
+      expect(version.bitrateKbps, 5589, reason: 'Jellyfin says bits per second');
       expect(version.parts.single.streams.map((s) => s.id), [0, 2]);
     });
   });

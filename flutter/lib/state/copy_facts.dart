@@ -1,5 +1,6 @@
 import '../data/media/media_facts.dart';
 import '../data/media/media_models.dart';
+import '../data/settings/app_settings.dart';
 import '../playback/playback_decision.dart';
 
 /// What one copy of a title would be to play (screens 03d and 25): the
@@ -26,13 +27,13 @@ class CopyFacts {
     this.pictureRank = 0,
   });
 
-  factory CopyFacts.of(MediaDetail detail, {bool forceBurn = false}) {
+  factory CopyFacts.of(MediaDetail detail, {bool forceBurn = false, int maxBitrateKbps = AppSettings.originalKbps}) {
     final media = detail.media.isNotEmpty ? detail.media.first : null;
     final facts = media == null ? null : MediaFacts(media);
     bool direct;
     try {
       direct =
-          firstPlaybackDecision(detail, forceBurn: forceBurn) is DirectPlay;
+          firstPlaybackDecision(detail, forceBurn: forceBurn, maxBitrateKbps: maxBitrateKbps) is DirectPlay;
     } catch (_) {
       direct = false;
     }

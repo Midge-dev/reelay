@@ -37,11 +37,12 @@
   episodes, `AppSettings.hiddenNextUp`; watching on brings the show back.)
 - [ ] **Watchlist as two labeled rows** (Plex Watchlist + Jellyfin
   Favorites) once the design is mocked; today they're one merged list.
-- [ ] **No reviews on Jellyfin titles** — Jellyfin doesn't keep them. Decide
+- [x] **No reviews on Jellyfin titles** — Jellyfin doesn't keep them. Decide
   whether the section hides or shows something else.
+  (Decided 2026-11-21: hide it. Already so — the Ratings & Reviews section
+  left the movie page in 156d1b7, on both servers.)
 
 ## Found while testing
-
 - [ ] **Plex burn-in 400s — fix to try on the Shield.** The first transcode
   opens fine; switching subtitles mid-film (a restart) 400'd on ScreamTiki.
   Branch `fix-watch-together-seek-loop` now reuses one transcode `session`
@@ -51,10 +52,12 @@
   sends the ignored `subtitleStreamID`. If it still fails, the error screen
   and `adb logcat -s flutter | grep '\[playback\]'` say why. Not yet tried:
   dropping `offset=` and seeking in-stream as plezy does.
-- [ ] **Quality cap doesn't force a transcode.** `decidePlayback` only
+- [x] **Quality cap doesn't force a transcode.** `decidePlayback` only
   transcodes for burn-in or a failed direct play, so picking 2 Mbps on a
-  4 Mbps file still direct-plays. Decide whether a cap below the file's
-  bitrate should transcode.
+  4 Mbps file still direct-plays. (Done 2026-11-21, the user's call: a cap
+  below the file's bitrate transcodes. New default "Original" = no cap;
+  everyone moved to it, since the old 8 Mbps default only ever touched
+  transcodes. A transcode needed anyway runs at 20 Mbps under Original.)
 - [x] **Relay settings rows are skipped by Up/Down** — their buttons sit far
   right, so vertical moves from "‹ Settings" / "Add a relay" jump past them.
   Only Right reaches them. (Fixed 2026-11-19 with NearestRowTraversal;
