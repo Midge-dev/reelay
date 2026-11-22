@@ -15,6 +15,7 @@ import '../../kit/card.dart';
 import '../../kit/edge_fade_row.dart';
 import '../../kit/icon.dart';
 import '../../kit/icon_button.dart';
+import '../../kit/scroll_peek.dart';
 import '../../kit/surface_style.dart';
 import '../../kit/text.dart';
 import '../../state/copy_facts.dart';
@@ -868,6 +869,7 @@ class _MoreLikeThis extends StatelessWidget {
               child: ListView.separated(
                 key: const PageStorageKey('more-like-this'),
                 scrollDirection: Axis.horizontal,
+                cacheExtent: rowCacheExtent(context),
                 clipBehavior: Clip.none,
                 padding: EdgeInsets.symmetric(
                   horizontal: AppSpacing.safeX.du(context),

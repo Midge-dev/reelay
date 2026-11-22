@@ -7,6 +7,7 @@ import '../../focus/screen_memory.dart';
 import '../../focus/row_end_stop.dart';
 import '../../kit/card.dart';
 import '../../kit/edge_fade_row.dart';
+import '../../kit/scroll_peek.dart';
 import '../../kit/surface_style.dart';
 import '../../kit/text.dart';
 import '../../theme/scale.dart';
@@ -193,6 +194,7 @@ class CastCrewRow extends StatelessWidget {
               child: ListView.separated(
                 key: const PageStorageKey('cast-crew'),
                 scrollDirection: Axis.horizontal,
+                cacheExtent: rowCacheExtent(context),
                 clipBehavior: Clip.none,
                 padding: EdgeInsets.symmetric(
                   horizontal: AppSpacing.safeX.du(context),

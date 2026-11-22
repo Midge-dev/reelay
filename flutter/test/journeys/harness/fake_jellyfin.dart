@@ -200,9 +200,11 @@ class FakeJellyfin {
           ],
         },
       ],
+    // A full cast, as a real title has: enough to scroll the Cast & crew row.
     'People': [
       {'Name': 'Ada Director', 'Id': 'pd', 'Type': 'Director'},
       {'Name': 'Lee Lead', 'Id': 'pa', 'Role': 'The lead', 'Type': 'Actor'},
+      for (var i = 1; i <= 10; i++) {'Name': 'Cast Member $i', 'Id': 'pc$i', 'Role': 'Role $i', 'Type': 'Actor'},
     ],
     'Studios': [
       {'Name': 'Fake Studio'},
@@ -300,7 +302,8 @@ class FakeJellyfin {
       return FakeReply.json({'Items': found, 'TotalRecordCount': found.length});
     }
     final similar = RegExp(r'^/Items/([^/]+)/Similar$').firstMatch(path);
-    if (similar != null) return FakeReply.json(_items(movies.where((m) => m['Id'] != similar[1]).take(4)));
+    // Every other film: enough to scroll the More like this row.
+    if (similar != null) return FakeReply.json(_items(movies.where((m) => m['Id'] != similar[1])));
     final item = RegExp(r'^/Items/([^/]+)$').firstMatch(path);
     if (item != null) {
       final found = _byId(item[1]!);

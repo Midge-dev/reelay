@@ -13,6 +13,7 @@ import '../../focus/row_end_stop.dart';
 import '../../kit/collapse_out.dart';
 import '../../kit/edge_fade_row.dart';
 import '../../kit/icon.dart';
+import '../../kit/scroll_peek.dart';
 import '../../kit/text.dart';
 import '../../state/duplicate_fold.dart';
 import '../../theme/phosphor_icons.dart';
@@ -632,6 +633,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       child: ListView.separated(
                         key: const PageStorageKey('home-row-in-progress'),
                         scrollDirection: Axis.horizontal,
+                        cacheExtent: rowCacheExtent(context),
                         clipBehavior: Clip.none,
                         padding: EdgeInsets.symmetric(
                           horizontal: AppSpacing.safeX.du(context),
@@ -752,6 +754,7 @@ class _HomeRowState<T> extends State<_HomeRow<T>> {
                 child: ListView.builder(
                   key: PageStorageKey('home-row-$title'),
                   scrollDirection: Axis.horizontal,
+                  cacheExtent: rowCacheExtent(context),
                   clipBehavior: Clip.none,
                   padding: EdgeInsets.symmetric(
                     horizontal: AppSpacing.safeX.du(context),

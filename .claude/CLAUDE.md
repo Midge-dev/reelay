@@ -58,7 +58,10 @@ Before the Shield pass, the automated layers catch most of it (run with
   `playback_journeys_test.dart` checks resume, progress reports and the
   end of a film as the server sees them; `skip_markers_journeys_test.dart`
   covers Skip intro and Up Next at the credits, from the fake server's
-  media segments.
+  media segments; `row_journeys_test.dart` walks every horizontal row
+  (`harness/rows.dart`) against docs/DESIGN.md's row rules — whole,
+  unclipped focus, the 80% peek, a flush end, one card back at a time, and
+  a held key that keeps up and settles. A new row belongs there.
 - `test/journeys/ux_tour_test.dart` — not a test: `UX_TOUR=1 flutter test
   test/journeys/ux_tour_test.dart` screenshots every screen in the app's
   own type into `build/journey_shots/` (`UX_SCALE=1.5` for another UI size),

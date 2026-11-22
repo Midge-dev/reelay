@@ -107,6 +107,7 @@ class WatchTogetherRow extends StatelessWidget {
               child: ListView.separated(
                 controller: scrollController,
                 scrollDirection: Axis.horizontal,
+                cacheExtent: rowCacheExtent(context),
                 // See the matching comment on Home's rows — ListView clips its
                 // children by default, and RoomCard has a focus-scale that
                 // bleeds past its own bounds.

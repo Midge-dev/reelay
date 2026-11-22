@@ -3,6 +3,14 @@ import 'package:flutter/widgets.dart';
 
 import '../theme/tokens.dart';
 
+/// How far past its edges a horizontal row builds its cards: a screen's
+/// width each way. A held D-pad moves focus a card every repeat (~50 ms)
+/// while the row's scroll eases after it; with Flutter's default (250 px,
+/// about a card and a half) focus soon ran past the cards that existed, and
+/// the press found nothing to move to — a held key stopped short of the end
+/// of a long row (the row journeys' "holding Right, focus keeps up").
+double rowCacheExtent(BuildContext context) => MediaQuery.sizeOf(context).width;
+
 const _forwardAlignment = 0.8;
 const _backwardAlignment = 0.0;
 

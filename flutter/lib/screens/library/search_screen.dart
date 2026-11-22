@@ -11,6 +11,7 @@ import '../../focus/back_handler.dart';
 import '../../focus/row_end_stop.dart';
 import '../../focus/screen_memory.dart';
 import '../../kit/icon.dart';
+import '../../kit/scroll_peek.dart';
 import '../../kit/text.dart';
 import '../../state/duplicate_fold.dart';
 import '../../theme/scale.dart';
@@ -524,6 +525,7 @@ class _ResultGroupState extends State<_ResultGroup> {
                   key: PageStorageKey('search-row-${widget.label}'),
                   controller: _scroll,
                   scrollDirection: Axis.horizontal,
+                  cacheExtent: rowCacheExtent(context),
                   clipBehavior: Clip.none,
                   padding: EdgeInsets.only(
                     right: AppSpacing.safeX.du(context),
