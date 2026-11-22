@@ -264,6 +264,16 @@ class FakeJellyfin {
       positions.remove(userData[1]);
       return FakeReply.json({});
     }
+    // Signing in (setup's typed path): sam / popcorn.
+    if (r.method == 'POST' && path == '/Users/AuthenticateByName') {
+      final body = jsonDecode(utf8.decode(r.body)) as Map<String, dynamic>;
+      if (body['Username'] != 'sam' || body['Pw'] != 'popcorn') return FakeReply.json({}, status: 401);
+      return FakeReply.json({
+        'User': {'Id': userId, 'Name': 'sam', 'ServerId': serverId},
+        'AccessToken': 'jf-token',
+        'ServerId': serverId,
+      });
+    }
     if (r.method == 'POST' || r.method == 'DELETE') {
       final fav = RegExp(r'^/UserFavoriteItems/(.+)$').firstMatch(path);
       if (fav != null) r.method == 'POST' ? favoriteIds.add(fav[1]!) : favoriteIds.remove(fav[1]!);
@@ -272,7 +282,8 @@ class FakeJellyfin {
 
     switch (path) {
       case '/System/Info/Public':
-        return FakeReply.json({'ServerName': 'Den', 'Id': 'jf-den', 'Version': '12.1.0'});
+        // As a real server answers: setup checks it's Jellyfin by ProductName.
+        return FakeReply.json({'ServerName': 'Den', 'Id': 'jf-den', 'Version': '12.1.0', 'ProductName': 'Jellyfin Server', 'StartupWizardCompleted': true});
       case '/Users/Me':
         return FakeReply.json({'Id': userId, 'Name': 'sam'});
       case '/UserViews':

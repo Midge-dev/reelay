@@ -202,6 +202,17 @@ class Journey {
     expect(focus != null && focusOnScreen, isTrue, reason: _why('after that press nothing visible had focus'));
   }
 
+  /// Types [text] into the field being edited, as the TV's keyboard does
+  /// (through the text input channel), then finishes it with the keyboard's
+  /// Done — a field opened for typing with Select first.
+  Future<void> type(String text) async {
+    tester.testTextInput.enterText(text);
+    await wait(const Duration(milliseconds: 200));
+    await tester.testTextInput.receiveAction(TextInputAction.done);
+    await wait(const Duration(milliseconds: 300));
+    steps.add('Type "$text" → ${describeFocus()}');
+  }
+
   /// Holds Select down for [held] — the long press that removes a title
   /// from Continue Watching. [halfway] runs once, midway through, still
   /// held — to look at the screen while the hold is under way.

@@ -11,6 +11,7 @@ import '../../data/plex/plex_resources_api.dart';
 import '../../data/settings/app_settings.dart';
 import '../../kit/focusable_surface.dart';
 import '../../focus/back_handler.dart';
+import '../../focus/row_end_stop.dart';
 import '../../kit/icon.dart';
 import '../../kit/surface_style.dart';
 import '../../kit/text.dart';
@@ -635,41 +636,45 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       _Group.profiles => _profileRows(),
       _Group.about => _aboutRows(),
     };
-    return SingleChildScrollView(
+    // Up and Down stay in the pane at its ends, rather than dropping onto a
+    // category in the list beside it.
+    return PaneEndStop(
       key: ValueKey(_group),
-      controller: _scrollController,
-      clipBehavior: Clip.none,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.baseline,
-            textBaseline: TextBaseline.alphabetic,
-            children: [
-              AppText(
-                _group == _Group.appearance ? 'Theme' : _group.label,
-                style: AppTypography.title2,
-              ),
-              if (_group == _Group.appearance) ...[
-                SizedBox(width: AppSpacing.lg.du(context)),
-                // Wraps under itself on a narrow pane (a bigger UI size)
-                // rather than running off the edge.
-                Expanded(
-                  child: AppText(
-                    'Applies to every screen · takes effect at once',
-                    style: AppTypography.caption,
-                    textAlign: TextAlign.end,
-                  ),
+      child: SingleChildScrollView(
+        controller: _scrollController,
+        clipBehavior: Clip.none,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.baseline,
+              textBaseline: TextBaseline.alphabetic,
+              children: [
+                AppText(
+                  _group == _Group.appearance ? 'Theme' : _group.label,
+                  style: AppTypography.title2,
                 ),
+                if (_group == _Group.appearance) ...[
+                  SizedBox(width: AppSpacing.lg.du(context)),
+                  // Wraps under itself on a narrow pane (a bigger UI size)
+                  // rather than running off the edge.
+                  Expanded(
+                    child: AppText(
+                      'Applies to every screen · takes effect at once',
+                      style: AppTypography.caption,
+                      textAlign: TextAlign.end,
+                    ),
+                  ),
+                ],
               ],
+            ),
+            SizedBox(height: (AppSpacing.sm + 14).du(context)),
+            for (final (i, row) in rows.indexed) ...[
+              if (i > 0) SizedBox(height: 14.du(context)),
+              row,
             ],
-          ),
-          SizedBox(height: (AppSpacing.sm + 14).du(context)),
-          for (final (i, row) in rows.indexed) ...[
-            if (i > 0) SizedBox(height: 14.du(context)),
-            row,
           ],
-        ],
+        ),
       ),
     );
   }

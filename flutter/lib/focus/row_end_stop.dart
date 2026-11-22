@@ -36,3 +36,41 @@ class RowEndStop extends StatelessWidget {
     );
   }
 }
+
+/// [RowEndStop]'s counterpart for a column of controls beside another — a
+/// settings category's pane, its category list to the left: at the pane's
+/// first and last rows, Up and Down stop. Directional traversal otherwise
+/// finds the nearest thing in that direction anywhere on the screen, and
+/// Down off the end of a pane landed on some category in the list beside
+/// it (Watch Together's pane dropped you on About). Left and Right are left
+/// alone: Left is how the list is reached.
+class PaneEndStop extends StatelessWidget {
+  final Widget child;
+
+  const PaneEndStop({super.key, required this.child});
+
+  @override
+  Widget build(BuildContext context) {
+    return Focus(
+      canRequestFocus: false,
+      skipTraversal: true,
+      onKeyEvent: (node, event) {
+        if (event is KeyUpEvent) return KeyEventResult.ignored;
+        final down = event.logicalKey == LogicalKeyboardKey.arrowDown;
+        if (!down && event.logicalKey != LogicalKeyboardKey.arrowUp) {
+          return KeyEventResult.ignored;
+        }
+        final focused = FocusManager.instance.primaryFocus;
+        if (focused == null || focused == node) return KeyEventResult.ignored;
+        final from = focused.rect;
+        final hasNext = node.traversalDescendants.any((n) {
+          if (n == focused || !n.canRequestFocus) return false;
+          final r = n.rect;
+          return down ? r.top >= from.bottom - 1 : r.bottom <= from.top + 1;
+        });
+        return hasNext ? KeyEventResult.ignored : KeyEventResult.handled;
+      },
+      child: child,
+    );
+  }
+}

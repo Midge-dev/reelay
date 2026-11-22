@@ -397,6 +397,38 @@ void main() {
   });
 
   group('Settings', () {
+    journey('Up and Down stay inside a category\'s pane, every category; Left goes back to its name', (j) async {
+      await j.openFromRail('Settings');
+      await j.realTime();
+      await j.wait(const Duration(seconds: 1));
+      const groups = ['Watch Together', 'Playback', 'Subtitles', 'Servers', 'Appearance', 'Display', 'Profiles', 'About'];
+      for (final (n, group) in groups.indexed) {
+        if (n > 0) await j.down();
+        j.expectFocusOn(group);
+        final listRight = j.focusedRect()!.right;
+        final name = j.focus;
+        await j.right();
+        if (j.focus == name) continue; // nothing to focus in this pane (About)
+        final first = j.focus;
+        expect(j.focusedRect()!.left, greaterThan(listRight), reason: j.why('$group: Right goes into its pane'));
+        var rows = 1;
+        for (var i = 0; i < 20; i++) {
+          final before = j.focus;
+          await j.down();
+          expect(j.focusedRect()!.left, greaterThan(listRight), reason: j.why('$group: Down at the pane\'s end stays in it, not off into the list'));
+          if (j.focus == before) break;
+          rows++;
+        }
+        for (var i = 0; i < rows + 1; i++) {
+          await j.up();
+          expect(j.focusedRect()!.left, greaterThan(listRight), reason: j.why('$group: Up at the pane\'s top stays in it'));
+        }
+        expect(j.focus, first, reason: j.why('$group: Up comes back to its first row'));
+        await j.left();
+        j.expectFocusOn(group, because: 'Left from the pane goes back to its category');
+      }
+    }, realFonts: true, relay: true);
+
     journey('every category fits on screen, Appearance included', (j) async {
       await j.openFromRail('Settings');
       await j.realTime();

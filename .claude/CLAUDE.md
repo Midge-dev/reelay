@@ -68,6 +68,10 @@ Before the Shield pass, the automated layers catch most of it (run with
   `player_journeys_test.dart` drives the player by remote: the control row
   end to end, the scrubber as a focus target, auto-hide, and the menu panel
   (screens 13 and 14).
+  `setup_journeys_test.dart` runs first-run setup (O1–O5) by remote,
+  Jellyfin-only, typed on the TV (`Journey.type` stands in for the TV's
+  keyboard) — with `realFonts: true`, as layout-heavy pages need: the test
+  font's wide glyphs wrap them off screen.
 - `test/journeys/ux_tour_test.dart` — not a test: `UX_TOUR=1 flutter test
   test/journeys/ux_tour_test.dart` screenshots every screen in the app's
   own type into `build/journey_shots/` (`UX_SCALE=1.5` for another UI size),
