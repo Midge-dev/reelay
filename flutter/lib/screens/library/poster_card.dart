@@ -4,6 +4,7 @@ import 'package:flutter/widgets.dart';
 
 import '../../kit/card.dart';
 import '../../kit/edge_fade_row.dart';
+import '../../kit/hold_feedback.dart';
 import '../../kit/marquee_text.dart';
 import '../../kit/scroll_peek.dart';
 import '../../kit/surface_style.dart';
@@ -316,7 +317,7 @@ class _PosterCardState extends State<PosterCard> {
                     child: Stack(
                       fit: StackFit.expand,
                       children: [
-                        Artwork(imageUrl: widget.imageUrl),
+                        HoldFeedback(child: Artwork(imageUrl: widget.imageUrl)),
                         if (widget.marker != null)
                           Positioned(
                             left: 0,

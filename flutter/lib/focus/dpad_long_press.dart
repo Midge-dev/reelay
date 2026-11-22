@@ -1,7 +1,9 @@
 import 'dart:async';
 
 import 'package:flutter/services.dart';
-import 'package:flutter/widgets.dart' show KeyEventResult, VoidCallback;
+import 'package:flutter/widgets.dart' show KeyEventResult, ValueNotifier, VoidCallback;
+
+import '../theme/tokens.dart';
 
 /// Detects the select/center button held long enough to count as a
 /// long-press. A Timer started on key-down and cancelled on key-up before
@@ -14,10 +16,15 @@ import 'package:flutter/widgets.dart' show KeyEventResult, VoidCallback;
 /// `adb shell input keyevent --longpress KEYCODE_DPAD_CENTER` during the
 /// flutter-reelay PoC — see project_flutter_focus_poc.md).
 class DpadLongPressDetector {
-  DpadLongPressDetector({required this.onLongPress, this.threshold = const Duration(milliseconds: 500)});
+  DpadLongPressDetector({required this.onLongPress, this.threshold = AppMotion.hold});
 
   final VoidCallback onLongPress;
   final Duration threshold;
+
+  /// True while Select is held and hasn't acted yet — what HoldFeedback
+  /// draws (screen 21's 600 ms draw-in). False again when it's let go, or
+  /// once it fires.
+  final ValueNotifier<bool> holding = ValueNotifier(false);
 
   // final, not const — a const Set literal of LogicalKeyboardKey values
   // doesn't compile (hit during the flutter-reelay PoC).
@@ -36,8 +43,10 @@ class DpadLongPressDetector {
     if (event is KeyDownEvent) {
       _timer ??= Timer(threshold, () {
         _fired = true;
+        holding.value = false;
         onLongPress();
       });
+      holding.value = true;
       return KeyEventResult.handled;
     }
     if (event is KeyUpEvent) {
@@ -46,6 +55,7 @@ class DpadLongPressDetector {
       if (_timer == null && !_fired) return KeyEventResult.handled;
       _timer?.cancel();
       _timer = null;
+      holding.value = false;
       if (_fired) {
         // Swallow the trailing release tied to the gesture that just fired
         // long-press, so it isn't also read as a click.
@@ -57,7 +67,10 @@ class DpadLongPressDetector {
     return KeyEventResult.ignored;
   }
 
-  void dispose() => _timer?.cancel();
+  void dispose() {
+    _timer?.cancel();
+    holding.dispose();
+  }
 }
 
 /// The shared short-press/long-press split for a select/enter/gameButtonA

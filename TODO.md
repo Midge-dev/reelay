@@ -125,5 +125,15 @@ Still open:
 - [ ] **Try rate nudging on the Shield.** The simulator says a second's gap
   closes in ~10 s; check it's not audible/visible on a real TV and that
   ExoPlayer's setPlaybackSpeed over an HLS transcode doesn't rebuffer.
-- [ ] **The undo chip doesn't animate the hold** (the handoff's 4% draw-in
-  and desaturate over the 600 ms hold).
+- [x] **The undo chip doesn't animate the hold** (the handoff's 4% draw-in
+  and desaturate over the 600 ms hold). (Done 2026-11-21: kit/hold_feedback.dart,
+  on every hold-to-remove poster; the hold is now the design's 600 ms.)
+- [ ] **The Watchlist screen strays from screen 21** in three ways Home
+  doesn't: (1) after a hold it moves focus to the undo chip — the spec says
+  never, focus goes to the next title; (2) a second removal commits the
+  first instead of restating the chip ("Took 3 titles off the list");
+  (3) nowhere does the card collapse over 180 ms — it just goes.
+- [ ] **A hold let go early opens the title** (it's a click, as any press
+  released before the hold fires). The design only says "releasing early
+  restores it". Decide whether a press held past some point should open
+  nothing.

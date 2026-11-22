@@ -5,6 +5,7 @@ import '../focus/dpad_long_press.dart';
 import '../theme/scale.dart';
 import '../theme/tokens.dart';
 import 'content_color.dart';
+import 'hold_feedback.dart';
 import 'surface_style.dart';
 
 /// The primitive every other kit
@@ -303,7 +304,8 @@ class _FocusableSurfaceState extends State<FocusableSurface> {
       surface = Opacity(opacity: 0.45, child: surface);
     }
 
-    return Focus(
+    final longPress = _longPress;
+    final focus = Focus(
       focusNode: _focusNode,
       canRequestFocus: widget.enabled,
       autofocus: widget.autofocus,
@@ -325,6 +327,9 @@ class _FocusableSurfaceState extends State<FocusableSurface> {
         ),
       ),
     );
+    // A hold-to-act surface tells the HoldFeedback around its artwork that
+    // it's being held (screen 21's draw-in).
+    return longPress == null ? focus : HoldScope(holding: longPress.holding, child: focus);
   }
 }
 

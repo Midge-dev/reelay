@@ -1,5 +1,7 @@
+import 'package:flutter/widgets.dart' show Transform;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:reelay/data/settings/app_settings.dart';
+import 'package:reelay/kit/hold_feedback.dart';
 import 'package:video_player_platform_interface/video_player_platform_interface.dart';
 
 import '../playback/fake_video_player_platform.dart';
@@ -140,6 +142,27 @@ void main() {
       expect(j.server.favoriteIds, isNot(contains('s2')), reason: j.why('Undo ran out: off the server watchlist'));
       expect(j.shows('Took Andor off the list'), isFalse, reason: j.why('the chip expires quietly'));
       j.expectFocusOn('Contact');
+    });
+
+    journey('over the hold the poster draws in and greys; let go early and nothing is removed', (j) async {
+      await j.down(2);
+      j.expectFocusOn('Andor');
+      double? scaleMidHold;
+      await j.holdSelect(
+        held: const Duration(milliseconds: 500), // short of the 600 ms it takes
+        halfway: () {
+          final drawn = find.byKey(HoldFeedback.transformKey);
+          scaleMidHold = drawn.evaluate().isEmpty ? null : j.tester.widget<Transform>(drawn).transform.entry(0, 0);
+        },
+      );
+      expect(scaleMidHold, isNotNull, reason: j.why('mid-hold the poster should be drawing in'));
+      expect(scaleMidHold!, lessThan(1.0));
+      // Let go before it acts, a press is a press: it opens the title.
+      expect(j.shows('Play S1 E2'), isTrue, reason: j.why('let go early, it was a click'));
+      await j.back();
+      j.expectFocusOn('Andor');
+      expect(j.shows('Took Andor off the list'), isFalse, reason: j.why('nothing removed'));
+      expect(find.byKey(HoldFeedback.transformKey), findsNothing, reason: j.why('the poster is back at rest'));
     });
 
     journey('Back while the chip lives puts the title back, and stays on Home', (j) async {

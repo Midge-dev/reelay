@@ -203,14 +203,20 @@ class Journey {
   }
 
   /// Holds Select down for [held] — the long press that removes a title
-  /// from Continue Watching.
-  Future<void> holdSelect({Duration held = const Duration(milliseconds: 900)}) async {
+  /// from Continue Watching. [halfway] runs once, midway through, still
+  /// held — to look at the screen while the hold is under way.
+  Future<void> holdSelect({Duration held = const Duration(milliseconds: 900), void Function()? halfway}) async {
     await tester.sendKeyDownEvent(LogicalKeyboardKey.select);
     var t = Duration.zero;
     const repeatEvery = Duration(milliseconds: 50);
     await wait(const Duration(milliseconds: 400)); // the platform's repeat delay
     t += const Duration(milliseconds: 400);
+    var lookedHalfway = halfway == null;
     while (t < held) {
+      if (!lookedHalfway && t >= held ~/ 2) {
+        lookedHalfway = true;
+        halfway!();
+      }
       await tester.sendKeyRepeatEvent(LogicalKeyboardKey.select);
       await tester.pump(repeatEvery);
       t += repeatEvery;

@@ -609,6 +609,13 @@ class AppMotion {
   static const focusExit = Duration(milliseconds: 90);
   static const press = Duration(milliseconds: 90);
 
+  /// Hold to remove (screen 21): how long Select is held before it acts,
+  /// and the length of the draw-in that shows it coming — the poster
+  /// desaturates and draws in [holdDrawIn] over it. Releasing early
+  /// restores it in [press].
+  static const hold = Duration(milliseconds: 600);
+  static const holdDrawIn = 0.04;
+
   // ---- Rows and pages ----------------------------------------------------
   /// Row eases the focused card to 80% across the viewport.
   static const rowScroll = Duration(milliseconds: 280);

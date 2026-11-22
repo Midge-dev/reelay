@@ -4,6 +4,7 @@ import '../../data/media/artwork_url.dart';
 import '../../data/media/media_models.dart';
 import '../../data/media/media_server.dart';
 import '../../focus/dpad_long_press.dart';
+import '../../kit/hold_feedback.dart';
 import '../../kit/scroll_peek.dart';
 import '../../kit/text.dart';
 import '../../state/duplicate_fold.dart';
@@ -127,7 +128,12 @@ class _WatchlistPosterState extends State<WatchlistPoster> {
       handleDpadSelect(event, longPress: _longPress, onClick: widget.onClick);
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context) => HoldScope(
+    holding: _longPress.holding,
+    child: _poster(context),
+  );
+
+  Widget _poster(BuildContext context) {
     return SizedBox(
       // The system's 220x330 poster, like every other row — at 160 the
       // row (sized for 220x330) left a band of empty space under it.
@@ -162,10 +168,12 @@ class _WatchlistPosterState extends State<WatchlistPoster> {
                     child: Stack(
                       fit: StackFit.expand,
                       children: [
-                        Artwork(
-                          imageUrl: ArtworkUrl.of(
-                            widget.server,
-                            widget.entry.thumb,
+                        HoldFeedback(
+                          child: Artwork(
+                            imageUrl: ArtworkUrl.of(
+                              widget.server,
+                              widget.entry.thumb,
+                            ),
                           ),
                         ),
                       ],
@@ -251,7 +259,12 @@ class _ContinueWatchingPosterState extends State<ContinueWatchingPoster> {
       handleDpadSelect(event, longPress: _longPress, onClick: widget.onResume);
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context) => HoldScope(
+    holding: _longPress.holding,
+    child: _poster(context),
+  );
+
+  Widget _poster(BuildContext context) {
     final active = widget.item.primary;
     final value = active.value;
     final progress = progressFraction(value);
@@ -304,8 +317,10 @@ class _ContinueWatchingPosterState extends State<ContinueWatchingPoster> {
                       child: Stack(
                         fit: StackFit.expand,
                         children: [
-                          Artwork(
-                            imageUrl: ArtworkUrl.of(active.server, value.thumb),
+                          HoldFeedback(
+                            child: Artwork(
+                              imageUrl: ArtworkUrl.of(active.server, value.thumb),
+                            ),
                           ),
                           if (_focused && remainingMs > 0)
                             Positioned(

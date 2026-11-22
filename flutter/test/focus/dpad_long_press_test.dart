@@ -66,4 +66,37 @@ void main() {
       detector.dispose();
     });
   });
+
+  group('the hold, as the screen shows it (screen 21: "Hold, 600 ms")', () {
+    test("fires at the design's 600 ms, not before", () {
+      fakeAsync((async) {
+        var fired = 0;
+        final detector = DpadLongPressDetector(onLongPress: () => fired++);
+        detector.handle(_down());
+        async.elapse(const Duration(milliseconds: 550));
+        expect(fired, 0);
+        async.elapse(const Duration(milliseconds: 100));
+        expect(fired, 1);
+        detector.dispose();
+      });
+    });
+
+    test('holding is true from the press until it fires or is let go', () {
+      fakeAsync((async) {
+        final detector = DpadLongPressDetector(onLongPress: () {});
+        expect(detector.holding.value, isFalse);
+        detector.handle(_down());
+        expect(detector.holding.value, isTrue);
+        async.elapse(const Duration(milliseconds: 200));
+        detector.handle(_up()); // let go early
+        expect(detector.holding.value, isFalse);
+
+        detector.handle(_down());
+        async.elapse(const Duration(milliseconds: 700)); // fires
+        expect(detector.holding.value, isFalse, reason: 'done: the card is going, not still being held');
+        detector.handle(_up());
+        detector.dispose();
+      });
+    });
+  });
 }
