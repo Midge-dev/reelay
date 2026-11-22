@@ -41,6 +41,14 @@ class ClickToTypeTextField extends StatefulWidget {
   /// A password: dots, both while shown and while typing.
   final bool obscureText;
 
+  /// The keyboard's Done — after the field has stopped editing and focus is
+  /// back on it, so this can move focus on (setup's address tests itself).
+  final VoidCallback? onSubmitted;
+
+  /// Fill the width it's given: the focusable part is then the whole field,
+  /// not just its text — empty, with no hint, that was 0 px wide.
+  final bool expand;
+
   const ClickToTypeTextField({
     super.key,
     required this.value,
@@ -52,6 +60,8 @@ class ClickToTypeTextField extends StatefulWidget {
     this.showBorder = true,
     this.onFocusChange,
     this.obscureText = false,
+    this.onSubmitted,
+    this.expand = false,
   });
 
   @override
@@ -133,6 +143,16 @@ class _ClickToTypeTextFieldState extends State<ClickToTypeTextField> {
     return KeyEventResult.ignored;
   }
 
+  void _submit() {
+    _stopEditing();
+    final onSubmitted = widget.onSubmitted;
+    if (onSubmitted == null) return;
+    // After _stopEditing's own frame has put focus back on the field.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) WidgetsBinding.instance.addPostFrameCallback((_) => onSubmitted());
+    });
+  }
+
   void _stopEditing() {
     setState(() => _editingEnabled = false);
     WidgetsBinding.instance.addPostFrameCallback(
@@ -174,14 +194,14 @@ class _ClickToTypeTextFieldState extends State<ClickToTypeTextField> {
                 autofocus: true,
                 obscureText: widget.obscureText,
                 onChanged: widget.onValueChange,
-                onEditingComplete: _stopEditing,
-                onSubmitted: (_) => _stopEditing(),
+                onEditingComplete: () {},
+                onSubmitted: (_) => _submit(),
               ),
             )
           : Focus(
               focusNode: _displayFocusNode,
               onKeyEvent: _handleDisplayKeyEvent,
-              child: widget.value.isEmpty && widget.hintText != null
+              child: _filled(widget.value.isEmpty && widget.hintText != null
                   ? Text(
                       widget.hintText!,
                       style: style.copyWith(color: AppColors.ink3),
@@ -195,8 +215,10 @@ class _ClickToTypeTextFieldState extends State<ClickToTypeTextField> {
                       style: style,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                    ),
+                    )),
             ),
     );
   }
+
+  Widget _filled(Widget text) => widget.expand ? SizedBox(width: double.infinity, child: text) : text;
 }

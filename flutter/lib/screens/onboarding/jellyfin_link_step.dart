@@ -9,6 +9,7 @@ import '../../focus/back_handler.dart';
 import '../../kit/button.dart';
 import '../../kit/icon.dart';
 import '../../kit/text.dart';
+import '../../kit/text_field.dart';
 import '../../pairing/jellyfin_pairing.dart';
 import '../../theme/phosphor_icons.dart';
 import '../../theme/scale.dart';
@@ -62,6 +63,7 @@ class _JellyfinLinkStepState extends ConsumerState<JellyfinLinkStep> {
   final _typeFocus = FocusNode(debugLabel: 'setup-jellyfin-type');
   final _addressFocus = FocusNode(debugLabel: 'setup-jellyfin-address');
   final _usernameFocus = FocusNode(debugLabel: 'setup-jellyfin-username');
+  final _passwordFocus = FocusNode(debugLabel: 'setup-jellyfin-password');
 
   JellyfinLinkSession? _session;
   JellyfinPairingServer? _pairing;
@@ -131,6 +133,7 @@ class _JellyfinLinkStepState extends ConsumerState<JellyfinLinkStep> {
     _typeFocus.dispose();
     _addressFocus.dispose();
     _usernameFocus.dispose();
+    _passwordFocus.dispose();
     super.dispose();
   }
 
@@ -338,12 +341,14 @@ class _JellyfinLinkStepState extends ConsumerState<JellyfinLinkStep> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _Field(
+          AppTextField(
             label: 'SERVER ADDRESS',
             value: _address,
             hint: 'loft:8096',
             focusNode: _addressFocus,
             onChanged: (v) => setState(() => _address = v),
+            // Done tests the address, as "Test and continue" does.
+            onSubmitted: _continueTyped,
             trailing: server == null ? null : '✓ ${server.name}',
           ),
           SizedBox(height: AppSpacing.md.du(context)),
@@ -364,22 +369,26 @@ class _JellyfinLinkStepState extends ConsumerState<JellyfinLinkStep> {
             ],
           ),
           SizedBox(height: AppSpacing.xl.du(context)),
-          _Field(
+          AppTextField(
             label: 'USERNAME',
             value: _username,
             hint: server == null ? 'After the address checks out' : 'Not set',
             focusNode: _usernameFocus,
             enabled: server != null,
             onChanged: (v) => setState(() => _username = v),
+            onSubmitted: _passwordFocus.requestFocus,
           ),
           SizedBox(height: AppSpacing.md.du(context)),
-          _Field(
+          AppTextField(
             label: 'PASSWORD',
             value: _password,
             hint: server == null ? 'After the address checks out' : 'Not set',
+            focusNode: _passwordFocus,
             enabled: server != null,
             obscure: true,
             onChanged: (v) => setState(() => _password = v),
+            // Done signs in, as "Sign in" does.
+            onSubmitted: _continueTyped,
           ),
           SizedBox(height: AppSpacing.lg.du(context)),
           AppText(
@@ -519,85 +528,3 @@ class _PanelRow extends StatelessWidget {
   }
 }
 
-/// One of O3b's three fields: an uppercase label over the value, typed with
-/// the TV's own keyboard.
-class _Field extends StatefulWidget {
-  final String label;
-  final String value;
-  final String hint;
-  final FocusNode? focusNode;
-  final ValueChanged<String> onChanged;
-  final bool enabled;
-  final bool obscure;
-  final String? trailing;
-
-  const _Field({
-    required this.label,
-    required this.value,
-    required this.hint,
-    this.focusNode,
-    required this.onChanged,
-    this.enabled = true,
-    this.obscure = false,
-    this.trailing,
-  });
-
-  @override
-  State<_Field> createState() => _FieldState();
-}
-
-class _FieldState extends State<_Field> {
-  bool _focused = false;
-
-  @override
-  Widget build(BuildContext context) {
-    final field = Container(
-      padding: EdgeInsets.symmetric(
-        horizontal: 22.du(context),
-        vertical: AppSpacing.md.du(context),
-      ),
-      decoration: BoxDecoration(
-        color: _focused ? AppColors.surfaceRaised : AppColors.surface,
-        border: Border.all(
-          color: _focused ? AppColors.accent : AppColors.line,
-          width: AppShape.borderWidth.du(context),
-        ),
-        borderRadius: BorderRadius.circular(AppShape.radiusMd.du(context)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Expanded(
-                child: AppText(widget.label, style: AppTypography.micro),
-              ),
-              if (widget.trailing case final trailing?)
-                AppText(
-                  trailing,
-                  style: AppTypography.caption,
-                  color: AppColors.success,
-                ),
-            ],
-          ),
-          SizedBox(height: AppSpacing.xs.du(context)),
-          ClickToTypeTextField(
-            value: widget.value,
-            onValueChange: widget.onChanged,
-            focusNode: widget.focusNode,
-            hintText: widget.hint,
-            showBorder: false,
-            obscureText: widget.obscure,
-            onFocusChange: (f) => setState(() => _focused = f),
-            textStyle: AppTypography.body.copyWith(color: AppColors.ink),
-          ),
-        ],
-      ),
-    );
-    // Disabled: 45% and out of the focus order (DESIGN.md).
-    if (!widget.enabled) {
-      return Opacity(opacity: 0.45, child: ExcludeFocus(child: field));
-    }
-    return field;
-  }
-}

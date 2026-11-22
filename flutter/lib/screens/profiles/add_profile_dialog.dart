@@ -10,14 +10,17 @@ import '../../kit/surface_style.dart';
 import '../../kit/card.dart';
 import '../../kit/icon.dart';
 import '../../kit/text.dart';
+import '../../kit/text_field.dart';
 import '../../theme/scale.dart';
 import '../../theme/tokens.dart';
 import '../../theme/typography.dart';
 import '../auth/plex_pin_link_panel.dart';
-import '../common/click_to_type_text_field.dart';
 import '../onboarding/jellyfin_link_step.dart';
 
-const _dialogWidth = 800.0;
+// Wide enough that, at the default 130% on a 1080p TV, the whole dialog —
+// buttons included — fits the screen when it opens (at 800 they began cut
+// off below it; the profile journeys check).
+const _dialogWidth = 1000.0;
 
 /// Making a profile from 07b: its names and whichever accounts it signed
 /// in with — Plex, Jellyfin or both, never neither.
@@ -55,6 +58,7 @@ class AddProfileDialog extends StatefulWidget {
 
 class _AddProfileDialogState extends State<AddProfileDialog> {
   final _nameFocus = FocusNode(debugLabel: 'add-profile-name');
+  final _watchTogetherNameFocus = FocusNode(debugLabel: 'add-profile-watch-together-name');
   String _name = '';
   String _watchTogetherName = '';
   bool _linking = false;
@@ -76,6 +80,7 @@ class _AddProfileDialogState extends State<AddProfileDialog> {
   @override
   void dispose() {
     _nameFocus.dispose();
+    _watchTogetherNameFocus.dispose();
     _jellyfinSignInFocus.dispose();
     _createFocus.dispose();
     super.dispose();
@@ -141,7 +146,7 @@ class _AddProfileDialogState extends State<AddProfileDialog> {
                 maxHeight: MediaQuery.sizeOf(context).height * 0.9,
               ),
               child: Container(
-                padding: EdgeInsets.all(AppSpacing.xxxl.du(context)),
+                padding: EdgeInsets.all(AppSpacing.xxl.du(context)),
                 decoration: BoxDecoration(
                   color: AppColors.surfaceOverlay,
                   borderRadius: BorderRadius.circular(
@@ -177,18 +182,20 @@ class _AddProfileDialogState extends State<AddProfileDialog> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Expanded(
-                            child: _LabeledField(
-                              label: 'Name',
+                            child: AppTextField(
+                              label: 'NAME',
                               value: _name,
                               focusNode: _nameFocus,
                               onChanged: (v) => setState(() => _name = v),
+                              onSubmitted: _watchTogetherNameFocus.requestFocus,
                             ),
                           ),
                           SizedBox(width: AppSpacing.lg.du(context)),
                           Expanded(
-                            child: _LabeledField(
-                              label: 'Name in Watch Together',
+                            child: AppTextField(
+                              label: 'NAME IN WATCH TOGETHER',
                               value: _watchTogetherName,
+                              focusNode: _watchTogetherNameFocus,
                               onChanged: (v) =>
                                   setState(() => _watchTogetherName = v),
                             ),
@@ -197,7 +204,7 @@ class _AddProfileDialogState extends State<AddProfileDialog> {
                       ),
                       Padding(
                         padding: EdgeInsets.symmetric(
-                          vertical: AppSpacing.xl.du(context),
+                          vertical: AppSpacing.lg.du(context),
                         ),
                         child: DecoratedBox(
                           decoration: BoxDecoration(
@@ -309,37 +316,6 @@ class _AddProfileDialogState extends State<AddProfileDialog> {
           ),
         ),
       ),
-    );
-  }
-}
-
-class _LabeledField extends StatelessWidget {
-  final String label;
-  final String value;
-  final FocusNode? focusNode;
-  final ValueChanged<String> onChanged;
-
-  const _LabeledField({
-    required this.label,
-    required this.value,
-    this.focusNode,
-    required this.onChanged,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        AppText(label, color: AppColors.ink3),
-        SizedBox(height: AppSpacing.sm.du(context)),
-        ClickToTypeTextField(
-          value: value,
-          onValueChange: onChanged,
-          focusNode: focusNode,
-        ),
-      ],
     );
   }
 }

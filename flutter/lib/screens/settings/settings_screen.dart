@@ -198,6 +198,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     _firstSourceFocus.dispose();
     _addServersFocus.dispose();
     _relaySettingsEntryFocus.dispose();
+    _addProfileFocus.dispose();
     _relaySettingsBackFocus.dispose();
     _appearanceEntryFocus.dispose();
     _maxHostSeatsFocus.dispose();
@@ -477,7 +478,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             if (_showingAddProfile)
               AddProfileDialog(
                 onCreate: _addProfile,
-                onCancel: () => setState(() => _showingAddProfile = false),
+                onCancel: _closeAddProfile,
               ),
           ],
         ),
@@ -1052,6 +1053,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     _SettingRow(
       label: 'Add a profile',
       description: 'Sign in as someone else in the house',
+      focusNode: _addProfileFocus,
       onClick: () => setState(() => _showingAddProfile = true),
     ),
   ];
@@ -1075,11 +1077,20 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         );
     final settings = await ref.read(settingsStoreProvider).observe().first;
     if (!mounted) return;
-    setState(() {
-      _settings = settings;
-      _showingAddProfile = false;
+    setState(() => _settings = settings);
+    _closeAddProfile();
+  }
+
+  /// The dialog's gone: focus back on "Add a profile", never left on the
+  /// page itself (it landed on the whole Settings screen).
+  void _closeAddProfile() {
+    setState(() => _showingAddProfile = false);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _addProfileFocus.requestFocus();
     });
   }
+
+  final _addProfileFocus = FocusNode(debugLabel: 'settings-add-profile'); // disposed with the screen
 }
 
 enum _Group {

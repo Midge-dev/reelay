@@ -32,28 +32,28 @@ void main() {
     await j.wait(const Duration(seconds: 1));
   }
 
-  /// The server's address, tested.
+  /// The server's address, tested — the keyboard's Done tests it, as
+  /// "Test and continue" does, and moves on to the username.
   Future<void> typeAddress(Journey j) async {
     j.expectFocusOn('loft:8096', because: 'the address field, its example showing');
     await j.select();
     await j.type('http://den.local:8096');
-    await j.down(2); // past the address shortcuts
-    j.expectFocusOn('Test and continue');
-    await j.select();
     await j.realTime();
     await j.wait(const Duration(seconds: 1));
-    expect(j.shows('After the address checks out'), isFalse, reason: j.why('the address checked out: ${j.screenTexts()}'));
+    expect(j.shows('After the address checks out'), isFalse, reason: j.why('Done tested the address: ${j.screenTexts()}'));
   }
 
+  /// Username, then password; Done on each goes on — to the password, then
+  /// signing in.
   Future<void> signIn(Journey j, {required String password}) async {
-    await j.select(); // the username field
+    j.expectFocusOn('Not set', because: 'the address checked out: on to the username');
+    final username = j.focusedRect()!;
+    await j.select();
     await j.type('sam');
-    await j.down();
+    expect(j.focusedRect()!.top, greaterThan(username.bottom), reason: j.why('Done on the username goes on to the password'));
+    j.expectFocusOn('Not set');
     await j.select();
     await j.type(password);
-    await j.down();
-    j.expectFocusOn('Sign in');
-    await j.select();
     await j.realTime();
     await j.wait(const Duration(seconds: 2));
   }
@@ -61,7 +61,6 @@ void main() {
   journey('first run, Jellyfin only: typed sign-in, skip Watch Together, and Home has the library', (j) async {
     await toTypedSignIn(j);
     await typeAddress(j);
-    j.expectFocusOn('Not set', because: 'the address checked out: on to the username');
     await signIn(j, password: 'popcorn');
     expect(j.shows('STEP 3 OF 4'), isTrue, reason: j.why('signed in: on to Watch Together ${j.screenTexts()}'));
     await j.down();
@@ -86,13 +85,11 @@ void main() {
     expect(j.shows('STEP 2 OF 4 · JELLYFIN'), isTrue, reason: j.why('still signing in'));
     expect(j.focusOnScreen, isTrue);
 
-    for (var i = 0; i < 3 && !j.focusedTexts().any((t) => t.contains('•')); i++) {
+    for (var i = 0; i < 4 && !j.focusedTexts().any((t) => t.contains('•')); i++) {
       await j.up(); // back to the password
     }
     await j.select();
-    await j.type('popcorn');
-    await j.down();
-    await j.select(); // Sign in
+    await j.type('popcorn'); // Done signs in
     await j.realTime();
     await j.wait(const Duration(seconds: 2));
     expect(j.shows('STEP 3 OF 4'), isTrue, reason: j.why('the second try signed in: ${j.screenTexts()}'));
