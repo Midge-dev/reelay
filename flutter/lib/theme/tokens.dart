@@ -626,7 +626,7 @@ class AppMotion {
   static const collapse = Duration(milliseconds: 180);
 
   // ---- Rows and pages ----------------------------------------------------
-  /// Row eases the focused card to 80% across the viewport.
+  /// A row easing a card that was past its edge into view (revealInRow).
   static const rowScroll = Duration(milliseconds: 280);
 
   /// The page easing a row into view as focus moves up or down between

@@ -1,7 +1,9 @@
-import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
+
+import 'package:reelay/theme/scale.dart';
+import 'package:reelay/theme/tokens.dart';
 
 import 'journey.dart';
 
@@ -10,12 +12,16 @@ import 'journey.dart';
 /// - the focused card is whole on screen, its focus scale and border never
 ///   clipped by the row's track ("A row's track is card height +
 ///   rowHeadroom … never clipped");
-/// - moving on, the row stops with the focused card ~80% across, so the
-///   next card peeks ("the next card stays half-visible");
+/// - the row holds still while focus moves between cards it already shows
+///   whole, and scrolls only when focus moves to a card past an edge — just
+///   far enough to show that card whole, at the edge (the safe margin);
 /// - the last card stops flush with the row's end (RowEndStop);
-/// - moving back reveals one card at a time, never yanks the row;
 /// - a held direction lands where the presses say, and the row then sits
-///   still ("scrolls the row once, when the key settles").
+///   still.
+/// A row's scroll (AppMotion.rowScroll) starts a frame after the press;
+/// measure once it's done.
+const _settle = Duration(milliseconds: 150);
+
 extension RowChecks on Journey {
   /// The horizontal row the focused card is in, if it's in one.
   ScrollableState? get focusedRow {
@@ -35,24 +41,39 @@ extension RowChecks on Journey {
     return _rectOf(row.context).intersect(screen);
   }
 
-  /// The next card along [row] after [from], if one is built.
-  Rect? _nextCard(ScrollableState row, Rect from) {
-    Rect? next;
-    for (final node in FocusManager.instance.rootScope.descendants) {
-      final context = node.context;
-      if (context == null || !node.canRequestFocus || node.skipTraversal) continue;
-      if (Scrollable.maybeOf(context, axis: Axis.horizontal) != row) continue;
-      final box = context.findRenderObject();
-      if (box is! RenderBox || !box.attached || !box.hasSize) continue;
-      final rect = _rectOf(context);
-      if (rect.left >= from.right - 1 && (next == null || rect.left < next.left)) next = rect;
-    }
-    return next;
-  }
-
   /// Which card is focused, by its place along the row's content — the
   /// same card at any scroll (its text can be an initial, its box moves).
   int _cardAt(ScrollableState row) => (focusedRect()!.left - _rectOf(row.context).left + row.position.pixels).round();
+
+  /// The row's edges: its on-screen part less the safe margin each side —
+  /// where its edge fade starts.
+  ({double left, double right}) _edges(ScrollableState row) {
+    final inset = AppSpacing.safeX.du(row.context);
+    final visible = _visible(row);
+    return (left: visible.left + inset, right: visible.right - inset);
+  }
+
+  /// After a press moved focus: if the card it landed on was already whole
+  /// inside the row's edges, the row mustn't have moved; if not, it moved
+  /// just far enough to bring that card to the edge (or to its own end).
+  void _expectEdgeScroll(ScrollableState row, double pixelsBefore, String where) {
+    final position = row.position;
+    final rect = focusedRect()!;
+    final moved = position.pixels - pixelsBefore;
+    final wasLeft = rect.left + moved, wasRight = rect.right + moved;
+    final edges = _edges(row);
+    if (wasLeft >= edges.left - 1 && wasRight <= edges.right + 1) {
+      expect(moved.abs(), lessThan(1),
+          reason: why('$where: the card was already whole on screen, so the row should hold still (it moved ${moved.toStringAsFixed(0)} px)'));
+      return;
+    }
+    final atAnEnd = position.pixels <= position.minScrollExtent + 1 || position.pixels >= position.maxScrollExtent - 1;
+    final atRightEdge = (rect.right - edges.right).abs() <= 2;
+    final atLeftEdge = (rect.left - edges.left).abs() <= 2;
+    expect(atAnEnd || (wasRight > edges.right ? atRightEdge : atLeftEdge), isTrue,
+        reason: why('$where: the card was past an edge, so the row moves just far enough to bring it to that edge — '
+            'it\'s at $rect, edges ${edges.left.toStringAsFixed(0)}–${edges.right.toStringAsFixed(0)}'));
+  }
 
   void _expectCardWhole(ScrollableState row, String where) {
     final rect = focusedRect()!;
@@ -74,13 +95,27 @@ extension RowChecks on Journey {
     final row = focusedRow;
     expect(row, isNotNull, reason: why('$name: focus should be in a horizontal row'));
     final position = row!.position;
+    // From the row's real start: Down into a row lands on whichever card
+    // is nearest, not always its first.
+    for (var i = 0; i < 60; i++) {
+      final before = focus;
+      await left();
+      if (focusedRow != row) {
+        await right(); // Left left the row (to the rail): come back
+        break;
+      }
+      if (focus == before) break;
+    }
+    await wait(_settle);
     final cards = <int>[_cardAt(row)];
     _expectCardWhole(row, '$name, first card');
 
     // Right to the end.
     while (cards.length < 60) {
       final before = focus;
+      final pixelsBefore = position.pixels;
       await right();
+      await wait(_settle);
       if (focus == before || focusedRow != row) {
         if (focusedRow != row) await left(); // Right left the row: come back
         break;
@@ -88,12 +123,7 @@ extension RowChecks on Journey {
       cards.add(_cardAt(row));
       final here = '$name, card ${cards.length}';
       _expectCardWhole(row, here);
-      // More than a card still hidden past the edge: the next one peeks.
-      if (position.extentAfter > focusedRect()!.width) {
-        final next = _nextCard(row, focusedRect()!);
-        expect(next != null && next.left < _visible(row).right - 1, isTrue,
-            reason: why('$here: the row has more, so the next card should peek in (${next ?? 'none built'})'));
-      }
+      _expectEdgeScroll(row, pixelsBefore, here);
     }
     expect(position.pixels, lessThanOrEqualTo(position.maxScrollExtent + 0.5),
         reason: why('$name: the last card stops flush, not past the end'));
@@ -102,16 +132,15 @@ extension RowChecks on Journey {
           reason: why('$name: at its last card the row is scrolled to its end'));
     }
 
-    // Back to the start, one card at a time.
-    final cardStep = focusedRect()!.width * 1.6; // a card and its gap, with room
+    // Back to the start.
     for (var i = cards.length - 1; i > 0; i--) {
       final from = position.pixels;
       await left();
+      await wait(_settle);
       final here = '$name, back to card $i';
       expect(_cardAt(row), closeTo(cards[i - 1], 2), reason: why('$here: Left goes back one card'));
-      expect((from - position.pixels).abs(), lessThanOrEqualTo(cardStep),
-          reason: why('$here: moving back reveals one card, it doesn\'t yank the row (${from - position.pixels} px)'));
       _expectCardWhole(row, here);
+      _expectEdgeScroll(row, from, here);
     }
     expect(position.pixels, closeTo(0, 1), reason: why('$name: back at its first card, the row is home'));
 

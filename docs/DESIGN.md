@@ -109,10 +109,13 @@ end behind a live control is worse than a stated one.
 - Removing a focused item reclaims focus **inside its own row**
   (`_reclaimFocusOnRemoval` in `home_screen.dart`).
 - Nothing outside the focused element animates on focus change.
-- Holding the D-pad moves focus at input speed but scrolls the row **once**,
-  when the key settles.
-- Row scroll stops with the focused card at **80%** across the viewport, so the
-  next card stays half-visible.
+- A row **holds still** while focus moves between cards it already shows
+  whole. It scrolls only when focus moves to a card past its left or right
+  edge — the safe margin, where the row's fade starts — and then just far
+  enough to show that card whole at that edge. At either end it goes all the
+  way, so the first and last cards sit where they do at rest.
+- Holding the D-pad moves focus at input speed; the row follows only once
+  focus reaches its edge, and is still the moment the key is let go.
 - A row's track is card height + `AppSpacing.rowHeadroom`, split evenly, so a
   focused card's scale and border are never clipped.
 - Disabled means 45% opacity **and** removal from the focus order.
@@ -184,7 +187,8 @@ unfocused→focused transition on hover and keeps the spine for keyboard focus;
 marker (minimum target 44pt).
 
 What must survive any port: the focus signal's three parts together, the scrim
-rule, two weights and one accent, the no-blur budget, the 80% scroll peek. A
+rule, two weights and one accent, the no-blur budget, rows that move only at
+their edges. A
 platform may implement these differently. It may not drop one.
 
 ---

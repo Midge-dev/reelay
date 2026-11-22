@@ -1,6 +1,7 @@
 import 'package:flutter/rendering.dart';
 import 'package:flutter/widgets.dart';
 
+import '../theme/scale.dart';
 import '../theme/tokens.dart';
 
 /// How far past its edges a horizontal row builds its cards: a screen's
@@ -14,6 +15,9 @@ double rowCacheExtent(BuildContext context) => MediaQuery.sizeOf(context).width;
 const _forwardAlignment = 0.8;
 const _backwardAlignment = 0.0;
 
+/// In a horizontal row, see [revealInRow]: the row holds still until focus
+/// goes past its edge (DESIGN.md). What follows is for vertical grids.
+///
 /// Scrolls [context]'s enclosing Scrollable to bring it on screen, biasing
 /// which side gets left "peeking" based on which way focus is actually
 /// moving — forward (deeper into the list) leaves the *next* item partially
@@ -29,6 +33,13 @@ const _backwardAlignment = 0.0;
 /// Scrollable's current position tells us which way we're actually
 /// headed, without needing every caller to track and pass its own index.
 void ensureCardVisible(BuildContext context, {Duration duration = AppMotion.rowScroll}) {
+  // A horizontal row only moves when focus goes past its edge (DESIGN.md).
+  final scrollable = Scrollable.maybeOf(context);
+  final target = context.findRenderObject();
+  if (scrollable != null && target != null && axisDirectionToAxis(scrollable.axisDirection) == Axis.horizontal) {
+    revealInRowAndPage(target, context, duration: duration);
+    return;
+  }
   final movingForward = _isMovingForward(context);
   if (movingForward == null) return;
 
@@ -48,6 +59,14 @@ void ensureCardVisible(BuildContext context, {Duration duration = AppMotion.rowS
 /// fixed pixel amount (matching the caller's fade-affordance width),
 /// computing whatever alignment fraction currently produces that.
 void ensureRowVisible(BuildContext context, {required double peekExtent, Duration duration = AppMotion.pageScroll}) {
+  // The same card can sit in a horizontal row (Home's lower rows): there
+  // it follows the row rule, not the grid's.
+  final scrollable = Scrollable.maybeOf(context);
+  final target = context.findRenderObject();
+  if (scrollable != null && target != null && axisDirectionToAxis(scrollable.axisDirection) == Axis.horizontal) {
+    revealInRowAndPage(target, context, duration: AppMotion.rowScroll);
+    return;
+  }
   final movingForward = _isMovingForward(context);
   if (movingForward == null) return;
   final scrollableState = Scrollable.maybeOf(context);
@@ -76,4 +95,73 @@ bool? _isMovingForward(BuildContext context) {
 
   final leadingEdgeOffset = viewport.getOffsetToReveal(renderObject, 0.0).offset;
   return leadingEdgeOffset >= scrollableState.position.pixels;
+}
+
+/// DESIGN.md: a horizontal row holds still while focus moves between cards
+/// it already shows whole, and scrolls only when focus moves to a card past
+/// an edge — just far enough to show that card whole, at the edge. The
+/// edge is the safe margin, where the row's fade starts: a card reaching
+/// into it is off the edge. Used by every card that scrolls itself into
+/// view, and by the app's traversal policy for anything else in a row.
+void revealInRow(RenderObject target, ScrollableState row, {Duration duration = AppMotion.rowScroll}) {
+  final viewport = RenderAbstractViewport.maybeOf(target);
+  if (viewport == null) return;
+  final position = row.position;
+  final inset = AppSpacing.safeX.du(row.context);
+  // The scroll offsets that put the card's leading edge at the row's
+  // leading edge, and its trailing edge at the trailing one.
+  final leading = viewport.getOffsetToReveal(target, 0).offset;
+  final trailing = viewport.getOffsetToReveal(target, 1).offset;
+  double? to;
+  if (position.pixels > leading - inset) {
+    to = leading - inset; // past the leading edge
+  } else if (position.pixels < trailing + inset) {
+    to = trailing + inset; // past the trailing edge
+  }
+  if (to == null) return;
+  // Within a margin of either end, go to the end: the first and last cards
+  // sit where they would at rest (a card's label can be wider than the part
+  // that takes focus — a cast member's name under their picture).
+  if (position.maxScrollExtent - to < inset) to = position.maxScrollExtent;
+  if (to - position.minScrollExtent < inset) to = position.minScrollExtent;
+  to = to.clamp(position.minScrollExtent, position.maxScrollExtent);
+  if ((to - position.pixels).abs() < 0.5) return;
+  if (duration == Duration.zero || !AppMotion.animatePages) {
+    position.jumpTo(to);
+  } else {
+    position.animateTo(to, duration: duration, curve: AppMotion.enter);
+  }
+}
+
+/// A card in a row, focused: its row follows [revealInRow], and every
+/// vertical scrollable around the row — the page — moves only if the card
+/// is off it, and then just far enough to show it. (Focus moved by code —
+/// Undo putting it back, a screen restoring it — gets no traversal scroll,
+/// so this has to bring the row on screen too.)
+void revealInRowAndPage(RenderObject card, BuildContext context, {Duration duration = AppMotion.rowScroll}) {
+  RenderObject? holder = card;
+  var scrollable = Scrollable.maybeOf(context);
+  while (holder != null && scrollable != null) {
+    if (axisDirectionToAxis(scrollable.axisDirection) == Axis.horizontal) {
+      revealInRow(card, scrollable, duration: duration);
+    } else {
+      final viewport = RenderAbstractViewport.maybeOf(holder);
+      if (viewport != null) {
+        final position = scrollable.position;
+        final top = viewport.getOffsetToReveal(card, 0).offset;
+        final bottom = viewport.getOffsetToReveal(card, 1).offset;
+        final to = position.pixels > top ? top : (position.pixels < bottom ? bottom : null);
+        if (to != null) {
+          final clamped = to.clamp(position.minScrollExtent, position.maxScrollExtent);
+          if (duration == Duration.zero || !AppMotion.animatePages) {
+            position.jumpTo(clamped);
+          } else {
+            position.animateTo(clamped, duration: AppMotion.pageScroll, curve: AppMotion.enter);
+          }
+        }
+      }
+    }
+    holder = scrollable.context.findRenderObject();
+    scrollable = Scrollable.maybeOf(scrollable.context);
+  }
 }
