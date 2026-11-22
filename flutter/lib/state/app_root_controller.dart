@@ -1195,7 +1195,7 @@ class AppRootController extends ChangeNotifier {
     String? thumb,
     required String targetItemId,
     bool defaultRestart = false,
-    int? resumeAtMs,
+    required int resumeAtMs,
   }) {
     _setState(
       WatchTogetherStart(

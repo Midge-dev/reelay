@@ -22,10 +22,11 @@ class WatchTogetherStartScreen extends StatefulWidget {
   final String roomTitle;
   final bool defaultRestart;
 
-  /// Where the title was left off. 0: it never was, so there's no Resume
-  /// to choose between (it starts at the beginning either way). Null:
-  /// not known here — both choices show.
-  final int? resumeAtMs;
+  /// Where the title was left off. 0: it never was, so there's nothing to
+  /// choose between — no Resume, no "Start from the beginning" (it starts
+  /// there either way). Every way in knows it: an "unknown" here once
+  /// offered Resume on episodes never started (from the show page).
+  final int resumeAtMs;
   final int maxSeats;
   final String? relayNickname;
   final Future<bool> Function()? checkRelayReachable;
@@ -36,7 +37,7 @@ class WatchTogetherStartScreen extends StatefulWidget {
     super.key,
     required this.roomTitle,
     this.defaultRestart = false,
-    this.resumeAtMs,
+    required this.resumeAtMs,
     required this.maxSeats,
     this.relayNickname,
     this.checkRelayReachable,
@@ -124,12 +125,10 @@ class _WatchTogetherStartScreenState extends State<WatchTogetherStartScreen> {
                 style: AppTypography.title2,
               ),
               SizedBox(height: AppSpacing.xl.du(context)),
-              if (widget.resumeAtMs != 0) ...[
+              if (widget.resumeAtMs > 0) ...[
                 _ChoiceRow(
                   title: 'Resume',
-                  subtitle: widget.resumeAtMs == null
-                      ? 'Where you left off'
-                      : 'From ${formatTimecode(widget.resumeAtMs!)}',
+                  subtitle: 'From ${formatTimecode(widget.resumeAtMs)}',
                   selected: !_restart,
                   onClick: () => setState(() => _restart = false),
                 ),

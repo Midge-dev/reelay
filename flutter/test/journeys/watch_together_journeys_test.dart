@@ -330,4 +330,50 @@ void main() {
       expect(j.shows('In sync'), isFalse, reason: j.why('the host has gone; "In sync" with nobody is wrong — on screen: ${j.screenTexts()}'));
     }, relay: true);
   });
+
+  group('Starting a room (screen 09)', () {
+    Future<void> toWatchTogether(Journey j) async {
+      for (var i = 0; i < 4 && !j.focusedTexts().any((t) => t.contains('Watch Together')); i++) {
+        await j.right();
+      }
+      j.expectFocusOn('Watch Together');
+      await j.select();
+      await j.wait(const Duration(seconds: 1));
+      expect(j.shows('Open the room'), isTrue, reason: j.why('the start dialog is open: ${j.screenTexts()}'));
+    }
+
+    journey("a film you've never started offers no Resume — there's nothing to resume", (j) async {
+      await j.openFromRail('Movies');
+      await j.wait(const Duration(seconds: 1));
+      j.expectFocusOn('Arrival'); // never played
+      await j.select();
+      await j.wait(const Duration(seconds: 1));
+      await toWatchTogether(j);
+      expect(j.shows('Resume'), isFalse, reason: j.why('Arrival was never started: ${j.screenTexts()}'));
+      expect(j.shows('Start from the beginning'), isFalse, reason: j.why('so there is nothing to choose between'));
+    }, relay: true);
+
+    journey('a film you are partway through offers Resume, from where you are', (j) async {
+      await j.openFromRail('Movies');
+      await j.wait(const Duration(seconds: 1));
+      await j.right(); // Blade Runner, a third of the way in
+      j.expectFocusOn('Blade Runner');
+      await j.select();
+      await j.wait(const Duration(seconds: 1));
+      await toWatchTogether(j);
+      expect(j.shows('Resume'), isTrue);
+      expect(j.shows('From 33:20'), isTrue, reason: j.why(j.screenTexts().toString()));
+      expect(j.shows('Start from the beginning'), isTrue);
+    }, relay: true);
+
+    journey("a show's next episode, never started: no Resume either", (j) async {
+      await j.openFromRail('Shows');
+      await j.right(); // Severance: next up is S1 E2, not started
+      await j.select();
+      await j.wait(const Duration(seconds: 1));
+      j.expectFocusOn('Play S1 E2');
+      await toWatchTogether(j);
+      expect(j.shows('Resume'), isFalse, reason: j.why('S1 E2 was never started: ${j.screenTexts()}'));
+    }, relay: true);
+  });
 }

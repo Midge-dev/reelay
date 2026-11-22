@@ -10,6 +10,7 @@ Future<void> _pump(
   Future<bool> Function()? checkRelayReachable,
   void Function({required bool restart})? onConfirm,
   VoidCallback? onCancel,
+  int resumeAtMs = 2772000, // 46:12, as in screen 09
 }) async {
   tester.view.physicalSize = const Size(1920, 1080);
   tester.view.devicePixelRatio = 1.0;
@@ -21,6 +22,7 @@ Future<void> _pump(
       textDirection: TextDirection.ltr,
       child: WatchTogetherStartScreen(
         roomTitle: 'The Quiet Coast',
+        resumeAtMs: resumeAtMs,
         defaultRestart: defaultRestart,
         maxSeats: maxSeats,
         relayNickname: relayNickname,
@@ -33,6 +35,18 @@ Future<void> _pump(
 }
 
 void main() {
+  testWidgets('a title never started: no start choice at all, just Open the room', (tester) async {
+    await _pump(tester, resumeAtMs: 0);
+    expect(find.text('Resume'), findsNothing);
+    expect(find.text('Start from the beginning'), findsNothing);
+    expect(find.text('Open the room'), findsOneWidget);
+  });
+
+  testWidgets('partway in: Resume says from where', (tester) async {
+    await _pump(tester);
+    expect(find.text('From 46:12'), findsOneWidget);
+  });
+
   testWidgets('shows the room title, seat count, and Resume preselected by default', (tester) async {
     await _pump(tester);
 

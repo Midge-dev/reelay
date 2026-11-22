@@ -51,7 +51,9 @@ class ShowDetailScreen extends StatefulWidget {
   final MediaItem show;
   final VoidCallback onBack;
   final ValueChanged<String> onPlay;
-  final ValueChanged<String> onWatchTogether;
+  /// The episode Play would start, and how far into it you are (0: not
+  /// started) — screen 09 offers Resume only when there's something to resume.
+  final void Function(String episodeId, int resumeAtMs) onWatchTogether;
   final ValueChanged<MediaItem> onSelectEpisode;
   final bool Function(String?) isOnWatchlist;
   final ValueChanged<String?> onToggleWatchlist;
@@ -300,7 +302,7 @@ class _ShowDetailScreenState extends State<ShowDetailScreen> {
         playFocus: _playFocus,
         onPlay: playTarget != null ? () => widget.onPlay(playTarget) : null,
         onWatchTogether: playTarget != null
-            ? () => widget.onWatchTogether(playTarget)
+            ? () => widget.onWatchTogether(playTarget, (nextUp ?? _nextEpisode)?.viewOffset ?? 0)
             : null,
         isOnWatchlist: widget.isOnWatchlist(guid),
         onToggleWatchlist: () => widget.onToggleWatchlist(guid),

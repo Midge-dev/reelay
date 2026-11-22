@@ -498,7 +498,7 @@ class _AppContent extends StatelessWidget {
               targetItemId,
               state,
             ),
-            onWatchTogether: (targetItemId) =>
+            onWatchTogether: (targetItemId, resumeAtMs) =>
                 controller.openWatchTogetherStart(
                   ctx: ctx,
                   server: activeCopy.server,
@@ -506,6 +506,7 @@ class _AppContent extends StatelessWidget {
                   roomTitle: activeCopy.value.title,
                   thumb: activeCopy.value.thumb,
                   targetItemId: targetItemId,
+                  resumeAtMs: resumeAtMs,
                 ),
             onSelectEpisode: (episode) => controller.returnTo(
               EpisodeDetail(
@@ -737,6 +738,7 @@ class _AppContent extends StatelessWidget {
               thumb: episode.thumb,
               targetItemId: episode.id,
               defaultRestart: true,
+              resumeAtMs: episode.viewOffset ?? 0,
             ),
           ),
         ),

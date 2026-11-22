@@ -442,9 +442,8 @@ class WatchTogetherStart extends AppState {
   final String targetItemId;
   final bool defaultRestart;
 
-  /// Where the title was left off: 0 when it never was (no Resume to offer),
-  /// null when the caller doesn't know.
-  final int? resumeAtMs;
+  /// Where the title was left off: 0 when it never was (no Resume to offer).
+  final int resumeAtMs;
 
   const WatchTogetherStart({
     required this.ctx,
@@ -454,7 +453,7 @@ class WatchTogetherStart extends AppState {
     this.thumb,
     required this.targetItemId,
     this.defaultRestart = false,
-    this.resumeAtMs,
+    required this.resumeAtMs,
   });
 }
 

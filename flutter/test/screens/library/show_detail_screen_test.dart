@@ -40,7 +40,7 @@ Future<void> _pump(
         show: _show,
         onBack: () {},
         onPlay: onPlay ?? (_) {},
-        onWatchTogether: (_) {},
+        onWatchTogether: (_, _) {},
         onSelectEpisode: onSelectEpisode ?? (_) {},
         isOnWatchlist: (_) => false,
         onToggleWatchlist: (_) {},
