@@ -169,6 +169,13 @@ Tuning with history behind it:
   is closed by speed after the room resumes. At 500 a slow transcode that
   landed and played half a second on chased the host through every wait
   (fuzz seed 1968). Paused rooms still align to 500 ms — a still frame.
+- A guest that has to seek just before the room starts aims where the room
+  will be when its seek lands (the start spot plus its measured seek lead,
+  less the time left before the start), as a seek while playing does. Aimed
+  at the start spot, a slow seek landed behind a room already playing, the
+  room rewound to wait for it, and the other guests then had to seek back —
+  two slow guests took turns (fuzz seed 6530). With it, 10000 of 10000
+  random rooms settle.
 - `_intendedPlaying` defaults to `true`: the player starts playing on
   creation, before the coordinator is listening, so a `false` default meant
   every session needed a manual Play press to get going.

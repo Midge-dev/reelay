@@ -25,10 +25,11 @@ void main() {
   // Rooms the fuzzer once found failing, kept whatever SYNC_FUZZ_RUNS is:
   // 447 and 600 sat a second off (before rate nudging); 1975 lost a rewind
   // to the rendezvous; 1968 then looped a slow transcode chasing the host
-  // through a wait.
+  // through a wait; 6530's two slow guests took turns seeking to a start
+  // spot the room had already left, each rewinding the room for the other.
   test('rooms that once failed still settle', () {
     final failures = [
-      for (final seed in const [447, 600, 1968, 1975])
+      for (final seed in const [447, 600, 1968, 1975, 6530])
         if (_problem(runRoom(randomScenario(seed))) case final problem?) 'seed $seed: $problem',
     ];
     expect(failures, isEmpty);

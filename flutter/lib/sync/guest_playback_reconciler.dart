@@ -251,7 +251,14 @@ class GuestPlaybackReconciler {
         });
       }
       _ensurePaused();
-      _alignWhileStopped(state);
+      // The room starts at anchorHostTimeMs; a seek here lands after its
+      // measured lead, so aim where the room will be by then, as a seek
+      // while playing does. Aimed at the start spot itself, a slow seek
+      // landed seconds behind a room already playing; the room rewound to
+      // wait for it, and every other guest then had to seek back too — two
+      // slow guests took turns doing it to each other (fuzz seed 6530).
+      final landsAt = hostNow + _seekLeadMs;
+      _alignWhileStopped(state, aheadMs: landsAt > state.anchorHostTimeMs ? landsAt - state.anchorHostTimeMs : 0);
       return;
     }
     if (_scheduledStartSeq != null && _scheduledStartSeq != state.seq) {
@@ -325,7 +332,9 @@ class GuestPlaybackReconciler {
     return (targetMs - inFlight).abs() < _inFlightRetargetMs;
   }
 
-  void _alignWhileStopped(PlaybackState state) {
+  /// [aheadMs]: how far past the anchor the room will be when a seek made
+  /// now lands (a room about to start; 0 when it's stopped).
+  void _alignWhileStopped(PlaybackState state, {int aheadMs = 0}) {
     if (_seekLanding(state.anchorPositionMs)) return;
     final offBy = (player.currentPosition - state.anchorPositionMs).abs();
     // Paused, the room is a still frame to match. Waiting to resume, a gap
@@ -333,7 +342,7 @@ class GuestPlaybackReconciler {
     // costs a rebuffer the room then waits for, and the host may be moving
     // to this guest meanwhile (fuzz seed 1968).
     final thresholdMs = state.phase == PlaybackPhase.paused ? _pausedSeekThresholdMs : _deadbandMs;
-    if (offBy > thresholdMs && _cooldownElapsed()) _hardSeek(state.anchorPositionMs);
+    if (offBy > thresholdMs && _cooldownElapsed()) _hardSeek(state.anchorPositionMs + aheadMs);
   }
 
   void _ensurePaused() => _setPaused();
