@@ -1,5 +1,5 @@
 # Reelay (Flutter)
 
 The app. Building and installing: `../README.md`. Running and testing on the
-Shield: `../CLAUDE.md`. How it works: `../ARCHITECTURE.md`. UI rules:
-`../DESIGN.md`.
+Shield: `../.claude/CLAUDE.md`. How it works: `../docs/ARCHITECTURE.md`. UI
+rules: `../docs/DESIGN.md`.

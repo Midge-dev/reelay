@@ -2,9 +2,10 @@
 
 A custom Android TV Plex client with real synchronized "watch together"
 playback — built for two people on separate Plex accounts/servers/houses to
-watch the same movie in sync. Not on the Play Store; installed by sideloading
-the APK. See `ARCHITECTURE.md` for how it works and `NOTES.md` for setup
-details.
+watch the same movie in sync. Installed from the Play Store's internal
+testing track, or by sideloading the APK. See
+[`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) for how it works and
+[`docs/DESIGN.md`](docs/DESIGN.md) for the UI rules.
 
 ## Building from source (for developers)
 

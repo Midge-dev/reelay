@@ -15,3 +15,8 @@ local.properties
 # deliberately, see build.gradle.kts), this one is the actual key an app
 # update would need to match forever, so it must never leave this machine.
 /app/release.keystore
+
+# Local-only notes: this machine's device/network setup, and the working
+# to-do list. Kept on disk, not published.
+/NOTES.md
+/TODO.md

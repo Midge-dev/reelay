@@ -2,8 +2,8 @@
 
 The reasoning behind the parts of Reelay that aren't obvious from the code:
 the Watch Together relay and sync model, Plex API quirks, and a few
-defaults with history. For the UI rules read `DESIGN.md`; for how to run
-and test, `CLAUDE.md`.
+defaults with history. For the UI rules read [`DESIGN.md`](DESIGN.md); for
+how to run and test, [`.claude/CLAUDE.md`](../.claude/CLAUDE.md).
 
 ## 1. Project shape
 

@@ -5,7 +5,7 @@ app under `flutter/lib/`, targeting Android TV today (Apple TV planned).
 
 ## Before any UI work
 
-Read **[`DESIGN.md`](DESIGN.md)** first, every time — it's the non-negotiable
+Read **[`docs/DESIGN.md`](../docs/DESIGN.md)** first, every time — it's the non-negotiable
 rules for the **Nocturne** design system (focus signal, motion budget, scrim
 policy, scale factor, copy rules) and is short on purpose. Exact values are in
 `docs/tokens.json`; the Dart ports are `flutter/lib/theme/tokens.dart` and
@@ -62,18 +62,20 @@ Before the Shield pass, the automated layers catch most of it (run with
 - `test/journeys/ux_tour_test.dart` — not a test: `UX_TOUR=1 flutter test
   test/journeys/ux_tour_test.dart` screenshots every screen in the app's
   own type into `build/journey_shots/` (`UX_SCALE=1.5` for another UI size),
-  for a design pass against DESIGN.md.
+  for a design pass against docs/DESIGN.md.
 - `test/screens/player/player_playback_test.dart` — playback and subtitles
   on Plex and Jellyfin.
 - `test/sync/` — Watch Together rooms in simulation, plus a fuzzer (see
-  ARCHITECTURE.md §2.7).
+  docs/ARCHITECTURE.md §2.7).
 
-Target device and ADB connection details are in `NOTES.md`.
+Target device and ADB connection details are in `NOTES.md` at the repo root —
+local only (gitignored), like `TODO.md`, the working to-do list.
 
 ## Repo layout
 
 - `flutter/lib/` — the app
-- `ARCHITECTURE.md` — why the sync, relay and Plex code work the way they do
+- `docs/ARCHITECTURE.md` — why the sync, relay and Plex code work the way they do
+- `docs/DESIGN.md` — the Nocturne UI rules
 - `relay/` — the watch-together WebSocket relay (Node.js)
 - `docs/tokens.json` — canonical Nocturne token values
 - `docs/focus-navigation-qa-checklist.md` — regression checklist for D-pad/focus work
