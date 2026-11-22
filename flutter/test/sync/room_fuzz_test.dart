@@ -22,6 +22,18 @@ void main() {
   final runs = int.tryParse(env['SYNC_FUZZ_RUNS'] ?? '') ?? 150;
   final seeds = onlySeed != null ? [onlySeed] : [for (var i = 1; i <= runs; i++) i];
 
+  // Rooms the fuzzer once found failing, kept whatever SYNC_FUZZ_RUNS is:
+  // 447 and 600 sat a second off (before rate nudging); 1975 lost a rewind
+  // to the rendezvous; 1968 then looped a slow transcode chasing the host
+  // through a wait.
+  test('rooms that once failed still settle', () {
+    final failures = [
+      for (final seed in const [447, 600, 1968, 1975])
+        if (_problem(runRoom(randomScenario(seed))) case final problem?) 'seed $seed: $problem',
+    ];
+    expect(failures, isEmpty);
+  });
+
   test('${seeds.length} random rooms all settle', () {
     final failures = <String>[];
     for (final seed in seeds) {

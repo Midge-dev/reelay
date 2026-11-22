@@ -328,7 +328,12 @@ class GuestPlaybackReconciler {
   void _alignWhileStopped(PlaybackState state) {
     if (_seekLanding(state.anchorPositionMs)) return;
     final offBy = (player.currentPosition - state.anchorPositionMs).abs();
-    if (offBy > _pausedSeekThresholdMs && _cooldownElapsed()) _hardSeek(state.anchorPositionMs);
+    // Paused, the room is a still frame to match. Waiting to resume, a gap
+    // under the deadband is closed by speed once it plays — a seek here
+    // costs a rebuffer the room then waits for, and the host may be moving
+    // to this guest meanwhile (fuzz seed 1968).
+    final thresholdMs = state.phase == PlaybackPhase.paused ? _pausedSeekThresholdMs : _deadbandMs;
+    if (offBy > thresholdMs && _cooldownElapsed()) _hardSeek(state.anchorPositionMs);
   }
 
   void _ensurePaused() => _setPaused();

@@ -23,7 +23,13 @@ class HostPlaybackCoordinator {
   // GuestPlaybackReconciler._pausedSeekThresholdMs), so the room only moves
   // to a stalled peer when it's further out than that — and never drags
   // everyone back further than a couple of minutes for one peer.
-  static const _rendezvousToleranceMs = 500;
+  // The guests' seek deadband: a stalled peer nearer the host than this
+  // isn't worth a seek (another rebuffer, on a slow transcode seconds of
+  // one) — guests close that much by playing a little fast or slow once
+  // the room resumes. At 500 the host chased a slow peer that landed and
+  // played on half a second before it heard the room was waiting, while
+  // the peer seeked back to the old spot: a loop (fuzz seed 1968).
+  static const _rendezvousToleranceMs = 1500;
   static const _rendezvousMaxMs = 120000;
 
   final String myPeerId;
@@ -351,7 +357,26 @@ class HostPlaybackCoordinator {
   }
 
   void _afterHostSeek(int targetMs, String actor) {
+    _explicitSeekAtMs = nowMs();
     _broadcast(hint: PlaybackActionHint.seek, actor: actor, anchorOverrideMs: targetMs);
+  }
+
+  /// When someone last seeked the room. From then until the room plays
+  /// again, the room resumes where they asked: a stalled peer's position
+  /// no longer moves the host ([_rendezvous]). A peer still on its way to
+  /// the spot before — a rendezvous it was following when the seek came,
+  /// say — reports that old spot, and used to pull the host back to it,
+  /// undoing the seek (fuzz seed 1975). Stalled peers are still waited for;
+  /// they go to the new spot once they're ready.
+  int? _explicitSeekAtMs;
+
+  bool get _seekPinned => _explicitSeekAtMs != null;
+
+  /// A wait that begins well after the seek isn't about it (the room played
+  /// on in between): the rendezvous applies as usual.
+  void _expireSeekPin() {
+    final at = _explicitSeekAtMs;
+    if (at != null && nowMs() - at > _stallGraceMs + _recoveryHysteresisMs) _explicitSeekAtMs = null;
   }
 
   Set<String> _gatingPeers() {
@@ -373,6 +398,7 @@ class HostPlaybackCoordinator {
 
   void _enterWaiting() {
     if (_phase == PlaybackPhase.waitingForPeers) return;
+    _expireSeekPin();
     if (!_localStalled) _setPaused();
     _intendedPlaying = true;
     _setPhase(PlaybackPhase.waitingForPeers);
@@ -395,6 +421,7 @@ class HostPlaybackCoordinator {
   /// GuestPlaybackReconciler), so the two never chase each other. Seeks the host itself (suppressed, so it isn't a user seek) and
   /// returns the position to anchor on, or null to stay where it is.
   int? _rendezvous() {
+    if (_seekPinned) return null;
     int? earliest;
     for (final peerId in _stalledSinceStart) {
       if (_excused.contains(peerId)) continue;
@@ -448,6 +475,7 @@ class HostPlaybackCoordinator {
     final startAt = nowMs() + delayMs;
     startPositionMs ??= _positionMs;
     _stalledSinceStart.clear();
+    _explicitSeekAtMs = null;
     _firstStartCompleted = true;
     _setPhase(PlaybackPhase.playing);
     _broadcast(

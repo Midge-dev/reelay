@@ -139,4 +139,50 @@ void main() {
       coordinator.stop();
     });
   });
+
+  test('a seek while the room waits for a stalled guest is where the room resumes — a straggler still on its way to the old spot does not pull the host back (fuzz seed 1975)', () {
+    fakeAsync((async) {
+      final player = FakeSyncedPlayer();
+      final broadcasts = <PlaybackState>[];
+      final hostSeeks = <int>[];
+      player.addListener(SyncedPlayerListener(onSeek: hostSeeks.add));
+      final coordinator = HostPlaybackCoordinator(myPeerId: 'host', player: player, sendState: broadcasts.add);
+      coordinator.start();
+      for (final g in ['g1', 'g2', 'g3']) {
+        coordinator.onPeerJoined(g);
+        coordinator.onPeerStatus(g, const PeerStatus(ready: true, buffering: false, positionMs: 0));
+      }
+      player.becomeReady();
+      async.elapse(const Duration(seconds: 2)); // playing
+      player.advancePosition(102000);
+
+      // g1 stalls at 100s; past the stall grace the room waits for it there.
+      coordinator.onPeerStatus('g1', const PeerStatus(ready: true, buffering: true, positionMs: 100000));
+      async.elapse(const Duration(milliseconds: 2600));
+      expect(broadcasts.last.phase, PlaybackPhase.waitingForPeers);
+      expect(hostSeeks.last, 100000, reason: 'the rendezvous: the host goes to the stalled guest');
+
+      // g2 follows the room there: seeking, it reports buffering at 100s.
+      coordinator.onPeerStatus('g2', const PeerStatus(ready: true, buffering: true, positionMs: 100000));
+
+      // g3 rewinds to 95s (its own buffering already reported, before the wait).
+      coordinator.onControlRequest('g3', const ControlRequest(ControlRequestKind.seek, positionMs: 95000));
+      expect(hostSeeks.last, 95000);
+
+      // g2's seek to the old spot lands, and it says so.
+      coordinator.onPeerStatus('g2', const PeerStatus(ready: true, buffering: false, positionMs: 100000));
+      async.elapse(const Duration(milliseconds: 100));
+      expect(hostSeeks.last, 95000, reason: "the rewind stands: g2 is on its way to a spot that's gone, not where the room is");
+      expect(broadcasts.last.anchorPositionMs, 95000);
+
+      // Everyone comes back; the room plays from the rewind.
+      for (final g in ['g1', 'g2', 'g3']) {
+        coordinator.onPeerStatus(g, const PeerStatus(ready: true, buffering: false, positionMs: 95000));
+      }
+      async.elapse(const Duration(seconds: 3));
+      expect(broadcasts.where((b) => b.phase == PlaybackPhase.playing).last.anchorPositionMs, 95000);
+      expect(hostSeeks.last, 95000);
+      coordinator.stop();
+    });
+  });
 }

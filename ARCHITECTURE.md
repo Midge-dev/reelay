@@ -159,6 +159,16 @@ Tuning with history behind it:
   began by waiting on its own host. Found 2026-11-19 by a whole-app journey
   once the guest started nudging; it's the same play → seek back → buffer
   shape as that night's on-device loop.
+- An explicit seek pins the room: from someone's seek until the room plays
+  again, it resumes where they asked, and stalled peers' positions no
+  longer move the host (`_explicitSeekAtMs`). A peer still on its way to
+  the previous spot reported it and pulled the host back, losing the seek
+  (fuzz seed 1975). A wait that starts well after the seek isn't pinned.
+- `_rendezvousToleranceMs` and the guest's alignment while the room waits
+  are the deadband (1500 ms), not 500: since rate nudging, a smaller gap
+  is closed by speed after the room resumes. At 500 a slow transcode that
+  landed and played half a second on chased the host through every wait
+  (fuzz seed 1968). Paused rooms still align to 500 ms — a still frame.
 - `_intendedPlaying` defaults to `true`: the player starts playing on
   creation, before the coordinator is listening, so a `false` default meant
   every session needed a manual Play press to get going.

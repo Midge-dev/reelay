@@ -84,6 +84,38 @@ void main() {
   });
 
   group('seeking', () {
+    test('a rewind while the room waits for a stalled guest goes where it was asked (fuzz seed 1975)', () {
+      // guest1 stalls long enough for the room to wait for it (where it is:
+      // the rendezvous). guest2 — a slow remote transcode — rewinds just
+      // as that wait begins. The room must resume at guest2's spot; the
+      // host used to seek back to guest1's, undoing the rewind and sending
+      // guest2 after it.
+      final r = runRoom(const Scenario('rewind as the room starts waiting', devices: [
+        host,
+        DeviceSpec('guest1'),
+        DeviceSpec('guest2', player: PlayerProfile.remoteTranscode, link: LinkProfile.far),
+      ], actions: [
+        Stall(15000, 'guest1', 5000),
+        SeekBy(17200, 'guest2', -6000),
+      ]));
+      final why = r.describe();
+      expectSettles(r, maxSyncSeeks: 6);
+
+      int? asked;
+      for (final e in r.traces['guest2']!.entries) {
+        final event = e['event'];
+        if (e['type'] == 'out' && event is Map && event['kind'] == 'controlRequest' && event['requestKind'] == 'seek') {
+          asked = event['positionMs'] as int;
+        }
+      }
+      expect(asked, isNotNull, reason: 'guest2 asked to seek\n$why');
+      final hostSeeks = [
+        for (final e in r.traces['host']!.entries)
+          if (e['type'] == 'call' && e['op'] == 'seekTo') e['value'] as int,
+      ];
+      expect(hostSeeks.last, asked, reason: "the host's last word is the rewind, not the stalled guest's spot: $hostSeeks\n$why");
+    });
+
     test('the host rewinds 30s', () {
       final r = runRoom(const Scenario('host rewind', devices: [host, remoteGuest], actions: [SeekBy(15000, 'host', -30000)]));
       expectSettles(r, maxSyncSeeks: 4);

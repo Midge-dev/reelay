@@ -113,10 +113,15 @@ Still open:
   correction. (Fixed 2026-11-19 by rate nudging: guests close gaps under
   the seek deadband by playing 5-10% fast or slow. The fuzzer now also
   demands the same frame at the end, 250 ms; 0 of 1000 fail.)
-- [ ] **Seed 1975 thrashes** (`SYNC_FUZZ_SEED=1975`): 42 corrective seeks
-  for 10 actions, with four devices and a 2.5 s-seeking guest. Same count
-  before and after rate nudging, so not caused by it. Look before a
-  release; 1 of 3000 rooms.
+- [x] **Seed 1975 thrashes** (`SYNC_FUZZ_SEED=1975`): 42 corrective seeks
+  for 10 actions, with four devices and a 2.5 s-seeking guest. (Fixed
+  2026-11-21: a rewind during a wait was lost to the rendezvous; an
+  explicit seek now pins the room. Fixing it exposed seed 1968, a slow
+  transcode chasing the host through waits — fixed by the deadband
+  tolerances. 3000 of 3000 rooms pass; 9999 of 10000.)
+- [ ] **Seed 6530 settles slowly** (38 s, limit 25 s): two slow-transcode
+  guests, 22 scrub steps and two big seeks in 27 s. Never settled before
+  the 2026-11-21 fixes. 1 of 10000 rooms; low priority.
 - [ ] **Try rate nudging on the Shield.** The simulator says a second's gap
   closes in ~10 s; check it's not audible/visible on a real TV and that
   ExoPlayer's setPlaybackSpeed over an HLS transcode doesn't rebuffer.
