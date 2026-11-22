@@ -49,13 +49,42 @@ jobs:
       # (the first automated run failed on exactly this), derive it from
       # this workflow's own run number, offset well clear of any versionCode
       # already uploaded manually (highest so far: 4) — guaranteed to keep
-      # increasing on every run, forever, with no manual step. pubspec.yaml's
-      # version *name* (the human-readable "0.4.0" part) is untouched and
-      # still yours to bump for real milestones; only the numeric build
-      # number is auto-derived.
+      # increasing on every run, forever, with no manual step.
+      #
+      # The version *name* — what the Play Store and Settings show — used
+      # to stay "0.4.0" from pubspec.yaml forever. It's now pubspec's
+      # major.minor plus that same build number (0.4.124), so every update
+      # reads as one; bump 0.4 in pubspec.yaml for a milestone. The app gets
+      # the same name through APP_VERSION (lib/app_version.dart).
+      - name: Version
+        id: version
+        run: |
+          build=$(( ${{ github.run_number }} + 100 ))
+          base=$(sed -nE 's/^version: *([0-9]+\.[0-9]+)\..*/\1/p' flutter/pubspec.yaml)
+          [ -n "$base" ] || { echo "::error::no major.minor in pubspec.yaml's version"; exit 1; }
+          echo "build=$build" >> "$GITHUB_OUTPUT"
+          echo "name=$base.$build" >> "$GITHUB_OUTPUT"
+          echo "Building $base.$build (versionCode $build)"
+
+      # Up to three tries, as in build-apk.yml: a runner sometimes fails to
+      # download Gradle or an Android dependency.
       - name: Build release AAB
         working-directory: flutter
-        run: flutter build appbundle --release --build-number=$((${{ github.run_number }} + 100))
+        run: |
+          for attempt in 1 2 3; do
+            if flutter build appbundle --release \
+                --build-number=${{ steps.version.outputs.build }} \
+                --build-name=${{ steps.version.outputs.name }} \
+                --dart-define=APP_VERSION=${{ steps.version.outputs.name }}; then
+              exit 0
+            fi
+            if [ "$attempt" -lt 3 ]; then
+              echo "::warning::Build release AAB failed (attempt $attempt of 3), retrying in 30 s"
+              sleep 30
+            fi
+          done
+          echo "::error::Build release AAB failed 3 times"
+          exit 1
 
       - name: Upload to Internal Testing
         uses: r0adkll/upload-google-play@v1

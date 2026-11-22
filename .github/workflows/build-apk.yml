@@ -35,7 +35,8 @@ jobs:
         working-directory: flutter
         run: |
           for attempt in 1 2 3; do
-            if flutter build apk --debug; then
+            # Not a Play build: Settings says which commit it is.
+            if flutter build apk --debug --dart-define=APP_VERSION="$(sed -nE 's/^version: *([0-9]+\.[0-9]+)\..*/\1/p' pubspec.yaml)-dev+${GITHUB_SHA::7}"; then
               exit 0
             fi
             if [ "$attempt" -lt 3 ]; then
