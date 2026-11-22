@@ -110,7 +110,35 @@ class JellyfinClient implements MediaServerClient {
   /// Jellyfin keeps collections in their own view, not under a library, so
   /// there's no per-library list to show.
   @override
-  Future<List<MediaItem>> fetchCollections(String libraryId) async => const [];
+  /// Jellyfin keeps collections (BoxSets) in a view of their own —
+  /// CollectionType "boxsets" — not under the library their titles are in,
+  /// and a collection can mix films and shows. So every Jellyfin library
+  /// lists all of them (as plezy does); none, when the server has no such
+  /// view (no collections made yet).
+  @override
+  Future<List<MediaItem>> fetchCollections(String libraryId) async {
+    final viewId = await _collectionsViewId();
+    if (viewId == null) return const [];
+    return _items('/Items', {
+      'parentId': viewId,
+      'includeItemTypes': 'BoxSet',
+      'recursive': true,
+      'sortBy': 'SortName',
+    });
+  }
+
+  String? _collectionsView;
+
+  Future<String?> _collectionsViewId() async {
+    if (_collectionsView case final id?) return id;
+    final data = await _get('/UserViews', {'userId': _userId}) as Map;
+    for (final view in ((data['Items'] as List?) ?? const []).cast<Json>()) {
+      if ((view['CollectionType'] as String?)?.toLowerCase() == 'boxsets') {
+        return _collectionsView = view['Id'] as String?;
+      }
+    }
+    return null;
+  }
 
   @override
   Future<List<MediaItem>> fetchCollectionItems(String collectionId) =>

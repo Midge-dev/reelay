@@ -94,6 +94,38 @@ void main() {
     });
   });
 
+  group('Collections', () {
+    journey("a Jellyfin library's Collections: the server's collections, and opening one shows its films", (j) async {
+      await j.openFromRail('Movies');
+      await j.wait(const Duration(seconds: 1));
+      for (var i = 0; i < 4 && !j.focusedTexts().any((t) => t == 'Titles' || t == 'Collections'); i++) {
+        await j.up();
+      }
+      for (var i = 0; i < 3 && !j.focusedTexts().contains('Collections'); i++) {
+        await j.right();
+      }
+      j.expectFocusOn('Collections', because: "the library's Titles/Collections switch");
+      await j.select();
+      await j.wait(const Duration(seconds: 1));
+      expect(j.shows('Sci-fi favourites'), isTrue, reason: j.why('Jellyfin keeps collections in their own view: ${j.screenTexts()}'));
+      expect(j.shows('3 titles'), isTrue);
+      expect(j.shows('Eighties'), isTrue);
+
+      await j.down(); // into the grid
+      for (final step in [j.left, j.right, j.right]) {
+        if (j.focusedTexts().contains('Sci-fi favourites')) break;
+        await step();
+      }
+      j.expectFocusOn('Sci-fi favourites');
+      await j.select();
+      await j.wait(const Duration(seconds: 1));
+      for (final film in ['Arrival', 'Ex Machina', 'Interstellar']) {
+        expect(j.shows(film), isTrue, reason: j.why('$film is in the collection: ${j.screenTexts()}'));
+      }
+      expect(j.shows('Contact'), isFalse, reason: j.why('Contact is not'));
+    });
+  });
+
   group('Removing things, with Undo (checklist 2, 3; screen 21)', () {
     journey('a hold takes a watchlist title off at once; focus stays in the row; the server hears after Undo runs out', (j) async {
       await j.down(2);

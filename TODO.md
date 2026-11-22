@@ -25,9 +25,12 @@
 - [ ] **Watch Together, Plex host → Jellyfin-only guest** on two devices.
   The other direction passed on the test relay (`reelay-sync-test` on
   Render); this one is covered by unit tests only.
-- [ ] **Collections tab is empty on Jellyfin libraries.** Jellyfin keeps
+- [x] **Collections tab is empty on Jellyfin libraries.** Jellyfin keeps
   collections (BoxSets) in their own view, not under a library, so
   `JellyfinClient.fetchCollections` returns nothing. Opening one works.
+  (Fixed 2026-11-21: it lists the boxsets view's BoxSets — every Jellyfin
+  library shows all of them, as plezy does, since a collection isn't tied
+  to one library and can mix films and shows.)
 - [x] **Next-episode cards can't be removed from Continue Watching** on
   Jellyfin — they have no position to clear and Jellyfin has no "hide".
   (Fixed 2026-11-19: the TV keeps a per-profile list of hidden Next Up

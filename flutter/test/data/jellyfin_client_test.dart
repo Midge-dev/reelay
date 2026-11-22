@@ -181,6 +181,43 @@ void main() {
       expect(request.headers['Authorization'], contains('DeviceId="device-1"'));
     });
 
+    test("collections come from the server's boxsets view, not the library", () async {
+      final (client, fake) = _client({
+        'GET /UserViews': {
+          'Items': [
+            {'Id': 'l1', 'Name': 'Movies', 'CollectionType': 'movies'},
+            {'Id': 'bx', 'Name': 'Collections', 'CollectionType': 'boxsets'},
+          ],
+        },
+        'GET /Items': {
+          'Items': [
+            {'Id': 'c1', 'Name': 'Trilogies', 'Type': 'BoxSet', 'ChildCount': 3},
+          ],
+        },
+      });
+      final collections = await client.fetchCollections('l1');
+      expect(collections.map((c) => (c.title, c.kind, c.childCount)), [('Trilogies', MediaKind.collection, 3)]);
+      final asked = fake.requests.last.queryParameters;
+      expect(asked['parentId'], 'bx', reason: 'the boxsets view, not the Movies library');
+      expect(asked['includeItemTypes'], 'BoxSet');
+      expect(asked['recursive'], true);
+
+      await client.fetchCollections('l2');
+      expect(fake.requests.where((r) => r.uri.path == '/UserViews'), hasLength(1), reason: 'the view is looked up once');
+    });
+
+    test('no boxsets view (no collections made yet): none, and nothing more asked', () async {
+      final (client, fake) = _client({
+        'GET /UserViews': {
+          'Items': [
+            {'Id': 'l1', 'Name': 'Movies', 'CollectionType': 'movies'},
+          ],
+        },
+      });
+      expect(await client.fetchCollections('l1'), isEmpty);
+      expect(fake.requests.map((r) => r.uri.path), ['/UserViews']);
+    });
+
     test('continue watching is part-watched titles then next episodes, each once', () async {
       final (client, _) = _client({
         'GET /UserItems/Resume': {

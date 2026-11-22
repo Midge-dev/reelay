@@ -41,6 +41,18 @@ class FakeJellyfin {
     _show('s2', 'Andor', seasons: 1, episodesPerSeason: 3),
   ];
 
+  /// Collections (BoxSets). Jellyfin keeps them in a view of their own
+  /// (CollectionType "boxsets"), not under the library their titles are in.
+  static const collectionsViewId = 'l9';
+  late final collections = <Map<String, Object?>>[
+    {'Name': 'Sci-fi favourites', 'Id': 'c1', 'Type': 'BoxSet', 'ServerId': serverId, 'ChildCount': 3, 'ImageTags': <String, String>{}},
+    {'Name': 'Eighties', 'Id': 'c2', 'Type': 'BoxSet', 'ServerId': serverId, 'ChildCount': 2, 'ImageTags': <String, String>{}},
+  ];
+  static const collectionMembers = {
+    'c1': ['m1', 'm5', 'm8'],
+    'c2': ['m1', 'm2'],
+  };
+
   final _seasons = <String, List<Map<String, Object?>>>{};
   final _episodes = <String, List<Map<String, Object?>>>{};
 
@@ -165,7 +177,7 @@ class FakeJellyfin {
   }
 
   Map<String, Object?>? _byId(String id) {
-    for (final item in [...movies, ...shows, ..._seasons.values.expand((s) => s), ..._allEpisodes]) {
+    for (final item in [...movies, ...shows, ...collections, ..._seasons.values.expand((s) => s), ..._allEpisodes]) {
       if (item['Id'] == id) return item;
     }
     return null;
@@ -259,6 +271,7 @@ class FakeJellyfin {
         return FakeReply.json(_items([
           {'Id': 'l1', 'Name': 'Movies', 'CollectionType': 'movies'},
           {'Id': 'l2', 'Name': 'Shows', 'CollectionType': 'tvshows'},
+          {'Id': collectionsViewId, 'Name': 'Collections', 'CollectionType': 'boxsets'},
         ]));
       case '/UserItems/Resume':
         return FakeReply.json(_items([...movies, ..._allEpisodes].where((m) => resumeIds.contains(m['Id']))));
@@ -311,6 +324,10 @@ class FakeJellyfin {
     if (q['isPlayed'] == 'true') return movies.where((m) => playedIds.contains(m['Id']));
     if (q['isPlayed'] == 'false') return movies.where((m) => !playedIds.contains(m['Id'])).take(6);
     switch (q['parentId']) {
+      case collectionsViewId when q['includeItemTypes'] == 'BoxSet':
+        return collections;
+      case final c? when collectionMembers.containsKey(c):
+        return collectionMembers[c]!.map(_byId).whereType<Map<String, Object?>>();
       case 'l1':
         return movies;
       case 'l2':
