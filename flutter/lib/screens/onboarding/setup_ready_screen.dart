@@ -1,5 +1,3 @@
-import 'dart:math';
-
 import 'package:flutter/widgets.dart';
 
 import '../../kit/icon.dart';
@@ -8,14 +6,8 @@ import '../../theme/phosphor_icons.dart';
 import '../../theme/scale.dart';
 import '../../theme/tokens.dart';
 import '../../theme/typography.dart';
+import '../common/loading_lines.dart';
 import 'onboarding_frame.dart';
-
-const _flavor = [
-  'Dimming the house lights…',
-  'Buttering the popcorn…',
-  'Finding your seat…',
-  'Cueing up the trailers…',
-];
 
 /// Screen O5 — "Ready, the work itemised". Replaces the bare spinner at the
 /// end of setup: the step column stays, and the connection's real progress
@@ -39,7 +31,7 @@ class SetupReadyScreen extends StatefulWidget {
 }
 
 class _SetupReadyScreenState extends State<SetupReadyScreen> {
-  late final String _line = _flavor[Random().nextInt(_flavor.length)];
+  late final String _line = pickLoadingLine();
 
   @override
   Widget build(BuildContext context) {

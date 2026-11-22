@@ -1,5 +1,3 @@
-import 'dart:math';
-
 import 'package:flutter/widgets.dart';
 
 import '../../kit/text.dart';
@@ -7,21 +5,7 @@ import '../../theme/scale.dart';
 import '../../theme/tokens.dart';
 import '../../theme/typography.dart';
 import 'app_loading_indicator.dart';
-
-const _flavorMessages = [
-  'Buttering the popcorn…',
-  'Untangling the film reel…',
-  'Dimming the house lights…',
-  'Rewinding to the good part…',
-  'Waking up the projectionist…',
-  'Finding your seat…',
-  'Polishing the popcorn bucket…',
-  'Cueing up the trailers…',
-  'Sweet-talking the server…',
-  'Chasing down the end credits…',
-  'Shushing the back row…',
-  'Refilling the soda machine…',
-];
+import 'loading_lines.dart';
 
 /// The full-screen wait, with a randomly-picked "flavor" line under the real
 /// status message, purely for personality on what's otherwise a blank
@@ -44,7 +28,7 @@ class LoadingScreen extends StatefulWidget {
 
 class _LoadingScreenState extends State<LoadingScreen> {
   late final _flavor =
-      _flavorMessages[Random().nextInt(_flavorMessages.length)];
+      pickLoadingLine();
 
   @override
   Widget build(BuildContext context) {
