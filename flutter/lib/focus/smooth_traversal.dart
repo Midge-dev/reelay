@@ -47,7 +47,7 @@ void _requestFocusAndEase(
         targetRenderObject: identical(holder, card) ? null : card,
         alignment: alignment ?? 1,
         alignmentPolicy: alignmentPolicy ?? ScrollPositionAlignmentPolicy.explicit,
-        duration: duration,
+        duration: followDuration(scrollable.position, duration),
         curve: AppMotion.enter,
       );
     }

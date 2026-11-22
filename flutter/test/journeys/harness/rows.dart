@@ -151,7 +151,11 @@ extension RowChecks on Journey {
       await tester.pump(const Duration(milliseconds: 400)); // the platform's repeat delay
       for (var i = 0; i < repeats; i++) {
         await tester.sendKeyRepeatEvent(LogicalKeyboardKey.arrowRight);
-        await tester.pump(const Duration(milliseconds: 50));
+        // Frames at the TV's 60 Hz between repeats: one frame per repeat
+        // left a restarted scroll animation forever at its first tick.
+        for (var f = 0; f < 3; f++) {
+          await tester.pump(const Duration(milliseconds: 16));
+        }
       }
       await tester.sendKeyUpEvent(LogicalKeyboardKey.arrowRight);
       await wait(const Duration(milliseconds: 600));

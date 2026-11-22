@@ -161,6 +161,7 @@ class _PosterGridState extends State<PosterGrid> {
                 child: GridView.builder(
                   key: PageStorageKey(widget.storageId),
                   controller: controller,
+                  cacheExtent: gridCacheExtent(context),
                   padding: EdgeInsets.only(
                     top: (AppSpacing.rowHeadroom / 2).du(context),
                     bottom: AppSpacing.safeY.du(context),

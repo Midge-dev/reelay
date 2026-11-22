@@ -4,13 +4,27 @@ import 'package:flutter/widgets.dart';
 import '../theme/scale.dart';
 import '../theme/tokens.dart';
 
-/// How far past its edges a horizontal row builds its cards: a screen's
-/// width each way. A held D-pad moves focus a card every repeat (~50 ms)
-/// while the row's scroll eases after it; with Flutter's default (250 px,
-/// about a card and a half) focus soon ran past the cards that existed, and
-/// the press found nothing to move to — a held key stopped short of the end
-/// of a long row (the row journeys' "holding Right, focus keeps up").
-double rowCacheExtent(BuildContext context) => MediaQuery.sizeOf(context).width;
+/// How far past its edges a row or grid builds its cards. A held D-pad
+/// moves focus a card or row every repeat (~50 ms) while the scroll eases
+/// after it (AppMotion.rowScroll / pageScroll, ~300 ms), so the view can
+/// trail focus by up to six steps — about three screens. Built less far,
+/// focus ran past the cards that existed and the press found nothing to
+/// move to: a held key stopped short of a long row's end (with Flutter's
+/// 250 px default), and halfway down a long library. See the row and grid
+/// journeys' "focus keeps up".
+const _keepUpScreens = 3;
+
+/// The length of a scroll that brings focus into view: [normal], unless one
+/// is still running — the D-pad is held, and the next press came before the
+/// last scroll finished. Then a short one, so the view keeps up with focus:
+/// each press restarting the full eased scroll kept it in its slow first
+/// moments, and focus ran rows off screen during a hold.
+Duration followDuration(ScrollPosition position, Duration normal) =>
+    position.isScrollingNotifier.value && normal > AppMotion.press ? AppMotion.press : normal;
+
+double rowCacheExtent(BuildContext context) => _keepUpScreens * MediaQuery.sizeOf(context).width;
+
+double gridCacheExtent(BuildContext context) => _keepUpScreens * MediaQuery.sizeOf(context).height;
 
 const _forwardAlignment = 0.8;
 const _backwardAlignment = 0.0;
@@ -46,7 +60,7 @@ void ensureCardVisible(BuildContext context, {Duration duration = AppMotion.rowS
   Scrollable.ensureVisible(
     context,
     alignment: movingForward ? _forwardAlignment : _backwardAlignment,
-    duration: duration,
+    duration: followDuration(scrollable!.position, duration),
     curve: AppMotion.enter,
   );
 }
@@ -72,13 +86,33 @@ void ensureRowVisible(BuildContext context, {required double peekExtent, Duratio
   final scrollableState = Scrollable.maybeOf(context);
   if (scrollableState == null) return;
 
+  if (!movingForward) {
+    // Back up the grid: leave the same peek above the card as going down
+    // leaves below it. Flush with the top, the card sat in the grid's top
+    // fade (it's [peekExtent] deep once the grid has scrolled) — focus half
+    // faded out — and its focus scale stuck out over the edge. A card
+    // already clear of the fade doesn't move the grid.
+    final viewport = target == null ? null : RenderAbstractViewport.maybeOf(target);
+    if (viewport == null) return;
+    final position = scrollableState.position;
+    final to = (viewport.getOffsetToReveal(target!, 0).offset - peekExtent)
+        .clamp(position.minScrollExtent, position.maxScrollExtent);
+    if (position.pixels <= to + 0.5) return;
+    if (duration == Duration.zero || !AppMotion.animatePages) {
+      position.jumpTo(to);
+    } else {
+      position.animateTo(to, duration: followDuration(position, duration), curve: AppMotion.enter);
+    }
+    return;
+  }
+
   final viewportExtent = scrollableState.position.viewportDimension;
   final peekAlignment = viewportExtent > 0 ? (1 - peekExtent / viewportExtent).clamp(0.0, 1.0) : _forwardAlignment;
 
   Scrollable.ensureVisible(
     context,
-    alignment: movingForward ? peekAlignment : _backwardAlignment,
-    duration: duration,
+    alignment: peekAlignment,
+    duration: followDuration(scrollableState.position, duration),
     curve: AppMotion.enter,
   );
 }
@@ -129,7 +163,7 @@ void revealInRow(RenderObject target, ScrollableState row, {Duration duration = 
   if (duration == Duration.zero || !AppMotion.animatePages) {
     position.jumpTo(to);
   } else {
-    position.animateTo(to, duration: duration, curve: AppMotion.enter);
+    position.animateTo(to, duration: followDuration(position, duration), curve: AppMotion.enter);
   }
 }
 
@@ -156,7 +190,7 @@ void revealInRowAndPage(RenderObject card, BuildContext context, {Duration durat
           if (duration == Duration.zero || !AppMotion.animatePages) {
             position.jumpTo(clamped);
           } else {
-            position.animateTo(clamped, duration: AppMotion.pageScroll, curve: AppMotion.enter);
+            position.animateTo(clamped, duration: followDuration(position, AppMotion.pageScroll), curve: AppMotion.enter);
           }
         }
       }

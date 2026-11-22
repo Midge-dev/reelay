@@ -20,7 +20,11 @@ class PlaybackReport {
 /// Journeys read it to know what should be on screen: [movies] in
 /// library order, [shows], and what each home row holds.
 class FakeJellyfin {
-  FakeJellyfin({this.baseUrl = 'http://den.local:8096', this.unfindable = const {}});
+  FakeJellyfin({this.baseUrl = 'http://den.local:8096', this.unfindable = const {}, this.extraFilms = 0});
+
+  /// More films after the usual eight ("Film 09", "Film 10", …) — a library
+  /// big enough for its grid to scroll.
+  final int extraFilms;
 
   final String baseUrl;
 
@@ -34,6 +38,8 @@ class FakeJellyfin {
 
   late final List<Map<String, Object?>> movies = [
     for (var i = 0; i < movieTitles.length; i++) _movie('m${i + 1}', movieTitles[i], 1980 + i * 5),
+    for (var i = movieTitles.length; i < movieTitles.length + extraFilms; i++)
+      _movie('m${i + 1}', 'Film ${(i + 1).toString().padLeft(2, '0')}', 1960 + i),
   ];
 
   late final List<Map<String, Object?>> shows = [
@@ -316,6 +322,8 @@ class FakeJellyfin {
   }
 
   Iterable<Map<String, Object?>> _query(Map<String, String> q) {
+    // A person's filmography: every film (the whole cast is in all of them).
+    if (q['personIds'] != null) return movies;
     if (q['ids'] case final ids?) {
       return ids.split(',').where((id) => !unfindable.contains(id)).map(_byId).whereType<Map<String, Object?>>();
     }
