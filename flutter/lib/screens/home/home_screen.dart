@@ -10,6 +10,7 @@ import '../../data/plex/plex_models.dart';
 import '../../focus/screen_memory.dart';
 import '../../focus/arrow_to.dart';
 import '../../focus/row_end_stop.dart';
+import '../../kit/collapse_out.dart';
 import '../../kit/edge_fade_row.dart';
 import '../../kit/icon.dart';
 import '../../kit/text.dart';
@@ -491,26 +492,29 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
       ),
     );
-    if (_pending.isEmpty) return page;
     // The undo chip sits in the top corner, under the clock (screen 21).
+    // Always inside the Stack, chip or not: wrapping the page only while a
+    // chip shows rebuilt every row from scratch on each removal — losing
+    // the rows' own state, the collapsing card among it.
     return Stack(
       fit: StackFit.expand,
       children: [
         page,
-        Positioned(
-          top: (20 + 44).du(context),
-          right: AppSpacing.xxl.du(context),
-          child: UndoChip(
-            message: _undoMessage,
-            icon: _pending.last.fromWatchlist
-                ? PhosphorIconsRegular.bookmarkSimple
-                : PhosphorIconsRegular.arrowCounterClockwise,
-            secondsLeft: _undoLeft,
-            focusNode: _undoFocus,
-            onUndo: _undo,
-            backTakesPrecedence: true,
+        if (_pending.isNotEmpty)
+          Positioned(
+            top: (20 + 44).du(context),
+            right: AppSpacing.xxl.du(context),
+            child: UndoChip(
+              message: _undoMessage,
+              icon: _pending.last.fromWatchlist
+                  ? PhosphorIconsRegular.bookmarkSimple
+                  : PhosphorIconsRegular.arrowCounterClockwise,
+              secondsLeft: _undoLeft,
+              focusNode: _undoFocus,
+              onUndo: _undo,
+              backTakesPrecedence: true,
+            ),
           ),
-        ),
       ],
     );
   }
@@ -680,7 +684,7 @@ String _workId(FoldedWork<Object> work) {
 /// A titled horizontal row that
 /// renders nothing at all when empty (distinct from Continue Watching,
 /// which always shows its title + an explicit empty-state message).
-class _HomeRow<T> extends StatelessWidget {
+class _HomeRow<T> extends StatefulWidget {
   final String title;
   final List<T> items;
 
@@ -700,8 +704,31 @@ class _HomeRow<T> extends StatelessWidget {
   });
 
   @override
+  State<_HomeRow<T>> createState() => _HomeRowState<T>();
+}
+
+class _HomeRowState<T> extends State<_HomeRow<T>> {
+  /// A card taken off (screen 21) collapses where it was, and the row
+  /// closes up behind it.
+  late final _leaving = LeavingItems<T>(
+    idOf: widget.idOf,
+    onExpired: () {
+      if (mounted) setState(() {});
+    },
+  );
+
+  @override
+  void dispose() {
+    _leaving.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    if (items.isEmpty) return const SizedBox.shrink();
+    final title = widget.title;
+    final afterHero = widget.afterHero;
+    final slots = _leaving.merge(widget.items);
+    if (slots.isEmpty) return const SizedBox.shrink();
     return _ScrollSectionIntoView(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -722,7 +749,7 @@ class _HomeRow<T> extends StatelessWidget {
             height: (posterCardExtent + AppSpacing.rowHeadroom).du(context),
             child: EdgeFadeRow(
               child: RowEndStop(
-                child: ListView.separated(
+                child: ListView.builder(
                   key: PageStorageKey('home-row-$title'),
                   scrollDirection: Axis.horizontal,
                   clipBehavior: Clip.none,
@@ -730,17 +757,33 @@ class _HomeRow<T> extends StatelessWidget {
                     horizontal: AppSpacing.safeX.du(context),
                     vertical: (AppSpacing.rowHeadroom / 2).du(context),
                   ),
-                  itemCount: items.length,
-                  separatorBuilder: (context, index) =>
-                      SizedBox(width: AppSpacing.cardGap.du(context)),
-                  itemBuilder: (context, index) {
-                    final id = idOf(items[index]);
+                  itemCount: slots.length,
+                  // Each card carries the gap after it, so one collapsing
+                  // takes its gap along and the row closes up.
+                  itemBuilder: (context, i) {
+                    final slot = slots[i];
+                    final id = widget.idOf(slot.item);
+                    final gap = i < slots.length - 1
+                        ? AppSpacing.cardGap.du(context)
+                        : 0.0;
+                    if (slot.leaving) {
+                      return CollapseOut(
+                        key: ValueKey('leaving:$id'),
+                        child: Padding(
+                          padding: EdgeInsets.only(right: gap),
+                          child: widget.itemBuilder(slot.item, -1),
+                        ),
+                      );
+                    }
                     // The same title can sit in two rows, so the row is
                     // part of what's remembered.
-                    return RememberFocus(
+                    return Padding(
                       key: ValueKey(id),
-                      id: 'home:$title:$id',
-                      child: itemBuilder(items[index], index),
+                      padding: EdgeInsets.only(right: gap),
+                      child: RememberFocus(
+                        id: 'home:$title:$id',
+                        child: widget.itemBuilder(slot.item, slot.index),
+                      ),
                     );
                   },
                 ),

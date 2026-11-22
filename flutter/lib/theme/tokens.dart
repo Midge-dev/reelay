@@ -621,6 +621,10 @@ class AppMotion {
   /// a click.
   static const holdIntent = Duration(milliseconds: 250);
 
+  /// Gone on release (screen 21): a removed card collapses its width over
+  /// this, linear (it's leaving), and the row closes up.
+  static const collapse = Duration(milliseconds: 180);
+
   // ---- Rows and pages ----------------------------------------------------
   /// Row eases the focused card to 80% across the viewport.
   static const rowScroll = Duration(milliseconds: 280);

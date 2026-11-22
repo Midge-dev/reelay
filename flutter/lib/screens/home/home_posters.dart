@@ -106,6 +106,21 @@ class _WatchlistPosterState extends State<WatchlistPoster> {
     _focusNode.addListener(_handleFocusChange);
   }
 
+  /// The row hands its first card its own node (the row's focus anchor);
+  /// when cards shift — one removed ahead of this — this card can be given
+  /// it, or lose it, without being rebuilt.
+  @override
+  void didUpdateWidget(covariant WatchlistPoster oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.focusNode == oldWidget.focusNode) return;
+    _focusNode.removeListener(_handleFocusChange);
+    if (_ownsFocusNode) _focusNode.dispose();
+    _ownsFocusNode = widget.focusNode == null;
+    _focusNode = widget.focusNode ?? FocusNode(debugLabel: 'watchlist-poster');
+    _focusNode.addListener(_handleFocusChange);
+    _focused = _focusNode.hasFocus;
+  }
+
   @override
   void dispose() {
     _focusNode.removeListener(_handleFocusChange);
@@ -235,6 +250,21 @@ class _ContinueWatchingPosterState extends State<ContinueWatchingPoster> {
     _focusNode =
         widget.focusNode ?? FocusNode(debugLabel: 'continue-watching-poster');
     _focusNode.addListener(_handleFocusChange);
+  }
+
+  /// The row hands its first card its own node (the row's focus anchor);
+  /// when cards shift — one removed ahead of this — this card can be given
+  /// it, or lose it, without being rebuilt.
+  @override
+  void didUpdateWidget(covariant ContinueWatchingPoster oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.focusNode == oldWidget.focusNode) return;
+    _focusNode.removeListener(_handleFocusChange);
+    if (_ownsFocusNode) _focusNode.dispose();
+    _ownsFocusNode = widget.focusNode == null;
+    _focusNode = widget.focusNode ?? FocusNode(debugLabel: 'continue-watching-poster');
+    _focusNode.addListener(_handleFocusChange);
+    _focused = _focusNode.hasFocus;
   }
 
   @override

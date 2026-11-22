@@ -2,8 +2,10 @@ import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:reelay/data/media/media_models.dart';
+import 'package:reelay/kit/collapse_out.dart';
 import 'package:reelay/screens/library/poster_card.dart';
 import 'package:reelay/screens/library/watchlist_screen.dart';
+import 'package:reelay/theme/tokens.dart';
 
 const _items = [
   MediaItem(id: '1', title: 'Arrival', year: 2016),
@@ -65,13 +67,22 @@ void main() {
     var removed = false;
     await _pump(tester, onRemove: (_) => removed = true);
 
+    final fullWidth = tester.getSize(find.byType(PosterCard).first).width;
     await tester.longPress(find.byType(PosterCard).first);
     await tester.pump();
 
-    // The first card is the newest entry, Aftershow.
-    expect(find.text('Aftershow'), findsNothing, reason: 'destructive-but-reversible acts immediately');
-    expect(find.text('Arrival'), findsOneWidget);
+    // The first card is the newest entry, Aftershow. Off the list at once —
+    // the count and the chip say so — while its card collapses (screen 21,
+    // "Gone on release": its width over 180 ms, then the grid closes up).
+    expect(find.text('1 title'), findsOneWidget, reason: 'destructive-but-reversible acts immediately');
     expect(find.textContaining('Undo'), findsOneWidget);
+    await tester.pump(AppMotion.collapse ~/ 2);
+    final collapsing = find.ancestor(of: find.widgetWithText(PosterCard, 'Aftershow'), matching: find.byType(CollapseOut));
+    expect(tester.getSize(collapsing).width, lessThan(fullWidth * 0.75),
+        reason: 'halfway through collapsing');
+    await tester.pump(AppMotion.collapse ~/ 2);
+    expect(find.text('Aftershow'), findsNothing);
+    expect(find.text('Arrival'), findsOneWidget);
     expect(removed, isFalse, reason: 'onRemove only fires once the undo window expires');
   });
 
@@ -86,6 +97,7 @@ void main() {
     await tester.sendKeyDownEvent(LogicalKeyboardKey.select);
     await tester.pump(const Duration(milliseconds: 600));
     await tester.pump();
+    await tester.pump(AppMotion.collapse);
     expect(find.text('Aftershow'), findsNothing);
 
     await tester.sendKeyUpEvent(LogicalKeyboardKey.select);

@@ -1,7 +1,10 @@
+import 'package:flutter/services.dart' show LogicalKeyboardKey;
 import 'package:flutter/widgets.dart' show Transform;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:reelay/data/settings/app_settings.dart';
+import 'package:reelay/kit/collapse_out.dart';
 import 'package:reelay/kit/hold_feedback.dart';
+import 'package:reelay/theme/tokens.dart';
 import 'package:video_player_platform_interface/video_player_platform_interface.dart';
 
 import '../playback/fake_video_player_platform.dart';
@@ -163,6 +166,25 @@ void main() {
       j.expectFocusOn('Andor');
       expect(j.shows('Took Andor off the list'), isFalse, reason: j.why('nothing removed'));
       expect(find.byKey(HoldFeedback.transformKey), findsNothing, reason: j.why('the poster is back at rest'));
+    });
+
+    journey("a removed card collapses where it was, and the row closes up behind it (screen 21, 'Gone on release')", (j) async {
+      await j.down(2);
+      j.expectFocusOn('Andor');
+      final contactBefore = j.tester.getTopLeft(find.text('Contact')).dx;
+      await j.tester.sendKeyDownEvent(LogicalKeyboardKey.select);
+      await j.tester.pump(AppMotion.hold);
+      await j.tester.pump(AppMotion.collapse ~/ 2);
+      final collapsing = find.ancestor(of: find.text('Andor'), matching: find.byType(CollapseOut));
+      expect(collapsing, findsOneWidget, reason: j.why('Andor is collapsing where it was'));
+      final contactMid = j.tester.getTopLeft(find.text('Contact')).dx;
+      expect(contactMid, lessThan(contactBefore), reason: j.why('Contact is closing up'));
+      await j.tester.pump(AppMotion.collapse);
+      expect(find.text('Andor'), findsNothing);
+      expect(j.tester.getTopLeft(find.text('Contact')).dx, lessThan(contactMid), reason: j.why('and has closed up'));
+      await j.tester.sendKeyUpEvent(LogicalKeyboardKey.select);
+      await j.wait(const Duration(milliseconds: 300));
+      j.expectFocusOn('Contact');
     });
 
     journey('Back while the chip lives puts the title back, and stays on Home', (j) async {

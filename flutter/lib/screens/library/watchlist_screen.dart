@@ -4,6 +4,7 @@ import 'package:flutter/widgets.dart';
 
 import '../../data/media/media_models.dart';
 import '../../focus/screen_memory.dart';
+import '../../kit/collapse_out.dart';
 import '../../kit/focusable_surface.dart';
 import '../../kit/surface_style.dart';
 import '../../kit/icon.dart';
@@ -94,6 +95,12 @@ class _WatchlistScreenState extends State<WatchlistScreen> {
   final _itemFocus = <String, FocusNode>{};
   _WatchlistSort _sort = _WatchlistSort.recentlyAdded;
 
+  /// A card taken off collapses where it was, then the grid closes up
+  /// (screen 21, "Gone on release").
+  late final _leaving = LeavingItems<MediaItem>(idOf: (e) => e.id, onExpired: () {
+    if (mounted) setState(() {});
+  });
+
   FocusNode _focusFor(String id) => _itemFocus.putIfAbsent(id, () => FocusNode(debugLabel: 'watchlist-$id'));
 
   /// What's on the list now: what the screen was given, less removals.
@@ -119,6 +126,7 @@ class _WatchlistScreenState extends State<WatchlistScreen> {
     // Leaving with Undo still running commits it, as Home does — it used to
     // drop the removal, and the title came back.
     _commit(rebuild: false);
+    _leaving.dispose();
     _scrollController.dispose();
     _undoFocus.dispose();
     for (final node in _itemFocus.values) {
@@ -278,7 +286,10 @@ class _WatchlistScreenState extends State<WatchlistScreen> {
               height: (_blockGap - AppSpacing.rowHeadroom / 2).du(context),
             ),
             Expanded(
-              child: items.isEmpty ? _buildEmptyState() : _buildGrid(items),
+              child: switch (_leaving.merge(items)) {
+                final slots when slots.isEmpty => _buildEmptyState(),
+                final slots => _buildGrid(slots),
+              },
             ),
           ],
         ),
@@ -308,21 +319,21 @@ class _WatchlistScreenState extends State<WatchlistScreen> {
     );
   }
 
-  Widget _buildGrid(List<MediaItem> items) {
+  Widget _buildGrid(List<Slot<MediaItem>> slots) {
     final restoring = ScreenMemory.restoringOf(context);
     return PosterGrid(
       storageId: 'watchlist',
       controller: _scrollController,
-      itemCount: items.length,
-      itemBuilder: (context, index) {
-        final item = items[index];
+      itemCount: slots.length,
+      itemBuilder: (context, i) {
+        final slot = slots[i];
+        final item = slot.item;
+        final index = slot.index;
+        final leaving = slot.leaving;
         final known = widget.availability.containsKey(item.id);
         final holder = widget.availability[item.id];
         final unavailable = known && holder == null;
-        return RememberFocus(
-          key: ValueKey(item.id),
-          id: 'item:${item.id}',
-          child: PosterCard(
+        final card = PosterCard(
             imageUrl:
                 widget.artworkFor?.call(item) ??
                 ((item.thumb?.startsWith('http') ?? false) ? item.thumb : null),
@@ -352,18 +363,28 @@ class _WatchlistScreenState extends State<WatchlistScreen> {
                     ],
                   )
                 : null,
-            focusNode: _focusFor(item.id),
-            autofocus: index == 0 && _pending.isEmpty && !restoring,
+            focusNode: leaving ? null : _focusFor(item.id),
+            autofocus: !leaving && index == 0 && _pending.isEmpty && !restoring,
             // Nothing to open for a title none of your servers hold — the
             // marker says so; holding still takes it off the list.
             onClick: unavailable ? () {} : () => widget.onSelectItem(item),
-            onLongClick: () => _startRemoval(item),
-          ),
-        );
+            onLongClick: leaving ? null : () => _startRemoval(item),
+          );
+        if (leaving) {
+          // Loose in its cell, so it can narrow; then the grid reflows.
+          return Align(
+            key: ValueKey('leaving:${item.id}'),
+            alignment: AlignmentDirectional.topStart,
+            child: CollapseOut(child: card),
+          );
+        }
+        return RememberFocus(key: ValueKey(item.id), id: 'item:${item.id}', child: card);
       },
     );
   }
 }
+
+
 
 RoundedRectangleBorder _chipShape(BuildContext context) =>
     RoundedRectangleBorder(
