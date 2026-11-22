@@ -1,5 +1,6 @@
 import 'package:flutter/widgets.dart' hide ConnectionState;
 import 'package:flutter_test/flutter_test.dart';
+import 'package:reelay/screens/player/chat_qr_overlay.dart';
 
 import 'package:reelay/sync/playback_state.dart';
 
@@ -225,6 +226,29 @@ void main() {
       await j.wait(const Duration(seconds: 2));
       await j.down(); // the controls
       expect(find.bySemanticsLabel('Phone chat'), findsOneWidget, reason: j.why("the player's chat QR button is there"));
+    }, relay: true);
+
+    journey("the player's chat button opens the QR; Back closes just the QR, and you stay in the player", (j) async {
+      await hostArrival(j);
+      j.friend().join(j.relay.rooms.values.single.id);
+      await j.wait(const Duration(seconds: 4));
+      await j.select(); // Start for everyone
+      await j.realTime();
+      await j.wait(const Duration(seconds: 2));
+      await j.down(); // the controls
+      final chat = j.tester.getRect(find.bySemanticsLabel('Phone chat'));
+      for (var i = 0; i < 8 && j.focusedRect() != chat; i++) {
+        await j.right();
+      }
+      expect(j.focusedRect(), chat, reason: j.why('the chat button is on the control row'));
+      final qrBefore = find.byType(ChatQrOverlay).evaluate().length;
+      await j.select();
+      await j.wait(const Duration(milliseconds: 500));
+      expect(find.byType(ChatQrOverlay), findsNWidgets(qrBefore + 1), reason: j.why('the QR is up'));
+
+      await j.back();
+      expect(find.byType(ChatQrOverlay), findsNWidgets(qrBefore), reason: j.why('Back closed the QR'));
+      expect(find.bySemanticsLabel('Phone chat'), findsOneWidget, reason: j.why('and left you in the player'));
     }, relay: true);
 
     journey('off in Settings: no QR in the lobby, no chat button in the player', (j) async {

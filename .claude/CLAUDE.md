@@ -65,6 +65,9 @@ Before the Shield pass, the automated layers catch most of it (run with
   and settles. A new row belongs there. `grid_journeys_test.dart` does the
   same for every poster grid (`harness/grids.dart`): straight down, the
   next row peeking, back up clear of the top fade, a held Down that keeps up.
+  `player_journeys_test.dart` drives the player by remote: the control row
+  end to end, the scrubber as a focus target, auto-hide, and the menu panel
+  (screens 13 and 14).
 - `test/journeys/ux_tour_test.dart` — not a test: `UX_TOUR=1 flutter test
   test/journeys/ux_tour_test.dart` screenshots every screen in the app's
   own type into `build/journey_shots/` (`UX_SCALE=1.5` for another UI size),

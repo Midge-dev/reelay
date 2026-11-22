@@ -59,7 +59,11 @@ class _ChatQrOverlayState extends State<ChatQrOverlay> {
 
   @override
   Widget build(BuildContext context) {
+    // Focus stays on the player's chat button while this is up, so a plain
+    // handler lost Back to the player's — and Back left the player instead
+    // of closing the QR. It wins Back while it's up, as the Undo chip does.
     return BackHandler(
+      precedence: true,
       onBack: widget.onDismiss,
       child: ClipRRect(
         borderRadius: BorderRadius.circular(16.du(context)),
