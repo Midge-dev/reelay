@@ -144,7 +144,7 @@ void main() {
       j.expectFocusOn('Contact');
     });
 
-    journey('over the hold the poster draws in and greys; let go early and nothing is removed', (j) async {
+    journey('over the hold the poster draws in and greys; let go early and nothing happens — not removed, not opened', (j) async {
       await j.down(2);
       j.expectFocusOn('Andor');
       double? scaleMidHold;
@@ -157,9 +157,9 @@ void main() {
       );
       expect(scaleMidHold, isNotNull, reason: j.why('mid-hold the poster should be drawing in'));
       expect(scaleMidHold!, lessThan(1.0));
-      // Let go before it acts, a press is a press: it opens the title.
-      expect(j.shows('Play S1 E2'), isTrue, reason: j.why('let go early, it was a click'));
-      await j.back();
+      // Let go before it acts: cancelled — not removed, and not opened
+      // either; the person was removing, then changed their mind.
+      expect(j.shows('Play S1 E2'), isFalse, reason: j.why('a hold let go is not a click'));
       j.expectFocusOn('Andor');
       expect(j.shows('Took Andor off the list'), isFalse, reason: j.why('nothing removed'));
       expect(find.byKey(HoldFeedback.transformKey), findsNothing, reason: j.why('the poster is back at rest'));

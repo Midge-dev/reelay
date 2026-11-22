@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart' show KeyEventResult;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:reelay/focus/dpad_long_press.dart';
+import 'package:reelay/theme/tokens.dart';
 
 KeyDownEvent _down() => const KeyDownEvent(
       physicalKey: PhysicalKeyboardKey.select,
@@ -95,6 +96,44 @@ void main() {
         async.elapse(const Duration(milliseconds: 700)); // fires
         expect(detector.holding.value, isFalse, reason: 'done: the card is going, not still being held');
         detector.handle(_up());
+        detector.dispose();
+      });
+    });
+  });
+
+  group('letting go of a hold under way cancels it (no click)', () {
+    test('a quick tap is still a click', () {
+      fakeAsync((async) {
+        final detector = DpadLongPressDetector(onLongPress: () {});
+        detector.handle(_down());
+        async.elapse(const Duration(milliseconds: 150));
+        expect(detector.handle(_up()), KeyEventResult.ignored, reason: 'left for the click handler');
+        detector.dispose();
+      });
+    });
+
+    test('let go past the hold intent, before it fires: nothing — not a click, not a long-press', () {
+      fakeAsync((async) {
+        var fired = 0;
+        final detector = DpadLongPressDetector(onLongPress: () => fired++);
+        detector.handle(_down());
+        async.elapse(AppMotion.holdIntent + const Duration(milliseconds: 50));
+        expect(detector.handle(_up()), KeyEventResult.handled, reason: 'swallowed: the person was removing, then changed their mind');
+        async.elapse(const Duration(seconds: 1));
+        expect(fired, 0);
+        expect(detector.holding.value, isFalse);
+        detector.dispose();
+      });
+    });
+
+    test('handleDpadSelect: a cancelled hold does not click', () {
+      fakeAsync((async) {
+        var clicks = 0;
+        final detector = DpadLongPressDetector(onLongPress: () {});
+        handleDpadSelect(_down(), onClick: () => clicks++, longPress: detector);
+        async.elapse(AppMotion.holdIntent + const Duration(milliseconds: 50));
+        handleDpadSelect(_up(), onClick: () => clicks++, longPress: detector);
+        expect(clicks, 0);
         detector.dispose();
       });
     });

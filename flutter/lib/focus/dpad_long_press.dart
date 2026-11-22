@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:clock/clock.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart' show KeyEventResult, ValueNotifier, VoidCallback;
 
@@ -37,6 +38,12 @@ class DpadLongPressDetector {
   Timer? _timer;
   bool _fired = false;
 
+  /// Down for at least [AppMotion.holdIntent]: a hold under way, which
+  /// letting go cancels rather than turning into a click — the poster was
+  /// already drawing in (HoldFeedback), so the person was removing it, then
+  /// changed their mind.
+  DateTime? _downAt;
+
   KeyEventResult handle(KeyEvent event) {
     if (!selectKeys.contains(event.logicalKey)) return KeyEventResult.ignored;
 
@@ -46,6 +53,7 @@ class DpadLongPressDetector {
         holding.value = false;
         onLongPress();
       });
+      _downAt ??= clock.now();
       holding.value = true;
       return KeyEventResult.handled;
     }
@@ -56,6 +64,11 @@ class DpadLongPressDetector {
       _timer?.cancel();
       _timer = null;
       holding.value = false;
+      final downAt = _downAt;
+      _downAt = null;
+      if (!_fired && downAt != null && clock.now().difference(downAt) >= AppMotion.holdIntent) {
+        return KeyEventResult.handled; // a hold let go: cancelled, not a click
+      }
       if (_fired) {
         // Swallow the trailing release tied to the gesture that just fired
         // long-press, so it isn't also read as a click.

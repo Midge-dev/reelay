@@ -616,6 +616,11 @@ class AppMotion {
   static const hold = Duration(milliseconds: 600);
   static const holdDrawIn = 0.04;
 
+  /// Held this long, a press is a hold under way: letting go before [hold]
+  /// cancels it — neither removes nor opens the title. A quicker press is
+  /// a click.
+  static const holdIntent = Duration(milliseconds: 250);
+
   // ---- Rows and pages ----------------------------------------------------
   /// Row eases the focused card to 80% across the viewport.
   static const rowScroll = Duration(milliseconds: 280);
