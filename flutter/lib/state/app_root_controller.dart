@@ -4,6 +4,7 @@ import 'dart:math';
 import 'package:collection/collection.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/scheduler.dart';
 
 import '../app_version.dart';
 import '../data/jellyfin/jellyfin_auth_api.dart';
@@ -909,13 +910,27 @@ class AppRootController extends ChangeNotifier {
     await _refreshWatchlist();
   }
 
+  /// A screen commits its pending removals as it's torn down (Home, the
+  /// Watchlist screen) — mid-frame, when telling listeners at once would
+  /// rebuild a tree that's locked. Then they hear right after the frame.
+  void _notifyWhenSafe() {
+    final scheduler = SchedulerBinding.instance;
+    if (scheduler.schedulerPhase == SchedulerPhase.persistentCallbacks) {
+      scheduler.addPostFrameCallback((_) {
+        if (!_disposed) notifyListeners();
+      });
+    } else {
+      notifyListeners();
+    }
+  }
+
   void removeFromWatchlist(MediaItem entry) {
     final guid = entry.guid;
     if (guid != null && _isJellyfinGuid(guid)) {
       _jellyfinFavorites = _jellyfinFavorites
           .where((i) => i.id != entry.id)
           .toList();
-      notifyListeners();
+      _notifyWhenSafe();
       unawaited(
         (_jellyfinClient?.setFavorite(entry.id, favorite: false) ??
                 Future<void>.value())
@@ -924,7 +939,7 @@ class AppRootController extends ChangeNotifier {
       return;
     }
     _watchlistItems = _watchlistItems?.where((i) => i.id != entry.id).toList();
-    notifyListeners();
+    _notifyWhenSafe();
     final token = _accountToken;
     if (token != null && guid != null) {
       unawaited(

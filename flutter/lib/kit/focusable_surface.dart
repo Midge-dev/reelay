@@ -81,19 +81,24 @@ class _FocusableSurfaceState extends State<FocusableSurface> {
     // arriving above it re-creates the element) must start focused, or the
     // focused element shows no signal until focus moves.
     _focused = _focusNode.hasFocus;
-    if (widget.onLongClick != null) {
-      _longPress = DpadLongPressDetector(onLongPress: widget.onLongClick!);
-    }
+    if (widget.onLongClick != null) _longPress = _newLongPress();
   }
+
+  /// Calls whatever onLongClick the surface has when the hold fires, so a
+  /// rebuild mid-hold — a new callback each build, as an item builder makes
+  /// — keeps the hold going. Replacing the detector on every new callback
+  /// threw the hold away: on the Watchlist screen, whose Undo countdown
+  /// rebuilds it every second, a second removal often never fired.
+  DpadLongPressDetector _newLongPress() => DpadLongPressDetector(onLongPress: () => widget.onLongClick?.call());
 
   @override
   void didUpdateWidget(covariant FocusableSurface oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (widget.onLongClick != oldWidget.onLongClick) {
+    // Only when long-press comes or goes; a new callback alone is picked up
+    // by the existing detector (see _newLongPress).
+    if ((widget.onLongClick == null) != (oldWidget.onLongClick == null)) {
       _longPress?.dispose();
-      _longPress = widget.onLongClick != null
-          ? DpadLongPressDetector(onLongPress: widget.onLongClick!)
-          : null;
+      _longPress = widget.onLongClick != null ? _newLongPress() : null;
     }
     // A caller that reuses this Element for a different logical item across
     // rebuilds (e.g. a list whose row composition shifts, changing which

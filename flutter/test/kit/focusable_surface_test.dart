@@ -202,4 +202,43 @@ void main() {
       expect(dots(tester), 0);
     });
   });
+
+  testWidgets('a hold still fires when the surface is rebuilt mid-hold with a new onLongClick (a ticking Undo chip)', (tester) async {
+    final focusNode = FocusNode();
+    addTearDown(focusNode.dispose);
+    var longClicks = 0;
+    var tick = 0;
+    late StateSetter rebuild;
+
+    await _pump(
+      tester,
+      StatefulBuilder(builder: (context, setState) {
+        rebuild = setState;
+        // A different callback each build, as a screen's item builder
+        // makes (() => _startRemoval(item)) — two distinct functions, so
+        // the surface can't see them as the same one.
+        void a() => longClicks++;
+        void b() => longClicks++;
+        return FocusableSurface(
+          onClick: () {},
+          onLongClick: tick.isEven ? a : b,
+          focusNode: focusNode,
+          shape: const RoundedRectangleBorder(),
+          colors: _testColors(),
+          child: const SizedBox(width: 10, height: 10),
+        );
+      }),
+    );
+    focusNode.requestFocus();
+    await tester.pump();
+
+    await tester.sendKeyDownEvent(LogicalKeyboardKey.select);
+    await tester.pump(const Duration(milliseconds: 300));
+    rebuild(() => tick++); // the screen rebuilds (its countdown ticks)
+    await tester.pump(); // that frame, now — mid-hold
+    await tester.pump(const Duration(milliseconds: 400));
+    expect(longClicks, 1, reason: 'the hold that began before the rebuild still counts');
+    await tester.sendKeyUpEvent(LogicalKeyboardKey.select);
+    await tester.pump();
+  });
 }

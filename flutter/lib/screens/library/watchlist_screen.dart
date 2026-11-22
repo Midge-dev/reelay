@@ -75,13 +75,32 @@ class WatchlistScreen extends StatefulWidget {
 }
 
 class _WatchlistScreenState extends State<WatchlistScreen> {
-  late List<MediaItem> _items = widget.items;
-  MediaItem? _pendingRemoval;
+  // Screen 21, as Home does it: a hold takes a title off at once, focus
+  // moves to the next title in reading order (never to the chip), and the
+  // chip restates for every removal still undoable — "Took 3 titles off
+  // the list" — rather than committing the one before. The server hears
+  // when the eight seconds run out, or when the screen is left.
+
+  /// Taken off, still undoable; newest last.
+  final _pending = <MediaItem>[];
+
+  /// Told to the server, but maybe still in [WatchlistScreen.items] until
+  /// the list refreshes.
+  final _committed = <String>{};
   int _secondsLeft = undoSeconds;
   Timer? _timer;
   final _scrollController = ScrollController();
   final _undoFocus = FocusNode(debugLabel: 'watchlist-undo');
+  final _itemFocus = <String, FocusNode>{};
   _WatchlistSort _sort = _WatchlistSort.recentlyAdded;
+
+  FocusNode _focusFor(String id) => _itemFocus.putIfAbsent(id, () => FocusNode(debugLabel: 'watchlist-$id'));
+
+  /// What's on the list now: what the screen was given, less removals.
+  List<MediaItem> get _items {
+    final hidden = {for (final e in _pending) e.id, ..._committed};
+    return [for (final e in widget.items) if (!hidden.contains(e.id)) e];
+  }
 
   List<MediaItem> get _sorted => switch (_sort) {
     // Newest first by addedAt when every entry has one; otherwise the
@@ -96,57 +115,77 @@ class _WatchlistScreenState extends State<WatchlistScreen> {
   };
 
   @override
-  void didUpdateWidget(covariant WatchlistScreen oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (widget.items != oldWidget.items && _pendingRemoval == null) {
-      setState(() => _items = widget.items);
-    }
-  }
-
-  @override
   void dispose() {
-    _timer?.cancel();
+    // Leaving with Undo still running commits it, as Home does — it used to
+    // drop the removal, and the title came back.
+    _commit(rebuild: false);
     _scrollController.dispose();
     _undoFocus.dispose();
+    for (final node in _itemFocus.values) {
+      node.dispose();
+    }
     super.dispose();
   }
 
   void _startRemoval(MediaItem entry) {
-    _timer?.cancel();
-    // A hold on a second card while one removal is already pending commits
-    // the first immediately — the undo chip only ever tracks one entry at
-    // a time, matching the mockup (one chip in the header, not a stack).
-    if (_pendingRemoval != null) widget.onRemove(_pendingRemoval!);
+    // Where focus goes: the next title in reading order, else the one
+    // before. Never the chip, which would put the cursor somewhere the
+    // person didn't aim it (screen 21).
+    final shown = _sorted;
+    final at = shown.indexWhere((e) => e.id == entry.id);
+    final next = at + 1 < shown.length ? shown[at + 1] : (at > 0 ? shown[at - 1] : null);
     setState(() {
-      _items = _items.where((i) => i.id != entry.id).toList();
-      _pendingRemoval = entry;
+      _pending.add(entry);
       _secondsLeft = undoSeconds;
     });
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) _undoFocus.requestFocus();
+      if (!mounted) return;
+      // Nothing left on the list: the chip is all there is to land on.
+      (next != null ? _focusFor(next.id) : _undoFocus).requestFocus();
     });
+    _timer?.cancel();
     _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
       if (!mounted) return;
       if (_secondsLeft <= 1) {
-        timer.cancel();
-        final entry = _pendingRemoval;
-        if (entry != null) widget.onRemove(entry);
-        setState(() => _pendingRemoval = null);
+        _commit();
         return;
       }
       setState(() => _secondsLeft -= 1);
     });
   }
 
-  void _undoRemoval() {
-    final entry = _pendingRemoval;
-    if (entry == null) return;
+  void _commit({bool rebuild = true}) {
     _timer?.cancel();
-    setState(() {
-      _items = [entry, ..._items];
-      _pendingRemoval = null;
-    });
+    _timer = null;
+    final done = List.of(_pending);
+    _pending.clear();
+    _committed.addAll(done.map((e) => e.id));
+    for (final entry in done) {
+      widget.onRemove(entry);
+    }
+    if (rebuild && mounted) setState(() {});
   }
+
+  /// Undo — the chip, or Back while it lives — puts back the newest
+  /// removal; the chip restates for the rest.
+  void _undoRemoval() {
+    if (_pending.isEmpty) return;
+    final restored = _pending.last;
+    final chipHadFocus = _undoFocus.hasFocus;
+    setState(() => _pending.removeLast());
+    if (_pending.isEmpty) {
+      _timer?.cancel();
+      _timer = null;
+    }
+    if (chipHadFocus && _pending.isEmpty) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _focusFor(restored.id).requestFocus();
+      });
+    }
+  }
+
+  String get _undoMessage =>
+      _pending.length == 1 ? 'Took ${_pending.single.title} off the list' : 'Took ${_pending.length} titles off the list';
 
   @override
   Widget build(BuildContext context) {
@@ -199,13 +238,14 @@ class _WatchlistScreenState extends State<WatchlistScreen> {
                     ),
                   ),
                   const Spacer(),
-                  if (_pendingRemoval != null)
+                  if (_pending.isNotEmpty)
                     UndoChip(
-                      message: 'Took ${_pendingRemoval!.title} off the list',
+                      message: _undoMessage,
                       secondsLeft: _secondsLeft,
                       focusNode: _undoFocus,
                       onUndo: _undoRemoval,
                       height: _barHeight,
+                      backTakesPrecedence: true,
                     )
                   else if (_items.isNotEmpty)
                     // Flexible: at the 130% default on a 960x540 canvas the
@@ -312,7 +352,8 @@ class _WatchlistScreenState extends State<WatchlistScreen> {
                     ],
                   )
                 : null,
-            autofocus: index == 0 && _pendingRemoval == null && !restoring,
+            focusNode: _focusFor(item.id),
+            autofocus: index == 0 && _pending.isEmpty && !restoring,
             // Nothing to open for a title none of your servers hold — the
             // marker says so; holding still takes it off the list.
             onClick: unavailable ? () {} : () => widget.onSelectItem(item),

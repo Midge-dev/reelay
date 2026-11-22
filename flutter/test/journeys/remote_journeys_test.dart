@@ -214,6 +214,15 @@ void main() {
       expect(j.shows('S1 E3 · 50 min left'), isTrue, reason: j.why('a new next episode is a new card'));
     });
 
+    journey('leaving Home while Undo is up commits the removal (the server hears)', (j) async {
+      await j.down(2);
+      j.expectFocusOn('Andor');
+      await j.holdSelect();
+      await j.openFromRail('Movies'); // leave Home at once
+      await j.wait(const Duration(seconds: 1));
+      expect(j.server.favoriteIds, isNot(contains('s2')), reason: j.why('leaving ends the chance to undo'));
+    });
+
     journey('Continue Watching works the same way', (j) async {
       await j.down(); // More in progress: Severance 1x2
       j.expectFocusOn('50 min left');
@@ -224,6 +233,60 @@ void main() {
       expect(j.network.requests.where((r) => r.uri.path.endsWith('/UserData')), isNotEmpty,
           reason: j.why('Undo ran out: the server is told'));
     });
+  });
+
+  group('The Watchlist screen removes like Home does (screen 21)', () {
+    // Four titles on the list, so there's a next one to land on.
+    FakeJellyfin fourOnTheList() => FakeJellyfin()..favoriteIds.addAll({'m1', 'm5'});
+
+    /// The Watchlist screen, focus on its first title; returns the titles
+    /// in the order the grid shows them.
+    Future<List<String>> openWatchlist(Journey j) async {
+      await j.openFromRail('Watchlist');
+      await j.wait(const Duration(seconds: 1));
+      final order = <String>[];
+      for (var i = 0; i < 4; i++) {
+        order.add(j.focusedTexts().first);
+        await j.right();
+      }
+      await j.left(3);
+      return order;
+    }
+
+    journey('a hold takes the title off at once; focus goes to the next title, never to the chip', (j) async {
+      final order = await openWatchlist(j);
+      await j.right(); // the second title
+      await j.holdSelect();
+      expect(j.screenTexts(), isNot(contains(order[1])), reason: j.why('gone at once'));
+      expect(j.shows('Took ${order[1]} off the list'), isTrue, reason: j.why(j.screenTexts().toString()));
+      j.expectFocusOn(order[2], because: 'the next title in reading order — not the Undo chip (screen 21)');
+    }, server: fourOnTheList);
+
+    journey('two removals restate one chip; Back takes back the newest and stays on the screen', (j) async {
+      final order = await openWatchlist(j);
+      await j.holdSelect(); // the first
+      await j.holdSelect(); // the next, which focus moved to
+      expect(j.shows('Took 2 titles off the list'), isTrue, reason: j.why('one chip, restated: ${j.screenTexts()}'));
+      expect(j.server.favoriteIds, containsAll(['m1', 'm3', 'm5', 's2']), reason: j.why('the first removal is still undoable, not committed'));
+
+      await j.back();
+      expect(j.screenTexts(), contains(order[1]), reason: j.why('Back undid the newest'));
+      expect(j.shows('Took ${order[0]} off the list'), isTrue, reason: j.why('the chip restates for the rest'));
+      expect(j.shows('Watchlist'), isTrue, reason: j.why('Back undid, rather than leaving the screen'));
+    }, server: fourOnTheList);
+
+    journey('when Undo runs out the server hears; leaving the screen early commits too', (j) async {
+      final order = await openWatchlist(j);
+      await j.holdSelect();
+      await j.wait(const Duration(seconds: 9));
+      expect(j.shows('Took ${order[0]} off the list'), isFalse);
+      expect(j.server.favoriteIds, hasLength(3), reason: j.why('Undo ran out: off the server list'));
+
+      await j.holdSelect(); // another, then leave at once
+      await j.openFromRail('Home');
+      await j.wait(const Duration(seconds: 1));
+      expect(j.server.favoriteIds, hasLength(2), reason: j.why('leaving commits what was pending'));
+    }, server: fourOnTheList);
   });
 
   group('Binging', () {

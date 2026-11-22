@@ -76,12 +76,13 @@ void main() {
   });
 
   testWidgets('holding Select on the D-pad keeps the card removed after the button is released', (tester) async {
-    await _pump(tester);
+    var opened = 0;
+    await _pump(tester, onSelectItem: (_) => opened++);
     await tester.pump(); // autofocus lands on the first card
 
     // The hold fires while the key is still down and moves focus to the
-    // undo chip; the release then arrives there and must not read as a
-    // press of Undo.
+    // next title (screen 21: never to the chip); the release then arrives
+    // there and must not read as a press of it.
     await tester.sendKeyDownEvent(LogicalKeyboardKey.select);
     await tester.pump(const Duration(milliseconds: 600));
     await tester.pump();
@@ -90,11 +91,12 @@ void main() {
     await tester.sendKeyUpEvent(LogicalKeyboardKey.select);
     await tester.pump();
 
-    expect(find.text('Aftershow'), findsNothing, reason: 'the release belongs to the hold, not to Undo');
+    expect(find.text('Aftershow'), findsNothing, reason: 'the release belongs to the hold');
+    expect(opened, 0, reason: 'nor is it a press of the title focus moved to');
     expect(find.textContaining('Undo'), findsOneWidget);
 
-    // A fresh press on the focused chip still undoes.
-    await tester.sendKeyEvent(LogicalKeyboardKey.select);
+    // Undo still undoes (Back does too — see the Watchlist journeys).
+    await tester.tap(find.textContaining('Undo'));
     await tester.pump();
     expect(find.text('Aftershow'), findsOneWidget);
   });
