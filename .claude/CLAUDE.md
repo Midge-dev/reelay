@@ -71,7 +71,10 @@ Before the Shield pass, the automated layers catch most of it (run with
   `setup_journeys_test.dart` runs first-run setup (O1–O5) by remote,
   Jellyfin-only, typed on the TV (`Journey.type` stands in for the TV's
   keyboard) — with `realFonts: true`, as layout-heavy pages need: the test
-  font's wide glyphs wrap them off screen.
+  font's wide glyphs wrap them off screen. `profile_journeys_test.dart`
+  adds a profile from Settings (signed in as the fake's second, Movies-only
+  user, riley / jumanji), then `Journey.relaunch()`es the app — same stores
+  — for the picker and each profile's own hub.
 - `test/journeys/ux_tour_test.dart` — not a test: `UX_TOUR=1 flutter test
   test/journeys/ux_tour_test.dart` screenshots every screen in the app's
   own type into `build/journey_shots/` (`UX_SCALE=1.5` for another UI size),

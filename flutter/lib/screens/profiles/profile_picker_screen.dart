@@ -142,44 +142,56 @@ class _ProfileItemState extends State<_ProfileItem> {
           SizedBox(
             width: _avatarSize.du(context),
             height: _avatarSize.du(context),
-            child: AppCard(
-              onClick: widget.onClick,
-              focusNode: widget.focusNode,
-              shape: const CircleBorder(),
-              onFocusChange: (focused) => setState(() => _focused = focused),
-              child: thumb != null
-                  ? ClipOval(
-                      child: Image.network(
-                        thumb,
-                        fit: BoxFit.cover,
-                        width: _avatarSize.du(context),
-                        height: _avatarSize.du(context),
-                      ),
-                    )
-                  : ColoredBox(
-                      color: AppColors.surface,
-                      child: Center(
-                        child: AppText(
-                          profile.name.isNotEmpty
-                              ? profile.name[0].toUpperCase()
-                              : '?',
-                          style: AppTypography.display,
-                          color: AppColors.inkOnArt,
+            // Named for a screen reader: the circle alone holds only the
+            // initial, and the name beside it isn't part of the focus.
+            child: Semantics(
+              button: true,
+              label: profile.name,
+              hint: profile.accountsLabel,
+              excludeSemantics: true,
+              child: AppCard(
+                onClick: widget.onClick,
+                focusNode: widget.focusNode,
+                shape: const CircleBorder(),
+                onFocusChange: (focused) => setState(() => _focused = focused),
+                child: thumb != null
+                    ? ClipOval(
+                        child: Image.network(
+                          thumb,
+                          fit: BoxFit.cover,
+                          width: _avatarSize.du(context),
+                          height: _avatarSize.du(context),
+                        ),
+                      )
+                    : ColoredBox(
+                        color: AppColors.surface,
+                        child: Center(
+                          child: AppText(
+                            profile.name.isNotEmpty
+                                ? profile.name[0].toUpperCase()
+                                : '?',
+                            style: AppTypography.display,
+                            color: AppColors.inkOnArt,
+                          ),
                         ),
                       ),
-                    ),
+              ),
             ),
           ),
           SizedBox(height: AppSpacing.lg.du(context)),
-          AppText(
-            profile.name,
-            style: _focused
-                ? AppTypography.title2
-                : AppTypography.title2.copyWith(fontWeight: FontWeight.w400),
-            color: _focused ? AppColors.ink : AppColors.ink2,
+          ExcludeSemantics(
+            child: AppText(
+              profile.name,
+              style: _focused
+                  ? AppTypography.title2
+                  : AppTypography.title2.copyWith(fontWeight: FontWeight.w400),
+              color: _focused ? AppColors.ink : AppColors.ink2,
+            ),
           ),
           SizedBox(height: AppSpacing.xs.du(context)),
-          AppText(profile.accountsLabel, color: AppColors.ink3),
+          ExcludeSemantics(
+            child: AppText(profile.accountsLabel, color: AppColors.ink3),
+          ),
         ],
       ),
     );
@@ -201,22 +213,27 @@ class _AddProfileItem extends StatelessWidget {
           SizedBox(
             width: _avatarSize.du(context),
             height: _avatarSize.du(context),
-            child: AppCard(
-              onClick: onClick,
-              shape: const CircleBorder(),
-              colors: SurfaceColors(
-                container: AppColors.transparent,
-                content: AppColors.ink3,
-                focusedContainer: AppColors.surfaceRaised,
-                focusedContent: AppColors.ink,
-              ),
-              child: const Center(
-                child: AppIcon(PhosphorIconsRegular.plus, size: 44),
+            child: Semantics(
+              button: true,
+              label: 'Add a profile',
+              excludeSemantics: true,
+              child: AppCard(
+                onClick: onClick,
+                shape: const CircleBorder(),
+                colors: SurfaceColors(
+                  container: AppColors.transparent,
+                  content: AppColors.ink3,
+                  focusedContainer: AppColors.surfaceRaised,
+                  focusedContent: AppColors.ink,
+                ),
+                child: const Center(
+                  child: AppIcon(PhosphorIconsRegular.plus, size: 44),
+                ),
               ),
             ),
           ),
           SizedBox(height: AppSpacing.lg.du(context)),
-          AppText('Add', color: AppColors.ink3),
+          ExcludeSemantics(child: AppText('Add', color: AppColors.ink3)),
         ],
       ),
     );

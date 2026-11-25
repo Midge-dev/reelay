@@ -32,6 +32,14 @@ class FakeJellyfin {
   /// finds — a title removed from the server since.
   final Set<String> unfindable;
   static const userId = 'u1';
+
+  /// A second account on the same server — riley / jumanji — that sees
+  /// only Movies, as a restricted Jellyfin user does: profile journeys
+  /// check each profile gets its own account's hub.
+  static const rileyUserId = 'u2';
+  static const rileyToken = 'jf-token-riley';
+  bool _asRiley(FakeRequest r) =>
+      r.headers.values.any((v) => v.contains(rileyToken)) || r.uri.queryParameters.values.any((v) => v == rileyToken);
   static const serverId = 'jf-den';
 
   static const movieTitles = ['Arrival', 'Blade Runner', 'Contact', 'Dune', 'Ex Machina', 'Gattaca', 'Her', 'Interstellar'];
@@ -264,9 +272,16 @@ class FakeJellyfin {
       positions.remove(userData[1]);
       return FakeReply.json({});
     }
-    // Signing in (setup's typed path): sam / popcorn.
+    // Signing in (setup's typed path): sam / popcorn, or riley / jumanji.
     if (r.method == 'POST' && path == '/Users/AuthenticateByName') {
       final body = jsonDecode(utf8.decode(r.body)) as Map<String, dynamic>;
+      if (body['Username'] == 'riley' && body['Pw'] == 'jumanji') {
+        return FakeReply.json({
+          'User': {'Id': rileyUserId, 'Name': 'riley', 'ServerId': serverId},
+          'AccessToken': rileyToken,
+          'ServerId': serverId,
+        });
+      }
       if (body['Username'] != 'sam' || body['Pw'] != 'popcorn') return FakeReply.json({}, status: 401);
       return FakeReply.json({
         'User': {'Id': userId, 'Name': 'sam', 'ServerId': serverId},
@@ -285,12 +300,14 @@ class FakeJellyfin {
         // As a real server answers: setup checks it's Jellyfin by ProductName.
         return FakeReply.json({'ServerName': 'Den', 'Id': 'jf-den', 'Version': '12.1.0', 'ProductName': 'Jellyfin Server', 'StartupWizardCompleted': true});
       case '/Users/Me':
-        return FakeReply.json({'Id': userId, 'Name': 'sam'});
+        return FakeReply.json(_asRiley(r) ? {'Id': rileyUserId, 'Name': 'riley'} : {'Id': userId, 'Name': 'sam'});
       case '/UserViews':
         return FakeReply.json(_items([
           {'Id': 'l1', 'Name': 'Movies', 'CollectionType': 'movies'},
-          {'Id': 'l2', 'Name': 'Shows', 'CollectionType': 'tvshows'},
-          {'Id': collectionsViewId, 'Name': 'Collections', 'CollectionType': 'boxsets'},
+          if (!_asRiley(r)) ...[
+            {'Id': 'l2', 'Name': 'Shows', 'CollectionType': 'tvshows'},
+            {'Id': collectionsViewId, 'Name': 'Collections', 'CollectionType': 'boxsets'},
+          ],
         ]));
       case '/UserItems/Resume':
         return FakeReply.json(_items([...movies, ..._allEpisodes].where((m) => resumeIds.contains(m['Id']))));

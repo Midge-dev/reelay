@@ -123,22 +123,37 @@ class Journey {
     await store.save(settings?.call(initial) ?? initial);
     final tokens = _MemoryTokenStore()..values['jellyfin:p1'] = 'jf-token';
 
+    final journey = Journey._(tester, server, network, relay).._tokens = tokens;
+    await journey._launch();
+    return journey;
+  }
+
+  late _MemoryTokenStore _tokens;
+
+  Future<void> _launch() async {
     await tester.pumpWidget(
       ProviderScope(
-        overrides: [secureTokenStoreProvider.overrideWithValue(tokens)],
+        overrides: [secureTokenStoreProvider.overrideWithValue(_tokens)],
         child: const ReelayApp(),
       ),
     );
-    final journey = Journey._(tester, server, network, relay);
     // Start-up needs a moment of real time once (an asset load resolves on
     // the real clock, not the test's), then the splash and first rows run
     // on the test's clock.
     for (var i = 0; i < 3; i++) {
       await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 50)));
-      await journey.wait(const Duration(milliseconds: 500));
+      await wait(const Duration(milliseconds: 500));
     }
-    await journey.wait(const Duration(seconds: 5)); // every Home row in
-    return journey;
+    await wait(const Duration(seconds: 5)); // every Home row in
+  }
+
+  /// Quits the app and opens it again, as turning the TV off and on does:
+  /// the settings and secure stores keep what the app saved, nothing else.
+  Future<void> relaunch() async {
+    await tester.pumpWidget(const SizedBox());
+    await tester.pump(const Duration(seconds: 30)); // leftover timers run out
+    steps.add('— relaunch —');
+    await _launch();
   }
 
   /// Lets time pass in small steps (animations, timers, fake requests).
