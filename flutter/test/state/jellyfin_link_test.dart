@@ -33,6 +33,12 @@ class _MemoryTokenStore implements SecureTokenStore {
   Future<String?> loadJellyfinToken(String profileId) async => values['jellyfin:$profileId'];
   @override
   Future<void> clearJellyfinToken(String profileId) async => values.remove('jellyfin:$profileId');
+  @override
+  Future<void> saveHomeServerTokens(String profileId, String json) async => values['home:$profileId'] = json;
+  @override
+  Future<String?> loadHomeServerTokens(String profileId) async => values['home:$profileId'];
+  @override
+  Future<void> clearHomeServerTokens(String profileId) async => values.remove('home:$profileId');
 }
 
 const _sam = Profile(id: 'p1', name: 'Sam', watchTogetherName: 'Sammy', plexUsername: 'GrimLad');
@@ -98,6 +104,7 @@ void main() {
       final prefs = SharedPreferencesAsync();
       tokens = _MemoryTokenStore();
       settings = SettingsStore(prefs);
+      await settings.observe().first; // its own load from disk, done before ours lands
       await settings.save(const AppSettings(profiles: [_sam, _maya]));
       controller = AppRootController(
         tokenStore: tokens,
@@ -202,6 +209,7 @@ void main() {
       final prefs = SharedPreferencesAsync();
       tokens = _MemoryTokenStore();
       settings = SettingsStore(prefs);
+      await settings.observe().first; // its own load from disk, done before ours lands
       await settings.observe().first;
       controller = AppRootController(
         tokenStore: tokens,

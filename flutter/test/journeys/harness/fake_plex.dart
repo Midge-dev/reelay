@@ -41,6 +41,10 @@ class FakePlex {
   /// How long the LAN address takes to answer — a busy Wi-Fi, say.
   Duration lanLatency = Duration.zero;
 
+  /// How long the server takes on every address (artwork aside) — a busy
+  /// server on a cold start. Under the app's 4 s probe, or it's dead.
+  Duration latency = Duration.zero;
+
   /// Plex refusing the account token — the TV removed from the account.
   /// Linking again ([linkPin]) gets a new token, [relinkedToken]; the old
   /// one stays refused.
@@ -334,6 +338,9 @@ class FakePlex {
     lastBaseUrl = r.uri.origin;
     final reply = _server(r);
     if (r.uri.origin == Uri.parse(lanUrl).origin) reply?.delay = lanLatency;
+    if (latency > Duration.zero && !r.uri.path.contains('/thumb') && !r.uri.path.contains('/art') && !r.uri.path.startsWith('/photo')) {
+      reply?.delay += latency;
+    }
     return reply;
   }
 

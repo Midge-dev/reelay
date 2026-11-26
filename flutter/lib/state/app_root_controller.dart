@@ -30,6 +30,7 @@ import '../sync/episode_switch.dart';
 import '../sync/relay_directory_api.dart';
 import '../sync/relay_protocol.dart';
 import 'app_state.dart';
+import 'home_cache.dart';
 import 'room_title.dart';
 import 'recency_merge.dart';
 import 'duplicate_fold.dart';
@@ -59,9 +60,18 @@ class AppRootController extends ChangeNotifier {
     required this._settingsStore,
     required this._relayIdentityStore,
     required this._plexIdentity,
+    this._homeCache,
   });
 
   final SecureTokenStore _tokenStore;
+  final HomeCache? _homeCache;
+
+  /// The last Home built from the servers' own answers (never one read
+  /// back from [_homeCache]) — what the next launch is shown first.
+  Home? _lastFreshHome;
+
+  /// The saved Home on screen while [connect] asks the servers.
+  Home? _savedHomeShown;
   final SettingsStore _settingsStore;
   final RelayIdentityStore _relayIdentityStore;
   final PlexIdentity _plexIdentity;
@@ -75,6 +85,10 @@ class AppRootController extends ChangeNotifier {
     final wasPolling = pollsLiveRooms(_state);
     final polls = pollsLiveRooms(next);
     _state = next;
+    if (next is Home && !identical(next, _savedHomeShown)) {
+      _lastFreshHome = next;
+      _saveHome();
+    }
     _seeRoomsIfOnHome();
     if (polls && !wasPolling) {
       _startRoomPolling();
@@ -501,6 +515,11 @@ class AppRootController extends ChangeNotifier {
                 onError: (Object e) => (null, e),
               );
     final reachingJellyfin = _reachJellyfin(settings);
+    _lastFreshHome = null;
+    // The Watch Together step is offered once: skipping it during setup
+    // ("Not now") is an answer, not something to ask again every launch.
+    final offerRelayStep = settings.relays.isEmpty && !settings.setupComplete;
+    final savedHome = firstRun || offerRelayStep ? null : await _showSavedHome(settings);
     final authApi = PlexAuthApi(_clientIdentifier);
     try {
       _localAccount = token == null ? null : await authApi.fetchAccount(token);
@@ -516,15 +535,18 @@ class AppRootController extends ChangeNotifier {
           'Signed in to Plex',
       if (jellyfin != null) 'Signed in to Jellyfin as ${jellyfin.username}',
     ];
-    void progress(String? current, {String? headline}) => _setState(
-      ConnectingToServer(
-        username: username,
-        firstRun: firstRun,
-        done: List.of(done),
-        current: current,
-        headline: headline,
-      ),
-    );
+    void progress(String? current, {String? headline}) {
+      if (savedHome != null) return; // Home is already up
+      _setState(
+        ConnectingToServer(
+          username: username,
+          firstRun: firstRun,
+          done: List.of(done),
+          current: current,
+          headline: headline,
+        ),
+      );
+    }
     progress('Looking for your servers');
 
     try {
@@ -555,7 +577,7 @@ class AppRootController extends ChangeNotifier {
         } catch (_) {
           resources = const [];
         }
-        _setState(
+        _setStateUnlessWatching(
           NoServersReachable(
             token: token,
             resources: resources,
@@ -591,21 +613,28 @@ class AppRootController extends ChangeNotifier {
         selectedSectionGroup: firstGroup,
         items: const [],
       );
-      // The Watch Together step is offered once: skipping it during setup
-      // ("Not now") is an answer, not something to ask again every launch.
-      final offerRelayStep = settings.relays.isEmpty && !settings.setupComplete;
-      _setState(
-        offerRelayStep
-            ? RelaySetup(ctx: ctx)
-            : await _loadHome(connected, sectionGroups),
-      );
+      if (offerRelayStep) {
+        _setState(RelaySetup(ctx: ctx));
+      } else {
+        final fresh = await _loadHome(connected, sectionGroups);
+        if (savedHome == null || identical(_state, savedHome)) {
+          // In place: the same screen to the person on it, focus kept.
+          if (savedHome != null) ScreenMemory.carry(savedHome, fresh);
+          _setState(fresh);
+        } else {
+          // They've gone on from the saved Home; coming back rebuilds it
+          // from these servers (see _refreshReturnState).
+          _lastFreshHome = fresh;
+          _saveHome();
+        }
+      }
     } catch (e) {
       if (isPlexSignInRevoked(e)) {
         await _forgetRevokedSignIn();
         return;
       }
       // Name what failed, never the raw exception.
-      _setState(
+      _setStateUnlessWatching(
         AppError(
           message: e is _FriendlyError
               ? e.message
@@ -614,8 +643,69 @@ class AppRootController extends ChangeNotifier {
         ),
       );
       return;
+    } finally {
+      if (identical(_savedHomeShown, savedHome)) _savedHomeShown = null;
     }
     unawaited(_refreshWatchlist());
+  }
+
+  /// Puts the active profile's last Home on screen, with its watchlist,
+  /// while [connect] asks the servers — unless there's none saved, or it
+  /// has a server that's since been turned off. Returns what it showed.
+  Future<Home?> _showSavedHome(AppSettings settings) async {
+    final profile = _activeProfile;
+    final cache = _homeCache;
+    if (profile == null || cache == null) return null;
+    final saved = await cache.load(profile.id);
+    if (saved == null) return null;
+    final home = saved.home;
+    if (home.servers.isEmpty ||
+        home.servers.any((cs) => settings.disabledServerIds.contains(cs.server.id))) {
+      return null;
+    }
+    _connectedServers = home.servers;
+    _watchlistItems = saved.plexWatchlist;
+    _jellyfinFavorites = saved.jellyfinFavorites;
+    _watchlistEntryIds = saved.watchlistEntryIds;
+    _watchlistAvailability = saved.watchlistAvailability;
+    _savedHomeShown = home;
+    _setState(home);
+    return home;
+  }
+
+  /// Saves the last fresh Home and the watchlist for the next launch.
+  void _saveHome() {
+    final profile = _activeProfile;
+    final home = _lastFreshHome;
+    final cache = _homeCache;
+    if (profile == null || home == null || cache == null) return;
+    unawaited(
+      cache
+          .save(
+            profile.id,
+            SavedHome(
+              home: home,
+              plexWatchlist: _watchlistItems,
+              jellyfinFavorites: _jellyfinFavorites,
+              watchlistEntryIds: _watchlistEntryIds,
+              watchlistAvailability: _watchlistAvailability,
+            ),
+          )
+          .catchError((_) {}),
+    );
+  }
+
+  /// Forgets [profile]'s saved Home — its sign-in changed, so the servers
+  /// and tokens it was saved with may no longer be its own.
+  Future<void> _forgetSavedHome(Profile profile) async {
+    await _homeCache?.clear(profile.id).catchError((_) {});
+  }
+
+  /// A connect that ends in trouble after a saved Home went up: says so,
+  /// except over a film already playing or a room's lobby.
+  void _setStateUnlessWatching(AppState next) {
+    if (_state is Player || _state is Lobby) return;
+    _setState(next);
   }
 
   /// The active profile's Jellyfin server for the hub — when it has one,
@@ -663,7 +753,10 @@ class AppRootController extends ChangeNotifier {
   /// devices). Drop it and go back to linking, for the same profile.
   Future<void> _forgetRevokedSignIn() async {
     final profile = _activeProfile;
-    if (profile != null) await _tokenStore.clearTokenForProfile(profile.id);
+    if (profile != null) {
+      await _tokenStore.clearTokenForProfile(profile.id);
+      await _forgetSavedHome(profile);
+    }
     await _tokenStore.clearToken();
     _accountToken = null;
     _setState(LoggedOut(relinkProfile: profile));
@@ -694,6 +787,7 @@ class AppRootController extends ChangeNotifier {
       thumb: account?.thumb,
     );
     await _tokenStore.saveTokenForProfile(profile.id, token);
+    await _forgetSavedHome(profile);
     await _saveProfile(linked);
     _activeProfile = linked;
     await connect(token);
@@ -728,6 +822,7 @@ class AppRootController extends ChangeNotifier {
       ),
     );
     await _tokenStore.saveJellyfinToken(profile.id, session.accessToken);
+    await _forgetSavedHome(profile);
     await _saveProfile(linked);
     // A fresh sign-in: whatever kept the old one out no longer stands.
     if (profile.id == _activeProfile?.id) _jellyfinTrouble = null;
@@ -747,6 +842,7 @@ class AppRootController extends ChangeNotifier {
     final link = profile.jellyfin;
     final token = await _tokenStore.loadJellyfinToken(profile.id);
     await _tokenStore.clearJellyfinToken(profile.id);
+    await _forgetSavedHome(profile);
     final unlinked = profile.withJellyfin(null);
     await _saveProfile(unlinked);
     if (profile.id == _activeProfile?.id) _jellyfinTrouble = null;
@@ -880,6 +976,7 @@ class AppRootController extends ChangeNotifier {
                 .catchError((_) => _jellyfinFavorites),
     ).wait;
     notifyListeners();
+    _saveHome();
     unawaited(_resolveWatchlistAvailability());
   }
 
@@ -917,6 +1014,7 @@ class AppRootController extends ChangeNotifier {
     _watchlistAvailability = resolved;
     _watchlistEntryIds = ids;
     notifyListeners();
+    _saveHome();
   }
 
   bool isOnWatchlist(String? guid) =>
@@ -1538,7 +1636,12 @@ class AppRootController extends ChangeNotifier {
   }
 
   Future<AppState> _refreshReturnState(AppState target) async {
-    if (target is Home) return _loadHome(target.servers, target.sectionGroups);
+    if (target is Home) {
+      // A saved Home's servers are last launch's; once connect has built
+      // this one's, coming back uses them.
+      final hub = _lastFreshHome;
+      return _loadHome(hub?.servers ?? target.servers, hub?.sectionGroups ?? target.sectionGroups);
+    }
     if (target is Library) {
       final items = foldWorks(
         await _fetchGroupItems(

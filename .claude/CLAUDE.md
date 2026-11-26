@@ -84,6 +84,10 @@ Before the Shield pass, the automated layers catch most of it (run with
   reports, markers, removals, Search, setup's PIN link, linking again after
   Plex signs the TV out, Add profile's inline Plex sign-in — and, with both
   servers, that the same titles fold. The crawler also walks a Plex profile.
+  `home_cache_journeys_test.dart` relaunches against a slow server
+  (`FakeJellyfin.latency`, `FakePlex.latency`) for the saved Home: last
+  launch's rows at once, then the fresh ones in place, focus kept — and
+  no server token in plain preferences (lib/state/home_cache.dart).
 - `test/journeys/ux_tour_test.dart` — not a test: `UX_TOUR=1 flutter test
   test/journeys/ux_tour_test.dart` screenshots every screen in the app's
   own type into `build/journey_shots/` (`UX_SCALE=1.5` for another UI size),

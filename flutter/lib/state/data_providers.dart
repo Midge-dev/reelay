@@ -8,6 +8,7 @@ import '../data/settings/relay_identity_store.dart';
 import '../data/settings/settings_store.dart';
 import '../theme/tokens.dart';
 import 'app_root_controller.dart';
+import 'home_cache.dart';
 
 /// Foundational DI wiring for the Phase 1 data layer — screens read these
 /// via ref.watch/ref.read instead of constructing stores themselves.
@@ -56,6 +57,10 @@ final appRootControllerProvider = Provider<AppRootController>((ref) {
     settingsStore: ref.watch(settingsStoreProvider),
     relayIdentityStore: ref.watch(relayIdentityStoreProvider),
     plexIdentity: ref.watch(plexIdentityProvider),
+    homeCache: HomeCache(
+      ref.watch(sharedPreferencesProvider),
+      ref.watch(secureTokenStoreProvider),
+    ),
   );
   ref.onDispose(controller.dispose);
   return controller;

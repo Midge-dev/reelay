@@ -18,11 +18,18 @@ abstract class SecureTokenStore {
   Future<void> saveJellyfinToken(String profileId, String token);
   Future<String?> loadJellyfinToken(String profileId);
   Future<void> clearJellyfinToken(String profileId);
+
+  /// The tokens of the servers a profile's saved Home came from (see
+  /// home_cache.dart), as one JSON object keyed by server id.
+  Future<void> saveHomeServerTokens(String profileId, String json);
+  Future<String?> loadHomeServerTokens(String profileId);
+  Future<void> clearHomeServerTokens(String profileId);
 }
 
 const _tokenKey = 'plex_token';
 String _profileTokenKey(String profileId) => 'plex_token_$profileId';
 String _jellyfinTokenKey(String profileId) => 'jellyfin_token_$profileId';
+String _homeServerTokensKey(String profileId) => 'home_server_tokens_$profileId';
 
 // macOS's default Data Protection Keychain requires a `keychain-access-groups`
 // entitlement matched against a real development-signing certificate; ad-hoc
@@ -86,6 +93,26 @@ class FlutterSecureTokenStore implements SecureTokenStore {
   @override
   Future<void> clearJellyfinToken(String profileId) => _storage.delete(
     key: _jellyfinTokenKey(profileId),
+    mOptions: _macOsOptions,
+  );
+
+  @override
+  Future<void> saveHomeServerTokens(String profileId, String json) =>
+      _storage.write(
+        key: _homeServerTokensKey(profileId),
+        value: json,
+        mOptions: _macOsOptions,
+      );
+
+  @override
+  Future<String?> loadHomeServerTokens(String profileId) => _storage.read(
+    key: _homeServerTokensKey(profileId),
+    mOptions: _macOsOptions,
+  );
+
+  @override
+  Future<void> clearHomeServerTokens(String profileId) => _storage.delete(
+    key: _homeServerTokensKey(profileId),
     mOptions: _macOsOptions,
   );
 }

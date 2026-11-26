@@ -240,10 +240,27 @@ class FakeJellyfin {
     return {'Items': list, 'TotalRecordCount': list.length};
   }
 
+  /// How long the server takes over everything but artwork — a slow
+  /// server on a cold start.
+  Duration latency = Duration.zero;
+
+  /// False: the server is off, and its address refuses every request.
+  bool answering = true;
+
   /// The route to hand FakeNetwork.
   FakeReply? route(FakeRequest r) {
     final base = Uri.parse(baseUrl);
     if (r.uri.host != base.host || r.uri.port != base.port) return null;
+    if (!answering) return null;
+    if (latency > Duration.zero && !r.uri.path.contains('/Images/')) {
+      final reply = _route(r);
+      reply?.delay = latency;
+      return reply;
+    }
+    return _route(r);
+  }
+
+  FakeReply? _route(FakeRequest r) {
     final path = r.uri.path;
     final q = r.uri.queryParameters;
 

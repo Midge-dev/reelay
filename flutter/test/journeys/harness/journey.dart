@@ -44,6 +44,12 @@ class _MemoryTokenStore implements SecureTokenStore {
   Future<String?> loadJellyfinToken(String profileId) async => values['jellyfin:$profileId'];
   @override
   Future<void> clearJellyfinToken(String profileId) async => values.remove('jellyfin:$profileId');
+  @override
+  Future<void> saveHomeServerTokens(String profileId, String json) async => values['home:$profileId'] = json;
+  @override
+  Future<String?> loadHomeServerTokens(String profileId) async => values['home:$profileId'];
+  @override
+  Future<void> clearHomeServerTokens(String profileId) async => values.remove('home:$profileId');
 }
 
 /// The real app, as someone on the sofa uses it: [ReelayApp] with a
@@ -144,7 +150,7 @@ class Journey {
   /// `jellyfin:<profile id>`, and `plex` for the install's own.
   Map<String, String> get savedTokens => Map.unmodifiable(_tokens.values);
 
-  Future<void> _launch() async {
+  Future<void> _launch({Duration settle = const Duration(seconds: 5)}) async {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [secureTokenStoreProvider.overrideWithValue(_tokens)],
@@ -158,16 +164,18 @@ class Journey {
       await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 50)));
       await wait(const Duration(milliseconds: 500));
     }
-    await wait(const Duration(seconds: 5)); // every Home row in
+    await wait(settle); // every Home row in
   }
 
   /// Quits the app and opens it again, as turning the TV off and on does:
   /// the settings and secure stores keep what the app saved, nothing else.
-  Future<void> relaunch() async {
+  /// [settle] is how long to give it after the splash; zero looks at the
+  /// first thing it shows.
+  Future<void> relaunch({Duration settle = const Duration(seconds: 5)}) async {
     await tester.pumpWidget(const SizedBox());
     await tester.pump(const Duration(seconds: 30)); // leftover timers run out
     steps.add('— relaunch —');
-    await _launch();
+    await _launch(settle: settle);
   }
 
   /// Lets time pass in small steps (animations, timers, fake requests).
