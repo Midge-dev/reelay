@@ -75,7 +75,7 @@ void main() {
   // (On Deck episodes, its library names, the account rows in Settings).
   for (final scale in [1.3, 1.5]) {
     group('Plex, at ${(scale * 100).round()}% UI size', () {
-      for (final name in ['Home', 'Movies', 'Settings', 'a film', 'a show']) {
+      for (final name in ['Home', 'Watchlist', 'Movies', 'Settings', 'a film', 'a show']) {
         journey('$name: focus is always visible, and nowhere is a dead end', (j) async {
           await screens[name]!(j);
           final report = await j.crawl(presses: 120);

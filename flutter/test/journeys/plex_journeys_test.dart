@@ -272,4 +272,49 @@ void bothServers() {
     await j.wait(const Duration(seconds: 2));
     expect(j.shows('2 copies'), isTrue, reason: j.why('the page knows both: ${j.screenTexts()}'));
   }, plex: FakePlex.new);
+
+  // Contact and Andor are on the Plex watchlist and are Jellyfin favorites.
+  int count(Journey j, String title) => j.screenTexts().where((t) => t == title).length;
+
+  journey("a title on the Plex watchlist and in Jellyfin's favorites is on the watchlist once", (j) async {
+    expect((count(j, 'Contact'), count(j, 'Andor')), (1, 1), reason: j.why("Home's watchlist row: ${j.screenTexts()}"));
+    await j.openFromRail('Watchlist');
+    expect((count(j, 'Contact'), count(j, 'Andor')), (1, 1), reason: j.why('the Watchlist screen: ${j.screenTexts()}'));
+  }, plex: FakePlex.new);
+
+  journey('taking it off takes it off both, so it does not come back from the other list', (j) async {
+    await j.down(2);
+    j.expectFocusOn('Andor');
+    await j.holdSelect();
+    await j.wait(const Duration(seconds: 9));
+    await j.realTime();
+    expect(j.plex.watchlistGuids, isNot(contains('plex://show/s2')), reason: j.why('off the Plex watchlist'));
+    expect(j.server.favoriteIds, isNot(contains('s2')), reason: j.why("and out of Jellyfin's favorites"));
+    expect(count(j, 'Andor'), 0, reason: j.why('gone from the row: ${j.screenTexts()}'));
+  }, plex: FakePlex.new);
+
+  journey("the page's watchlist button takes it off both too", (j) async {
+    await j.down(2);
+    await j.right();
+    j.expectFocusOn('Contact');
+    await j.select();
+    await j.wait(const Duration(seconds: 1));
+    for (var i = 0; i < 4 && !j.shows('Remove from watchlist'); i++) {
+      await j.right();
+    }
+    for (var i = 0; i < 4; i++) {
+      try {
+        j.expectFocusOn('Remove from watchlist');
+        break;
+      } on TestFailure {
+        await j.right();
+      }
+    }
+    j.expectFocusOn('Remove from watchlist', because: 'the page knows it is on the list');
+    await j.select();
+    await j.realTime();
+    await j.wait(const Duration(seconds: 1));
+    expect(j.plex.watchlistGuids, isNot(contains('plex://movie/m3')), reason: j.why('off the Plex watchlist'));
+    expect(j.server.favoriteIds, isNot(contains('m3')), reason: j.why("and out of Jellyfin's favorites"));
+  }, plex: FakePlex.new);
 }

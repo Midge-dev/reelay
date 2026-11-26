@@ -137,7 +137,44 @@ class AppRootController extends ChangeNotifier {
   /// The Jellyfin account's Favorites, which stand in for its watchlist.
   /// One list with the Plex one for now; two labelled rows once designed.
   List<MediaItem> _jellyfinFavorites = const [];
-  List<MediaItem> get watchlist => [...?_watchlistItems, ..._jellyfinFavorites];
+
+  /// Both lists, end to end, before any folding — what "is it on the
+  /// watchlist" and the availability lookup read.
+  List<MediaItem> get _allWatchlistEntries => [...?_watchlistItems, ..._jellyfinFavorites];
+
+  /// Provider ids (imdb://, tvdb://…) of each Plex watchlist entry, by
+  /// guid, from its copy in a connected Plex library — a Discover entry
+  /// carries only its plex:// guid, which a Jellyfin favorite never shares.
+  Map<String, List<String>> _watchlistEntryIds = const {};
+
+  List<String> _idsOf(MediaItem entry) => [
+    ?entry.guid,
+    ...entry.externalIds,
+    ...?_watchlistEntryIds[entry.guid],
+  ];
+
+  /// Every entry, on either list, that is the same title as [entry] —
+  /// [entry] included. A title can be on the Plex watchlist and a Jellyfin
+  /// favorite at once; it is one title on screen and comes off both.
+  List<MediaItem> _sameTitle(MediaItem entry) {
+    final ids = _idsOf(entry).toSet();
+    return [
+      for (final e in _allWatchlistEntries)
+        if (identical(e, entry) || _idsOf(e).any(ids.contains)) e,
+    ];
+  }
+
+  /// The watchlist as shown: the Plex watchlist, then the Jellyfin
+  /// favorites that aren't already on it.
+  List<MediaItem> get watchlist {
+    final plex = _watchlistItems ?? const <MediaItem>[];
+    final onPlex = {for (final e in plex) ..._idsOf(e)};
+    return [
+      ...plex,
+      for (final f in _jellyfinFavorites)
+        if (!_idsOf(f).any(onPlex.contains)) f,
+    ];
+  }
 
   static bool _isJellyfinGuid(String guid) => guid.startsWith('jellyfin://');
 
@@ -851,10 +888,11 @@ class AppRootController extends ChangeNotifier {
   /// hidden or silently unplayable. Looks each entry up by guid on every
   /// connected server (the same lookup opening one uses).
   Future<void> _resolveWatchlistAvailability() async {
-    final items = watchlist;
+    final items = _allWatchlistEntries;
     final servers = _connectedServers;
     if (items.isEmpty || servers.isEmpty) return;
     final resolved = <String, String?>{};
+    final ids = <String, List<String>>{};
     await Future.wait(
       items.map((entry) async {
         final guid = entry.guid;
@@ -865,6 +903,7 @@ class AppRootController extends ChangeNotifier {
               final found = await clientFor(cs.server).findByGuid(guid);
               if (found.isNotEmpty) {
                 holder = cs.server.name;
+                ids[guid] = [for (final f in found) ...f.externalIds];
                 break;
               }
             } catch (_) {
@@ -876,17 +915,25 @@ class AppRootController extends ChangeNotifier {
       }),
     );
     _watchlistAvailability = resolved;
+    _watchlistEntryIds = ids;
     notifyListeners();
   }
 
   bool isOnWatchlist(String? guid) =>
-      guid != null && watchlist.any((i) => i.guid == guid);
+      guid != null && _allWatchlistEntries.any((i) => i.guid == guid);
 
   /// A Jellyfin title's guid names its item (see jellyfinGuid).
   String _jellyfinItemId(String guid) => guid.split('/').last;
 
   Future<void> toggleWatchlist(String? guid) async {
     if (guid == null) return;
+    // Off takes the title off both lists, as a hold does.
+    if (_allWatchlistEntries.where((i) => i.guid == guid).firstOrNull
+        case final entry?) {
+      await _removeEverywhere(entry);
+      await _refreshWatchlist();
+      return;
+    }
     if (_isJellyfinGuid(guid)) {
       try {
         await _jellyfinClient?.setFavorite(
@@ -924,29 +971,36 @@ class AppRootController extends ChangeNotifier {
     }
   }
 
+  /// Takes [entry] off the watchlist — off the Plex watchlist and out of
+  /// Jellyfin's favorites both, when the title is on both.
   void removeFromWatchlist(MediaItem entry) {
+    unawaited(_removeEverywhere(entry));
+  }
+
+  Future<void> _removeEverywhere(MediaItem entry) =>
+      Future.wait(_sameTitle(entry).map(_removeOne));
+
+  /// The lists change at once (before the first await); the server call
+  /// is awaited but never fails the caller.
+  Future<void> _removeOne(MediaItem entry) async {
     final guid = entry.guid;
     if (guid != null && _isJellyfinGuid(guid)) {
       _jellyfinFavorites = _jellyfinFavorites
           .where((i) => i.id != entry.id)
           .toList();
       _notifyWhenSafe();
-      unawaited(
-        (_jellyfinClient?.setFavorite(entry.id, favorite: false) ??
-                Future<void>.value())
-            .catchError((_) {}),
-      );
+      try {
+        await _jellyfinClient?.setFavorite(entry.id, favorite: false);
+      } catch (_) {}
       return;
     }
     _watchlistItems = _watchlistItems?.where((i) => i.id != entry.id).toList();
     _notifyWhenSafe();
     final token = _accountToken;
     if (token != null && guid != null) {
-      unawaited(
-        PlexWatchlistApi(_clientIdentifier)
-            .removeFromWatchlist(token, guid)
-            .catchError((_) {}),
-      );
+      try {
+        await PlexWatchlistApi(_clientIdentifier).removeFromWatchlist(token, guid);
+      } catch (_) {}
     }
   }
 

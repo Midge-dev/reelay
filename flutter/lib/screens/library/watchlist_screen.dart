@@ -227,8 +227,17 @@ class _WatchlistScreenState extends State<WatchlistScreen> {
               children: [
                 AppText('Watchlist', style: AppTypography.title1),
                 SizedBox(width: 18.du(context)),
-                AppText(widget.sourceLabel, style: AppTypography.caption),
-                const Spacer(),
+                // Flexible: with a Plex account and a Jellyfin server both,
+                // the label outgrows the 960x540 canvas at the 130% default.
+                Expanded(
+                  child: AppText(
+                    widget.sourceLabel,
+                    style: AppTypography.caption,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+                SizedBox(width: 18.du(context)),
                 AppText(count, style: AppTypography.caption),
               ],
             ),

@@ -33,13 +33,18 @@ class WatchlistButton extends StatelessWidget {
       noSpine: true,
     );
 
-    return AppIconButton(
-      onClick: onClick,
-      onFocusChange: onFocusChange,
-      border: border,
-      child: AppIcon(
-        isOnWatchlist ? PhosphorIconsRegular.check : PhosphorIconsRegular.plus,
-        size: 24,
+    // Icon-only, so it says what it does for a screen reader.
+    return Semantics(
+      label: isOnWatchlist ? 'Remove from watchlist' : 'Add to watchlist',
+      button: true,
+      child: AppIconButton(
+        onClick: onClick,
+        onFocusChange: onFocusChange,
+        border: border,
+        child: AppIcon(
+          isOnWatchlist ? PhosphorIconsRegular.check : PhosphorIconsRegular.plus,
+          size: 24,
+        ),
       ),
     );
   }
