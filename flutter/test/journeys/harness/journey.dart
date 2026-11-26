@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:reelay/data/media/artwork_cache.dart';
 import 'package:reelay/data/plex/secure_token_store.dart';
 import 'package:reelay/data/settings/app_settings.dart';
 import 'package:reelay/data/settings/settings_store.dart';
@@ -150,7 +151,14 @@ class Journey {
   /// `jellyfin:<profile id>`, and `plex` for the install's own.
   Map<String, String> get savedTokens => Map.unmodifiable(_tokens.values);
 
+  /// The artwork cache's keys — what's been saved to "disk" (memory here,
+  /// kept across [relaunch]).
+  final _artwork = MemoryArtworkStore();
+  Iterable<String> get savedArtworkKeys => _artwork.keys;
+
   Future<void> _launch({Duration settle = const Duration(seconds: 5)}) async {
+    ArtworkCache.store = _artwork;
+    addTearDown(() => ArtworkCache.store = null);
     await tester.pumpWidget(
       ProviderScope(
         overrides: [secureTokenStoreProvider.overrideWithValue(_tokens)],
@@ -174,6 +182,10 @@ class Journey {
   Future<void> relaunch({Duration settle = const Duration(seconds: 5)}) async {
     await tester.pumpWidget(const SizedBox());
     await tester.pump(const Duration(seconds: 30)); // leftover timers run out
+    // A new process: nothing decoded is left in memory.
+    PaintingBinding.instance.imageCache
+      ..clear()
+      ..clearLiveImages();
     steps.add('— relaunch —');
     await _launch(settle: settle);
   }

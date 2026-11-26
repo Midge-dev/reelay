@@ -87,7 +87,10 @@ Before the Shield pass, the automated layers catch most of it (run with
   `home_cache_journeys_test.dart` relaunches against a slow server
   (`FakeJellyfin.latency`, `FakePlex.latency`) for the saved Home: last
   launch's rows at once, then the fresh ones in place, focus kept — and
-  no server token in plain preferences (lib/state/home_cache.dart).
+  no server token in plain preferences (lib/state/home_cache.dart). Its
+  posters group checks a relaunch takes Home's artwork from the disk cache
+  (lib/data/media/artwork_cache.dart; the harness keeps it in memory across
+  `relaunch()` and clears Flutter's own image cache, as a new process would).
 - `test/journeys/ux_tour_test.dart` — not a test: `UX_TOUR=1 flutter test
   test/journeys/ux_tour_test.dart` screenshots every screen in the app's
   own type into `build/journey_shots/` (`UX_SCALE=1.5` for another UI size),

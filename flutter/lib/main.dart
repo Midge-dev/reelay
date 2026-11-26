@@ -1,7 +1,11 @@
+import 'dart:io';
+
 import 'package:flutter/widgets.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'data/media/artwork_cache.dart';
 import 'data/settings/settings_store.dart';
 import 'focus/focus_log.dart';
 import 'focus/smooth_traversal.dart';
@@ -20,6 +24,12 @@ Future<void> main() async {
   );
   AppColors.applyTheme(appearance.$1);
   startFocusLog();
+  try {
+    final cache = await getApplicationCacheDirectory();
+    ArtworkCache.store = FileArtworkStore(Directory('${cache.path}/artwork'));
+  } catch (_) {
+    // No cache directory: artwork comes from the servers each time.
+  }
   runApp(
     ProviderScope(
       overrides: [bootAppearanceProvider.overrideWithValue(appearance)],

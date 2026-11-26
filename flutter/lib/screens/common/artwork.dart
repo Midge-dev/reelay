@@ -1,5 +1,6 @@
 import 'package:flutter/widgets.dart';
 
+import '../../data/media/artwork_cache.dart';
 import '../../data/media/artwork_url.dart';
 import '../../theme/tokens.dart';
 
@@ -13,7 +14,8 @@ import '../../theme/tokens.dart';
 /// The image is requested and decoded at the size it is painted — painted
 /// logical px × devicePixelRatio — rather than at the server's full master
 /// resolution (handoff README, "Request artwork at the size it is painted").
-/// On failure the placeholder simply stays; no error glyph.
+/// On failure the placeholder simply stays; no error glyph. Fetched artwork
+/// is kept on disk between launches (data/media/artwork_cache.dart).
 class Artwork extends StatelessWidget {
   final String? imageUrl;
 
@@ -67,7 +69,7 @@ class Artwork extends StatelessWidget {
   }
 
   static ImageProvider _sizedProvider(String url, int? width, int? height) {
-    final provider = NetworkImage(
+    final provider = CachedArtworkImage(
       ArtworkUrl.sized(url, width: width, height: height),
     );
     // Decode no larger than painted even if the server ignores the resize

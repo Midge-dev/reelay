@@ -57,4 +57,32 @@ void main() {
     await j.wait(const Duration(seconds: 40));
     expect(j.shows('Severance'), isTrue, reason: j.why('still Home once Attic has answered'));
   }, plex: FakePlex.new, jellyfin: false);
+
+  group('posters', () {
+    List<String> imageRequests(Journey j, String marker) => [
+      for (final r in j.network.requests)
+        if (r.uri.path.contains(marker)) '${r.uri.path}?${r.uri.query}',
+    ];
+
+    journey('a second launch takes Home\'s posters from the disk, not the server', (j) async {
+      final first = imageRequests(j, '/Images/');
+      expect(first, isNotEmpty, reason: j.why('the first launch fetched posters'));
+
+      j.network.requests.clear();
+      await j.relaunch();
+      final again = imageRequests(j, '/Images/');
+      expect(again.where(first.contains), isEmpty, reason: j.why('every poster seen last time came off the disk: $again'));
+    });
+
+    journey('on Plex, saved posters carry no token', (j) async {
+      final first = imageRequests(j, '/photo/:/transcode');
+      expect(first, isNotEmpty, reason: j.why('the first launch fetched posters'));
+      expect(j.savedArtworkKeys, isNotEmpty);
+      expect(j.savedArtworkKeys.join(' '), isNot(contains(FakePlex.serverToken)));
+
+      j.network.requests.clear();
+      await j.relaunch();
+      expect(imageRequests(j, '/photo/:/transcode').where(first.contains), isEmpty, reason: j.why('posters came off the disk'));
+    }, plex: FakePlex.new, jellyfin: false);
+  });
 }
