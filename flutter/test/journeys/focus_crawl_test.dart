@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 
+import 'harness/fake_plex.dart';
 import 'harness/journey.dart';
 
 /// The focus crawler: on each screen, a few hundred seeded-random D-pad
@@ -67,6 +68,20 @@ void main() {
         final report = await j.crawl(presses: 150, pauseEvery: 25);
         expect(report.traps, isEmpty, reason: j.why('dead ends: ${report.traps}'));
       }, uiScale: scale);
+    });
+  }
+
+  // The same crawl on a Plex-only profile: Plex's data has its own shape
+  // (On Deck episodes, its library names, the account rows in Settings).
+  for (final scale in [1.3, 1.5]) {
+    group('Plex, at ${(scale * 100).round()}% UI size', () {
+      for (final name in ['Home', 'Movies', 'Settings', 'a film', 'a show']) {
+        journey('$name: focus is always visible, and nowhere is a dead end', (j) async {
+          await screens[name]!(j);
+          final report = await j.crawl(presses: 120);
+          expect(report.traps, isEmpty, reason: j.why('dead ends (no direction moves focus): ${report.traps}'));
+        }, plex: FakePlex.new, jellyfin: false, uiScale: scale);
+      }
     });
   }
 }

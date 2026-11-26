@@ -21,6 +21,7 @@ import 'package:video_player_platform_interface/video_player_platform_interface.
 import '../../playback/fake_video_player_platform.dart';
 import 'fake_http.dart';
 import 'fake_jellyfin.dart';
+import 'fake_plex.dart';
 import 'fake_relay.dart';
 
 class _MemoryTokenStore implements SecureTokenStore {
@@ -50,10 +51,14 @@ class _MemoryTokenStore implements SecureTokenStore {
 /// Nothing is faked above the network and the two stores — every screen,
 /// controller and focus rule is the app's own.
 class Journey {
-  Journey._(this.tester, this.server, this.network, this._relay);
+  Journey._(this.tester, this.server, this.network, this._relay, this._plex);
 
   final WidgetTester tester;
   final FakeJellyfin server;
+  final FakePlex? _plex;
+
+  /// The Plex account and server, for journeys started with one.
+  FakePlex get plex => _plex ?? (throw StateError('this journey has no Plex server: pass plex: to journey()'));
   final FakeRelay? _relay;
 
   final _friends = <Friend>[];
@@ -93,7 +98,7 @@ class Journey {
     });
   }
 
-  static Future<Journey> _boot(WidgetTester tester, FakeJellyfin server, FakeNetwork network, {double uiScale = AppSettings.defaultUiScale, FakeRelay? relay, bool realFonts = false, AppSettings Function(AppSettings)? settings}) async {
+  static Future<Journey> _boot(WidgetTester tester, FakeJellyfin server, FakeNetwork network, {FakePlex? plex, bool withJellyfin = true, double uiScale = AppSettings.defaultUiScale, FakeRelay? relay, bool realFonts = false, AppSettings Function(AppSettings)? settings}) async {
     if (realFonts) await _loadRealFonts(tester);
     VideoPlayerPlatform.instance = FakeVideoPlayerPlatform();
     // The Shield's real geometry: a 960×540 logical canvas (1080p at 2×).
@@ -104,26 +109,31 @@ class Journey {
 
     SharedPreferencesAsyncPlatform.instance = InMemorySharedPreferencesAsync.empty();
     final store = SettingsStore(SharedPreferencesAsync());
-    const profile = Profile(
+    final profile = Profile(
       id: 'p1',
       name: 'Sam',
       watchTogetherName: 'Sam',
-      jellyfin: JellyfinLink(serverId: 'jf-den', serverName: 'Den', baseUrl: 'http://den.local:8096', userId: FakeJellyfin.userId, username: 'sam'),
+      plexUsername: plex == null ? null : FakePlex.username,
+      jellyfin: withJellyfin
+          ? const JellyfinLink(serverId: 'jf-den', serverName: 'Den', baseUrl: 'http://den.local:8096', userId: FakeJellyfin.userId, username: 'sam')
+          : null,
     );
     if (relay != null) {
       RelayClient.openChannel = relay.open;
       addTearDown(() => RelayClient.openChannel = defaultOpenChannel);
     }
     final initial = AppSettings(
-      profiles: const [profile],
+      profiles: [profile],
       setupComplete: true,
       uiScale: uiScale,
       relays: [if (relay != null) RelayEntry(id: 'r1', nickname: 'Test relay', url: relay.url, isDefault: true)],
     );
     await store.save(settings?.call(initial) ?? initial);
-    final tokens = _MemoryTokenStore()..values['jellyfin:p1'] = 'jf-token';
+    final tokens = _MemoryTokenStore();
+    if (withJellyfin) tokens.values['jellyfin:p1'] = 'jf-token';
+    if (plex != null) tokens.values['plex:p1'] = FakePlex.accountToken;
 
-    final journey = Journey._(tester, server, network, relay).._tokens = tokens;
+    final journey = Journey._(tester, server, network, relay, plex).._tokens = tokens;
     await journey._launch();
     return journey;
   }
@@ -489,11 +499,15 @@ class _Rng {
 }
 
 /// A test that runs the whole app against [FakeJellyfin], with the fake
-/// network in place for everything the test (and the app) does.
+/// network in place for everything the test (and the app) does. With
+/// [plex], the profile is also signed in to that Plex account (only to it,
+/// with [jellyfin] false).
 void journey(
   String description,
   Future<void> Function(Journey j) body, {
   FakeJellyfin Function()? server,
+  FakePlex Function()? plex,
+  bool jellyfin = true,
   double uiScale = AppSettings.defaultUiScale,
   bool relay = false,
   bool realFonts = false,
@@ -501,11 +515,12 @@ void journey(
   AppSettings Function(AppSettings)? settings,
 }) {
   testWidgets(skip: skip, description, (tester) async {
-    final jellyfin = server?.call() ?? FakeJellyfin();
+    final fakeJellyfin = server?.call() ?? FakeJellyfin();
     final fakeRelay = relay ? FakeRelay() : null;
-    final network = FakeNetwork([jellyfin.route, ?fakeRelay?.route]);
+    final fakePlex = plex?.call();
+    final network = FakeNetwork([fakeJellyfin.route, ?fakePlex?.route, ?fakeRelay?.route]);
     await HttpOverrides.runWithHttpOverrides(() async {
-      final j = await Journey._boot(tester, jellyfin, network, uiScale: uiScale, relay: fakeRelay, realFonts: realFonts, settings: settings);
+      final j = await Journey._boot(tester, fakeJellyfin, network, plex: fakePlex, withJellyfin: jellyfin, uiScale: uiScale, relay: fakeRelay, realFonts: realFonts, settings: settings);
       try {
         await body(j);
       } finally {

@@ -161,6 +161,9 @@ class FakeJellyfin {
             'SeriesPrimaryImageTag': 'p-$id',
             'ImageTags': <String, String>{},
             'RunTimeTicks': 30000000000,
+            // Real servers carry an episode's own TVDB id, which is what
+            // folds it with the Plex copy of the same episode.
+            'ProviderIds': {'Tvdb': '9${id}0${s}0$e'},
             'UserData': _userData('$seasonId-e$e'),
           },
       ];

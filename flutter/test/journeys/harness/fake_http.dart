@@ -15,6 +15,9 @@ class FakeReply {
   FakeReply.bytes(this.body, {this.status = 200, this.contentType = 'application/octet-stream'});
 
   FakeReply.empty({this.status = 204}) : body = const [], contentType = 'text/plain';
+
+  /// How long the server takes to answer — on the test's clock.
+  Duration delay = Duration.zero;
 }
 
 /// One request as a fake server sees it.
@@ -36,8 +39,17 @@ typedef FakeRoute = FakeReply? Function(FakeRequest request);
 /// [routes] instead of the network. Unanswered requests are refused like a
 /// host that isn't there, and listed in [unrouted] so a test can show what
 /// it forgot to serve.
+///
+/// Requests go to the newest FakeNetwork, whichever one created the client:
+/// Flutter's NetworkImage keeps one HttpClient for the whole test run, made
+/// under the first test's network, and would otherwise send every later
+/// test's images there.
 class FakeNetwork extends HttpOverrides {
-  FakeNetwork(this.routes);
+  FakeNetwork(this.routes) {
+    _current = this;
+  }
+
+  static FakeNetwork? _current;
 
   final List<FakeRoute> routes;
   final requests = <FakeRequest>[];
@@ -82,7 +94,7 @@ class _Client implements HttpClient {
   String? userAgent;
 
   @override
-  Future<HttpClientRequest> openUrl(String method, Uri url) async => _Request(_network, method, url);
+  Future<HttpClientRequest> openUrl(String method, Uri url) async => _Request(FakeNetwork._current ?? _network, method, url);
   @override
   Future<HttpClientRequest> getUrl(Uri url) => openUrl('GET', url);
   @override
@@ -141,6 +153,7 @@ class _Request implements HttpClientRequest {
     if (reply == null) {
       throw SocketException('Connection refused (fake network: nothing serves $method $uri)');
     }
+    if (reply.delay > Duration.zero) await Future<void>.delayed(reply.delay);
     final response = _Response(reply);
     if (!_done.isCompleted) _done.complete(response);
     return response;
