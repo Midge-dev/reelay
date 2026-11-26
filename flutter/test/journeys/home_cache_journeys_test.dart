@@ -85,4 +85,31 @@ void main() {
       expect(imageRequests(j, '/photo/:/transcode').where(first.contains), isEmpty, reason: j.why('posters came off the disk'));
     }, plex: FakePlex.new, jellyfin: false);
   });
+
+  group('Home from the rail', () {
+    journey('shows the last Home at once and updates it in place', (j) async {
+      await j.openFromRail('Movies');
+      j.server.resumeIds.add('m6'); // Gattaca, started on another TV
+      j.server.latency = const Duration(seconds: 8);
+
+      await j.openFromRail('Home'); // waits a second after Select
+      expect(j.shows('Blade Runner'), isTrue, reason: j.why('the last Home, not a skeleton, while the server answers'));
+      expect(j.shows('Gattaca'), isFalse, reason: j.why('the server has not answered yet'));
+      expect((j.focusedRect()?.left ?? 0) > 60, isTrue, reason: j.why('focus left the rail for Home'));
+
+      await j.down(2);
+      j.expectFocusOn('Andor');
+      await j.wait(const Duration(seconds: 30));
+      expect(j.shows('Gattaca'), isTrue, reason: j.why('Home updated from the server'));
+      j.expectFocusOn('Andor', because: 'the update keeps focus where you were');
+    });
+
+    journey('picking Home on Home still takes focus off the rail', (j) async {
+      await j.down(2);
+      j.expectFocusOn('Andor');
+      await j.openFromRail('Home');
+      expect((j.focusedRect()?.left ?? 0) > 60, isTrue, reason: j.why('Home was opened afresh, focus off the rail'));
+      j.expectFocusOn('Resume', because: 'a fresh visit starts at the top');
+    });
+  });
 }

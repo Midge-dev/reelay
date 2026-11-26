@@ -1577,8 +1577,25 @@ class AppRootController extends ChangeNotifier {
     List<ReachableServer> servers,
     List<SectionGroup> sectionGroups,
   ) async {
-    _setState(LoadingHome(servers: servers, sectionGroups: sectionGroups));
-    _setState(await _loadHome(servers, sectionGroups));
+    // The last Home at once, refreshed in place — a skeleton only when
+    // there's none yet (straight after setup's Watch Together step). A
+    // copy, never the same object: it's a fresh visit, so it starts at the
+    // top and takes focus off the rail (picking Home on Home included).
+    final last = _lastFreshHome?.copyWith();
+    if (last == null) {
+      _setState(LoadingHome(servers: servers, sectionGroups: sectionGroups));
+      _setState(await _loadHome(servers, sectionGroups));
+      return;
+    }
+    _setState(last);
+    final fresh = await _loadHome(servers, sectionGroups);
+    if (identical(_state, last)) {
+      ScreenMemory.carry(last, fresh);
+      _setState(fresh);
+    } else {
+      _lastFreshHome = fresh;
+      _saveHome();
+    }
   }
 
   void selectSection(LibraryContext ctx, SectionGroup group) {
