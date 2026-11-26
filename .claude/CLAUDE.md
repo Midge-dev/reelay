@@ -81,7 +81,8 @@ Before the Shield pass, the automated layers catch most of it (run with
   watchlist, and one PMS, "Attic", with LAN / plex.direct / relay addresses
   that can each be made slow or dead. It checks connection choice, Home's
   hubs, direct play and transcode (decision, session, stop), timeline
-  reports, markers, removals, Search, setup's PIN link — and, with both
+  reports, markers, removals, Search, setup's PIN link, linking again after
+  Plex signs the TV out, Add profile's inline Plex sign-in — and, with both
   servers, that the same titles fold. The crawler also walks a Plex profile.
 - `test/journeys/ux_tour_test.dart` — not a test: `UX_TOUR=1 flutter test
   test/journeys/ux_tour_test.dart` screenshots every screen in the app's

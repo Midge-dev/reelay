@@ -42,9 +42,15 @@ class FakePlex {
   Duration lanLatency = Duration.zero;
 
   /// Plex refusing the account token — the TV removed from the account.
+  /// Linking again ([linkPin]) gets a new token, [relinkedToken]; the old
+  /// one stays refused.
   bool revoked = false;
 
+  /// Whether plex.tv answers at all.
+  bool plexTvReachable = true;
+
   static const accountToken = 'plex-account-token';
+  static const relinkedToken = 'plex-account-token-relinked';
   static const serverToken = 'attic-server-token';
   static const machineId = 'attic-machine-id';
   static const username = 'sam';
@@ -301,6 +307,12 @@ class FakePlex {
   bool _hasToken(FakeRequest r, String token) =>
       r.headers['x-plex-token'] == token || r.uri.queryParameters['X-Plex-Token'] == token;
 
+  /// The token a linked PIN hands out: a fresh one after a revocation.
+  String get _issuedToken => revoked ? relinkedToken : accountToken;
+
+  bool _hasAccountToken(FakeRequest r) =>
+      revoked ? _pinLinked && _hasToken(r, relinkedToken) : _hasToken(r, accountToken);
+
   static final _origins = {Uri.parse(lanUrl).origin, Uri.parse(remoteUrl).origin, Uri.parse(relayUrl).origin};
 
   /// The route to hand FakeNetwork.
@@ -310,7 +322,7 @@ class FakePlex {
     if (host == 'metadata-static.plex.tv' || (host == 'plex.tv' && r.uri.path.endsWith('/avatar'))) {
       return FakeReply.bytes(transparentPng, contentType: 'image/png');
     }
-    if (host == 'plex.tv') return _plexTv(r);
+    if (host == 'plex.tv') return plexTvReachable ? _plexTv(r) : null;
     if (host == 'discover.provider.plex.tv') return _discover(r);
     if (!_origins.contains(r.uri.origin)) return null;
     final reachable = switch (r.uri.origin) {
@@ -331,9 +343,9 @@ class FakePlex {
       return FakeReply.json({'id': 4242, 'code': pinCode, 'expiresIn': 900}, status: 201);
     }
     if (path == '/api/v2/pins/4242') {
-      return FakeReply.json({'id': 4242, 'code': pinCode, 'expiresIn': 900, 'authToken': _pinLinked ? accountToken : null});
+      return FakeReply.json({'id': 4242, 'code': pinCode, 'expiresIn': 900, 'authToken': _pinLinked ? _issuedToken : null});
     }
-    if (revoked || !_hasToken(r, accountToken)) return FakeReply.json({'errors': [{'code': 1001, 'message': 'User could not be authenticated'}]}, status: 401);
+    if (!_hasAccountToken(r)) return FakeReply.json({'errors': [{'code': 1001, 'message': 'User could not be authenticated'}]}, status: 401);
     switch (path) {
       case '/api/v2/user':
         return FakeReply.json({'id': 7, 'uuid': 'acct-sam', 'username': username, 'title': username, 'thumb': 'https://plex.tv/users/acct-sam/avatar'});
@@ -361,7 +373,7 @@ class FakePlex {
   }
 
   FakeReply? _discover(FakeRequest r) {
-    if (!_hasToken(r, accountToken)) return FakeReply.json({}, status: 401);
+    if (!_hasAccountToken(r)) return FakeReply.json({}, status: 401);
     final path = r.uri.path;
     if (path == '/library/sections/watchlist/all') {
       return FakeReply.json(_container('Metadata', [

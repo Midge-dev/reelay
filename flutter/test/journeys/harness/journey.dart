@@ -140,6 +140,10 @@ class Journey {
 
   late _MemoryTokenStore _tokens;
 
+  /// What the app has saved in its secure store, by key: `plex:<profile id>`,
+  /// `jellyfin:<profile id>`, and `plex` for the install's own.
+  Map<String, String> get savedTokens => Map.unmodifiable(_tokens.values);
+
   Future<void> _launch() async {
     await tester.pumpWidget(
       ProviderScope(

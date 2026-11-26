@@ -118,6 +118,108 @@ void main() {
     }, plex: () => FakePlex()..revoked = true);
   });
 
+  group('Signed out by Plex', () {
+    /// Waits out the PIN poll (every 2 s) until [done], in real and fake time.
+    Future<void> pollUntil(Journey j, bool Function() done) async {
+      for (var i = 0; i < 5 && !done(); i++) {
+        await j.wait(const Duration(seconds: 3));
+        await j.realTime();
+      }
+    }
+
+    plexJourney('linking again after Plex signed the TV out brings Home back on the same profile, and it stays linked', (j) async {
+      await j.realTime();
+      expect(j.shows('Link this TV to Plex again'), isTrue, reason: j.why('the relink screen, not setup from the top: ${j.screenTexts()}'));
+      expect(j.shows('STEP 1 OF 4'), isFalse, reason: j.why('nothing else to set up again'));
+      final code = j.screenTexts().where((t) => t.length == 1).join();
+      expect(code, contains(FakePlex.pinCode), reason: j.why('a fresh code to type at plex.tv/link'));
+
+      j.plex.linkPin();
+      await pollUntil(j, () => j.screenTexts().contains('Blade Runner'));
+      expect(j.screenTexts(), contains('Blade Runner'), reason: j.why('Home, from Attic, again: ${j.screenTexts()}'));
+      expect(j.focusOnScreen, isTrue);
+      final account = j.network.requests.where((r) => r.uri.host == 'plex.tv' && r.uri.path == '/api/v2/resources').last;
+      expect(account.headers['x-plex-token'], FakePlex.relinkedToken, reason: j.why('the new token, not the refused one'));
+      expect(j.savedTokens['plex:p1'], FakePlex.relinkedToken, reason: j.why('saved on the profile it came from, not a new one'));
+      expect(j.shows("Who's watching?"), isFalse, reason: j.why('no second profile was made'));
+
+      await j.relaunch();
+      await j.realTime();
+      await j.wait(const Duration(seconds: 2));
+      expect(j.shows('Link this TV to Plex again'), isFalse, reason: j.why('the new token was kept'));
+      expect(j.screenTexts(), contains('Blade Runner'), reason: j.why('straight to Home: ${j.screenTexts()}'));
+    }, plex: () => FakePlex()..revoked = true, realFonts: true);
+
+    Future<void> openAddProfile(Journey j) async {
+      await j.openFromRail('Settings');
+      await j.realTime();
+      for (var i = 0; i < 10 && !j.focusedTexts().contains('Profiles'); i++) {
+        await j.down();
+      }
+      j.expectFocusOn('Profiles');
+      await j.right();
+      j.expectFocusOn('Add a profile');
+      await j.select();
+      await j.wait(const Duration(seconds: 1));
+      expect(j.shows("Who's joining this device?"), isTrue, reason: j.why('the dialog opened'));
+    }
+
+    plexJourney("Add a profile signs in with Plex's code inline, and the new profile opens on Attic", (j) async {
+      await openAddProfile(j);
+      await j.select();
+      await j.type('Riley'); // Done goes on to the Watch Together name
+      await j.down();
+      j.expectFocusOn('Sign in', because: "Plex's Sign in, first of the accounts");
+      await j.select();
+      await j.realTime();
+      await j.wait(const Duration(seconds: 1));
+      expect(j.shows(FakePlex.pinCode), isTrue, reason: j.why('the code, in the dialog: ${j.screenTexts()}'));
+      expect(j.shows('plex.tv/link'), isTrue, reason: j.why('and where to type it'));
+      expect(j.focusOnScreen, isTrue);
+
+      j.plex.linkPin();
+      await pollUntil(j, () => j.shows('Signed in'));
+      expect(j.shows('Signed in'), isTrue, reason: j.why('the Plex row says so: ${j.screenTexts()}'));
+      expect(j.shows(FakePlex.pinCode), isFalse, reason: j.why('the code is gone once used'));
+      for (var i = 0; i < 4 && !j.focusedTexts().contains('Create profile'); i++) {
+        await j.down();
+      }
+      j.expectFocusOn('Create profile');
+      await j.select();
+      await j.realTime();
+      await j.wait(const Duration(seconds: 2));
+      expect(j.shows("Who's joining this device?"), isFalse, reason: j.why('the dialog closed'));
+      expect(j.shows('Riley'), isTrue, reason: j.why('Riley is listed: ${j.screenTexts()}'));
+
+      await j.relaunch();
+      expect(j.shows("Who's watching?"), isTrue, reason: j.why('two profiles bring the picker'));
+      await j.right();
+      j.expectFocusOn('Riley');
+      await j.select();
+      await j.realTime();
+      await j.wait(const Duration(seconds: 5));
+      expect(j.screenTexts(), contains('Blade Runner'), reason: j.why("Riley's Home, from Attic: ${j.screenTexts()}"));
+    }, realFonts: true);
+
+    plexJourney("with plex.tv unreachable, Add a profile's Plex sign-in says so in words, and Back still works", (j) async {
+      await openAddProfile(j);
+      j.plex.plexTvReachable = false;
+      await j.select();
+      await j.type('Riley');
+      await j.down();
+      j.expectFocusOn('Sign in');
+      await j.select();
+      await j.realTime();
+      await j.wait(const Duration(seconds: 1));
+      expect(j.shows("Couldn't reach plex.tv. Check this TV's connection, then try again."), isTrue, reason: j.why(j.screenTexts().toString()));
+      expect(j.focusOnScreen, isTrue, reason: j.why('focus is still somewhere you can see'));
+      await j.back();
+      await j.wait(const Duration(seconds: 1));
+      expect(j.shows("Who's joining this device?"), isFalse, reason: j.why('Back closed the dialog'));
+      j.expectFocusOn('Add a profile');
+    }, realFonts: true);
+  });
+
   group('Playing', () {
     Future<void> resumeBladeRunner(Journey j) async {
       j.expectFocusOn('Resume');
