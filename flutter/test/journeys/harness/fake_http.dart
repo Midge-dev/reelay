@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'dart:typed_data';
 
 /// What a fake server says to one request.
 class FakeReply {
@@ -204,7 +205,9 @@ class _Response extends Stream<List<int>> implements HttpClientResponse {
     Function? onError,
     void Function()? onDone,
     bool? cancelOnError,
-  }) => Stream<List<int>>.fromIterable([if (_reply.body.isNotEmpty) _reply.body])
+  // Uint8List chunks, as dart:io's own responses are: Dio's byte responses
+  // cast to it.
+  }) => Stream<List<int>>.fromIterable([if (_reply.body.isNotEmpty) Uint8List.fromList(_reply.body)])
       .listen(onData, onError: onError, onDone: onDone, cancelOnError: cancelOnError);
 
   @override

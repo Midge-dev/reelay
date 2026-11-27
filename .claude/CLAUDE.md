@@ -91,6 +91,10 @@ Before the Shield pass, the automated layers catch most of it (run with
   posters group checks a relaunch takes Home's artwork from the disk cache
   (lib/data/media/artwork_cache.dart; the harness keeps it in memory across
   `relaunch()` and clears Flutter's own image cache, as a new process would).
+  `scrub_preview_journeys_test.dart` focuses the scrubber for screen 13's
+  preview frame: Jellyfin trickplay tiles (`FakeJellyfin.trickplay`), a
+  Plex BIF (`FakePlex.previewThumbnails`, `FakePlex.bif`), neither, and the
+  frame whole on screen at both ends (lib/playback/scrub_previews.dart).
 - `test/journeys/ux_tour_test.dart` — not a test: `UX_TOUR=1 flutter test
   test/journeys/ux_tour_test.dart` screenshots every screen in the app's
   own type into `build/journey_shots/` (`UX_SCALE=1.5` for another UI size),

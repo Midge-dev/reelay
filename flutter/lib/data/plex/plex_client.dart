@@ -11,6 +11,8 @@ import 'plex_mappers.dart';
 import 'plex_models.dart';
 import 'plex_playback_urls.dart';
 import 'plex_response.dart';
+import '../../playback/scrub_previews.dart';
+import 'dart:typed_data';
 
 /// Per-library "for you" hubs to try, in priority order, when Plex has no
 /// account-level "Suggested" hub enabled (requires Discover/Plex Pass).
@@ -276,6 +278,24 @@ class PlexClient implements MediaServerClient {
 
   @override
   bool get transcodeStartsAtOffset => true;
+
+  /// The part's BIF index (Settings → Library → "Generate video preview
+  /// thumbnails" on the server); a part without one 404s.
+  @override
+  Future<ScrubPreviews?> fetchScrubPreviews(String itemId, {String? partId}) async {
+    if (partId == null) return null;
+    try {
+      final response = await _client.get<List<int>>(
+        '${server.baseUrl}/library/parts/$partId/indexes/sd',
+        options: Options(headers: _headers.headers, responseType: ResponseType.bytes, receiveTimeout: const Duration(seconds: 30)),
+      );
+      final bytes = response.data;
+      return bytes == null ? null : BifPreviews.parse(Uint8List.fromList(bytes));
+    } on DioException catch (e) {
+      if (e.response?.statusCode == 404) return null;
+      rethrow;
+    }
+  }
 
   @override
   Future<String?> checkTranscode(String transcodeUrl) async {

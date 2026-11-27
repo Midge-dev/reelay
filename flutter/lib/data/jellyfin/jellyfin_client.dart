@@ -8,6 +8,8 @@ import '../media/media_server_client.dart';
 import 'jellyfin_auth_api.dart';
 import 'jellyfin_image_url.dart';
 import 'jellyfin_mappers.dart';
+import '../../playback/scrub_previews.dart';
+import 'package:flutter/painting.dart' show NetworkImage;
 
 const _timeout = Duration(seconds: 15);
 
@@ -371,6 +373,37 @@ class JellyfinClient implements MediaServerClient {
 
   @override
   Future<String?> checkTranscode(String transcodeUrl) async => null;
+
+  /// Trickplay sheets, as the item's `Trickplay` field lists them by media
+  /// source and width. The narrowest at least [_previewWidth] wide, else
+  /// the widest there is.
+  @override
+  Future<ScrubPreviews?> fetchScrubPreviews(String itemId, {String? partId}) async {
+    final item = await _get('/Items/$itemId', {'userId': _userId, 'fields': 'Trickplay'});
+    final bySource = item is Map ? item['Trickplay'] : null;
+    if (bySource is! Map || bySource.isEmpty) return null;
+    final byWidth = bySource[partId ?? itemId] ?? bySource.values.first;
+    if (byWidth is! Map || byWidth.isEmpty) return null;
+    final widths = [for (final w in byWidth.keys) ?int.tryParse('$w')]..sort();
+    if (widths.isEmpty) return null;
+    final width = widths.firstWhere((w) => w >= _previewWidth, orElse: () => widths.last);
+    final info = byWidth['$width'];
+    if (info is! Map) return null;
+    int field(String name) => (info[name] as num?)?.toInt() ?? 0;
+    final source = partId == null ? '' : 'MediaSourceId=${Uri.encodeQueryComponent(partId)}&';
+    return TrickplayPreviews(
+      width: field('Width'),
+      height: field('Height'),
+      tileWidth: field('TileWidth'),
+      tileHeight: field('TileHeight'),
+      count: field('ThumbnailCount'),
+      intervalMs: field('Interval'),
+      sheetImage: (sheet) => NetworkImage('${server.baseUrl}/Videos/$itemId/Trickplay/$width/$sheet.jpg?$source$_tokenQuery'),
+    );
+  }
+
+  /// About the painted preview frame's width at 1080p (screen 13).
+  static const _previewWidth = 280;
 
   // Jellyfin ends the encode itself on the stopped progress report.
   @override

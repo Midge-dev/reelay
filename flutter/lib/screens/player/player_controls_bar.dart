@@ -10,7 +10,9 @@ import '../../kit/text.dart';
 import '../../theme/scale.dart';
 import '../../theme/tokens.dart';
 import '../../theme/typography.dart';
+import '../../playback/scrub_previews.dart';
 import '../common/time_format.dart';
+import 'scrub_preview.dart';
 
 class _RowButton {
   final FocusNode focusNode;
@@ -78,6 +80,10 @@ class PlayerControlsBar extends StatelessWidget {
   /// button, while it's showing); null, Up goes nowhere.
   final FocusNode? aboveProgress;
 
+  /// The preview frame for where the focused scrubber would land; null,
+  /// the bubble above it is the time alone.
+  final ScrubFrame? previewFrame;
+
   const PlayerControlsBar({
     super.key,
     required this.isPlaying,
@@ -108,6 +114,7 @@ class PlayerControlsBar extends StatelessWidget {
     this.nextEpisodeFocusNode,
     this.onNextEpisode,
     this.aboveProgress,
+    this.previewFrame,
   });
 
   @override
@@ -240,6 +247,7 @@ class PlayerControlsBar extends StatelessWidget {
                         bufferedFraction: bufferedFraction,
                         focused: progressFocusNode.hasFocus,
                         positionLabel: formatTimecode(positionMs),
+                        previewFrame: previewFrame,
                       ),
                     ),
                   ),
@@ -447,19 +455,23 @@ class _ProgressTrack extends StatelessWidget {
   final double bufferedFraction;
   final bool focused;
   final String positionLabel;
+  final ScrubFrame? previewFrame;
 
   const _ProgressTrack({
     required this.playedFraction,
     required this.bufferedFraction,
     this.focused = false,
     required this.positionLabel,
+    this.previewFrame,
   });
 
   @override
   Widget build(BuildContext context) {
     final boxHeight = _thumbFocusedSize.du(context);
     final thumbSize = (focused ? _thumbFocusedSize : _thumbSize).du(context);
-    final bubbleWidth = 150.du(context);
+    final frame = previewFrame;
+    // Screen 13: 280 wide with a frame, as narrow as the time without.
+    final bubbleWidth = (frame == null ? 150 : 280).du(context);
     return SizedBox(
       height: boxHeight,
       child: LayoutBuilder(
@@ -521,7 +533,9 @@ class _ProgressTrack extends StatelessWidget {
                   bottom: 34.du(context),
                   width: bubbleWidth,
                   child: Container(
-                    padding: EdgeInsets.symmetric(vertical: 8.du(context)),
+                    padding: frame == null
+                        ? EdgeInsets.symmetric(vertical: 8.du(context))
+                        : EdgeInsets.all(8.du(context)),
                     alignment: Alignment.center,
                     decoration: BoxDecoration(
                       color: AppColors.canvas.withValues(alpha: 0.86),
@@ -534,10 +548,28 @@ class _ProgressTrack extends StatelessWidget {
                       ),
                       boxShadow: AppElevation.overlay,
                     ),
-                    child: AppText(
-                      positionLabel,
-                      style: AppTypography.caption,
-                      color: AppColors.inkOnArt,
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        if (frame != null) ...[
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(
+                              AppShape.radiusSm.du(context),
+                            ),
+                            child: SizedBox(
+                              height: 140.du(context),
+                              width: double.infinity,
+                              child: ScrubPreviewImage(frame: frame),
+                            ),
+                          ),
+                          SizedBox(height: 8.du(context)),
+                        ],
+                        AppText(
+                          positionLabel,
+                          style: AppTypography.caption,
+                          color: AppColors.inkOnArt,
+                        ),
+                      ],
                     ),
                   ),
                 ),

@@ -13,6 +13,7 @@ import '../../data/media/media_server_client.dart';
 import '../../data/settings/app_settings.dart';
 import '../../focus/back_handler.dart';
 import '../../kit/text.dart';
+import '../../playback/scrub_previews.dart';
 import '../../playback/audio_tracks.dart';
 import '../../playback/caption_file.dart';
 import '../../playback/display_mode.dart';
@@ -194,6 +195,17 @@ class _PlayerScreenState extends State<PlayerScreen> {
   /// The intro playback is in, while it is.
   SkipMarker? _intro;
 
+  /// Preview frames for the scrubber (see fetchScrubPreviews); null until
+  /// loaded, and for a server that has none.
+  ScrubPreviews? _scrubPreviews;
+
+  /// The frame shown above the focused scrubber. It trails the position
+  /// by [_previewTrail] (handoff: "preview frame trails the scrub position
+  /// by 60 ms"), so a held seek doesn't redraw it on every step.
+  ScrubFrame? _previewFrame;
+  Timer? _previewTimer;
+  static const _previewTrail = Duration(milliseconds: 60);
+
   /// An intro whose Skip intro has had its moment — skipped, dismissed
   /// with Back, or left alone for [_skipOfferMs]. After that it only shows
   /// with the controls, so it isn't on screen for a whole title sequence.
@@ -322,6 +334,16 @@ class _PlayerScreenState extends State<PlayerScreen> {
     Future.sync(() => widget.client.fetchSkipMarkers(widget.detail.id)).then((markers) {
       if (mounted) setState(() => _skipMarkers = markers);
     }, onError: (_) {});
+    // Best effort too: without them the scrubber's bubble is the time alone.
+    Future.sync(
+      () => widget.client.fetchScrubPreviews(widget.detail.id, partId: _resolvedPart?.id),
+    ).then((previews) {
+      if (!mounted || previews == null) return;
+      setState(() {
+        _scrubPreviews = previews;
+        _previewFrame = previews.frameAt(_positionMs);
+      });
+    }, onError: (_) {});
     final loadNext = widget.loadNextEpisode;
     if (loadNext != null) {
       loadNext().then((next) {
@@ -374,6 +396,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
     _roster?.dispose();
     HardwareKeyboard.instance.removeHandler(_recordInteraction);
     _controlsHideTimer?.cancel();
+    _previewTimer?.cancel();
     _skipOfferTimer?.cancel();
     _skipIntroFocusNode.dispose();
     _reportTimer?.cancel();
@@ -642,7 +665,19 @@ class _PlayerScreenState extends State<PlayerScreen> {
     });
     _updateSkipIntro();
     _maybeLoadUpNext();
+    _trailPreview();
     if (value.isCompleted) _finished();
+  }
+
+  /// Moves the preview frame to [_positionMs], [_previewTrail] later.
+  void _trailPreview() {
+    final previews = _scrubPreviews;
+    if (previews == null || _previewTimer != null) return;
+    if (previews.frameAt(_positionMs)?.atMs == _previewFrame?.atMs) return;
+    _previewTimer = Timer(_previewTrail, () {
+      _previewTimer = null;
+      if (mounted) setState(() => _previewFrame = previews.frameAt(_positionMs));
+    });
   }
 
   bool _ended = false;
@@ -1254,6 +1289,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
                               onRewind: () => _seekBy(-_skipIncrementMs),
                               onForward: () => _seekBy(_skipIncrementMs),
                               onSeekKeyEvent: _handleProgressSeekKey,
+                              previewFrame: _previewFrame,
                               onCycleSubtitles: _cycleSubtitle,
                               onCycleBitrate: _cycleBitrate,
                               chatAvailable:

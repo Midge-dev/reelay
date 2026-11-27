@@ -96,6 +96,14 @@ class FakeJellyfin {
   /// What playback reported, in order.
   final playbackReports = <PlaybackReport>[];
 
+  /// Trickplay (10.9+): scrub previews, one 320×180 tile every 10 s, in
+  /// sheets of 10×10. False is a server that hasn't made them.
+  bool trickplay = true;
+  static const trickplayIntervalMs = 10000, trickplayTiles = 10;
+
+  /// Trickplay sheets asked for, as `<item>/<width>/<sheet>`.
+  final trickplaySheets = <String>[];
+
   /// Saved positions, in ticks, as playback last reported them; a title in
   /// [resumeIds] with none here is a third of the way in.
   final positions = <String, int>{};
@@ -217,6 +225,20 @@ class FakeJellyfin {
           ],
         },
       ],
+    if (trickplay && (item['Type'] == 'Movie' || item['Type'] == 'Episode'))
+      'Trickplay': {
+        item['Id']: {
+          '320': {
+            'Width': 320,
+            'Height': 180,
+            'TileWidth': trickplayTiles,
+            'TileHeight': trickplayTiles,
+            'ThumbnailCount': (item['RunTimeTicks']! as int) ~/ 10000 ~/ trickplayIntervalMs,
+            'Interval': trickplayIntervalMs,
+            'Bandwidth': 100000,
+          },
+        },
+      },
     // A full cast, as a real title has: enough to scroll the Cast & crew row.
     'People': [
       {'Name': 'Ada Director', 'Id': 'pd', 'Type': 'Director'},
@@ -354,6 +376,12 @@ class FakeJellyfin {
     if (segmentsOf != null) {
       final found = segments[segmentsOf[1]] ?? const [];
       return FakeReply.json({'Items': found, 'TotalRecordCount': found.length});
+    }
+    final sheet = RegExp(r'^/Videos/([^/]+)/Trickplay/(\d+)/(\d+)\.jpg$').firstMatch(path);
+    if (sheet != null) {
+      if (!trickplay) return FakeReply.json({}, status: 404);
+      trickplaySheets.add('${sheet[1]}/${sheet[2]}/${sheet[3]}');
+      return FakeReply.bytes(transparentPng, contentType: 'image/jpeg');
     }
     final similar = RegExp(r'^/Items/([^/]+)/Similar$').firstMatch(path);
     // Every other film: enough to scroll the More like this row.

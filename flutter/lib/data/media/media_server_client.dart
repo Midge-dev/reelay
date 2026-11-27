@@ -3,6 +3,7 @@ import '../plex/plex_client.dart';
 import '../../playback/skip_markers.dart';
 import 'media_models.dart';
 import 'media_server.dart';
+import '../../playback/scrub_previews.dart';
 
 /// The playback state a progress report carries.
 enum PlaybackReportState { playing, paused, stopped }
@@ -103,6 +104,11 @@ abstract class MediaServerClient {
   /// Where [id]'s intro and credits are: the server's own markers, else
   /// chapters named for them; empty when it knows of neither.
   Future<List<SkipMarker>> fetchSkipMarkers(String id);
+
+  /// Preview frames for scrubbing through [itemId]'s [partId] file (Plex's
+  /// video preview thumbnails, Jellyfin's trickplay), or null when the
+  /// server has made none. Throws on network failure.
+  Future<ScrubPreviews?> fetchScrubPreviews(String itemId, {String? partId});
 
   /// Asks the server whether it will stream [transcodeUrl], before the
   /// player opens it. Null to go ahead — including when the server can't

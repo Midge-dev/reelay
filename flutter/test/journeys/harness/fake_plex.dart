@@ -1,3 +1,4 @@
+import 'dart:typed_data';
 import 'fake_http.dart';
 
 /// One `/:/timeline` report the app sent, as Plex Media Server sees it.
@@ -44,6 +45,34 @@ class FakePlex {
   /// How long the server takes on every address (artwork aside) — a busy
   /// server on a cold start. Under the app's 4 s probe, or it's dead.
   Duration latency = Duration.zero;
+
+  /// Video preview thumbnails (a BIF per part, one frame every 10 s).
+  /// False is a library that hasn't generated them.
+  bool previewThumbnails = true;
+  static const bifIntervalMs = 10000;
+
+  /// Parts whose BIF was fetched.
+  final bifRequests = <String>[];
+
+  /// A BIF file, as PMS sends one: header, index, then a JPEG per frame
+  /// (here, the 1×1 PNG every fake image is).
+  static List<int> bif(int durationMs) {
+    final count = durationMs ~/ bifIntervalMs;
+    final header = ByteData(64 + (count + 1) * 8);
+    const magic = [0x89, 0x42, 0x49, 0x46, 0x0D, 0x0A, 0x1A, 0x0A];
+    for (var i = 0; i < magic.length; i++) {
+      header.setUint8(i, magic[i]);
+    }
+    header.setUint32(12, count, Endian.little);
+    header.setUint32(16, 1000, Endian.little); // timestamps in seconds
+    var offset = header.lengthInBytes;
+    for (var i = 0; i <= count; i++) {
+      header.setUint32(64 + i * 8, i == count ? 0xFFFFFFFF : i * bifIntervalMs ~/ 1000, Endian.little);
+      header.setUint32(64 + i * 8 + 4, offset, Endian.little);
+      if (i < count) offset += transparentPng.length;
+    }
+    return [...header.buffer.asUint8List(), for (var i = 0; i < count; i++) ...transparentPng];
+  }
 
   /// Plex refusing the account token — the TV removed from the account.
   /// Linking again ([linkPin]) gets a new token, [relinkedToken]; the old
@@ -264,6 +293,7 @@ class FakePlex {
               {
                 'id': partId,
                 'key': '/library/parts/$partId/1700000000/file.mkv',
+                if (previewThumbnails) 'indexes': 'sd',
                 'container': 'mkv',
                 'duration': item['duration'],
                 'size': 4000000000,
@@ -454,6 +484,13 @@ class FakePlex {
       }
       lastViewedAt[key] = 1763500000 + timelines.length;
       return FakeReply.empty(status: 200);
+    }
+    final index = RegExp(r'^/library/parts/(\d+)/indexes/sd$').firstMatch(path);
+    if (index != null) {
+      if (!previewThumbnails) return FakeReply.json({}, status: 404);
+      bifRequests.add(index[1]!);
+      final item = [...movies, ..._episodes.values.expand((e) => e)].firstWhere((m) => '${m['ratingKey']}'.replaceAll('-', '') == index[1], orElse: () => movies.first);
+      return FakeReply.bytes(bif((item['duration'] as int?) ?? filmMs), contentType: 'application/octet-stream');
     }
     final part = RegExp(r'^/library/parts/(\d+)$').firstMatch(path);
     if (r.method == 'PUT' && part != null) {
